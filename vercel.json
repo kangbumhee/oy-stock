@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "public/**", "use": "@vercel/static" },
+    { "src": "api/proxy.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/search.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/inventory.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    {
+      "src": "/data/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=60, s-maxage=300"
+      },
+      "dest": "/public/data/$1"
+    },
+    { "src": "/api/oliveyoung/stock", "dest": "/api/oliveyoung/stock.js" },
+    { "src": "/api/oliveyoung/search", "dest": "/api/oliveyoung/search.js" },
+    { "src": "/api/oliveyoung/inventory", "dest": "/api/oliveyoung/inventory.js" },
+    { "src": "/api/oliveyoung/options", "dest": "/api/oliveyoung/options.js" },
+    { "src": "/api/proxy(.*)", "dest": "/api/proxy.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}

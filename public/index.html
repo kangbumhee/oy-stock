@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>올리브영 재고 체크</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <h1 class="logo">🫒 올리브영 재고체크</h1>
+    <div class="region-bar">
+      <span id="current-region" class="region-name">📍 위치 확인중...</span>
+      <select id="region-select" class="region-select" aria-label="빠른 지역 선택"></select>
+      <div class="region-input-wrap">
+        <input type="text" id="region-input" placeholder="지역 (김포, 검단, 강남...)" autocomplete="off">
+        <div id="region-dropdown" class="dropdown"></div>
+      </div>
+      <button type="button" id="btn-gps" class="btn-gps" title="현재위치">📍</button>
+    </div>
+    <form id="search-form" class="search-bar">
+      <input type="text" id="search-input" placeholder="상품명 검색 (예: 선크림, 틴트, 일소)" autocomplete="off">
+      <button type="submit">검색</button>
+    </form>
+  </header>
+  <div id="search-history" class="history-area"></div>
+  <div id="popular-keywords" class="popular-keywords" aria-label="인기 검색어"></div>
+  <button type="button" class="btn-history" data-action="showHistory">📋 변경 이력</button>
+  <main id="product-list">
+    <div class="empty-state">
+      <p class="emoji">🔍</p>
+      <p>상품명을 검색해보세요</p>
+      <p class="sub">예: 선크림, 토너, 클렌징, 일소</p>
+    </div>
+  </main>
+</div>
+<div id="popup-root"></div>
+<script src="/js/config.js"></script>
+<script src="/js/storage.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/options.js"></script>
+<script src="/js/search.js"></script>
+<script src="/js/regions.js"></script>
+<script src="/js/inventory.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof Regions !== 'undefined' && Regions.renderSelector) Regions.renderSelector();
+    if (typeof Search !== 'undefined' && Search.renderPopularKeywords) Search.renderPopularKeywords();
+  });
+</script>
+</body>
+</html>
