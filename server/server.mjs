@@ -189,7 +189,7 @@ async function getStockDetail(goodsNo, lat, lng) {
 
   let options = [];
   let rawAvailableItems = [];
-  if (Number(gi.itemCount) > 1) {
+  if (true) {
     let optPage = null;
     try {
       const context = page.context();
