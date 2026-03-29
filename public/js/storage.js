@@ -36,17 +36,19 @@ var Storage = {
     localStorage.setItem(this._key('favorites'), JSON.stringify(arr || []));
   },
   isFavorite: function (goodsNo) {
+    var gn = String(goodsNo);
     return this.getFavorites().some(function (f) {
-      return String(f.goodsNo) === String(goodsNo);
+      return String(f.goodsNo || f.goodsNumber) === gn;
     });
   },
   addFavorite: function (product) {
     var favs = this.getFavorites();
-    var gn = String(product.goodsNo || product.goodsNumber);
-    if (favs.some(function (f) { return String(f.goodsNo) === gn; })) return favs;
+    var gn = String(product.goodsNo || product.goodsNumber || '');
+    if (!gn) return favs;
+    if (favs.some(function (f) { return String(f.goodsNo || f.goodsNumber) === gn; })) return favs;
     favs.unshift({
       goodsNo: gn,
-      goodsName: product.goodsName,
+      goodsName: product.goodsName || '',
       imageUrl: product.imageUrl || product.thumbnail || '',
       price: product.price || product.priceToPay || 0,
       originalPrice: product.originalPrice || 0,
@@ -59,13 +61,13 @@ var Storage = {
   removeFavorite: function (goodsNo) {
     var gn = String(goodsNo);
     var favs = this.getFavorites().filter(function (f) {
-      return String(f.goodsNo) !== gn;
+      return String(f.goodsNo || f.goodsNumber) !== gn;
     });
     this.setFavorites(favs);
     return favs;
   },
   toggleFavorite: function (product) {
-    var gn = String(product.goodsNo || product.goodsNumber);
+    var gn = String(product.goodsNo || product.goodsNumber || '');
     if (this.isFavorite(gn)) {
       return { favs: this.removeFavorite(gn), added: false };
     }

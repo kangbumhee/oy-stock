@@ -41,7 +41,11 @@ var API = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         favorites: favorites.map(function (f) {
-          return { goodsNo: f.goodsNo, goodsName: f.goodsName, addedAt: f.addedAt };
+          return {
+            goodsNo: f.goodsNo || f.goodsNumber,
+            goodsName: f.goodsName,
+            addedAt: f.addedAt
+          };
         }),
         location: location
       })

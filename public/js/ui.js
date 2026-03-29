@@ -161,7 +161,8 @@ var UI = {
       '개 → GitHub)</button>';
     var cards = favorites
       .map(function (f) {
-        var detail = detailMap[f.goodsNo];
+        var gid = String(f.goodsNo || f.goodsNumber || '');
+        var detail = detailMap[gid];
         var badges = '';
         if (detail) {
           if (detail.status === 'discontinued') badges = '<span class="badge bg-red">단종</span>';
@@ -179,24 +180,24 @@ var UI = {
         var imgTag = img
           ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
           : '<div class="no-img">📦</div>';
-        var price = detail ? detail.price : f.price;
+        var price = detail ? detail.price : f.price || f.priceToPay || 0;
         var disc = (detail ? detail.discountRate : f.discountRate) || 0;
         var origPrice = (detail ? detail.originalPrice : f.originalPrice) || 0;
         return (
           '<div class="card' +
           (detail && detail.status === 'discontinued' ? ' soldout' : '') +
           '"><div class="card-img" data-action="showFavDetail" data-goodsno="' +
-          UI.esc(f.goodsNo) +
+          UI.esc(gid) +
           '">' +
           imgTag +
           '<div class="badges">' +
           badges +
           '</div></div><div class="card-body"><div class="card-top"><p class="card-name" data-action="showFavDetail" data-goodsno="' +
-          UI.esc(f.goodsNo) +
+          UI.esc(gid) +
           '">' +
           UI.esc(detail ? detail.goodsName : f.goodsName) +
           '</p><button type="button" class="fav-btn active" data-action="removeFav" data-goodsno="' +
-          UI.esc(f.goodsNo) +
+          UI.esc(gid) +
           '">★</button></div><div class="card-price">' +
           (disc > 0 ? '<span class="disc">' + disc + '%</span>' : '') +
           '<span class="price">' +

@@ -319,7 +319,7 @@ var App = {
     var gn = String(goodsNo || '').trim();
     if (!gn) return;
     var fav = Storage.getFavorites().find(function (f) {
-      return String(f.goodsNo) === gn;
+      return String(f.goodsNo || f.goodsNumber) === gn;
     });
     var name = fav ? fav.goodsName : gn;
     var detail =
