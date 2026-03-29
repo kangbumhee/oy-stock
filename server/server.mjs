@@ -338,17 +338,12 @@ async function getStockAllRegions(goodsNo) {
     ];
   }
 
-  const optionResults = [];
+  const half = Math.ceil(REGIONS.length / 2);
+  const batch1 = REGIONS.slice(0, half);
+  const batch2 = REGIONS.slice(half);
 
-  for (const opt of options) {
-    const pid = opt.legacyItemNumber;
-    if (!pid) continue;
-
-    const imgPath = opt.imagePath || opt.goodsImagePath || opt.goodsThumbnailPath || '';
-    const baseUpload = optionUploadUrl || uploadUrl;
-    const optImage = imgPath ? baseUpload + imgPath : uploadUrl + (gi.goodsThumbnailPath || '');
-
-    const regionPromises = REGIONS.map((region) =>
+  async function fetchStoresForRegions(pid, regions) {
+    const promises = regions.map((region) =>
       oyPost('/stock/stock-stores', {
         productId: String(pid),
         lat: region.lat,
@@ -376,11 +371,31 @@ async function getStockAllRegions(goodsNo) {
         })
         .catch(() => [])
     );
+    const settled = await Promise.all(promises);
+    return settled.flat();
+  }
 
-    const regionResults = await Promise.all(regionPromises);
+  async function fetchStoresAllRegions(pid) {
+    const r1 = await fetchStoresForRegions(pid, batch1);
+    await sleep(1000);
+    const r2 = await fetchStoresForRegions(pid, batch2);
+    return [...r1, ...r2];
+  }
+
+  const optionResults = [];
+
+  for (const opt of options) {
+    const pid = opt.legacyItemNumber;
+    if (!pid) continue;
+
+    const imgPath = opt.imagePath || opt.goodsImagePath || opt.goodsThumbnailPath || '';
+    const baseUpload = optionUploadUrl || uploadUrl;
+    const optImage = imgPath ? baseUpload + imgPath : uploadUrl + (gi.goodsThumbnailPath || '');
+
+    const regionStores = await fetchStoresAllRegions(pid);
 
     const storeMap = {};
-    regionResults.flat().forEach((s) => {
+    regionStores.forEach((s) => {
       if (!s.code) return;
       if (!storeMap[s.code] || storeMap[s.code].qty < s.qty) {
         storeMap[s.code] = s;
@@ -406,37 +421,9 @@ async function getStockAllRegions(goodsNo) {
   if (optionResults.length === 0 && (gi.masterGoodsNumber || gi.goodsNumber)) {
     const pid = String(gi.masterGoodsNumber || gi.goodsNumber);
     const optImage = uploadUrl + (gi.goodsThumbnailPath || '');
-    const regionPromises = REGIONS.map((region) =>
-      oyPost('/stock/stock-stores', {
-        productId: pid,
-        lat: region.lat,
-        lon: region.lng,
-        pageIdx: 1,
-        searchWords: '',
-        mapLat: region.lat,
-        mapLon: region.lng
-      })
-        .then((stRes) => {
-          const stInner =
-            stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
-              ? unwrapPayload(stRes.data)
-              : {};
-          return (stInner.storeList || []).map((s) => ({
-            name: s.storeName,
-            code: s.storeCode,
-            region: region.name,
-            qty: s.remainQuantity || 0,
-            o2o: s.o2oRemainQuantity || 0,
-            pickup: yn(s.pickupYn),
-            open: yn(s.openYn),
-            addr: s.address || s.storeAddr || ''
-          }));
-        })
-        .catch(() => [])
-    );
-    const regionResults = await Promise.all(regionPromises);
+    const regionStores = await fetchStoresAllRegions(pid);
     const storeMap = {};
-    regionResults.flat().forEach((s) => {
+    regionStores.forEach((s) => {
       if (!s.code) return;
       if (!storeMap[s.code] || storeMap[s.code].qty < s.qty) {
         storeMap[s.code] = s;
@@ -453,6 +440,13 @@ async function getStockAllRegions(goodsNo) {
       totalQty: allStores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
       stores: allStores.slice(0, 100)
     });
+  }
+
+  try {
+    await page.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await sleep(2000);
+  } catch (e) {
+    console.log('세션 리프레시 스킵:', e.message);
   }
 
   return {

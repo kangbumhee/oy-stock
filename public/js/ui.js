@@ -495,7 +495,9 @@ var UI = {
           })
           .then(function (d) {
             if (d.success && d.options && d.options.length > 0) {
-              UI.showDetailPopup(d, gno);
+              UI.showAllStockPanel(d);
+              el.textContent = '🗺️ 전국 매장 재고 (조회완료)';
+              el.classList.remove('loading');
             } else {
               el.textContent = '⚠️ 조회 실패: ' + (d.error || '데이터 없음');
               el.classList.remove('loading');
@@ -727,6 +729,79 @@ var UI = {
       '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 보기 →</a></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
+  },
+
+  showAllStockPanel: function (detail) {
+    var old = document.getElementById('all-stock-panel');
+    if (old) old.remove();
+
+    var opts = detail.options || [];
+    var html =
+      '<div id="all-stock-panel" style="margin-top:12px;border-top:2px solid #bae6fd;padding-top:12px">';
+    html +=
+      '<h4 style="font-size:14px;font-weight:700;color:#0369a1;margin-bottom:8px">🗺️ 전국 매장 재고</h4>';
+
+    opts.forEach(function (o, i) {
+      var optName = o.name || '옵션 ' + (i + 1);
+      if (optName.indexOf(']') > -1) optName = optName.substring(optName.lastIndexOf(']') + 1).trim();
+      if (optName.length > 30) optName = optName.substring(0, 30) + '…';
+
+      html += '<div style="margin-bottom:10px">';
+      if (opts.length > 1) {
+        html +=
+          '<p style="font-weight:600;font-size:12px;color:#334155;margin-bottom:4px">' +
+          UI.esc(optName) +
+          '</p>';
+      }
+      html +=
+        '<p style="font-size:12px;color:#059669;margin-bottom:6px">✅ ' +
+        o.inStock +
+        '/' +
+        o.totalStores +
+        '매장 재고 (총 ' +
+        UI.num(o.totalQty) +
+        '개)</p>';
+
+      var stores = o.stores || [];
+      if (stores.length > 0) {
+        html += '<div class="store-list">';
+        stores.forEach(function (s) {
+          var qtyClass = s.qty > 0 ? 'stock-ok' : 'stock-out';
+          html +=
+            '<div class="store-row"><div class="store-left">' +
+            '<span class="store-name">' +
+            UI.esc(s.name) +
+            '</span>' +
+            '<span class="store-dist">' +
+            UI.esc(s.region || '') +
+            '</span>' +
+            '</div><div class="store-right ' +
+            qtyClass +
+            '">' +
+            (s.qty > 0
+              ? '재고 <b>' +
+                s.qty +
+                '</b>' +
+                (s.o2o > 0 ? ' · 오늘드림 ' + s.o2o : '')
+              : '품절') +
+            '</div></div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    var footer = document.querySelector('.popup-footer');
+    if (footer) {
+      footer.insertAdjacentHTML('beforebegin', html);
+    } else {
+      var content = document.querySelector('.popup-content');
+      if (content) content.insertAdjacentHTML('beforeend', html);
+    }
+
+    var panel = document.getElementById('all-stock-panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth' });
   },
 
   closePopup: function () {
