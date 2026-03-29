@@ -164,6 +164,7 @@ async function main() {
           const uploadUrl = infoInner.goodsUploadUrl || '';
 
           let options = [];
+          let rawAvailableItems = [];
           let optionUploadUrl = '';
           if (Number(gi.itemCount) > 1) {
             const optRaw = await oyPost('/stock/stock-goods-info-option', { goodsNo: gn });
@@ -171,6 +172,7 @@ async function main() {
               const optInner = unwrapPayload(optRaw);
               optionUploadUrl = optInner.optionUploadUrl || '';
               options = optInner.goodsInfo?.availableItems || [];
+              rawAvailableItems = options.slice();
             }
           }
           if (options.length === 0) {
@@ -181,6 +183,18 @@ async function main() {
                 imagePath: gi.goodsThumbnailPath
               }
             ];
+          }
+
+          const onlineMap = {};
+          for (const rawOpt of rawAvailableItems) {
+            if (rawOpt.legacyItemNumber) {
+              onlineMap[String(rawOpt.legacyItemNumber)] = {
+                onlineQty: rawOpt.quantity ?? 0,
+                maxOrderQty: rawOpt.orderableMaximumQuantity ?? 0,
+                deliveredToday: !!rawOpt.deliveredToday,
+                presentable: !!rawOpt.presentable
+              };
+            }
           }
 
           const optionResults = [];
@@ -215,6 +229,14 @@ async function main() {
               addr: s.address || s.storeAddr || ''
             }));
 
+            const onlineInfo = onlineMap[String(pid)] || {};
+            const onlineQty =
+              onlineInfo.onlineQty != null
+                ? onlineInfo.onlineQty
+                : opt.quantity != null
+                  ? opt.quantity
+                  : gi.quantity ?? 0;
+
             optionResults.push({
               name: opt.itemName,
               productId: pid,
@@ -222,6 +244,10 @@ async function main() {
               totalStores: stores.length,
               inStock: stores.filter((s) => s.qty > 0).length,
               totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+              onlineQty,
+              maxOrderQty: onlineInfo.maxOrderQty || opt.orderableMaximumQuantity || 0,
+              deliveredToday: onlineInfo.deliveredToday || !!opt.deliveredToday,
+              presentable: onlineInfo.presentable || !!opt.presentable,
               stores: stores.slice(0, 30)
             });
 
@@ -258,6 +284,10 @@ async function main() {
               totalStores: stores.length,
               inStock: stores.filter((s) => s.qty > 0).length,
               totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+              onlineQty: gi.quantity ?? 0,
+              maxOrderQty: gi.orderableMaximumQuantity || 0,
+              deliveredToday: !!gi.deliveredToday,
+              presentable: !!gi.presentable,
               stores: stores.slice(0, 30)
             });
           }

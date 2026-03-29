@@ -131,12 +131,14 @@ async function getStockDetail(goodsNo, lat, lng) {
   let optionUploadUrl = '';
 
   let options = [];
+  let rawAvailableItems = [];
   if (Number(gi.itemCount) > 1) {
     const optRes = await oyPost('/stock/stock-goods-info-option', { goodsNo });
     if (optRes.ok && optRes.data && optRes.data.status === 'SUCCESS') {
       const optInner = unwrapPayload(optRes.data);
       optionUploadUrl = optInner.optionUploadUrl || '';
       options = optInner.goodsInfo?.availableItems || [];
+      rawAvailableItems = options.slice();
     }
   }
   if (options.length === 0) {
@@ -147,6 +149,18 @@ async function getStockDetail(goodsNo, lat, lng) {
         imagePath: gi.goodsThumbnailPath
       }
     ];
+  }
+
+  const onlineMap = {};
+  for (const rawOpt of rawAvailableItems) {
+    if (rawOpt.legacyItemNumber) {
+      onlineMap[String(rawOpt.legacyItemNumber)] = {
+        onlineQty: rawOpt.quantity ?? 0,
+        maxOrderQty: rawOpt.orderableMaximumQuantity ?? 0,
+        deliveredToday: !!rawOpt.deliveredToday,
+        presentable: !!rawOpt.presentable
+      };
+    }
   }
 
   const optionResults = [];
@@ -182,6 +196,14 @@ async function getStockDetail(goodsNo, lat, lng) {
       addr: s.address || s.storeAddr || ''
     }));
 
+    const onlineInfo = onlineMap[String(pid)] || {};
+    const onlineQty =
+      onlineInfo.onlineQty != null
+        ? onlineInfo.onlineQty
+        : opt.quantity != null
+          ? opt.quantity
+          : gi.quantity ?? 0;
+
     optionResults.push({
       name: opt.itemName,
       productId: pid,
@@ -189,6 +211,10 @@ async function getStockDetail(goodsNo, lat, lng) {
       totalStores: stores.length,
       inStock: stores.filter((s) => s.qty > 0).length,
       totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+      onlineQty,
+      maxOrderQty: onlineInfo.maxOrderQty || opt.orderableMaximumQuantity || 0,
+      deliveredToday: onlineInfo.deliveredToday || !!opt.deliveredToday,
+      presentable: onlineInfo.presentable || !!opt.presentable,
       stores: stores.slice(0, 30)
     });
 
@@ -226,6 +252,10 @@ async function getStockDetail(goodsNo, lat, lng) {
       totalStores: stores.length,
       inStock: stores.filter((s) => s.qty > 0).length,
       totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+      onlineQty: gi.quantity ?? 0,
+      maxOrderQty: gi.orderableMaximumQuantity || 0,
+      deliveredToday: !!gi.deliveredToday,
+      presentable: !!gi.presentable,
       stores: stores.slice(0, 30)
     });
   }

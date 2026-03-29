@@ -333,6 +333,18 @@ var UI = {
     var optPanels = opts
       .map(function (o, i) {
         var optImg = o.image ? '<img src="' + UI.esc(o.image) + '" class="opt-img" alt="">' : '';
+        var onlineStatus = '';
+        if (o.onlineQty != null) {
+          if (o.onlineQty > 0) {
+            onlineStatus =
+              '<br><span class="stock-ok">🛒 온라인 재고 ' + UI.num(o.onlineQty) + '개</span>';
+            if (o.deliveredToday)
+              onlineStatus +=
+                ' <span style="color:#2563eb;font-size:11px">⚡오늘배송</span>';
+          } else {
+            onlineStatus = '<br><span class="stock-out">🛒 온라인 품절</span>';
+          }
+        }
         var summary =
           '<div class="opt-summary">' +
           optImg +
@@ -348,6 +360,7 @@ var UI = {
               o.totalQty +
               '개)</span>'
             : '<span class="stock-out">🔴 주변 매장 재고 없음</span>') +
+          onlineStatus +
           '</p></div></div>';
         var stores = o.stores || [];
         var storeHtml;
