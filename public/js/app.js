@@ -37,9 +37,7 @@ var App = {
     });
 
     this._updateFavCount();
-
     UI._bindPopupEvents();
-
     document.addEventListener('click', this._onClick.bind(this));
 
     var form = document.getElementById('search-form');
@@ -53,6 +51,77 @@ var App = {
     }
 
     UI.setActiveTab('search');
+
+    // GPS 현재 위치 자동 감지 (저장된 위치가 없을 때만)
+    if (!loc && navigator.geolocation) {
+      this._detectLocation();
+    }
+  },
+
+  _detectLocation: function () {
+    var self = this;
+    var locEl = document.getElementById('current-location');
+    if (locEl) locEl.textContent = '📍 위치 확인중...';
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
+        self.lat = lat;
+        self.lng = lng;
+
+        // 카카오 역지오코딩으로 주소 가져오기
+        self._reverseGeocode(lat, lng).then(function (name) {
+          self.locationName = name;
+          Storage.setLocation(lat, lng, name);
+          if (locEl) locEl.textContent = '📍 ' + name;
+        });
+      },
+      function (err) {
+        console.log('GPS 실패:', err.message);
+        if (locEl) locEl.textContent = '📍 ' + self.locationName;
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+    );
+  },
+
+  _reverseGeocode: function (lat, lng) {
+    var key = CONFIG.KAKAO_REST_KEY;
+    if (!key || key.indexOf('여기에') > -1) {
+      return Promise.resolve('내 위치 (' + lat.toFixed(2) + ', ' + lng.toFixed(2) + ')');
+    }
+
+    var url =
+      'https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=' +
+      encodeURIComponent(lng) +
+      '&y=' +
+      encodeURIComponent(lat);
+
+    return fetch(url, {
+      headers: { Authorization: 'KakaoAK ' + key }
+    })
+      .then(function (r) {
+        return r.ok ? r.json() : { documents: [] };
+      })
+      .then(function (data) {
+        var docs = data.documents || [];
+        // 행정동 우선, 없으면 법정동
+        var region = docs.find(function (d) {
+          return d.region_type === 'H';
+        }) || docs[0];
+        if (region) {
+          // "경기도 김포시 사우동" → "김포 사우동"
+          var parts = [];
+          if (region.region_2depth_name)
+            parts.push(region.region_2depth_name.replace(/시$|군$|구$/, '').trim());
+          if (region.region_3depth_name) parts.push(region.region_3depth_name);
+          return parts.join(' ') || region.address_name || '내 위치';
+        }
+        return '내 위치';
+      })
+      .catch(function () {
+        return '내 위치 (' + lat.toFixed(2) + ', ' + lng.toFixed(2) + ')';
+      });
   },
 
   _onClick: function (e) {
@@ -94,6 +163,9 @@ var App = {
         break;
       case 'syncFavorites':
         this._syncFavorites();
+        break;
+      case 'detectLocation':
+        this._detectLocation();
         break;
       default:
         break;
