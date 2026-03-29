@@ -280,6 +280,182 @@ async function getStockDetail(goodsNo, lat, lng) {
   };
 }
 
+const REGIONS = [
+  { name: '서울', lat: 37.5665, lng: 126.978 },
+  { name: '인천/김포', lat: 37.5075, lng: 126.7219 },
+  { name: '경기 남부', lat: 37.2636, lng: 127.0286 },
+  { name: '경기 북부', lat: 37.658, lng: 126.771 },
+  { name: '부산', lat: 35.1576, lng: 129.0596 },
+  { name: '대구', lat: 35.8691, lng: 128.595 },
+  { name: '대전', lat: 36.3504, lng: 127.3845 },
+  { name: '광주', lat: 35.1492, lng: 126.9173 },
+  { name: '울산', lat: 35.5399, lng: 129.3379 },
+  { name: '제주', lat: 33.489, lng: 126.4983 }
+];
+
+async function getStockAllRegions(goodsNo) {
+  const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
+  if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
+    return { success: false, error: '상품 조회 실패' };
+  }
+  const infoInner = unwrapPayload(infoRes.data);
+  const gi = infoInner.goodsInfo;
+  if (!gi) return { success: false, error: '상품 정보 없음' };
+
+  const uploadUrl = infoInner.goodsUploadUrl || '';
+
+  let options = [];
+  let optionUploadUrl = '';
+  if (Number(gi.itemCount) > 1) {
+    const optRes = await oyPost('/stock/stock-goods-info-option', { goodsNo });
+    if (optRes.ok && optRes.data && optRes.data.status === 'SUCCESS') {
+      const optInner = unwrapPayload(optRes.data);
+      optionUploadUrl = optInner.optionUploadUrl || '';
+      options = optInner.goodsInfo?.availableItems || [];
+    }
+  }
+  if (options.length === 0) {
+    options = [
+      {
+        itemName: gi.goodsName,
+        legacyItemNumber: gi.masterGoodsNumber,
+        imagePath: gi.goodsThumbnailPath,
+        quantity: gi.quantity ?? 0
+      }
+    ];
+  }
+
+  const optionResults = [];
+
+  for (const opt of options) {
+    const pid = opt.legacyItemNumber;
+    if (!pid) continue;
+
+    const imgPath = opt.imagePath || opt.goodsImagePath || opt.goodsThumbnailPath || '';
+    const baseUpload = optionUploadUrl || uploadUrl;
+    const optImage = imgPath ? baseUpload + imgPath : uploadUrl + (gi.goodsThumbnailPath || '');
+
+    const regionPromises = REGIONS.map((region) =>
+      oyPost('/stock/stock-stores', {
+        productId: String(pid),
+        lat: region.lat,
+        lon: region.lng,
+        pageIdx: 1,
+        searchWords: '',
+        mapLat: region.lat,
+        mapLon: region.lng
+      })
+        .then((stRes) => {
+          const stInner =
+            stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
+              ? unwrapPayload(stRes.data)
+              : {};
+          return (stInner.storeList || []).map((s) => ({
+            name: s.storeName,
+            code: s.storeCode,
+            region: region.name,
+            qty: s.remainQuantity || 0,
+            o2o: s.o2oRemainQuantity || 0,
+            pickup: yn(s.pickupYn),
+            open: yn(s.openYn),
+            addr: s.address || s.storeAddr || ''
+          }));
+        })
+        .catch(() => [])
+    );
+
+    const regionResults = await Promise.all(regionPromises);
+
+    const storeMap = {};
+    regionResults.flat().forEach((s) => {
+      if (!s.code) return;
+      if (!storeMap[s.code] || storeMap[s.code].qty < s.qty) {
+        storeMap[s.code] = s;
+      }
+    });
+
+    const allStores = Object.values(storeMap).sort((a, b) => b.qty - a.qty);
+
+    optionResults.push({
+      name: opt.itemName,
+      productId: pid,
+      image: optImage,
+      onlineQty: opt.quantity ?? 0,
+      totalStores: allStores.length,
+      inStock: allStores.filter((s) => s.qty > 0).length,
+      totalQty: allStores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+      stores: allStores.slice(0, 100)
+    });
+
+    await sleep(300);
+  }
+
+  if (optionResults.length === 0 && (gi.masterGoodsNumber || gi.goodsNumber)) {
+    const pid = String(gi.masterGoodsNumber || gi.goodsNumber);
+    const optImage = uploadUrl + (gi.goodsThumbnailPath || '');
+    const regionPromises = REGIONS.map((region) =>
+      oyPost('/stock/stock-stores', {
+        productId: pid,
+        lat: region.lat,
+        lon: region.lng,
+        pageIdx: 1,
+        searchWords: '',
+        mapLat: region.lat,
+        mapLon: region.lng
+      })
+        .then((stRes) => {
+          const stInner =
+            stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
+              ? unwrapPayload(stRes.data)
+              : {};
+          return (stInner.storeList || []).map((s) => ({
+            name: s.storeName,
+            code: s.storeCode,
+            region: region.name,
+            qty: s.remainQuantity || 0,
+            o2o: s.o2oRemainQuantity || 0,
+            pickup: yn(s.pickupYn),
+            open: yn(s.openYn),
+            addr: s.address || s.storeAddr || ''
+          }));
+        })
+        .catch(() => [])
+    );
+    const regionResults = await Promise.all(regionPromises);
+    const storeMap = {};
+    regionResults.flat().forEach((s) => {
+      if (!s.code) return;
+      if (!storeMap[s.code] || storeMap[s.code].qty < s.qty) {
+        storeMap[s.code] = s;
+      }
+    });
+    const allStores = Object.values(storeMap).sort((a, b) => b.qty - a.qty);
+    optionResults.push({
+      name: gi.goodsName,
+      productId: pid,
+      image: optImage,
+      onlineQty: gi.quantity ?? 0,
+      totalStores: allStores.length,
+      inStock: allStores.filter((s) => s.qty > 0).length,
+      totalQty: allStores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+      stores: allStores.slice(0, 100)
+    });
+  }
+
+  return {
+    success: true,
+    source: 'live-all',
+    goodsNo,
+    goodsName: gi.goodsName || '',
+    price: gi.priceToPay,
+    originalPrice: gi.originalPrice,
+    discountRate: gi.discountRate,
+    thumbnail: uploadUrl + (gi.goodsThumbnailPath || ''),
+    options: optionResults,
+    updatedAt: new Date().toISOString()
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -324,6 +500,28 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (e) {
       console.error('에러:', e.message);
+      sessionReady = false;
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/stock-all') {
+    const goodsNo = url.searchParams.get('goodsNo');
+    if (!goodsNo) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'goodsNo 필요' }));
+      return;
+    }
+
+    try {
+      await ensureSession();
+      const result = await getStockAllRegions(goodsNo);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      console.error('전국재고 에러:', e.message);
       sessionReady = false;
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, error: e.message || String(e) }));

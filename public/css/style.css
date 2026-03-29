@@ -145,3 +145,7 @@ header h1{font-size:20px;margin-bottom:4px}
 /* 지역 검색 */
 .region-item:hover{background:#f0fdf4}
 #region-input:focus{border-color:#16a34a;outline:none}
+
+.btn-all-stock{width:100%;padding:10px;background:#f0f9ff;border:2px solid #bae6fd;border-radius:8px;font-size:13px;font-weight:600;color:#0369a1;cursor:pointer;margin-top:12px;font-family:inherit;transition:.2s}
+.btn-all-stock:hover{background:#e0f2fe;border-color:#7dd3fc}
+.btn-all-stock.loading{opacity:.6;cursor:wait}

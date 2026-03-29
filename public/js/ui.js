@@ -230,6 +230,36 @@ var UI = {
         App._toggleFavFromPopup(el.dataset.goodsno, el);
         return;
       }
+      if (action === 'loadAllStock') {
+        var gno = el.dataset.goodsno;
+        if (!gno || el.classList.contains('loading')) return;
+        if (!CONFIG.REALTIME_API) return;
+        el.classList.add('loading');
+        el.textContent = '🗺️ 전국 매장 조회 중... (10~15초)';
+
+        var allUrl =
+          CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
+          '?goodsNo=' +
+          encodeURIComponent(gno);
+
+        fetch(allUrl)
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (d) {
+            if (d.success && d.options && d.options.length > 0) {
+              UI.showDetailPopup(d, gno);
+            } else {
+              el.textContent = '⚠️ 조회 실패: ' + (d.error || '데이터 없음');
+              el.classList.remove('loading');
+            }
+          })
+          .catch(function () {
+            el.textContent = '⚠️ 서버 연결 실패';
+            el.classList.remove('loading');
+          });
+        return;
+      }
     });
   },
 
@@ -286,7 +316,12 @@ var UI = {
           minute: '2-digit'
         })
       : '';
-    var cacheSuffix = detail.source === 'live' ? '실시간 조회' : '수집 데이터';
+    var cacheSuffix =
+      detail.source === 'live-all'
+        ? '전국 매장 조회'
+        : detail.source === 'live'
+          ? '실시간 조회'
+          : '수집 데이터';
     var cacheInfo = timeStr
       ? '<div class="popup-cache-info">📦 ' + UI.esc(timeStr) + ' · ' + cacheSuffix + '</div>'
       : '';
@@ -372,12 +407,18 @@ var UI = {
             stores
               .map(function (s) {
                 var qtyClass = s.qty > 0 ? 'stock-ok' : 'stock-out';
+                var distLabel =
+                  s.region != null
+                    ? String(s.region)
+                    : s.dist != null
+                      ? String(s.dist) + 'km'
+                      : '-';
                 return (
                   '<div class="store-row"><div class="store-left"><span class="store-name">' +
                   UI.esc(s.name) +
                   '</span><span class="store-dist">' +
-                  UI.esc(String(s.dist != null ? s.dist : '-')) +
-                  'km</span></div><div class="store-right ' +
+                  UI.esc(distLabel) +
+                  '</span></div><div class="store-right ' +
                   qtyClass +
                   '">' +
                   (s.qty > 0
@@ -414,6 +455,12 @@ var UI = {
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
 
+    var allBtn = CONFIG.REALTIME_API
+      ? '<button type="button" class="btn-all-stock" data-action="loadAllStock" data-goodsno="' +
+        UI.esc(goodsNo) +
+        '">🗺️ 전국 매장 재고 보기</button>'
+      : '';
+
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -427,6 +474,7 @@ var UI = {
       favBtn +
       optTabs +
       optPanels +
+      allBtn +
       '<div class="popup-footer"><a href="' +
       oyLink +
       '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 보기 →</a></div>' +
