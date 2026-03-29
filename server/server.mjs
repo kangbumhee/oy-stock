@@ -105,6 +105,9 @@ async function _createSession() {
 }
 
 async function oyPost(apiPath, body) {
+  if (!page || !sessionReady) {
+    await ensureSession();
+  }
   return page.evaluate(
     async ({ url, payload }) => {
       const r = await fetch(url, {
@@ -130,22 +133,43 @@ async function oyPost(apiPath, body) {
 
 async function oyPostWithRetry(apiPath, body, retries = 1) {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await oyPost(apiPath, body);
+    try {
+      const res = await oyPost(apiPath, body);
 
-    if (apiPath.includes('stock-stores')) {
-      const inner =
-        res.ok && res.data && res.data.status === 'SUCCESS' ? unwrapPayload(res.data) : {};
-      const stores = inner.storeList || [];
+      if (apiPath.includes('stock-stores')) {
+        const inner =
+          res.ok && res.data && res.data.status === 'SUCCESS' ? unwrapPayload(res.data) : {};
+        const stores = inner.storeList || [];
 
-      if (stores.length === 0 && attempt < retries) {
-        console.log('⚠️ stock-stores 빈 응답, 세션 리셋 시도...');
+        if (stores.length === 0 && attempt < retries) {
+          console.log(
+            '⚠️ stock-stores 빈 응답, 세션 리셋 시도... (attempt ' + (attempt + 1) + ')'
+          );
+          sessionReady = false;
+          try {
+            await ensureSession();
+          } catch (e) {
+            console.error('세션 리셋 실패:', e.message);
+          }
+          continue;
+        }
+      }
+      return res;
+    } catch (e) {
+      console.error('oyPostWithRetry 에러 (attempt ' + attempt + '):', e.message);
+      if (attempt < retries) {
         sessionReady = false;
-        await _createSession();
+        try {
+          await ensureSession();
+        } catch (e2) {
+          console.error('세션 리셋 실패:', e2.message);
+        }
         continue;
       }
+      return { ok: false, status: 500, data: { error: e.message } };
     }
-    return res;
   }
+  return { ok: false, status: 500, data: { error: 'max retries' } };
 }
 
 async function getStockDetail(goodsNo, lat, lng) {
