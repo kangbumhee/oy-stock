@@ -34,7 +34,9 @@ var UI = {
     var c = document.getElementById('product-list');
     if (c)
       c.innerHTML =
-        '<div class="loading"><div class="spinner"></div><p>' + UI.esc(msg || '로딩 중...') + '</p></div>';
+        '<div class="loading"><div class="spinner"></div><p>' +
+        UI.esc(msg || '로딩 중...') +
+        '</p></div>';
   },
 
   showError: function (msg) {
@@ -59,28 +61,24 @@ var UI = {
       c.innerHTML = '<div class="empty-state"><p>검색 결과가 없습니다</p></div>';
       return;
     }
-
     var detailMap = {};
     if (detailData && detailData.products) detailMap = detailData.products;
 
     var bar =
       '<div class="sbar"><span>검색결과 <b>' +
       products.length +
-      '</b>개</span>' +
-      '<span class="ok">상품 클릭 → 재고확인 | ⭐ → 즐겨찾기</span></div>';
+      '</b>개</span><span class="ok">상품 클릭 → 재고확인 | ⭐ → 즐겨찾기</span></div>';
 
     var cards = products
       .map(function (p, i) {
         var gn = p.goodsNumber || p.goodsNo;
         var isFav = Storage.isFavorite(gn);
         var detail = detailMap[gn];
-
         var disc = p.discountRate > 0 ? '<span class="disc">' + p.discountRate + '%</span>' : '';
         var orig =
           p.originalPrice && p.originalPrice !== p.priceToPay
             ? '<span class="orig">' + UI.num(p.originalPrice) + '원</span>'
             : '';
-
         var badges = '';
         if (detail) {
           if (detail.status === 'discontinued') badges = '<span class="badge bg-red">단종</span>';
@@ -92,37 +90,30 @@ var UI = {
             badges = '<span class="badge bg-green">재고 ' + totalIn + '매장</span>';
           }
         }
-
         var img = p.imageUrl || (detail ? detail.thumbnail : '') || '';
         var imgTag = img
           ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
           : '<div class="no-img">📦</div>';
-
         return (
           '<div class="card" data-index="' +
           i +
-          '">' +
-          '<div class="card-img" data-action="showDetail" data-index="' +
+          '"><div class="card-img" data-action="showDetail" data-index="' +
           i +
           '">' +
           imgTag +
           '<div class="badges">' +
           badges +
-          '</div></div>' +
-          '<div class="card-body">' +
-          '<div class="card-top"><p class="card-name" data-action="showDetail" data-index="' +
+          '</div></div><div class="card-body"><div class="card-top"><p class="card-name" data-action="showDetail" data-index="' +
           i +
           '">' +
           UI.esc(p.goodsName) +
-          '</p>' +
-          '<button type="button" class="fav-btn' +
+          '</p><button type="button" class="fav-btn' +
           (isFav ? ' active' : '') +
           '" data-action="toggleFav" data-index="' +
           i +
           '">' +
           (isFav ? '★' : '☆') +
-          '</button></div>' +
-          '<div class="card-price">' +
+          '</button></div><div class="card-price">' +
           disc +
           '<span class="price">' +
           UI.num(p.priceToPay) +
@@ -139,19 +130,13 @@ var UI = {
   renderFavorites: function (favorites, detailData) {
     var c = document.getElementById('fav-list');
     if (!c) return;
-
     if (!favorites || !favorites.length) {
       c.innerHTML =
-        '<div class="empty-state">' +
-        '<p>즐겨찾기한 상품이 없습니다</p>' +
-        '<p class="sub">검색 결과에서 ⭐ 버튼을 눌러 추가하세요</p>' +
-        '</div>';
+        '<div class="empty-state"><p>즐겨찾기한 상품이 없습니다</p><p class="sub">검색 결과에서 ⭐ 버튼을 눌러 추가하세요</p></div>';
       return;
     }
-
     var detailMap = {};
     if (detailData && detailData.products) detailMap = detailData.products;
-
     var updatedAt = detailData ? detailData.updatedAt : null;
     var timeStr = updatedAt
       ? new Date(updatedAt).toLocaleString('ko-KR', {
@@ -162,7 +147,6 @@ var UI = {
           minute: '2-digit'
         })
       : '';
-
     var bar =
       '<div class="sbar"><span>즐겨찾기 <b>' +
       favorites.length +
@@ -171,12 +155,10 @@ var UI = {
         ? '<span class="ok">📦 ' + timeStr + ' 기준</span>'
         : '<span class="ok">다음 수집 시 재고 업데이트</span>') +
       '</div>';
-
     var syncBtn =
       '<button type="button" class="sync-btn" data-action="syncFavorites">🔄 동기화 (' +
       favorites.length +
       '개 → GitHub)</button>';
-
     var cards = favorites
       .map(function (f) {
         var detail = detailMap[f.goodsNo];
@@ -193,7 +175,6 @@ var UI = {
         } else {
           badges = '<span class="badge bg-gray">수집대기</span>';
         }
-
         var img = (detail ? detail.thumbnail : '') || f.imageUrl || '';
         var imgTag = img
           ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
@@ -201,28 +182,22 @@ var UI = {
         var price = detail ? detail.price : f.price;
         var disc = (detail ? detail.discountRate : f.discountRate) || 0;
         var origPrice = (detail ? detail.originalPrice : f.originalPrice) || 0;
-
         return (
           '<div class="card' +
           (detail && detail.status === 'discontinued' ? ' soldout' : '') +
-          '">' +
-          '<div class="card-img" data-action="showFavDetail" data-goodsno="' +
+          '"><div class="card-img" data-action="showFavDetail" data-goodsno="' +
           UI.esc(f.goodsNo) +
           '">' +
           imgTag +
           '<div class="badges">' +
           badges +
-          '</div></div>' +
-          '<div class="card-body">' +
-          '<div class="card-top"><p class="card-name" data-action="showFavDetail" data-goodsno="' +
+          '</div></div><div class="card-body"><div class="card-top"><p class="card-name" data-action="showFavDetail" data-goodsno="' +
           UI.esc(f.goodsNo) +
           '">' +
           UI.esc(detail ? detail.goodsName : f.goodsName) +
-          '</p>' +
-          '<button type="button" class="fav-btn active" data-action="removeFav" data-goodsno="' +
+          '</p><button type="button" class="fav-btn active" data-action="removeFav" data-goodsno="' +
           UI.esc(f.goodsNo) +
-          '">★</button></div>' +
-          '<div class="card-price">' +
+          '">★</button></div><div class="card-price">' +
           (disc > 0 ? '<span class="disc">' + disc + '%</span>' : '') +
           '<span class="price">' +
           UI.num(price) +
@@ -232,16 +207,38 @@ var UI = {
         );
       })
       .join('');
-
     c.innerHTML = bar + syncBtn + '<div class="grid">' + cards + '</div>';
+  },
+
+  _bindPopupEvents: function () {
+    var root = document.getElementById('popup-root');
+    if (!root) return;
+    root.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-action]');
+      if (!el) return;
+      var action = el.dataset.action;
+      if (action === 'closePopup') {
+        UI.closePopup();
+        return;
+      }
+      if (action === 'switchTab') {
+        UI.switchTab(parseInt(el.dataset.idx, 10));
+        return;
+      }
+      if (action === 'toggleFavPopup') {
+        App._toggleFavFromPopup(el.dataset.goodsno, el);
+        return;
+      }
+    });
   },
 
   showPopupLoading: function (name, sub) {
     var root = document.getElementById('popup-root');
     if (!root) return;
     root.innerHTML =
-      '<div class="popup-overlay" data-action="closePopup">' +
-      '<div class="popup-content" data-popup-stop="1">' +
+      '<div class="popup-overlay">' +
+      '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
+      '<div class="popup-content">' +
       '<div class="popup-header"><h3>' +
       UI.esc(name) +
       '</h3><button type="button" data-action="closePopup">✕</button></div>' +
@@ -250,8 +247,6 @@ var UI = {
       '</p></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
-    var inner = root.querySelector('[data-popup-stop="1"]');
-    if (inner) inner.addEventListener('click', function (e) { e.stopPropagation(); });
   },
 
   showPopupError: function (name, msg, goodsNo) {
@@ -259,8 +254,9 @@ var UI = {
     if (!root) return;
     var oyLink = CONFIG.OY_PRODUCT_URL + encodeURIComponent(goodsNo || '');
     root.innerHTML =
-      '<div class="popup-overlay" data-action="closePopup">' +
-      '<div class="popup-content" data-popup-stop="1">' +
+      '<div class="popup-overlay">' +
+      '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
+      '<div class="popup-content">' +
       '<div class="popup-header"><h3>' +
       UI.esc(name) +
       '</h3><button type="button" data-action="closePopup">✕</button></div>' +
@@ -270,20 +266,16 @@ var UI = {
       '<p class="popup-note">즐겨찾기에 추가하면 다음 수집 시 자동으로 재고가 업데이트됩니다.</p>' +
       '<a href="' +
       oyLink +
-      '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 확인 →</a>' +
-      '</div></div></div>';
+      '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 확인 →</a></div>' +
+      '</div></div>';
     document.body.style.overflow = 'hidden';
-    var inner = root.querySelector('[data-popup-stop="1"]');
-    if (inner) inner.addEventListener('click', function (e) { e.stopPropagation(); });
   },
 
   showDetailPopup: function (detail, goodsNo) {
     var root = document.getElementById('popup-root');
     if (!root) return;
-
     var oyLink = CONFIG.OY_PRODUCT_URL + encodeURIComponent(goodsNo);
     var isFav = Storage.isFavorite(goodsNo);
-
     var timeStr = detail.updatedAt
       ? new Date(detail.updatedAt).toLocaleString('ko-KR', {
           timeZone: 'Asia/Seoul',
@@ -297,16 +289,11 @@ var UI = {
     var cacheInfo = timeStr
       ? '<div class="popup-cache-info">📦 ' + UI.esc(timeStr) + ' · ' + cacheSuffix + '</div>'
       : '';
-
     var statusBadge = '';
-    if (detail.status === 'discontinued') {
-      statusBadge =
-        '<div class="popup-badge bg-red-light">⛔ 단종/삭제된 상품입니다</div>';
-    } else if (detail.status === 'soldout') {
-      statusBadge =
-        '<div class="popup-badge bg-orange-light">🔴 주변 매장 전체 품절</div>';
-    }
-
+    if (detail.status === 'discontinued')
+      statusBadge = '<div class="popup-badge bg-red-light">⛔ 단종/삭제된 상품입니다</div>';
+    else if (detail.status === 'soldout')
+      statusBadge = '<div class="popup-badge bg-orange-light">🔴 주변 매장 전체 품절</div>';
     var priceHtml =
       '<div class="popup-price-row">' +
       (detail.discountRate > 0 ? '<span class="disc">' + detail.discountRate + '%</span>' : '') +
@@ -344,9 +331,7 @@ var UI = {
 
     var optPanels = opts
       .map(function (o, i) {
-        var optImg = o.image
-          ? '<img src="' + UI.esc(o.image) + '" class="opt-img" alt="">'
-          : '';
+        var optImg = o.image ? '<img src="' + UI.esc(o.image) + '" class="opt-img" alt="">' : '';
         var summary =
           '<div class="opt-summary">' +
           optImg +
@@ -363,7 +348,6 @@ var UI = {
               '개)</span>'
             : '<span class="stock-out">🔴 주변 매장 재고 없음</span>') +
           '</p></div></div>';
-
         var stores = o.stores || [];
         var storeHtml;
         if (stores.length === 0) {
@@ -375,16 +359,11 @@ var UI = {
               .map(function (s) {
                 var qtyClass = s.qty > 0 ? 'stock-ok' : 'stock-out';
                 return (
-                  '<div class="store-row">' +
-                  '<div class="store-left">' +
-                  '<span class="store-name">' +
+                  '<div class="store-row"><div class="store-left"><span class="store-name">' +
                   UI.esc(s.name) +
-                  '</span>' +
-                  '<span class="store-dist">' +
+                  '</span><span class="store-dist">' +
                   UI.esc(String(s.dist != null ? s.dist : '-')) +
-                  'km</span>' +
-                  '</div>' +
-                  '<div class="store-right ' +
+                  'km</span></div><div class="store-right ' +
                   qtyClass +
                   '">' +
                   (s.qty > 0
@@ -399,7 +378,6 @@ var UI = {
               .join('') +
             '</div>';
         }
-
         return (
           '<div class="opt-panel' +
           (i === 0 ? ' active' : '') +
@@ -423,8 +401,9 @@ var UI = {
       '</button>';
 
     root.innerHTML =
-      '<div class="popup-overlay" data-action="closePopup">' +
-      '<div class="popup-content" data-popup-stop="1">' +
+      '<div class="popup-overlay">' +
+      '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
+      '<div class="popup-content">' +
       '<div class="popup-header"><h3>' +
       UI.esc(detail.goodsName) +
       '</h3><button type="button" data-action="closePopup">✕</button></div>' +
@@ -439,15 +418,11 @@ var UI = {
       '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 보기 →</a></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
-    var inner = root.querySelector('[data-popup-stop="1"]');
-    if (inner) inner.addEventListener('click', function (e) { e.stopPropagation(); });
   },
 
   closePopup: function () {
     var root = document.getElementById('popup-root');
-    if (root) {
-      root.innerHTML = '';
-    }
+    if (root) root.innerHTML = '';
     document.body.style.overflow = '';
   },
 
@@ -466,9 +441,11 @@ var UI = {
     el.textContent = msg;
     el.className = 'sync-status' + (isError ? ' error' : ' ok');
     el.style.display = 'block';
-    var hideMs = typeof ms === 'number' ? ms : 3000;
-    setTimeout(function () {
-      el.style.display = 'none';
-    }, hideMs);
+    setTimeout(
+      function () {
+        el.style.display = 'none';
+      },
+      typeof ms === 'number' ? ms : 3000
+    );
   }
 };

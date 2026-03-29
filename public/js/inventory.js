@@ -28,32 +28,28 @@ var Inventory = {
             ? ' <span class="inv-extra">' + UI.num(e.from) + '→' + UI.num(e.to) + '</span>'
             : '';
         return (
-          '<div class="inv-history-row">' +
-          '<span class="inv-type">' +
+          '<div class="inv-history-row"><span class="inv-type">' +
           UI.esc(typeLabels[e.type] || e.type) +
-          '</span>' +
-          '<span class="inv-name">' +
+          '</span><span class="inv-name">' +
           UI.esc(e.goodsName || '') +
           extra +
-          '</span>' +
-          '<span class="inv-time">' +
+          '</span><span class="inv-time">' +
           UI.esc(time) +
           '</span></div>'
         );
       });
       var root = document.getElementById('popup-root');
       if (!root) return;
-      if (typeof UI !== 'undefined' && UI.closePopup) UI.closePopup();
+      UI.closePopup();
       root.innerHTML =
-        '<div class="popup-overlay" data-action="closePopup">' +
-        '<div class="popup-content popup-history-wrap" data-popup-stop="1">' +
+        '<div class="popup-overlay">' +
+        '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
+        '<div class="popup-content popup-history-wrap">' +
         '<div class="popup-header"><h3>📋 변경 이력</h3><button type="button" data-action="closePopup">✕</button></div>' +
         '<div class="inv-history-scroll">' +
         rows.join('') +
         '</div></div></div>';
       document.body.style.overflow = 'hidden';
-      var inner = root.querySelector('[data-popup-stop="1"]');
-      if (inner) inner.addEventListener('click', function (e) { e.stopPropagation(); });
     });
   }
 };

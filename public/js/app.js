@@ -32,14 +32,13 @@ var App = {
         var info = document.getElementById('cache-info');
         if (info)
           info.textContent =
-            '📦 ' +
-            t +
-            ' 수집 | ' +
-            (d.summary ? d.summary.total + '개 상품' : '');
+            '📦 ' + t + ' 수집 | ' + (d.summary ? d.summary.total + '개 상품' : '');
       }
     });
 
     this._updateFavCount();
+
+    UI._bindPopupEvents();
 
     document.addEventListener('click', this._onClick.bind(this));
 
@@ -73,15 +72,6 @@ var App = {
         break;
       case 'removeFav':
         this._removeFav(el.dataset.goodsno);
-        break;
-      case 'toggleFavPopup':
-        this._toggleFavFromPopup(el.dataset.goodsno, el);
-        break;
-      case 'closePopup':
-        UI.closePopup();
-        break;
-      case 'switchTab':
-        UI.switchTab(parseInt(el.dataset.idx, 10));
         break;
       case 'searchHistory': {
         var kw = el.dataset.keyword;
@@ -122,11 +112,13 @@ var App = {
 
   doSearch: function (keyword) {
     var self = this;
-    this.searchHistory = [keyword].concat(
-      this.searchHistory.filter(function (h) {
-        return h !== keyword;
-      })
-    ).slice(0, 20);
+    this.searchHistory = [keyword]
+      .concat(
+        this.searchHistory.filter(function (h) {
+          return h !== keyword;
+        })
+      )
+      .slice(0, 20);
     this._save();
     UI.renderHistory(this.searchHistory);
     UI.showLoading('"' + keyword + '" 검색 중...');
@@ -154,7 +146,6 @@ var App = {
   _toggleFav: function (idx) {
     var p = this.products[idx];
     if (!p) return;
-
     var product = {
       goodsNo: p.goodsNumber || p.goodsNo,
       goodsName: p.goodsName,
@@ -163,16 +154,13 @@ var App = {
       originalPrice: p.originalPrice || 0,
       discountRate: p.discountRate || 0
     };
-
     var result = Storage.toggleFavorite(product);
     this._updateFavCount();
-
     var btn = document.querySelector('[data-action="toggleFav"][data-index="' + idx + '"]');
     if (btn) {
       btn.textContent = result.added ? '★' : '☆';
       btn.classList.toggle('active', result.added);
     }
-
     UI.showSyncStatus(result.added ? '⭐ 즐겨찾기 추가' : '즐겨찾기 해제', false);
   },
 
@@ -194,7 +182,6 @@ var App = {
       originalPrice: detail ? detail.originalPrice : 0,
       discountRate: detail ? detail.discountRate : 0
     };
-
     var searchP = this.products.find(function (p) {
       return String(p.goodsNumber || p.goodsNo) === String(goodsNo);
     });
@@ -203,10 +190,8 @@ var App = {
       product.imageUrl = product.imageUrl || searchP.imageUrl;
       product.price = product.price || searchP.priceToPay;
     }
-
     var result = Storage.toggleFavorite(product);
     this._updateFavCount();
-
     if (btnEl) {
       btnEl.textContent = result.added ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가';
       btnEl.classList.toggle('active', result.added);
@@ -221,11 +206,9 @@ var App = {
       lng: this.lng,
       name: this.locationName
     }).then(function (res) {
-      if (res.success) {
+      if (res.success)
         UI.showSyncStatus('✅ 동기화 완료! 다음 1시간 내 재고 수집됩니다.', false, 5000);
-      } else {
-        UI.showSyncStatus('⚠️ 동기화 실패: ' + (res.error || JSON.stringify(res)), true);
-      }
+      else UI.showSyncStatus('⚠️ 동기화 실패: ' + (res.error || JSON.stringify(res)), true);
     });
   },
 
@@ -233,15 +216,12 @@ var App = {
     var p = this.products[idx];
     if (!p) return;
     var gn = String(p.goodsNumber || p.goodsNo);
-
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
-
     if (detail && detail.options && detail.options.length > 0) {
       UI.showDetailPopup(detail, gn);
       return;
     }
-
     if (CONFIG.REALTIME_API) {
       UI.showPopupLoading(p.goodsName, '실시간 매장 재고 조회 중…');
       try {
@@ -254,10 +234,8 @@ var App = {
           encodeURIComponent(String(this.lat)) +
           '&lng=' +
           encodeURIComponent(String(this.lng));
-
         var r = await fetch(url);
         var d = await r.json();
-
         if (d.success && d.options && d.options.length > 0) {
           UI.showDetailPopup(d, gn);
           return;
@@ -269,7 +247,6 @@ var App = {
         return;
       }
     }
-
     UI.showPopupError(
       p.goodsName,
       '아직 수집되지 않은 상품입니다. 즐겨찾기에 추가하면 다음 수집 시 자동 반영됩니다.',
@@ -283,15 +260,12 @@ var App = {
       return String(f.goodsNo) === gn;
     });
     var name = fav ? fav.goodsName : gn;
-
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
-
     if (detail && detail.options && detail.options.length > 0) {
       UI.showDetailPopup(detail, gn);
       return;
     }
-
     if (CONFIG.REALTIME_API) {
       UI.showPopupLoading(name, '실시간 매장 재고 조회 중…');
       try {
@@ -304,17 +278,14 @@ var App = {
           encodeURIComponent(String(this.lat)) +
           '&lng=' +
           encodeURIComponent(String(this.lng));
-
         var r = await fetch(url);
         var d = await r.json();
-
         if (d.success && d.options && d.options.length > 0) {
           UI.showDetailPopup(d, gn);
           return;
         }
       } catch (e) {}
     }
-
     UI.showPopupError(name, '다음 수집 시 재고가 업데이트됩니다.', gn);
   }
 };
