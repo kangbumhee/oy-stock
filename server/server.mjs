@@ -201,7 +201,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
 
   let options = [];
   let rawAvailableItems = [];
-  if (withOnline) {
+  if (true) {
     try {
       await page.goto(
         OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
