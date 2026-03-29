@@ -71,7 +71,7 @@ var UI = {
 
     var cards = products
       .map(function (p, i) {
-        var gn = p.goodsNumber || p.goodsNo;
+        var gn = String(p.goodsNumber || p.goodsNo || '');
         var isFav = Storage.isFavorite(gn);
         var detail = detailMap[gn];
         var disc = p.discountRate > 0 ? '<span class="disc">' + p.discountRate + '%</span>' : '';
@@ -80,16 +80,82 @@ var UI = {
             ? '<span class="orig">' + UI.num(p.originalPrice) + '원</span>'
             : '';
         var badges = '';
+        var onlineBadge = '';
+        var optionBtn = '';
         if (detail) {
-          if (detail.status === 'discontinued') badges = '<span class="badge bg-red">단종</span>';
-          else if (detail.status === 'soldout') badges = '<span class="badge bg-orange">주변품절</span>';
-          else if (detail.status === 'active') {
+          if (detail.status === 'discontinued') {
+            badges = '<span class="badge bg-red">단종</span>';
+          } else if (detail.status === 'soldout') {
+            badges = '<span class="badge bg-orange">주변품절</span>';
+          } else if (detail.status === 'active') {
             var totalIn = (detail.options || []).reduce(function (a, o) {
               return a + (o.inStock || 0);
             }, 0);
-            badges = '<span class="badge bg-green">재고 ' + totalIn + '매장</span>';
+            badges = '<span class="badge bg-green">매장 ' + totalIn + '곳</span>';
+          }
+
+          var totalOnline = (detail.options || []).reduce(function (a, o) {
+            return a + (o.onlineQty || 0);
+          }, 0);
+          if (totalOnline > 0) {
+            onlineBadge =
+              '<span class="badge bg-blue">🛒 온라인 ' + UI.num(totalOnline) + '개</span>';
+            var hasToday = (detail.options || []).some(function (o) {
+              return o.deliveredToday;
+            });
+            if (hasToday) onlineBadge += '<span class="badge bg-blue-light">⚡오늘배송</span>';
+          } else if (detail.status !== 'discontinued') {
+            onlineBadge = '<span class="badge bg-gray">🛒 온라인품절</span>';
+          }
+
+          if ((detail.options || []).length > 1) {
+            optionBtn =
+              '<button type="button" class="badge-btn bg-purple" data-action="toggleOptions" data-goodsno="' +
+              UI.esc(gn) +
+              '">옵션 ' +
+              detail.options.length +
+              '개 ▾</button>';
           }
         }
+
+        var optPanel = '';
+        if (detail && (detail.options || []).length > 1) {
+          optPanel =
+            '<div class="card-options hidden" id="opts-' +
+            UI.esc(gn) +
+            '">' +
+            detail.options
+              .map(function (o) {
+                var optName = o.name || '기본';
+                if (optName.indexOf(']') > -1) optName = optName.substring(optName.lastIndexOf(']') + 1).trim();
+                if (optName.length > 25) optName = optName.substring(0, 25) + '…';
+                var storeInfo =
+                  o.inStock > 0 ? '매장 ' + o.inStock + '곳(' + o.totalQty + '개)' : '매장 품절';
+                var onlineInfo =
+                  o.onlineQty > 0
+                    ? '<span class="opt-online-ok">🛒' +
+                      UI.num(o.onlineQty) +
+                      '개' +
+                      (o.deliveredToday ? ' ⚡' : '') +
+                      '</span>'
+                    : '<span class="opt-online-out">🛒품절</span>';
+                return (
+                  '<div class="card-opt-row">' +
+                  '<span class="card-opt-name">' +
+                  UI.esc(optName) +
+                  '</span>' +
+                  '<span class="card-opt-stock">' +
+                  storeInfo +
+                  ' | ' +
+                  onlineInfo +
+                  '</span>' +
+                  '</div>'
+                );
+              })
+              .join('') +
+            '</div>';
+        }
+
         var img = p.imageUrl || (detail ? detail.thumbnail : '') || '';
         var imgTag = img
           ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
@@ -103,6 +169,8 @@ var UI = {
           imgTag +
           '<div class="badges">' +
           badges +
+          onlineBadge +
+          optionBtn +
           '</div></div><div class="card-body"><div class="card-top"><p class="card-name" data-action="showDetail" data-index="' +
           i +
           '">' +
@@ -119,7 +187,9 @@ var UI = {
           UI.num(p.priceToPay) +
           '원</span>' +
           orig +
-          '</div></div></div>'
+          '</div></div>' +
+          optPanel +
+          '</div>'
         );
       })
       .join('');
@@ -164,18 +234,84 @@ var UI = {
         var gid = String(f.goodsNo || f.goodsNumber || '');
         var detail = detailMap[gid];
         var badges = '';
+        var onlineBadge = '';
+        var optionBtn = '';
         if (detail) {
-          if (detail.status === 'discontinued') badges = '<span class="badge bg-red">단종</span>';
-          else if (detail.status === 'soldout') badges = '<span class="badge bg-orange">주변품절</span>';
-          else if (detail.status === 'active') {
-            var totalIn = (detail.options || []).reduce(function (a, o) {
+          if (detail.status === 'discontinued') {
+            badges = '<span class="badge bg-red">단종</span>';
+          } else if (detail.status === 'soldout') {
+            badges = '<span class="badge bg-orange">주변품절</span>';
+          } else if (detail.status === 'active') {
+            var totalInF = (detail.options || []).reduce(function (a, o) {
               return a + (o.inStock || 0);
             }, 0);
-            badges = '<span class="badge bg-green">재고 ' + totalIn + '매장</span>';
+            badges = '<span class="badge bg-green">매장 ' + totalInF + '곳</span>';
+          }
+
+          var totalOnlineF = (detail.options || []).reduce(function (a, o) {
+            return a + (o.onlineQty || 0);
+          }, 0);
+          if (totalOnlineF > 0) {
+            onlineBadge =
+              '<span class="badge bg-blue">🛒 온라인 ' + UI.num(totalOnlineF) + '개</span>';
+            var hasTodayF = (detail.options || []).some(function (o) {
+              return o.deliveredToday;
+            });
+            if (hasTodayF) onlineBadge += '<span class="badge bg-blue-light">⚡오늘배송</span>';
+          } else if (detail.status !== 'discontinued') {
+            onlineBadge = '<span class="badge bg-gray">🛒 온라인품절</span>';
+          }
+
+          if ((detail.options || []).length > 1) {
+            optionBtn =
+              '<button type="button" class="badge-btn bg-purple" data-action="toggleOptions" data-goodsno="' +
+              UI.esc(gid) +
+              '">옵션 ' +
+              detail.options.length +
+              '개 ▾</button>';
           }
         } else {
           badges = '<span class="badge bg-gray">수집대기</span>';
         }
+
+        var optPanelF = '';
+        if (detail && (detail.options || []).length > 1) {
+          optPanelF =
+            '<div class="card-options hidden" id="opts-' +
+            UI.esc(gid) +
+            '">' +
+            detail.options
+              .map(function (o) {
+                var optName = o.name || '기본';
+                if (optName.indexOf(']') > -1) optName = optName.substring(optName.lastIndexOf(']') + 1).trim();
+                if (optName.length > 25) optName = optName.substring(0, 25) + '…';
+                var storeInfo =
+                  o.inStock > 0 ? '매장 ' + o.inStock + '곳(' + o.totalQty + '개)' : '매장 품절';
+                var onlineInfo =
+                  o.onlineQty > 0
+                    ? '<span class="opt-online-ok">🛒' +
+                      UI.num(o.onlineQty) +
+                      '개' +
+                      (o.deliveredToday ? ' ⚡' : '') +
+                      '</span>'
+                    : '<span class="opt-online-out">🛒품절</span>';
+                return (
+                  '<div class="card-opt-row">' +
+                  '<span class="card-opt-name">' +
+                  UI.esc(optName) +
+                  '</span>' +
+                  '<span class="card-opt-stock">' +
+                  storeInfo +
+                  ' | ' +
+                  onlineInfo +
+                  '</span>' +
+                  '</div>'
+                );
+              })
+              .join('') +
+            '</div>';
+        }
+
         var img = (detail ? detail.thumbnail : '') || f.imageUrl || '';
         var imgTag = img
           ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
@@ -192,6 +328,8 @@ var UI = {
           imgTag +
           '<div class="badges">' +
           badges +
+          onlineBadge +
+          optionBtn +
           '</div></div><div class="card-body"><div class="card-top"><p class="card-name" data-action="showFavDetail" data-goodsno="' +
           UI.esc(gid) +
           '">' +
@@ -204,7 +342,9 @@ var UI = {
           UI.num(price) +
           '원</span>' +
           (origPrice && origPrice !== price ? '<span class="orig">' + UI.num(origPrice) + '원</span>' : '') +
-          '</div></div></div>'
+          '</div></div>' +
+          optPanelF +
+          '</div>'
         );
       })
       .join('');

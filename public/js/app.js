@@ -155,6 +155,19 @@ var App = {
       case 'detectLocation':
         this._detectLocation();
         break;
+      case 'toggleOptions': {
+        e.stopPropagation();
+        var gno = el.dataset.goodsno;
+        if (!gno) break;
+        var panel = document.getElementById('opts-' + gno);
+        if (panel) {
+          var isHidden = panel.classList.contains('hidden');
+          panel.classList.toggle('hidden');
+          var n = panel.children.length;
+          el.textContent = isHidden ? '옵션 ' + n + '개 ▴' : '옵션 ' + n + '개 ▾';
+        }
+        break;
+      }
       default:
         break;
     }
