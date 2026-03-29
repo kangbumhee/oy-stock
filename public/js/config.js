@@ -10,6 +10,8 @@ var CONFIG = {
   OY_PRODUCT_URL: 'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=',
   OY_BASE: 'https://www.oliveyoung.co.kr',
 
-  REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock'
+  REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',
+
+  KAKAO_REST_KEY: '57bff40a86df8f5961cb43e20c4f4976'
 };
 var Config = CONFIG;
