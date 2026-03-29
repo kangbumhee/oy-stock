@@ -180,19 +180,22 @@ async function main() {
               {
                 itemName: gi.goodsName,
                 legacyItemNumber: gi.masterGoodsNumber,
-                imagePath: gi.goodsThumbnailPath
+                imagePath: gi.goodsThumbnailPath,
+                quantity: gi.quantity ?? 0,
+                orderableMaximumQuantity: gi.orderableMaximumQuantity,
+                deliveredToday: gi.deliveredToday
               }
             ];
           }
 
+          // stock-goods-info-option → 온라인 재고(다옵션)
           const onlineMap = {};
           for (const rawOpt of rawAvailableItems) {
             if (rawOpt.legacyItemNumber) {
               onlineMap[String(rawOpt.legacyItemNumber)] = {
                 onlineQty: rawOpt.quantity ?? 0,
                 maxOrderQty: rawOpt.orderableMaximumQuantity ?? 0,
-                deliveredToday: !!rawOpt.deliveredToday,
-                presentable: !!rawOpt.presentable
+                deliveredToday: !!rawOpt.deliveredToday
               };
             }
           }
@@ -230,12 +233,6 @@ async function main() {
             }));
 
             const onlineInfo = onlineMap[String(pid)] || {};
-            const onlineQty =
-              onlineInfo.onlineQty != null
-                ? onlineInfo.onlineQty
-                : opt.quantity != null
-                  ? opt.quantity
-                  : gi.quantity ?? 0;
 
             optionResults.push({
               name: opt.itemName,
@@ -244,10 +241,11 @@ async function main() {
               totalStores: stores.length,
               inStock: stores.filter((s) => s.qty > 0).length,
               totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
-              onlineQty,
-              maxOrderQty: onlineInfo.maxOrderQty || opt.orderableMaximumQuantity || 0,
-              deliveredToday: onlineInfo.deliveredToday || !!opt.deliveredToday,
-              presentable: onlineInfo.presentable || !!opt.presentable,
+              onlineQty: onlineInfo.onlineQty ?? opt.quantity ?? gi.quantity ?? 0,
+              maxOrderQty:
+                onlineInfo.maxOrderQty ?? opt.orderableMaximumQuantity ?? gi.orderableMaximumQuantity ?? 0,
+              deliveredToday: onlineInfo.deliveredToday ?? !!opt.deliveredToday,
+              presentable: !!opt.presentable,
               stores: stores.slice(0, 30)
             });
 
