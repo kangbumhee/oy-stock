@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-29T07:50:47.670Z",
+  "updatedAt": "2026-03-29T08:33:15.410Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,7 +12,18 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [],
+  "recentEvents": [
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 48,
+      "to": 48,
+      "fromQty": 163,
+      "toQty": 161,
+      "date": "2026-03-29T08:33:15.410Z"
+    }
+  ],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -31,7 +42,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 163,
+          "totalQty": 161,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -101,8 +112,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -340,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T07:50:47.670Z"
+      "updatedAt": "2026-03-29T08:33:15.410Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -360,7 +371,7 @@
           "totalStores": 50,
           "inStock": 43,
           "totalQty": 280,
-          "onlineQty": 422,
+          "onlineQty": 424,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -674,7 +685,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 60,
-          "onlineQty": 315,
+          "onlineQty": 314,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1296,7 +1307,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T07:50:47.670Z"
+      "updatedAt": "2026-03-29T08:33:15.410Z"
     }
   }
 }
