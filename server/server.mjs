@@ -622,7 +622,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(
       JSON.stringify({
         ok: true,
@@ -641,7 +641,7 @@ const server = http.createServer(async (req, res) => {
     const withOnline = url.searchParams.get('withOnline') === 'true';
 
     if (!goodsNo) {
-      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ success: false, error: 'goodsNo 필요' }));
       return;
     }
@@ -649,12 +649,12 @@ const server = http.createServer(async (req, res) => {
     try {
       await ensureSession();
       const result = await getStockDetail(goodsNo, lat, lng, withOnline);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(result));
     } catch (e) {
       console.error('에러:', e.message);
       sessionReady = false;
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
     }
     return;
@@ -664,7 +664,7 @@ const server = http.createServer(async (req, res) => {
     const goodsNo = url.searchParams.get('goodsNo');
     const productId = url.searchParams.get('productId');
     if (!goodsNo) {
-      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ success: false, error: 'goodsNo 필요' }));
       return;
     }
@@ -672,12 +672,12 @@ const server = http.createServer(async (req, res) => {
     try {
       await ensureSession();
       const result = await getStockAllRegions(goodsNo, productId || null);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(result));
     } catch (e) {
       console.error('전국재고 에러:', e.message);
       sessionReady = false;
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
     }
     return;
