@@ -1,5 +1,6 @@
 var Regions = {
   _bound: false,
+  _kakaoTimer: null,
 
   list: [
     { name: '김포 사우', lat: 37.6152, lng: 126.7156 },
@@ -20,6 +21,57 @@ var Regions = {
     { name: '광주 충장로', lat: 35.1492, lng: 126.9173 }
   ],
 
+  _localItemsHtml: function (qRaw) {
+    var q = qRaw.toLowerCase();
+    var escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var matches = this.list.filter(function (r) {
+      return r.name.toLowerCase().indexOf(q) > -1;
+    });
+    if (matches.length === 0) return '';
+    return matches
+      .map(function (r) {
+        var safeName = r.name.replace(/"/g, '&quot;');
+        var hl = r.name.replace(new RegExp('(' + escQ + ')', 'gi'), '<b>$1</b>');
+        return (
+          '<div class="region-item region-preset" style="padding:8px 12px;font-size:13px;cursor:pointer;" data-lat="' +
+          r.lat +
+          '" data-lng="' +
+          r.lng +
+          '" data-name="' +
+          safeName +
+          '">' +
+          hl +
+          '</div>'
+        );
+      })
+      .join('');
+  },
+
+  _kakaoItemsHtml: function (documents) {
+    if (!documents || !documents.length) return '';
+    return documents
+      .map(function (d) {
+        var lat = parseFloat(d.y);
+        var lng = parseFloat(d.x);
+        if (isNaN(lat) || isNaN(lng)) return '';
+        var sub = d.road_address_name || d.address_name || '';
+        var label = d.place_name + (sub ? ' · ' + sub : '');
+        var safeName = label.replace(/"/g, '&quot;');
+        return (
+          '<div class="region-item region-kakao" style="padding:8px 12px;font-size:13px;cursor:pointer;" data-lat="' +
+          lat +
+          '" data-lng="' +
+          lng +
+          '" data-name="' +
+          safeName +
+          '"><span style="color:#16a34a;font-size:11px;">📍</span> ' +
+          UI.esc(label) +
+          '</div>'
+        );
+      })
+      .join('');
+  },
+
   renderSelector: function () {
     var wrap = document.getElementById('region-select');
     if (!wrap) return;
@@ -27,7 +79,9 @@ var Regions = {
     var input = document.createElement('input');
     input.type = 'text';
     input.id = 'region-input';
-    input.placeholder = '지역 변경 (예: 인천, 김포)';
+    input.placeholder = CONFIG.KAKAO_REST_KEY
+      ? '지역 검색 (강남역, 판교…)'
+      : '지역 변경 (예: 인천, 김포)';
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('aria-label', '지역 검색');
     input.style.cssText = 'font-size:12px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;width:160px;';
@@ -36,45 +90,81 @@ var Regions = {
     var dropdown = document.createElement('div');
     dropdown.id = 'region-dropdown';
     dropdown.style.cssText =
-      'position:absolute;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;z-index:150;display:none;min-width:160px;';
+      'position:absolute;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:240px;overflow-y:auto;z-index:150;display:none;min-width:220px;';
     input.parentNode.style.position = 'relative';
     input.parentNode.appendChild(dropdown);
 
     var self = this;
 
-    input.addEventListener('input', function () {
-      var q = (input.value || '').trim().toLowerCase();
-      if (q.length === 0) {
-        dropdown.style.display = 'none';
-        return;
-      }
-      var matches = self.list.filter(function (r) {
-        return r.name.toLowerCase().indexOf(q) > -1;
-      });
-      if (matches.length === 0) {
+    function applyDropdown(html) {
+      if (!html) {
         dropdown.innerHTML =
           '<div style="padding:8px 12px;font-size:12px;color:#999;">일치하는 지역 없음</div>';
       } else {
-        var escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        dropdown.innerHTML = matches
-          .map(function (r) {
-            var safeName = r.name.replace(/"/g, '&quot;');
-            var hl = r.name.replace(new RegExp('(' + escQ + ')', 'gi'), '<b>$1</b>');
-            return (
-              '<div class="region-item" style="padding:8px 12px;font-size:13px;cursor:pointer;" data-lat="' +
-              r.lat +
-              '" data-lng="' +
-              r.lng +
-              '" data-name="' +
-              safeName +
-              '">' +
-              hl +
-              '</div>'
-            );
-          })
-          .join('');
+        dropdown.innerHTML = html;
       }
       dropdown.style.display = 'block';
+    }
+
+    input.addEventListener('input', function () {
+      if (self._kakaoTimer) {
+        clearTimeout(self._kakaoTimer);
+        self._kakaoTimer = null;
+      }
+
+      var qRaw = (input.value || '').trim();
+      if (qRaw.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      var localHtml = self._localItemsHtml(qRaw);
+      var key = typeof CONFIG !== 'undefined' && CONFIG.KAKAO_REST_KEY;
+
+      if (!key) {
+        applyDropdown(localHtml);
+        return;
+      }
+
+      var pending =
+        '<div class="region-kakao-pending" style="padding:6px 12px;font-size:11px;color:#888;border-top:1px solid #eee;">주소 검색 중…</div>';
+      applyDropdown(localHtml + pending);
+
+      self._kakaoTimer = setTimeout(function () {
+        self._kakaoTimer = null;
+        fetch(
+          'https://dapi.kakao.com/v2/local/search/keyword.json?query=' +
+            encodeURIComponent(qRaw) +
+            '&size=12',
+          { headers: { Authorization: 'KakaoAK ' + key } }
+        )
+          .then(function (r) {
+            if (!r.ok) throw new Error(String(r.status));
+            return r.json();
+          })
+          .then(function (data) {
+            var kHtml = self._kakaoItemsHtml(data.documents || []);
+            var section = '';
+            if (kHtml) {
+              section =
+                '<div style="padding:4px 10px;font-size:10px;color:#999;background:#f9fafb;border-top:1px solid #eee;">카카오 장소</div>' +
+                kHtml;
+            }
+            var combined = localHtml + section;
+            if (!combined) {
+              applyDropdown('');
+            } else {
+              dropdown.innerHTML = combined;
+              dropdown.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            applyDropdown(
+              localHtml ||
+                '<div style="padding:8px 12px;font-size:12px;color:#c00;">장소 검색 실패 (키·도메인 허용 확인)</div>'
+            );
+          });
+      }, 320);
     });
 
     input.addEventListener('focus', function () {
