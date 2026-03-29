@@ -350,7 +350,7 @@ const REGIONS = [
   { name: '제주', lat: 33.489, lng: 126.4983 }
 ];
 
-async function getStockAllRegions(goodsNo) {
+async function getStockAllRegions(goodsNo, targetProductId) {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return { success: false, error: '상품 조회 실패' };
@@ -380,6 +380,14 @@ async function getStockAllRegions(goodsNo) {
         quantity: gi.quantity ?? 0
       }
     ];
+  }
+
+  if (targetProductId) {
+    const filtered = options.filter((o) => String(o.legacyItemNumber) === String(targetProductId));
+    if (filtered.length === 0) {
+      return { success: false, error: '해당 옵션을 찾을 수 없음' };
+    }
+    options = filtered;
   }
 
   const half = Math.ceil(REGIONS.length / 2);
@@ -462,7 +470,11 @@ async function getStockAllRegions(goodsNo) {
     await sleep(300);
   }
 
-  if (optionResults.length === 0 && (gi.masterGoodsNumber || gi.goodsNumber)) {
+  if (
+    optionResults.length === 0 &&
+    !targetProductId &&
+    (gi.masterGoodsNumber || gi.goodsNumber)
+  ) {
     const pid = String(gi.masterGoodsNumber || gi.goodsNumber);
     const optImage = uploadUrl + (gi.goodsThumbnailPath || '');
     const regionStores = await fetchStoresAllRegions(pid);
@@ -560,6 +572,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/stock-all') {
     const goodsNo = url.searchParams.get('goodsNo');
+    const productId = url.searchParams.get('productId');
     if (!goodsNo) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, error: 'goodsNo 필요' }));
@@ -568,12 +581,15 @@ const server = http.createServer(async (req, res) => {
 
     try {
       await ensureSession();
-      const result = await getStockAllRegions(goodsNo);
+      const result = await getStockAllRegions(goodsNo, productId || null);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));
     } catch (e) {
       console.error('전국재고 에러:', e.message);
       sessionReady = false;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
     }

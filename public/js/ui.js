@@ -477,17 +477,20 @@ var UI = {
         App._toggleFavFromPopup(el.dataset.goodsno, el);
         return;
       }
-      if (action === 'loadAllStock') {
+      if (action === 'loadAllStockOpt') {
         var gno = el.dataset.goodsno;
-        if (!gno || el.classList.contains('loading')) return;
+        var pid = el.dataset.productid;
+        if (!gno || !pid || el.classList.contains('loading')) return;
         if (!CONFIG.REALTIME_API) return;
         el.classList.add('loading');
-        el.textContent = '🗺️ 전국 매장 조회 중... (10~15초)';
+        el.textContent = '🗺️ 전국 조회 중... (5~10초)';
 
         var allUrl =
           CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
           '?goodsNo=' +
-          encodeURIComponent(gno);
+          encodeURIComponent(gno) +
+          '&productId=' +
+          encodeURIComponent(pid);
 
         fetch(allUrl)
           .then(function (r) {
@@ -496,7 +499,7 @@ var UI = {
           .then(function (d) {
             if (d.success && d.options && d.options.length > 0) {
               UI.showAllStockPanel(d);
-              el.textContent = '🗺️ 전국 매장 재고 (조회완료)';
+              el.textContent = '🗺️ 전국 재고 (조회완료)';
               el.classList.remove('loading');
             } else {
               el.textContent = '⚠️ 조회 실패: ' + (d.error || '데이터 없음');
@@ -682,6 +685,15 @@ var UI = {
               .join('') +
             '</div>';
         }
+        var pidStr = String(o.productId != null ? o.productId : '');
+        var allBtnPerOpt =
+          CONFIG.REALTIME_API && pidStr
+            ? '<button type="button" class="btn-all-stock-opt" data-action="loadAllStockOpt" data-goodsno="' +
+              UI.esc(goodsNo) +
+              '" data-productid="' +
+              UI.esc(pidStr) +
+              '">🗺️ 이 옵션 전국 재고 보기</button>'
+            : '';
         return (
           '<div class="opt-panel' +
           (i === 0 ? ' active' : '') +
@@ -690,6 +702,7 @@ var UI = {
           '">' +
           summary +
           storeHtml +
+          allBtnPerOpt +
           '</div>'
         );
       })
@@ -704,12 +717,6 @@ var UI = {
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
 
-    var allBtn = CONFIG.REALTIME_API
-      ? '<button type="button" class="btn-all-stock" data-action="loadAllStock" data-goodsno="' +
-        UI.esc(goodsNo) +
-        '">🗺️ 전국 매장 재고 보기</button>'
-      : '';
-
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -723,7 +730,6 @@ var UI = {
       favBtn +
       optTabs +
       optPanels +
-      allBtn +
       '<div class="popup-footer"><a href="' +
       oyLink +
       '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 보기 →</a></div>' +
