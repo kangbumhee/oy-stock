@@ -255,6 +255,17 @@ async function getStockDetail(goodsNo, lat, lng) {
     ];
   }
 
+  console.log(
+    '[디버그] optionData:',
+    JSON.stringify(
+      (rawAvailableItems || []).map((i) => ({
+        leg: i.legacyItemNumber,
+        qty: i.quantity,
+        today: i.deliveredToday
+      }))
+    )
+  );
+
   const onlineMap = {};
   for (const rawOpt of rawAvailableItems) {
     if (rawOpt.legacyItemNumber) {
@@ -266,6 +277,8 @@ async function getStockDetail(goodsNo, lat, lng) {
       };
     }
   }
+
+  console.log('[디버그] onlineMap keys:', Object.keys(onlineMap));
 
   const optionResults = [];
   for (const opt of options) {
@@ -299,6 +312,13 @@ async function getStockDetail(goodsNo, lat, lng) {
       open: yn(s.openYn),
       addr: s.address || s.storeAddr || ''
     }));
+
+    console.log(
+      '[디버그] 매핑시도 key:',
+      String(pid),
+      '→ found:',
+      !!onlineMap[String(pid)]
+    );
 
     const onlineInfo = onlineMap[String(pid)] || {};
     const onlineQty =
