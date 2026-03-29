@@ -159,7 +159,9 @@ var App = {
         e.stopPropagation();
         var gno = el.dataset.goodsno;
         if (!gno) break;
-        var panel = document.getElementById('opts-' + gno);
+        var card = el.closest('.card');
+        var panel =
+          (card && card.querySelector('.card-options')) || document.getElementById('opts-' + gno);
         if (panel) {
           var isHidden = panel.classList.contains('hidden');
           panel.classList.toggle('hidden');
@@ -227,6 +229,50 @@ var App = {
     }
   },
 
+  _enrichFavorites: async function (favorites) {
+    try {
+      if (!CONFIG.REALTIME_API || !favorites || !favorites.length) return;
+      var self = this;
+      var batchSize = 4;
+      for (var i = 0; i < favorites.length; i += batchSize) {
+        var batch = favorites.slice(i, i + batchSize);
+        var promises = batch.map(function (f) {
+          var gn = String(f.goodsNo || f.goodsNumber || '');
+          if (!gn) return Promise.resolve(null);
+          var url =
+            CONFIG.REALTIME_API +
+            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+            'goodsNo=' +
+            encodeURIComponent(gn) +
+            '&lat=' +
+            encodeURIComponent(String(self.lat)) +
+            '&lng=' +
+            encodeURIComponent(String(self.lng));
+          return fetch(url)
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              return d.success ? { goodsNo: gn, data: d } : null;
+            })
+            .catch(function () {
+              return null;
+            });
+        });
+        var results = await Promise.all(promises);
+        results.forEach(function (r) {
+          if (!r) return;
+          if (!self.detailData) self.detailData = { products: {} };
+          if (!self.detailData.products) self.detailData.products = {};
+          self.detailData.products[r.goodsNo] = r.data;
+          UI.updateCardBadge(r.goodsNo, r.data);
+        });
+      }
+    } catch (e) {
+      console.warn('enrichFavorites', e);
+    }
+  },
+
   doSearch: function (keyword) {
     var self = this;
     this.searchHistory = [keyword]
@@ -258,7 +304,9 @@ var App = {
   },
 
   _renderFavorites: function () {
-    UI.renderFavorites(Storage.getFavorites(), this.detailData);
+    var favs = Storage.getFavorites();
+    UI.renderFavorites(favs, this.detailData);
+    void this._enrichFavorites(favs);
   },
 
   _toggleFav: function (idx) {
@@ -317,17 +365,7 @@ var App = {
   },
 
   _syncFavorites: function () {
-    UI.showSyncStatus('동기화 중...', false);
-    var favs = Storage.getFavorites();
-    API.syncFavorites(favs, {
-      lat: this.lat,
-      lng: this.lng,
-      name: this.locationName
-    }).then(function (res) {
-      if (res.success)
-        UI.showSyncStatus('✅ 동기화 완료! 다음 1시간 내 재고 수집됩니다.', false, 5000);
-      else UI.showSyncStatus('⚠️ 동기화 실패: ' + (res.error || JSON.stringify(res)), true);
-    });
+    return;
   },
 
   _openDetail: async function (idx) {

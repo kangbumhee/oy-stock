@@ -7,6 +7,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
 const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/watchlist.json'), 'utf8'));
+
+/** GitHub Actions 수집 대상(공개 캐시). 사용자 즐겨찾기는 앱에서 실시간 API로 조회 */
+const POPULAR_PRODUCTS = [
+  'A000000207822', // 망곰 딥클린마스터
+  'A000000154189' // 어노브 볼륨업 컬링에센스
+];
+
 const DATA_DIR = path.join(ROOT, 'public/data');
 const DETAIL_FILE = path.join(DATA_DIR, 'stock-detail.json');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
@@ -48,9 +55,9 @@ function yn(v) {
 }
 
 async function main() {
-  const favorites = CONFIG.favorites || [];
+  const favorites = POPULAR_PRODUCTS.map((gn) => ({ goodsNo: gn }));
   if (favorites.length === 0) {
-    console.log('즐겨찾기 없음, 종료');
+    console.log('POPULAR_PRODUCTS 비어 있음, 종료');
     return;
   }
 
@@ -65,7 +72,7 @@ async function main() {
     batches.push(favorites.slice(i, i + MAX));
   }
 
-  console.log(`즐겨찾기 ${favorites.length}개 | ${batches.length}배치 (배치당 최대 ${MAX}개)\n`);
+  console.log(`인기상품 ${favorites.length}개 | ${batches.length}배치 (배치당 최대 ${MAX}개)\n`);
 
   const browser = await chromium.launch({ headless: true });
   const results = { ...prevProducts };

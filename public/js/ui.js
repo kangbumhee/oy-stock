@@ -200,20 +200,8 @@ var UI = {
   updateCardBadge: function (goodsNo, detail) {
     if (!detail) return;
     var gn = String(goodsNo);
-    var products = App.products;
-    if (!products || !products.length) return;
 
-    var list = document.getElementById('product-list');
-    if (!list) return;
-
-    list.querySelectorAll('.grid .card').forEach(function (card) {
-      var imgWrap = card.querySelector('.card-img[data-action="showDetail"]');
-      if (!imgWrap) return;
-      var idx = parseInt(imgWrap.dataset.index, 10);
-      if (isNaN(idx) || idx < 0 || !products[idx]) return;
-      var pgn = String(products[idx].goodsNumber || products[idx].goodsNo || '');
-      if (pgn !== gn) return;
-
+    function applyBadgesToCard(card) {
       var badgesDiv = card.querySelector('.badges');
       if (!badgesDiv) return;
 
@@ -256,7 +244,7 @@ var UI = {
 
       badgesDiv.innerHTML = badges + onlineBadge + optionBtn;
 
-      if ((detail.options || []).length > 1 && !document.getElementById('opts-' + gn)) {
+      if ((detail.options || []).length > 1 && !card.querySelector('.card-options')) {
         var optPanel =
           '<div class="card-options hidden" id="opts-' +
           UI.esc(gn) +
@@ -293,7 +281,31 @@ var UI = {
           '</div>';
         card.insertAdjacentHTML('beforeend', optPanel);
       }
-    });
+    }
+
+    var plist = document.getElementById('product-list');
+    if (plist && App.products && App.products.length) {
+      plist.querySelectorAll('.grid .card').forEach(function (card) {
+        var imgWrap = card.querySelector('.card-img[data-action="showDetail"]');
+        if (!imgWrap) return;
+        var idx = parseInt(imgWrap.dataset.index, 10);
+        if (isNaN(idx) || idx < 0 || !App.products[idx]) return;
+        var pgn = String(App.products[idx].goodsNumber || App.products[idx].goodsNo || '');
+        if (pgn !== gn) return;
+        applyBadgesToCard(card);
+      });
+    }
+
+    var flist = document.getElementById('fav-list');
+    if (flist) {
+      flist.querySelectorAll('.grid .card').forEach(function (card) {
+        var imgWrap = card.querySelector('.card-img[data-action="showFavDetail"]');
+        if (!imgWrap) return;
+        var gno = String(imgWrap.dataset.goodsno || '');
+        if (gno !== gn) return;
+        applyBadgesToCard(card);
+      });
+    }
   },
 
   renderFavorites: function (favorites, detailData) {
@@ -321,13 +333,9 @@ var UI = {
       favorites.length +
       '</b>개</span>' +
       (timeStr
-        ? '<span class="ok">📦 ' + timeStr + ' 기준</span>'
-        : '<span class="ok">다음 수집 시 재고 업데이트</span>') +
+        ? '<span class="ok">📦 공개 캐시 ' + timeStr + '</span>'
+        : '<span class="ok">매장·온라인 재고는 실시간 조회</span>') +
       '</div>';
-    var syncBtn =
-      '<button type="button" class="sync-btn" data-action="syncFavorites">🔄 동기화 (' +
-      favorites.length +
-      '개 → GitHub)</button>';
     var cards = favorites
       .map(function (f) {
         var gid = String(f.goodsNo || f.goodsNumber || '');
@@ -447,7 +455,7 @@ var UI = {
         );
       })
       .join('');
-    c.innerHTML = bar + syncBtn + '<div class="grid">' + cards + '</div>';
+    c.innerHTML = bar + '<div class="grid">' + cards + '</div>';
   },
 
   _bindPopupEvents: function () {
