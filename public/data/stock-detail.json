@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-29T01:41:43.938Z",
+  "updatedAt": "2026-03-29T02:21:26.017Z",
   "location": {
     "lat": 37.6152,
     "lng": 126.7156,
@@ -12,22 +12,7 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [
-    {
-      "type": "new",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "stores": 50,
-      "qty": 169,
-      "date": "2026-03-29T01:41:43.938Z"
-    },
-    {
-      "type": "removed",
-      "goodsNo": "",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "date": "2026-03-29T01:41:43.938Z"
-    }
-  ],
+  "recentEvents": [],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -47,6 +32,10 @@
           "totalStores": 50,
           "inStock": 50,
           "totalQty": 169,
+          "onlineQty": 0,
+          "maxOrderQty": 0,
+          "deliveredToday": false,
+          "presentable": false,
           "stores": [
             {
               "name": "김포사우점",
@@ -115,7 +104,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -195,7 +184,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -235,7 +224,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -351,7 +340,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T01:41:43.938Z"
+      "updatedAt": "2026-03-29T02:21:26.017Z"
     }
   }
 }
