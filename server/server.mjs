@@ -190,45 +190,47 @@ async function getStockDetail(goodsNo, lat, lng) {
   let options = [];
   let rawAvailableItems = [];
   if (Number(gi.itemCount) > 1) {
+    let optPage = null;
     try {
-      await page.goto(
+      optPage = await page.context().newPage();
+      await optPage.goto(
         OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
         { waitUntil: 'domcontentloaded', timeout: 15000 }
       );
       await sleep(2000);
-      const optJson = await page.evaluate(
-        async ({ apiUrl, gn }) => {
-          const r = await fetch(apiUrl, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ goodsNo: gn })
-          });
-          const t = await r.text();
-          try {
-            return JSON.parse(t);
-          } catch {
-            return null;
-          }
-        },
-        {
-          apiUrl: OY + '/oystore/api/stock/stock-goods-info-option',
-          gn: goodsNo
+      const optJson = await optPage.evaluate(async (gn) => {
+        const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ goodsNo: gn })
+        });
+        const t = await res.text();
+        try {
+          return JSON.parse(t);
+        } catch {
+          return null;
         }
-      );
+      }, goodsNo);
       if (optJson && optJson.status === 'SUCCESS') {
         const optInner = unwrapPayload(optJson);
         optionUploadUrl = optInner.optionUploadUrl || '';
         options = optInner.goodsInfo?.availableItems || [];
         rawAvailableItems = options.slice();
-        console.log('[옵션] page.evaluate 성공, items:', rawAvailableItems.length);
+        console.log('[옵션] 새탭 성공, items:', rawAvailableItems.length);
       }
     } catch (e) {
-      console.log('[옵션] page.evaluate 실패:', e.message);
+      console.log('[옵션] 새탭 실패:', e.message);
+    } finally {
+      if (optPage) {
+        try {
+          await optPage.close();
+        } catch {}
+      }
     }
   }
   // option API가 ERROR/차단일 때 v3 goodsInfo.availableItems로 온라인 수량·오늘배송 복구
