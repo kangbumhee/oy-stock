@@ -183,7 +183,7 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
   return { ok: false, status: 500, data: { error: 'max retries' } };
 }
 
-async function getStockDetail(goodsNo, lat, lng) {
+async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
   return withLock(async () => {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
@@ -201,7 +201,7 @@ async function getStockDetail(goodsNo, lat, lng) {
 
   let options = [];
   let rawAvailableItems = [];
-  if (true) {
+  if (withOnline) {
     try {
       await page.goto(
         OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
@@ -632,6 +632,7 @@ const server = http.createServer(async (req, res) => {
     const goodsNo = url.searchParams.get('goodsNo');
     const lat = parseFloat(url.searchParams.get('lat')) || 37.6152;
     const lng = parseFloat(url.searchParams.get('lng')) || 126.7156;
+    const withOnline = url.searchParams.get('withOnline') === 'true';
 
     if (!goodsNo) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -641,7 +642,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       await ensureSession();
-      const result = await getStockDetail(goodsNo, lat, lng);
+      const result = await getStockDetail(goodsNo, lat, lng, withOnline);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));
     } catch (e) {

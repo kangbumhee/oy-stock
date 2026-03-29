@@ -194,44 +194,59 @@ var App = {
         }
       });
       var self = this;
-      var batchSize = 6;
+      var batchSize = 2;
       for (var i = 0; i < products.length; i += batchSize) {
         var batch = products.slice(i, i + batchSize);
-        var promises = batch.map(function (p) {
-          var gn = String(p.goodsNumber || p.goodsNo || '');
-          if (!gn) return Promise.resolve(null);
-          var url =
-            CONFIG.REALTIME_API +
-            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
-            'goodsNo=' +
-            encodeURIComponent(gn) +
-            '&lat=' +
-            encodeURIComponent(String(self.lat)) +
-            '&lng=' +
-            encodeURIComponent(String(self.lng));
-          return fetch(url)
-            .then(function (r) {
-              return r.json();
-            })
-            .then(function (d) {
-              return d.success ? { goodsNo: gn, data: d } : null;
-            })
-            .catch(function () {
-              return null;
-            });
-        });
-        var results = await Promise.all(promises);
-        results.forEach(function (r) {
+        var settled = await Promise.allSettled(
+          batch.map(function (p) {
+            return self._fetchStockDetail(p, false);
+          })
+        );
+        settled.forEach(function (s) {
+          var r = s.status === 'fulfilled' ? s.value : null;
           if (!r) return;
           if (!self.detailData) self.detailData = { products: {} };
           if (!self.detailData.products) self.detailData.products = {};
           self.detailData.products[r.goodsNo] = r.data;
           UI.updateCardBadge(r.goodsNo, r.data);
         });
+        await new Promise(function (r) {
+          setTimeout(r, 500);
+        });
       }
     } catch (e) {
       console.warn('enrichSearchResults', e);
     }
+  },
+
+  _fetchStockDetail: function (pOrFav, withOnline) {
+    var gn = String(
+      (pOrFav && (pOrFav.goodsNumber || pOrFav.goodsNo)) || ''
+    ).trim();
+    if (!gn) return Promise.resolve(null);
+    var self = this;
+    var q =
+      'goodsNo=' +
+      encodeURIComponent(gn) +
+      '&lat=' +
+      encodeURIComponent(String(self.lat)) +
+      '&lng=' +
+      encodeURIComponent(String(self.lng));
+    if (withOnline) q += '&withOnline=true';
+    var url =
+      CONFIG.REALTIME_API +
+      (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+      q;
+    return fetch(url)
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        return d.success ? { goodsNo: gn, data: d } : null;
+      })
+      .catch(function () {
+        return null;
+      });
   },
 
   _enrichFavorites: async function (favorites) {
@@ -243,39 +258,24 @@ var App = {
         }
       });
       var self = this;
-      var batchSize = 4;
+      var batchSize = 2;
       for (var i = 0; i < favorites.length; i += batchSize) {
         var batch = favorites.slice(i, i + batchSize);
-        var promises = batch.map(function (f) {
-          var gn = String(f.goodsNo || f.goodsNumber || '');
-          if (!gn) return Promise.resolve(null);
-          var url =
-            CONFIG.REALTIME_API +
-            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
-            'goodsNo=' +
-            encodeURIComponent(gn) +
-            '&lat=' +
-            encodeURIComponent(String(self.lat)) +
-            '&lng=' +
-            encodeURIComponent(String(self.lng));
-          return fetch(url)
-            .then(function (r) {
-              return r.json();
-            })
-            .then(function (d) {
-              return d.success ? { goodsNo: gn, data: d } : null;
-            })
-            .catch(function () {
-              return null;
-            });
-        });
-        var results = await Promise.all(promises);
-        results.forEach(function (r) {
+        var settled = await Promise.allSettled(
+          batch.map(function (f) {
+            return self._fetchStockDetail(f, false);
+          })
+        );
+        settled.forEach(function (s) {
+          var r = s.status === 'fulfilled' ? s.value : null;
           if (!r) return;
           if (!self.detailData) self.detailData = { products: {} };
           if (!self.detailData.products) self.detailData.products = {};
           self.detailData.products[r.goodsNo] = r.data;
           UI.updateCardBadge(r.goodsNo, r.data);
+        });
+        await new Promise(function (r) {
+          setTimeout(r, 500);
         });
       }
     } catch (e) {
@@ -390,18 +390,19 @@ var App = {
       return;
     }
     if (CONFIG.REALTIME_API) {
-      UI.showPopupLoading(p.goodsName, '실시간 매장 재고 조회 중…');
+      UI.showPopupLoading(p.goodsName, '실시간 매장·온라인 재고 조회 중…');
       try {
-        var url =
+        var r = await fetch(
           CONFIG.REALTIME_API +
-          (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
-          'goodsNo=' +
-          encodeURIComponent(gn) +
-          '&lat=' +
-          encodeURIComponent(String(this.lat)) +
-          '&lng=' +
-          encodeURIComponent(String(this.lng));
-        var r = await fetch(url);
+            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+            'goodsNo=' +
+            encodeURIComponent(gn) +
+            '&lat=' +
+            encodeURIComponent(String(this.lat)) +
+            '&lng=' +
+            encodeURIComponent(String(this.lng)) +
+            '&withOnline=true'
+        );
         var d = await r.json();
         if (d.success && d.options && d.options.length > 0) {
           UI.showDetailPopup(d, gn);
@@ -435,18 +436,19 @@ var App = {
       return;
     }
     if (CONFIG.REALTIME_API) {
-      UI.showPopupLoading(name, '실시간 매장 재고 조회 중…');
+      UI.showPopupLoading(name, '실시간 매장·온라인 재고 조회 중…');
       try {
-        var url =
+        var r = await fetch(
           CONFIG.REALTIME_API +
-          (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
-          'goodsNo=' +
-          encodeURIComponent(gn) +
-          '&lat=' +
-          encodeURIComponent(String(this.lat)) +
-          '&lng=' +
-          encodeURIComponent(String(this.lng));
-        var r = await fetch(url);
+            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+            'goodsNo=' +
+            encodeURIComponent(gn) +
+            '&lat=' +
+            encodeURIComponent(String(this.lat)) +
+            '&lng=' +
+            encodeURIComponent(String(this.lng)) +
+            '&withOnline=true'
+        );
         var d = await r.json();
         if (d.success && d.options && d.options.length > 0) {
           UI.showDetailPopup(d, gn);
