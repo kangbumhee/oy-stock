@@ -197,6 +197,105 @@ var UI = {
     c.innerHTML = bar + '<div class="grid">' + cards + '</div>';
   },
 
+  updateCardBadge: function (goodsNo, detail) {
+    if (!detail) return;
+    var gn = String(goodsNo);
+    var products = App.products;
+    if (!products || !products.length) return;
+
+    var list = document.getElementById('product-list');
+    if (!list) return;
+
+    list.querySelectorAll('.grid .card').forEach(function (card) {
+      var imgWrap = card.querySelector('.card-img[data-action="showDetail"]');
+      if (!imgWrap) return;
+      var idx = parseInt(imgWrap.dataset.index, 10);
+      if (isNaN(idx) || idx < 0 || !products[idx]) return;
+      var pgn = String(products[idx].goodsNumber || products[idx].goodsNo || '');
+      if (pgn !== gn) return;
+
+      var badgesDiv = card.querySelector('.badges');
+      if (!badgesDiv) return;
+
+      var badges = '';
+      var onlineBadge = '';
+      var optionBtn = '';
+      if (detail.status === 'discontinued') {
+        badges = '<span class="badge bg-red">단종</span>';
+      } else if (detail.status === 'soldout') {
+        badges = '<span class="badge bg-orange">주변품절</span>';
+      } else if (detail.status === 'active') {
+        var totalIn = (detail.options || []).reduce(function (a, o) {
+          return a + (o.inStock || 0);
+        }, 0);
+        badges = '<span class="badge bg-green">매장 ' + totalIn + '곳</span>';
+      }
+
+      var totalOnline = (detail.options || []).reduce(function (a, o) {
+        return a + (o.onlineQty || 0);
+      }, 0);
+      if (totalOnline > 0) {
+        onlineBadge =
+          '<span class="badge bg-blue">🛒 온라인 ' + UI.num(totalOnline) + '개</span>';
+        var hasToday = (detail.options || []).some(function (o) {
+          return o.deliveredToday;
+        });
+        if (hasToday) onlineBadge += '<span class="badge bg-blue-light">⚡오늘배송</span>';
+      } else if (detail.status !== 'discontinued') {
+        onlineBadge = '<span class="badge bg-gray">🛒 온라인품절</span>';
+      }
+
+      if ((detail.options || []).length > 1) {
+        optionBtn =
+          '<button type="button" class="badge-btn bg-purple" data-action="toggleOptions" data-goodsno="' +
+          UI.esc(gn) +
+          '">옵션 ' +
+          detail.options.length +
+          '개 ▾</button>';
+      }
+
+      badgesDiv.innerHTML = badges + onlineBadge + optionBtn;
+
+      if ((detail.options || []).length > 1 && !document.getElementById('opts-' + gn)) {
+        var optPanel =
+          '<div class="card-options hidden" id="opts-' +
+          UI.esc(gn) +
+          '">' +
+          detail.options
+            .map(function (o) {
+              var optName = o.name || '기본';
+              if (optName.indexOf(']') > -1) optName = optName.substring(optName.lastIndexOf(']') + 1).trim();
+              if (optName.length > 25) optName = optName.substring(0, 25) + '…';
+              var storeInfo =
+                o.inStock > 0 ? '매장 ' + o.inStock + '곳(' + o.totalQty + '개)' : '매장 품절';
+              var onlineInfo =
+                o.onlineQty > 0
+                  ? '<span class="opt-online-ok">🛒' +
+                    UI.num(o.onlineQty) +
+                    '개' +
+                    (o.deliveredToday ? ' ⚡' : '') +
+                    '</span>'
+                  : '<span class="opt-online-out">🛒품절</span>';
+              return (
+                '<div class="card-opt-row">' +
+                '<span class="card-opt-name">' +
+                UI.esc(optName) +
+                '</span>' +
+                '<span class="card-opt-stock">' +
+                storeInfo +
+                ' | ' +
+                onlineInfo +
+                '</span>' +
+                '</div>'
+              );
+            })
+            .join('') +
+          '</div>';
+        card.insertAdjacentHTML('beforeend', optPanel);
+      }
+    });
+  },
+
   renderFavorites: function (favorites, detailData) {
     var c = document.getElementById('fav-list');
     if (!c) return;

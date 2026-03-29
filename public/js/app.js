@@ -183,6 +183,50 @@ var App = {
     Storage.setHistory(this.searchHistory);
   },
 
+  _enrichSearchResults: async function (products) {
+    try {
+      if (!CONFIG.REALTIME_API || !products || !products.length) return;
+      var self = this;
+      var batchSize = 6;
+      for (var i = 0; i < products.length; i += batchSize) {
+        var batch = products.slice(i, i + batchSize);
+        var promises = batch.map(function (p) {
+          var gn = String(p.goodsNumber || p.goodsNo || '');
+          if (!gn) return Promise.resolve(null);
+          var url =
+            CONFIG.REALTIME_API +
+            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+            'goodsNo=' +
+            encodeURIComponent(gn) +
+            '&lat=' +
+            encodeURIComponent(String(self.lat)) +
+            '&lng=' +
+            encodeURIComponent(String(self.lng));
+          return fetch(url)
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              return d.success ? { goodsNo: gn, data: d } : null;
+            })
+            .catch(function () {
+              return null;
+            });
+        });
+        var results = await Promise.all(promises);
+        results.forEach(function (r) {
+          if (!r) return;
+          if (!self.detailData) self.detailData = { products: {} };
+          if (!self.detailData.products) self.detailData.products = {};
+          self.detailData.products[r.goodsNo] = r.data;
+          UI.updateCardBadge(r.goodsNo, r.data);
+        });
+      }
+    } catch (e) {
+      console.warn('enrichSearchResults', e);
+    }
+  },
+
   doSearch: function (keyword) {
     var self = this;
     this.searchHistory = [keyword]
@@ -206,6 +250,7 @@ var App = {
       .then(function (detail) {
         self.detailData = detail || self.detailData;
         UI.renderProducts(self.products, self.detailData);
+        void self._enrichSearchResults(self.products);
       })
       .catch(function (err) {
         UI.showError(err.message || '검색 실패');
