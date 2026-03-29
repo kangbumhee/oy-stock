@@ -12,6 +12,17 @@ let sessionReady = false;
 let sessionCreatedAt = 0;
 let initPromise = null;
 
+let pageBusy = false;
+async function withPageLock(fn) {
+  while (pageBusy) await sleep(100);
+  pageBusy = true;
+  try {
+    return await fn();
+  } finally {
+    pageBusy = false;
+  }
+}
+
 const SESSION_MAX_AGE = 10 * 60 * 1000;
 
 function unwrapPayload(json) {
@@ -190,48 +201,47 @@ async function getStockDetail(goodsNo, lat, lng) {
   let options = [];
   let rawAvailableItems = [];
   if (Number(gi.itemCount) > 1) {
-    let optPage = null;
-    try {
-      optPage = await page.context().newPage();
-      await optPage.goto(
-        OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
-        { waitUntil: 'domcontentloaded', timeout: 15000 }
-      );
-      await sleep(2000);
-      const optJson = await optPage.evaluate(async (gn) => {
-        const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify({ goodsNo: gn })
-        });
-        const t = await res.text();
-        try {
-          return JSON.parse(t);
-        } catch {
-          return null;
+    await withPageLock(async () => {
+      try {
+        await page.goto(
+          OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
+          { waitUntil: 'domcontentloaded', timeout: 15000 }
+        );
+        await sleep(2000);
+
+        const optJson = await page.evaluate(async (gn) => {
+          const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ goodsNo: gn })
+          });
+          const t = await res.text();
+          try {
+            return JSON.parse(t);
+          } catch {
+            return null;
+          }
+        }, goodsNo);
+
+        if (optJson && optJson.status === 'SUCCESS') {
+          const optInner = unwrapPayload(optJson);
+          optionUploadUrl = optInner.optionUploadUrl || '';
+          options = optInner.goodsInfo?.availableItems || [];
+          rawAvailableItems = options.slice();
+          console.log('[옵션] page 성공, items:', rawAvailableItems.length);
         }
-      }, goodsNo);
-      if (optJson && optJson.status === 'SUCCESS') {
-        const optInner = unwrapPayload(optJson);
-        optionUploadUrl = optInner.optionUploadUrl || '';
-        options = optInner.goodsInfo?.availableItems || [];
-        rawAvailableItems = options.slice();
-        console.log('[옵션] 새탭 성공, items:', rawAvailableItems.length);
+
+        await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+      } catch (e) {
+        console.log('[옵션] page 실패:', e.message);
+        await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
       }
-    } catch (e) {
-      console.log('[옵션] 새탭 실패:', e.message);
-    } finally {
-      if (optPage) {
-        try {
-          await optPage.close();
-        } catch {}
-      }
-    }
+    });
   }
   // option API가 ERROR/차단일 때 v3 goodsInfo.availableItems로 온라인 수량·오늘배송 복구
   if (
