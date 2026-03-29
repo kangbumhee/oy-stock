@@ -86,6 +86,19 @@ async function _createSession() {
     throw new Error('Cloudflare 챌린지 통과 실패');
   }
 
+  // 워밍업: 상품 상세 방문으로 쿠키·세션 강화 (stock-stores 차단 완화)
+  try {
+    await page.goto(
+      OY + '/store/goods/getGoodsDetail.do?goodsNo=A000000207822',
+      { waitUntil: 'domcontentloaded', timeout: 15000 }
+    );
+    await sleep(3000);
+    await page.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await sleep(2000);
+  } catch (e) {
+    console.log('워밍업 스킵:', e.message);
+  }
+
   sessionReady = true;
   sessionCreatedAt = Date.now();
   console.log(`✅ 세션 준비 완료 (${((Date.now() - start) / 1000).toFixed(1)}초)`);
