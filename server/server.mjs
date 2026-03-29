@@ -589,16 +589,21 @@ async function getStockAllRegions(goodsNo, targetProductId) {
   };
 }
 
-const server = http.createServer(async (req, res) => {
+/** CORS — 모든 응답에 동일 헤더 (Vercel 등 크로스 오리진 + 프리플라이트) */
+function applyCors(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
-    return;
+    return true;
   }
+  return false;
+}
+
+const server = http.createServer(async (req, res) => {
+  if (applyCors(req, res)) return;
 
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
@@ -657,9 +662,6 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       console.error('전국재고 에러:', e.message);
       sessionReady = false;
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
     }
