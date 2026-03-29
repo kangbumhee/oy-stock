@@ -375,6 +375,47 @@ async function main() {
               date: now
             });
           }
+          // 온라인 재고 변동
+          const prevOnlineQty = old?.options
+            ? old.options.reduce((a, o) => a + (o.onlineQty || 0), 0)
+            : 0;
+          const currentOnlineQty = optionResults.reduce((a, o) => a + (o.onlineQty || 0), 0);
+
+          if (old && prevOnlineQty > 0 && currentOnlineQty === 0) {
+            events.push({
+              type: 'online_soldout',
+              goodsNo: gn,
+              goodsName: gName,
+              from: prevOnlineQty,
+              to: 0,
+              date: now
+            });
+          }
+          if (old && prevOnlineQty === 0 && currentOnlineQty > 0) {
+            events.push({
+              type: 'online_back',
+              goodsNo: gn,
+              goodsName: gName,
+              from: 0,
+              to: currentOnlineQty,
+              date: now
+            });
+          }
+          if (
+            old &&
+            prevOnlineQty > 0 &&
+            currentOnlineQty > 0 &&
+            prevOnlineQty !== currentOnlineQty
+          ) {
+            events.push({
+              type: 'online_changed',
+              goodsNo: gn,
+              goodsName: gName,
+              from: prevOnlineQty,
+              to: currentOnlineQty,
+              date: now
+            });
+          }
           if (old && old.price != null && old.price !== gi.priceToPay) {
             events.push({
               type: gi.priceToPay < old.price ? 'price_down' : 'price_up',

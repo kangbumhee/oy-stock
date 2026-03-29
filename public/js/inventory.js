@@ -14,7 +14,10 @@ var Inventory = {
         removed: '🗑 제거',
         price_down: '💰 가격↓',
         price_up: '📈 가격↑',
-        stock_changed: '📦 재고변동'
+        stock_changed: '📦 재고변동',
+        online_soldout: '🛒❌ 온라인 품절',
+        online_back: '🛒✅ 온라인 재입고',
+        online_changed: '🛒📦 온라인 재고 변동'
       };
       var rows = data.events.slice(0, 100).map(function (e) {
         var time = new Date(e.date).toLocaleString('ko-KR', {
@@ -63,6 +66,21 @@ var Inventory = {
             extra += '</span>';
           }
         }
+        // 온라인 재고 변동
+        if (
+          (e.type === 'online_soldout' ||
+            e.type === 'online_back' ||
+            e.type === 'online_changed') &&
+          e.from != null &&
+          e.to != null
+        ) {
+          extra =
+            '<span class="inv-extra">' +
+            UI.num(e.from) +
+            '개 → ' +
+            UI.num(e.to) +
+            '개</span>';
+        }
 
         var typeColor = {
           new: '#2563eb',
@@ -73,7 +91,10 @@ var Inventory = {
           stock_changed: '#ea580c',
           price_down: '#16a34a',
           price_up: '#dc2626',
-          removed: '#999'
+          removed: '#999',
+          online_soldout: '#dc2626',
+          online_back: '#16a34a',
+          online_changed: '#0369a1'
         };
         var color = typeColor[e.type] || '#16a34a';
 
