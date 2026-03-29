@@ -613,6 +613,12 @@ function applyCors(req, res) {
 const server = http.createServer(async (req, res) => {
   if (applyCors(req, res)) return;
 
+  const _origWriteHead = res.writeHead.bind(res);
+  res.writeHead = function (statusCode, headers) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return _origWriteHead(statusCode, headers);
+  };
+
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname === '/health') {
