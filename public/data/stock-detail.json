@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-29T08:33:15.410Z",
+  "updatedAt": "2026-03-29T09:31:41.731Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -15,13 +15,31 @@
   "recentEvents": [
     {
       "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 78,
+      "to": 78,
+      "fromQty": 407,
+      "toQty": 406,
+      "date": "2026-03-29T09:31:41.731Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 738,
+      "to": 2439,
+      "date": "2026-03-29T09:31:41.731Z"
+    },
+    {
+      "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 48,
       "to": 48,
-      "fromQty": 163,
-      "toQty": 161,
-      "date": "2026-03-29T08:33:15.410Z"
+      "fromQty": 161,
+      "toQty": 160,
+      "date": "2026-03-29T09:31:41.731Z"
     }
   ],
   "products": {
@@ -42,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 161,
+          "totalQty": 160,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -351,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T08:33:15.410Z"
+      "updatedAt": "2026-03-29T09:31:41.731Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -370,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 43,
-          "totalQty": 280,
-          "onlineQty": 424,
+          "totalQty": 279,
+          "onlineQty": 1326,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -685,7 +703,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 60,
-          "onlineQty": 314,
+          "onlineQty": 1113,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1307,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T08:33:15.410Z"
+      "updatedAt": "2026-03-29T09:31:41.731Z"
     }
   }
 }
