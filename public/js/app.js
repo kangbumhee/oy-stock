@@ -86,31 +86,19 @@ var App = {
   },
 
   _reverseGeocode: function (lat, lng) {
-    var key = CONFIG.KAKAO_REST_KEY;
-    if (!key || key.indexOf('여기에') > -1) {
-      return Promise.resolve('내 위치 (' + lat.toFixed(2) + ', ' + lng.toFixed(2) + ')');
-    }
-
     var url =
-      'https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=' +
-      encodeURIComponent(lng) +
-      '&y=' +
-      encodeURIComponent(lat);
+      '/api/kakao/geo?x=' + encodeURIComponent(lng) + '&y=' + encodeURIComponent(lat);
 
-    return fetch(url, {
-      headers: { Authorization: 'KakaoAK ' + key }
-    })
+    return fetch(url)
       .then(function (r) {
         return r.ok ? r.json() : { documents: [] };
       })
       .then(function (data) {
         var docs = data.documents || [];
-        // 행정동 우선, 없으면 법정동
         var region = docs.find(function (d) {
           return d.region_type === 'H';
         }) || docs[0];
         if (region) {
-          // "경기도 김포시 사우동" → "김포 사우동"
           var parts = [];
           if (region.region_2depth_name)
             parts.push(region.region_2depth_name.replace(/시$|군$|구$/, '').trim());
@@ -287,7 +275,8 @@ var App = {
   _openDetail: async function (idx) {
     var p = this.products[idx];
     if (!p) return;
-    var gn = String(p.goodsNumber || p.goodsNo);
+    var gn = String(p.goodsNumber || p.goodsNo || '').trim();
+    if (!gn) return;
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
     if (detail && detail.options && detail.options.length > 0) {
@@ -327,7 +316,8 @@ var App = {
   },
 
   _openFavDetail: async function (goodsNo) {
-    var gn = String(goodsNo);
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return;
     var fav = Storage.getFavorites().find(function (f) {
       return String(f.goodsNo) === gn;
     });

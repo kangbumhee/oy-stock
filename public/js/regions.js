@@ -47,21 +47,42 @@ var Regions = {
       .join('');
   },
 
-  _kakaoItemsHtml: function (documents) {
-    if (!documents || !documents.length) return '';
-    return documents
+  _kakaoSearch: function (query) {
+    var url = '/api/kakao/geo?keyword=' + encodeURIComponent(query);
+
+    return fetch(url)
+      .then(function (r) {
+        return r.ok ? r.json() : { documents: [] };
+      })
+      .then(function (data) {
+        var docs = data.documents || [];
+        return docs.map(function (d) {
+          return {
+            name: d.place_name || d.address_name || query,
+            address: d.road_address_name || d.address_name || '',
+            lat: parseFloat(d.y),
+            lng: parseFloat(d.x),
+            source: 'kakao'
+          };
+        });
+      })
+      .catch(function () {
+        return [];
+      });
+  },
+
+  _kakaoSearchResultsHtml: function (items) {
+    if (!items || !items.length) return '';
+    return items
       .map(function (d) {
-        var lat = parseFloat(d.y);
-        var lng = parseFloat(d.x);
-        if (isNaN(lat) || isNaN(lng)) return '';
-        var sub = d.road_address_name || d.address_name || '';
-        var label = d.place_name + (sub ? ' · ' + sub : '');
+        if (isNaN(d.lat) || isNaN(d.lng)) return '';
+        var label = d.name + (d.address ? ' · ' + d.address : '');
         var safeName = label.replace(/"/g, '&quot;');
         return (
           '<div class="region-item region-kakao" style="padding:8px 12px;font-size:13px;cursor:pointer;" data-lat="' +
-          lat +
+          d.lat +
           '" data-lng="' +
-          lng +
+          d.lng +
           '" data-name="' +
           safeName +
           '"><span style="color:#16a34a;font-size:11px;">📍</span> ' +
@@ -79,9 +100,7 @@ var Regions = {
     var input = document.createElement('input');
     input.type = 'text';
     input.id = 'region-input';
-    input.placeholder = CONFIG.KAKAO_REST_KEY
-      ? '지역 검색 (강남역, 판교…)'
-      : '지역 변경 (예: 인천, 김포)';
+    input.placeholder = '지역 검색 (강남역, 판교…)';
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('aria-label', '지역 검색');
     input.style.cssText = 'font-size:12px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;width:160px;';
@@ -119,12 +138,6 @@ var Regions = {
       }
 
       var localHtml = self._localItemsHtml(qRaw);
-      var key = typeof CONFIG !== 'undefined' && CONFIG.KAKAO_REST_KEY;
-
-      if (!key) {
-        applyDropdown(localHtml);
-        return;
-      }
 
       var pending =
         '<div class="region-kakao-pending" style="padding:6px 12px;font-size:11px;color:#888;border-top:1px solid #eee;">주소 검색 중…</div>';
@@ -132,18 +145,10 @@ var Regions = {
 
       self._kakaoTimer = setTimeout(function () {
         self._kakaoTimer = null;
-        fetch(
-          'https://dapi.kakao.com/v2/local/search/keyword.json?query=' +
-            encodeURIComponent(qRaw) +
-            '&size=12',
-          { headers: { Authorization: 'KakaoAK ' + key } }
-        )
-          .then(function (r) {
-            if (!r.ok) throw new Error(String(r.status));
-            return r.json();
-          })
-          .then(function (data) {
-            var kHtml = self._kakaoItemsHtml(data.documents || []);
+        self
+          ._kakaoSearch(qRaw)
+          .then(function (items) {
+            var kHtml = self._kakaoSearchResultsHtml(items);
             var section = '';
             if (kHtml) {
               section =
@@ -161,7 +166,7 @@ var Regions = {
           .catch(function () {
             applyDropdown(
               localHtml ||
-                '<div style="padding:8px 12px;font-size:12px;color:#c00;">장소 검색 실패 (키·도메인 허용 확인)</div>'
+                '<div style="padding:8px 12px;font-size:12px;color:#c00;">장소 검색 실패 (API 확인)</div>'
             );
           });
       }, 320);

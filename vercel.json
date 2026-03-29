@@ -7,7 +7,8 @@
     { "src": "api/oliveyoung/inventory.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
-    { "src": "api/favorites/sync.js", "use": "@vercel/node" }
+    { "src": "api/favorites/sync.js", "use": "@vercel/node" },
+    { "src": "api/kakao/geo.js", "use": "@vercel/node" }
   ],
   "routes": [
     {
@@ -19,6 +20,7 @@
       "dest": "/public/data/$1"
     },
     { "src": "/api/favorites/sync", "dest": "/api/favorites/sync.js" },
+    { "src": "/api/kakao/geo", "dest": "/api/kakao/geo.js" },
     { "src": "/api/oliveyoung/stock", "dest": "/api/oliveyoung/stock.js" },
     { "src": "/api/oliveyoung/search", "dest": "/api/oliveyoung/search.js" },
     { "src": "/api/oliveyoung/inventory", "dest": "/api/oliveyoung/inventory.js" },
