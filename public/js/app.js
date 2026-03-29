@@ -188,6 +188,11 @@ var App = {
   _enrichSearchResults: async function (products) {
     try {
       if (!CONFIG.REALTIME_API || !products || !products.length) return;
+      document.querySelectorAll('.badges').forEach(function (b) {
+        if (!b.innerHTML.trim()) {
+          b.innerHTML = '<span class="badge bg-gray">⏳ 재고 확인 중...</span>';
+        }
+      });
       var self = this;
       var batchSize = 6;
       for (var i = 0; i < products.length; i += batchSize) {
@@ -232,6 +237,11 @@ var App = {
   _enrichFavorites: async function (favorites) {
     try {
       if (!CONFIG.REALTIME_API || !favorites || !favorites.length) return;
+      document.querySelectorAll('.badges').forEach(function (b) {
+        if (!b.innerHTML.trim()) {
+          b.innerHTML = '<span class="badge bg-gray">⏳ 재고 확인 중...</span>';
+        }
+      });
       var self = this;
       var batchSize = 4;
       for (var i = 0; i < favorites.length; i += batchSize) {

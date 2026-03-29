@@ -128,6 +128,26 @@ async function oyPost(apiPath, body) {
   );
 }
 
+async function oyPostWithRetry(apiPath, body, retries = 1) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await oyPost(apiPath, body);
+
+    if (apiPath.includes('stock-stores')) {
+      const inner =
+        res.ok && res.data && res.data.status === 'SUCCESS' ? unwrapPayload(res.data) : {};
+      const stores = inner.storeList || [];
+
+      if (stores.length === 0 && attempt < retries) {
+        console.log('⚠️ stock-stores 빈 응답, 세션 리셋 시도...');
+        sessionReady = false;
+        await _createSession();
+        continue;
+      }
+    }
+    return res;
+  }
+}
+
 async function getStockDetail(goodsNo, lat, lng) {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
@@ -185,7 +205,7 @@ async function getStockDetail(goodsNo, lat, lng) {
     const baseUpload = optionUploadUrl || uploadUrl;
     const optImage = imgPath ? baseUpload + imgPath : uploadUrl + (gi.goodsThumbnailPath || '');
 
-    const stRes = await oyPost('/stock/stock-stores', {
+    const stRes = await oyPostWithRetry('/stock/stock-stores', {
       productId: String(pid),
       lat,
       lon: lng,
@@ -344,7 +364,7 @@ async function getStockAllRegions(goodsNo) {
 
   async function fetchStoresForRegions(pid, regions) {
     const promises = regions.map((region) =>
-      oyPost('/stock/stock-stores', {
+      oyPostWithRetry('/stock/stock-stores', {
         productId: String(pid),
         lat: region.lat,
         lon: region.lng,
