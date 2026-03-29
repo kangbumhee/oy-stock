@@ -198,6 +198,18 @@ async function getStockDetail(goodsNo, lat, lng) {
       rawAvailableItems = options.slice();
     }
   }
+  // option API가 ERROR/차단일 때 v3 goodsInfo.availableItems로 온라인 수량·오늘배송 복구
+  if (
+    Array.isArray(gi.availableItems) &&
+    gi.availableItems.length > 0 &&
+    rawAvailableItems.length === 0
+  ) {
+    rawAvailableItems = gi.availableItems.slice();
+    console.log('[옵션] v3 availableItems fallback (onlineMap), items:', rawAvailableItems.length);
+    if (options.length === 0 && Number(gi.itemCount) > 1) {
+      options = gi.availableItems.slice();
+    }
+  }
   if (options.length === 0) {
     options = [
       {
