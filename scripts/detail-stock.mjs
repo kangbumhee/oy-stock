@@ -271,16 +271,74 @@ async function main() {
           const statusLabel = totalInStock > 0 ? '✅ 재고있음' : '🔴 주변품절';
 
           const gName = gi.goodsName || fav.goodsName || '';
+
+          // ── 이벤트 기록 ──
+          const totalQty = optionResults.reduce((a, o) => a + o.totalQty, 0);
+          const prevTotalQty =
+            old && old.options ? old.options.reduce((a, o) => a + (o.totalQty || 0), 0) : 0;
+
           if (!old) {
-            events.push({ type: 'new', goodsNo: gn, goodsName: gName, date: now });
+            events.push({
+              type: 'new',
+              goodsNo: gn,
+              goodsName: gName,
+              stores: totalInStock,
+              qty: totalQty,
+              date: now
+            });
           } else if (old.status === 'discontinued') {
-            events.push({ type: 'restocked', goodsNo: gn, goodsName: gName, date: now });
+            events.push({
+              type: 'restocked',
+              goodsNo: gn,
+              goodsName: gName,
+              from: 0,
+              to: totalInStock,
+              fromQty: 0,
+              toQty: totalQty,
+              date: now
+            });
           }
           if (prevInStock > 0 && totalInStock === 0) {
-            events.push({ type: 'soldout', goodsNo: gn, goodsName: gName, date: now });
+            events.push({
+              type: 'soldout',
+              goodsNo: gn,
+              goodsName: gName,
+              from: prevInStock,
+              to: 0,
+              fromQty: prevTotalQty,
+              toQty: 0,
+              date: now
+            });
           }
-          if (prevInStock === 0 && totalInStock > 0) {
-            events.push({ type: 'back_in_stock', goodsNo: gn, goodsName: gName, date: now });
+          if (prevInStock === 0 && totalInStock > 0 && old && old.status !== 'discontinued') {
+            events.push({
+              type: 'back_in_stock',
+              goodsNo: gn,
+              goodsName: gName,
+              from: 0,
+              to: totalInStock,
+              fromQty: 0,
+              toQty: totalQty,
+              date: now
+            });
+          }
+          if (
+            old &&
+            old.status !== 'discontinued' &&
+            prevInStock > 0 &&
+            totalInStock > 0 &&
+            (prevInStock !== totalInStock || prevTotalQty !== totalQty)
+          ) {
+            events.push({
+              type: 'stock_changed',
+              goodsNo: gn,
+              goodsName: gName,
+              from: prevInStock,
+              to: totalInStock,
+              fromQty: prevTotalQty,
+              toQty: totalQty,
+              date: now
+            });
           }
           if (old && old.price != null && old.price !== gi.priceToPay) {
             events.push({
