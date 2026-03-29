@@ -1,447 +1,324 @@
-const App = {
+var App = {
   products: [],
   searchHistory: [],
-  lat: 37.6152,
-  lng: 126.7156,
-  regionName: '김포 사우',
-  gpsLat: null,
-  gpsLng: null,
+  lat: CONFIG.DEFAULT_LAT,
+  lng: CONFIG.DEFAULT_LNG,
+  locationName: CONFIG.DEFAULT_LOCATION,
+  detailData: null,
+  currentTab: 'search',
 
-  _cfg() {
-    return typeof Config !== 'undefined' ? Config : typeof CONFIG !== 'undefined' ? CONFIG : {};
-  },
+  init: function () {
+    var self = this;
+    var loc = Storage.getLocation();
+    if (loc) {
+      this.lat = loc.lat;
+      this.lng = loc.lng;
+      this.locationName = loc.name || '';
+    }
+    var locEl = document.getElementById('current-location');
+    if (locEl) locEl.textContent = '📍 ' + this.locationName;
 
-  _dataUrl(kind) {
-    const c = this._cfg();
-    if (kind === 'stock') return c.STOCK_JSON_URL || '/data/stock.json';
-    if (kind === 'detail') return c.DETAIL_JSON_URL || '/data/stock-detail.json';
-    return c.STOCK_JSON_URL || '/data/stock.json';
-  },
-
-  _liveSearchSize() {
-    const c = this._cfg();
-    return c.LIVE_SEARCH_SIZE != null ? c.LIVE_SEARCH_SIZE : 50;
-  },
-
-  regions: [
-    { n: '김포 사우', lat: 37.6152, lng: 126.7156, t: ['김포', '사우', 'gimpo'] },
-    { n: '김포 풍무', lat: 37.6053, lng: 126.7219, t: ['풍무'] },
-    { n: '김포 장기', lat: 37.6444, lng: 126.6677, t: ['장기'] },
-    { n: '김포 구래', lat: 37.6443, lng: 126.6268, t: ['구래'] },
-    { n: '김포 걸포', lat: 37.6325, lng: 126.7049, t: ['걸포', '걸포북변'] },
-    { n: '김포 고촌', lat: 37.6005, lng: 126.7713, t: ['고촌'] },
-    { n: '김포 운양', lat: 37.6543, lng: 126.6834, t: ['운양'] },
-    { n: '검단', lat: 37.5931, lng: 126.7127, t: ['검단', '인천검단'] },
-    { n: '검단신도시', lat: 37.5949, lng: 126.6725, t: ['검단신도시'] },
-    { n: '인천 부평', lat: 37.5075, lng: 126.7219, t: ['부평'] },
-    { n: '인천 계양', lat: 37.5382, lng: 126.7385, t: ['계양'] },
-    { n: '서울 강남', lat: 37.4979, lng: 127.0276, t: ['강남', '역삼'] },
-    { n: '서울 홍대', lat: 37.5563, lng: 126.9236, t: ['홍대', '마포'] },
-    { n: '서울 시청', lat: 37.5665, lng: 126.978, t: ['시청', '서울', '명동'] },
-    { n: '서울 잠실', lat: 37.5133, lng: 127.1001, t: ['잠실', '송파'] },
-    { n: '부산 서면', lat: 35.1577, lng: 129.0596, t: ['부산', '서면'] },
-    { n: '부산 해운대', lat: 35.1631, lng: 129.1638, t: ['해운대'] },
-    { n: '대구 동성로', lat: 35.869, lng: 128.5946, t: ['대구'] },
-    { n: '광주 충장로', lat: 35.1491, lng: 126.9171, t: ['광주'] },
-    { n: '대전 둔산', lat: 36.3544, lng: 127.3784, t: ['대전'] },
-    { n: '수원역', lat: 37.2658, lng: 127.0, t: ['수원'] },
-    { n: '성남 분당', lat: 37.3825, lng: 127.119, t: ['분당', '성남', '판교'] },
-    { n: '일산', lat: 37.6584, lng: 126.7717, t: ['일산', '고양'] },
-    { n: '천안', lat: 36.8151, lng: 127.1139, t: ['천안'] },
-    { n: '전주', lat: 35.8175, lng: 127.1087, t: ['전주'] },
-    { n: '제주', lat: 33.489, lng: 126.4983, t: ['제주'] }
-  ],
-
-  init() {
-    this._load();
-    this._bind();
+    this.searchHistory = Storage.getHistory();
     UI.renderHistory(this.searchHistory);
-    this._updateRegion();
-    const ri = document.getElementById('region-input');
-    if (ri && this.regionName && this.regionName.indexOf('현재위치') === -1) ri.value = this.regionName;
-    this._tryGPS();
-  },
 
-  _load() {
-    try {
-      const h = localStorage.getItem('oy_h') || localStorage.getItem('oy_hist');
-      if (h) this.searchHistory = JSON.parse(h);
-      const r = localStorage.getItem('oy_r') || localStorage.getItem('oy_region');
-      if (r) {
-        const d = JSON.parse(r);
-        this.lat = d.lat;
-        this.lng = d.lng;
-        this.regionName = d.n != null ? d.n : d.name != null ? d.name : this.regionName;
-      }
-    } catch (e) {}
-  },
-
-  _save() {
-    try {
-      localStorage.setItem('oy_h', JSON.stringify(this.searchHistory.slice(0, 20)));
-      localStorage.setItem('oy_r', JSON.stringify({ lat: this.lat, lng: this.lng, n: this.regionName }));
-    } catch (e) {}
-  },
-
-  _updateRegion() {
-    const el = document.getElementById('current-region');
-    if (el) el.textContent = '📍 ' + this.regionName;
-  },
-
-  _tryGPS() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.gpsLat = pos.coords.latitude;
-        this.gpsLng = pos.coords.longitude;
-        let best = null;
-        let bestD = Infinity;
-        this.regions.forEach((r) => {
-          const d = this._haversine(this.gpsLat, this.gpsLng, r.lat, r.lng);
-          if (d < bestD) {
-            bestD = d;
-            best = r;
-          }
+    API.loadDetailCache().then(function (d) {
+      self.detailData = d;
+      if (d && d.updatedAt) {
+        var t = new Date(d.updatedAt).toLocaleString('ko-KR', {
+          timeZone: 'Asia/Seoul',
+          hour: '2-digit',
+          minute: '2-digit'
         });
-        if (best && bestD < 15) {
-          this.lat = this.gpsLat;
-          this.lng = this.gpsLng;
-          this.regionName = '현재위치 (' + best.n + ' 근처)';
-          this._save();
-          this._updateRegion();
-          const ri = document.getElementById('region-input');
-          if (ri) ri.value = '';
-        }
-      },
-      () => {},
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
-    );
-  },
-
-  _haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  },
-
-  _bind() {
-    document.addEventListener('click', (e) => {
-      const a = e.target.closest('[data-action]');
-      if (!a) return;
-      const act = a.dataset.action;
-      if (act === 'search') {
-        this._setQ(a.dataset.keyword);
-        this.doSearch(a.dataset.keyword);
-      } else if (act === 'clearHistory') {
-        this.searchHistory = [];
-        this._save();
-        UI.renderHistory([]);
-      } else if (act === 'selectRegion') {
-        this._pickRegion(a);
-      } else if (act === 'showDetail') {
-        e.stopPropagation();
-        this._openDetail(+a.dataset.index);
-      } else if (act === 'closePopup') {
-        UI.closePopup();
-      } else if (act === 'toggleStores') {
-        UI.toggleStores(a);
-      } else if (act === 'selectOption') {
-        UI.selectOption(+a.dataset.optIdx);
-      } else if (act === 'showHistory') {
-        if (typeof Inventory !== 'undefined' && Inventory.showHistory) {
-          Inventory.showHistory();
-        }
+        var info = document.getElementById('cache-info');
+        if (info)
+          info.textContent =
+            '📦 ' +
+            t +
+            ' 수집 | ' +
+            (d.summary ? d.summary.total + '개 상품' : '');
       }
     });
 
-    const form = document.getElementById('search-form');
+    this._updateFavCount();
+
+    document.addEventListener('click', this._onClick.bind(this));
+
+    var form = document.getElementById('search-form');
     if (form) {
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', function (e) {
         e.preventDefault();
-        const inp = document.getElementById('search-input');
-        const v = inp && inp.value.trim();
-        if (v) this.doSearch(v);
+        var input = document.getElementById('search-input');
+        var kw = input && (input.value || '').trim();
+        if (kw) App.doSearch(kw);
       });
     }
 
-    const ri = document.getElementById('region-input');
-    if (ri) {
-      ri.addEventListener('input', () => this._regionAC(ri));
-      ri.addEventListener('focus', () => this._regionAC(ri));
-    }
-
-    document.addEventListener('click', (e) => {
-      const dd = document.getElementById('region-dropdown');
-      const ri2 = document.getElementById('region-input');
-      if (dd && ri2 && !ri2.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
-    });
-
-    const btnGps = document.getElementById('btn-gps');
-    if (btnGps) btnGps.addEventListener('click', () => this._gpsClick());
+    UI.setActiveTab('search');
   },
 
-  _setQ(v) {
-    const el = document.getElementById('search-input');
-    if (el) el.value = v;
+  _onClick: function (e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.dataset.action;
+
+    switch (action) {
+      case 'showDetail':
+        this._openDetail(parseInt(el.dataset.index, 10));
+        break;
+      case 'showFavDetail':
+        this._openFavDetail(el.dataset.goodsno);
+        break;
+      case 'toggleFav':
+        this._toggleFav(parseInt(el.dataset.index, 10));
+        break;
+      case 'removeFav':
+        this._removeFav(el.dataset.goodsno);
+        break;
+      case 'toggleFavPopup':
+        this._toggleFavFromPopup(el.dataset.goodsno, el);
+        break;
+      case 'closePopup':
+        UI.closePopup();
+        break;
+      case 'switchTab':
+        UI.switchTab(parseInt(el.dataset.idx, 10));
+        break;
+      case 'searchHistory': {
+        var kw = el.dataset.keyword;
+        var inp = document.getElementById('search-input');
+        if (inp) inp.value = kw || '';
+        if (kw) this.doSearch(kw);
+        break;
+      }
+      case 'tabSearch':
+        this.currentTab = 'search';
+        UI.setActiveTab('search');
+        break;
+      case 'tabFavorites':
+        this.currentTab = 'favorites';
+        UI.setActiveTab('favorites');
+        this._renderFavorites();
+        break;
+      case 'showHistory':
+        Inventory.showHistory();
+        break;
+      case 'syncFavorites':
+        this._syncFavorites();
+        break;
+      default:
+        break;
+    }
   },
 
-  _regionAC(input) {
-    const v = input.value.trim().toLowerCase();
-    const dd = document.getElementById('region-dropdown');
-    if (!dd) return;
-    if (v.length < 1) {
-      dd.style.display = 'none';
-      return;
-    }
-    const m = this.regions
-      .filter(
-        (r) => r.n.toLowerCase().includes(v) || r.t.some((t) => String(t).toLowerCase().includes(v))
-      )
-      .slice(0, 10);
-    if (!m.length) {
-      dd.style.display = 'none';
-      return;
-    }
-    dd.style.display = 'block';
-    dd.innerHTML = m
-      .map(
-        (r) =>
-          `<div class="dd-item" data-action="selectRegion" data-n="${UI.esc(r.n)}" data-lat="${r.lat}" data-lng="${r.lng}">📍 ${UI.esc(r.n)}</div>`
-      )
-      .join('');
+  _updateFavCount: function () {
+    var el = document.getElementById('fav-count');
+    var count = Storage.getFavorites().length;
+    if (el) el.textContent = count > 0 ? String(count) : '';
   },
 
-  _pickRegion(el) {
-    this.regionName = el.dataset.n;
-    this.lat = +el.dataset.lat;
-    this.lng = +el.dataset.lng;
+  _save: function () {
+    Storage.setHistory(this.searchHistory);
+  },
+
+  doSearch: function (keyword) {
+    var self = this;
+    this.searchHistory = [keyword].concat(
+      this.searchHistory.filter(function (h) {
+        return h !== keyword;
+      })
+    ).slice(0, 20);
     this._save();
-    this._updateRegion();
-    const ri = document.getElementById('region-input');
-    if (ri) ri.value = el.dataset.n;
-    const dd = document.getElementById('region-dropdown');
-    if (dd) dd.style.display = 'none';
-    const q = document.getElementById('search-input');
-    if (q && q.value.trim()) this.doSearch(q.value.trim());
+    UI.renderHistory(this.searchHistory);
+    UI.showLoading('"' + keyword + '" 검색 중...');
+
+    API.search(keyword, this.lat, this.lng, CONFIG.SEARCH_SIZE)
+      .then(function (d) {
+        if (d.success === false) throw new Error(d.message || d.error || '실패');
+        var inv = (d.data && d.data.inventory) || d.inventory || {};
+        self.products = inv.products || [];
+        return API.loadDetailCache();
+      })
+      .then(function (detail) {
+        self.detailData = detail || self.detailData;
+        UI.renderProducts(self.products, self.detailData);
+      })
+      .catch(function (err) {
+        UI.showError(err.message || '검색 실패');
+      });
   },
 
-  _gpsClick() {
-    const btn = document.getElementById('btn-gps');
-    if (!btn || !navigator.geolocation) {
-      alert('위치 사용 불가');
+  _renderFavorites: function () {
+    UI.renderFavorites(Storage.getFavorites(), this.detailData);
+  },
+
+  _toggleFav: function (idx) {
+    var p = this.products[idx];
+    if (!p) return;
+
+    var product = {
+      goodsNo: p.goodsNumber || p.goodsNo,
+      goodsName: p.goodsName,
+      imageUrl: p.imageUrl || '',
+      price: p.priceToPay || 0,
+      originalPrice: p.originalPrice || 0,
+      discountRate: p.discountRate || 0
+    };
+
+    var result = Storage.toggleFavorite(product);
+    this._updateFavCount();
+
+    var btn = document.querySelector('[data-action="toggleFav"][data-index="' + idx + '"]');
+    if (btn) {
+      btn.textContent = result.added ? '★' : '☆';
+      btn.classList.toggle('active', result.added);
+    }
+
+    UI.showSyncStatus(result.added ? '⭐ 즐겨찾기 추가' : '즐겨찾기 해제', false);
+  },
+
+  _removeFav: function (goodsNo) {
+    Storage.removeFavorite(goodsNo);
+    this._updateFavCount();
+    this._renderFavorites();
+    UI.showSyncStatus('즐겨찾기 해제', false);
+  },
+
+  _toggleFavFromPopup: function (goodsNo, btnEl) {
+    var detail =
+      this.detailData && this.detailData.products ? this.detailData.products[goodsNo] : null;
+    var product = {
+      goodsNo: goodsNo,
+      goodsName: detail ? detail.goodsName : '',
+      imageUrl: detail ? detail.thumbnail : '',
+      price: detail ? detail.price : 0,
+      originalPrice: detail ? detail.originalPrice : 0,
+      discountRate: detail ? detail.discountRate : 0
+    };
+
+    var searchP = this.products.find(function (p) {
+      return String(p.goodsNumber || p.goodsNo) === String(goodsNo);
+    });
+    if (searchP) {
+      product.goodsName = product.goodsName || searchP.goodsName;
+      product.imageUrl = product.imageUrl || searchP.imageUrl;
+      product.price = product.price || searchP.priceToPay;
+    }
+
+    var result = Storage.toggleFavorite(product);
+    this._updateFavCount();
+
+    if (btnEl) {
+      btnEl.textContent = result.added ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가';
+      btnEl.classList.toggle('active', result.added);
+    }
+  },
+
+  _syncFavorites: function () {
+    UI.showSyncStatus('동기화 중...', false);
+    var favs = Storage.getFavorites();
+    API.syncFavorites(favs, {
+      lat: this.lat,
+      lng: this.lng,
+      name: this.locationName
+    }).then(function (res) {
+      if (res.success) {
+        UI.showSyncStatus('✅ 동기화 완료! 다음 1시간 내 재고 수집됩니다.', false, 5000);
+      } else {
+        UI.showSyncStatus('⚠️ 동기화 실패: ' + (res.error || JSON.stringify(res)), true);
+      }
+    });
+  },
+
+  _openDetail: async function (idx) {
+    var p = this.products[idx];
+    if (!p) return;
+    var gn = String(p.goodsNumber || p.goodsNo);
+
+    var detail =
+      this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
+
+    if (detail && detail.options && detail.options.length > 0) {
+      UI.showDetailPopup(detail, gn);
       return;
     }
-    btn.textContent = '⏳';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.lat = pos.coords.latitude;
-        this.lng = pos.coords.longitude;
-        let best = null;
-        let bestD = Infinity;
-        this.regions.forEach((r) => {
-          const d = this._haversine(this.lat, this.lng, r.lat, r.lng);
-          if (d < bestD) {
-            bestD = d;
-            best = r;
-          }
-        });
-        this.regionName = '현재위치' + (best ? ' (' + best.n + ' 근처)' : '');
-        this._save();
-        this._updateRegion();
-        btn.textContent = '📍';
-        const ri = document.getElementById('region-input');
-        if (ri) ri.value = '';
-        const q = document.getElementById('search-input');
-        if (q && q.value.trim()) this.doSearch(q.value.trim());
-      },
-      () => {
-        btn.textContent = '📍';
-        alert('위치 권한을 허용해주세요');
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
+
+    if (CONFIG.REALTIME_API) {
+      UI.showPopupLoading(p.goodsName, '실시간 매장 재고 조회 중…');
+      try {
+        var url =
+          CONFIG.REALTIME_API +
+          (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+          'goodsNo=' +
+          encodeURIComponent(gn) +
+          '&lat=' +
+          encodeURIComponent(String(this.lat)) +
+          '&lng=' +
+          encodeURIComponent(String(this.lng));
+
+        var r = await fetch(url);
+        var d = await r.json();
+
+        if (d.success && d.options && d.options.length > 0) {
+          UI.showDetailPopup(d, gn);
+          return;
+        }
+        UI.showPopupError(p.goodsName, d.error || '조회 실패', gn);
+        return;
+      } catch (e) {
+        UI.showPopupError(p.goodsName, '서버 연결 실패: ' + (e.message || String(e)), gn);
+        return;
+      }
+    }
+
+    UI.showPopupError(
+      p.goodsName,
+      '아직 수집되지 않은 상품입니다. 즐겨찾기에 추가하면 다음 수집 시 자동 반영됩니다.',
+      gn
     );
   },
 
-  async doSearch(keyword) {
-    this.searchHistory = [keyword, ...this.searchHistory.filter((h) => h !== keyword)].slice(0, 20);
-    this._save();
-    UI.renderHistory(this.searchHistory);
-    UI.showLoading(keyword);
-    try {
-      let stockData = null;
-      let detailData = null;
-      if (typeof API !== 'undefined' && API.loadStockCache && API.loadDetailCache) {
-        try {
-          [stockData, detailData] = await Promise.all([API.loadStockCache(), API.loadDetailCache()]);
-        } catch (e) {}
-      } else {
-        try {
-          const sr = await fetch(this._dataUrl('stock'));
-          if (sr.ok) stockData = await sr.json();
-        } catch (e) {}
-        try {
-          const dr = await fetch(this._dataUrl('detail'));
-          if (dr.ok) detailData = await dr.json();
-        } catch (e) {}
-      }
+  _openFavDetail: async function (goodsNo) {
+    var gn = String(goodsNo);
+    var fav = Storage.getFavorites().find(function (f) {
+      return String(f.goodsNo) === gn;
+    });
+    var name = fav ? fav.goodsName : gn;
 
-      const sz = this._liveSearchSize();
-      const r = await fetch(
-        `/api/oliveyoung/search?keyword=${encodeURIComponent(keyword)}&lat=${this.lat}&lng=${this.lng}&size=${sz}`
-      );
-      if (!r.ok) throw new Error('서버오류 ' + r.status);
-      const d = await r.json();
-      if (d.success === false) throw new Error(d.message || d.error || '실패');
-      const inv = d.data?.inventory || d.inventory || {};
-      this.products = inv.products || [];
-      UI.renderProducts(this.products, stockData, detailData);
-    } catch (err) {
-      UI.showError(err.message || '검색 실패');
+    var detail =
+      this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
+
+    if (detail && detail.options && detail.options.length > 0) {
+      UI.showDetailPopup(detail, gn);
+      return;
     }
-  },
 
-  async _openDetail(idx) {
-    const p = this.products[idx];
-    if (!p) return;
-    UI.showPopupLoading(p);
-    try {
-      const gk = String(p.goodsNumber);
-
-      let detail = null;
+    if (CONFIG.REALTIME_API) {
+      UI.showPopupLoading(name, '실시간 매장 재고 조회 중…');
       try {
-        let dd = null;
-        if (typeof API !== 'undefined' && API.loadDetailCache) {
-          dd = await API.loadDetailCache();
-        } else {
-          const dr = await fetch(this._dataUrl('detail'));
-          if (dr.ok) dd = await dr.json();
-        }
-        if (dd) detail = dd.products && dd.products[gk];
-      } catch (e) {}
+        var url =
+          CONFIG.REALTIME_API +
+          (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
+          'goodsNo=' +
+          encodeURIComponent(gn) +
+          '&lat=' +
+          encodeURIComponent(String(this.lat)) +
+          '&lng=' +
+          encodeURIComponent(String(this.lng));
 
-      if (detail && detail.options && detail.options.length > 0) {
-        let stockData = null;
-        try {
-          if (typeof API !== 'undefined' && API.loadStockCache) {
-            stockData = await API.loadStockCache();
-          } else {
-            const sr = await fetch(this._dataUrl('stock'));
-            if (sr.ok) stockData = await sr.json();
-          }
-        } catch (e) {}
+        var r = await fetch(url);
+        var d = await r.json();
 
-        const scanProduct =
-          stockData && stockData.products
-            ? stockData.products.find(function (x) {
-                return String(x.goodsNo) === gk;
-              })
-            : null;
-
-        UI.showPopup(p, {
-          success: true,
-          _cached: true,
-          _updatedAt: detail.updatedAt,
-          _status: scanProduct ? scanProduct.status : 'active',
-          _statusLabel: scanProduct ? scanProduct.statusLabel : '',
-          goodsInfo: {
-            goodsNumber: p.goodsNumber,
-            goodsName: detail.goodsName || p.goodsName,
-            priceToPay: scanProduct
-              ? scanProduct.price
-              : detail.price != null
-                ? detail.price
-                : p.priceToPay,
-            originalPrice: scanProduct
-              ? scanProduct.originalPrice
-              : detail.originalPrice != null
-                ? detail.originalPrice
-                : p.originalPrice,
-            discountRate: scanProduct
-              ? scanProduct.discountRate
-              : detail.discountRate != null
-                ? detail.discountRate
-                : p.discountRate,
-            thumbnailUrl: detail.thumbnail || p.imageUrl,
-            itemCount: detail.options.length
-          },
-          options: detail.options.map(function (o) {
-            var basePrice = scanProduct
-              ? scanProduct.price
-              : detail.price != null
-                ? detail.price
-                : p.priceToPay;
-            return {
-              itemName: o.name,
-              legacyItemNumber: o.productId,
-              quantity: o.totalQty || 0,
-              priceToPay: basePrice,
-              o2oRemainQuantity: 0,
-              deliveredToday: false,
-              imageUrl: detail.thumbnail || p.imageUrl
-            };
-          }),
-          storesByOption: detail.options.map(function (o) {
-            return {
-              itemName: o.name,
-              productId: o.productId,
-              totalCount: o.totalStores || 0,
-              stores: (o.stores || []).map(function (s) {
-                return {
-                  storeName: s.name,
-                  storeCode: s.code || '',
-                  distance: s.dist,
-                  remainQuantity: s.qty,
-                  o2oRemainQuantity: s.o2o,
-                  pickupYn: s.pickup,
-                  openYn: s.open,
-                  address: '',
-                  startTime: '',
-                  endTime: ''
-                };
-              })
-            };
-          })
-        });
-        return;
-      }
-
-      try {
-        let sd2 = null;
-        if (typeof API !== 'undefined' && API.loadStockCache) {
-          sd2 = await API.loadStockCache();
-        } else {
-          const sr2 = await fetch(this._dataUrl('stock'));
-          if (sr2.ok) sd2 = await sr2.json();
-        }
-        if (sd2) {
-          const found = (sd2.products || []).find(function (x) {
-            return String(x.goodsNo) === gk;
-          });
-          if (found) {
-            UI.showPopupBasic(p, found, sd2.updatedAt);
-            return;
-          }
+        if (d.success && d.options && d.options.length > 0) {
+          UI.showDetailPopup(d, gn);
+          return;
         }
       } catch (e) {}
-
-      const gn = encodeURIComponent(p.goodsNumber);
-      const fb = this._cfg().FALLBACK_API || '/api/oliveyoung/stock';
-      const r = await fetch(`${fb}?goodsNo=${gn}&lat=${this.lat}&lng=${this.lng}`);
-      const d = await r.json();
-      if (d._serverFallbackGuide && d.consoleScript) {
-        UI.showStockGuidePopup(p, d);
-        return;
-      }
-      if (!d.success) throw new Error(d.message || '조회 실패');
-      UI.showPopup(p, d);
-    } catch (e) {
-      UI.showPopupError(p, e.message || '오류');
     }
+
+    UI.showPopupError(name, '다음 수집 시 재고가 업데이트됩니다.', gn);
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', function () {
+  App.init();
+});

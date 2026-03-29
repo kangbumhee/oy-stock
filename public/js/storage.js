@@ -1,86 +1,74 @@
 var Storage = {
-  KEY_SEARCH: 'oy_search_history',
-  KEY_REGION: 'oy_region_history',
-  KEY_FAVORITES: 'oy_favorites',
+  _key: function (k) {
+    return 'oy_' + k;
+  },
 
-  getSearchHistory: function () {
+  getHistory: function () {
     try {
-      return JSON.parse(localStorage.getItem(this.KEY_SEARCH)) || [];
+      return JSON.parse(localStorage.getItem(this._key('history'))) || [];
     } catch (e) {
       return [];
     }
   },
-  addSearch: function (keyword) {
-    if (!keyword || !keyword.trim()) return;
-    keyword = keyword.trim();
-    var list = this.getSearchHistory().filter(function (k) {
-      return k !== keyword;
-    });
-    list.unshift(keyword);
-    var maxH = typeof CONFIG !== 'undefined' && CONFIG.MAX_HISTORY ? CONFIG.MAX_HISTORY : 20;
-    if (list.length > maxH) list.length = maxH;
-    localStorage.setItem(this.KEY_SEARCH, JSON.stringify(list));
-  },
-  removeSearch: function (keyword) {
-    var list = this.getSearchHistory().filter(function (k) {
-      return k !== keyword;
-    });
-    localStorage.setItem(this.KEY_SEARCH, JSON.stringify(list));
-  },
-  clearSearch: function () {
-    localStorage.removeItem(this.KEY_SEARCH);
+  setHistory: function (arr) {
+    localStorage.setItem(this._key('history'), JSON.stringify((arr || []).slice(0, 20)));
   },
 
-  getRegionHistory: function () {
+  getLocation: function () {
     try {
-      return JSON.parse(localStorage.getItem(this.KEY_REGION)) || [];
+      return JSON.parse(localStorage.getItem(this._key('location')));
     } catch (e) {
-      return [];
+      return null;
     }
   },
-  addRegion: function (name) {
-    if (!name) return;
-    var list = this.getRegionHistory().filter(function (r) {
-      return r !== name;
-    });
-    list.unshift(name);
-    if (list.length > 10) list.length = 10;
-    localStorage.setItem(this.KEY_REGION, JSON.stringify(list));
+  setLocation: function (lat, lng, name) {
+    localStorage.setItem(this._key('location'), JSON.stringify({ lat: lat, lng: lng, name: name }));
   },
 
   getFavorites: function () {
     try {
-      return JSON.parse(localStorage.getItem(this.KEY_FAVORITES)) || [];
+      return JSON.parse(localStorage.getItem(this._key('favorites'))) || [];
     } catch (e) {
       return [];
     }
   },
-  addFavorite: function (product) {
-    var list = this.getFavorites().filter(function (f) {
-      return f.goodsNumber !== product.goodsNumber;
-    });
-    list.unshift({
-      goodsNumber: product.goodsNumber,
-      goodsName: product.goodsName,
-      imageUrl: product.imageUrl,
-      priceToPay: product.priceToPay,
-      originalPrice: product.originalPrice,
-      discountRate: product.discountRate,
-      addedAt: Date.now()
-    });
-    var maxF = typeof CONFIG !== 'undefined' && CONFIG.MAX_FAVORITES ? CONFIG.MAX_FAVORITES : 50;
-    if (list.length > maxF) list.length = maxF;
-    localStorage.setItem(this.KEY_FAVORITES, JSON.stringify(list));
+  setFavorites: function (arr) {
+    localStorage.setItem(this._key('favorites'), JSON.stringify(arr || []));
   },
-  removeFavorite: function (goodsNumber) {
-    var list = this.getFavorites().filter(function (f) {
-      return f.goodsNumber !== goodsNumber;
-    });
-    localStorage.setItem(this.KEY_FAVORITES, JSON.stringify(list));
-  },
-  isFavorite: function (goodsNumber) {
+  isFavorite: function (goodsNo) {
     return this.getFavorites().some(function (f) {
-      return f.goodsNumber === goodsNumber;
+      return String(f.goodsNo) === String(goodsNo);
     });
+  },
+  addFavorite: function (product) {
+    var favs = this.getFavorites();
+    var gn = String(product.goodsNo || product.goodsNumber);
+    if (favs.some(function (f) { return String(f.goodsNo) === gn; })) return favs;
+    favs.unshift({
+      goodsNo: gn,
+      goodsName: product.goodsName,
+      imageUrl: product.imageUrl || product.thumbnail || '',
+      price: product.price || product.priceToPay || 0,
+      originalPrice: product.originalPrice || 0,
+      discountRate: product.discountRate || 0,
+      addedAt: new Date().toISOString()
+    });
+    this.setFavorites(favs);
+    return favs;
+  },
+  removeFavorite: function (goodsNo) {
+    var gn = String(goodsNo);
+    var favs = this.getFavorites().filter(function (f) {
+      return String(f.goodsNo) !== gn;
+    });
+    this.setFavorites(favs);
+    return favs;
+  },
+  toggleFavorite: function (product) {
+    var gn = String(product.goodsNo || product.goodsNumber);
+    if (this.isFavorite(gn)) {
+      return { favs: this.removeFavorite(gn), added: false };
+    }
+    return { favs: this.addFavorite(Object.assign({}, product, { goodsNo: gn })), added: true };
   }
 };

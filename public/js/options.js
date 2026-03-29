@@ -4,7 +4,6 @@ var Options = {
     var match = name.match(/\(([^)]+)\)$/);
     return { label: match ? match[1] : name, detail: name };
   },
-
   stockLabel: function (qty) {
     if (qty <= 0) return { text: '품절', cls: 'stock-out' };
     if (qty <= 3) return { text: '품절임박 (' + qty + ')', cls: 'stock-low' };

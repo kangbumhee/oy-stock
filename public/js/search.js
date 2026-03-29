@@ -11,14 +11,13 @@ var Search = {
     '세럼',
     '아이크림'
   ],
-
   renderPopularKeywords: function () {
     var c = document.getElementById('popular-keywords');
     if (!c || typeof UI === 'undefined') return;
     c.innerHTML = this.popularKeywords
       .map(function (kw) {
         return (
-          '<button type="button" class="keyword-tag" data-action="search" data-keyword="' +
+          '<button type="button" class="keyword-tag" data-action="searchHistory" data-keyword="' +
           UI.esc(kw) +
           '">' +
           UI.esc(kw) +
