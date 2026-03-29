@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-29T05:41:14.393Z",
+  "updatedAt": "2026-03-29T06:56:27.309Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,7 +12,28 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [],
+  "recentEvents": [
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 78,
+      "to": 78,
+      "fromQty": 409,
+      "toQty": 407,
+      "date": "2026-03-29T06:56:27.309Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 48,
+      "to": 48,
+      "fromQty": 164,
+      "toQty": 163,
+      "date": "2026-03-29T06:56:27.309Z"
+    }
+  ],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -31,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 164,
+          "totalQty": 163,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -131,7 +152,7 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -340,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T05:41:14.393Z"
+      "updatedAt": "2026-03-29T06:56:27.309Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -359,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 43,
-          "totalQty": 281,
+          "totalQty": 280,
           "onlineQty": 417,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -449,8 +470,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -673,8 +694,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
           "inStock": 25,
-          "totalQty": 61,
-          "onlineQty": 322,
+          "totalQty": 60,
+          "onlineQty": 313,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1296,7 +1317,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-29T05:41:14.393Z"
+      "updatedAt": "2026-03-29T06:56:27.309Z"
     }
   }
 }
