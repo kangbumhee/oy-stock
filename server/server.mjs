@@ -6,6 +6,17 @@ const OY = 'https://www.oliveyoung.co.kr';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+let busy = false;
+async function withLock(fn) {
+  while (busy) await sleep(200);
+  busy = true;
+  try {
+    return await fn();
+  } finally {
+    busy = false;
+  }
+}
+
 let browser = null;
 let page = null;
 let sessionReady = false;
@@ -173,6 +184,7 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
 }
 
 async function getStockDetail(goodsNo, lat, lng) {
+  return withLock(async () => {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return { success: false, error: '상품 조회 실패 (단종 가능성)' };
@@ -190,17 +202,14 @@ async function getStockDetail(goodsNo, lat, lng) {
   let options = [];
   let rawAvailableItems = [];
   if (true) {
-    let optPage = null;
     try {
-      const context = page.context();
-      optPage = await context.newPage();
-      await optPage.goto(
+      await page.goto(
         OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
         { waitUntil: 'domcontentloaded', timeout: 15000 }
       );
       await sleep(2000);
 
-      const optJson = await optPage.evaluate(async (gn) => {
+      const optJson = await page.evaluate(async (gn) => {
         const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
           method: 'POST',
           credentials: 'include',
@@ -224,16 +233,14 @@ async function getStockDetail(goodsNo, lat, lng) {
         optionUploadUrl = optInner.optionUploadUrl || '';
         options = optInner.goodsInfo?.availableItems || [];
         rawAvailableItems = options.slice();
-        console.log('[옵션] context.newPage 성공, items:', rawAvailableItems.length);
+        console.log('[옵션] page 성공, items:', rawAvailableItems.length);
       }
+
+      await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+      await sleep(500);
     } catch (e) {
-      console.log('[옵션] context.newPage 실패:', e.message);
-    } finally {
-      if (optPage) {
-        try {
-          await optPage.close();
-        } catch {}
-      }
+      console.log('[옵션] page 실패:', e.message);
+      await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
     }
   }
   // option API가 ERROR/차단일 때 v3 goodsInfo.availableItems로 온라인 수량·오늘배송 복구
@@ -405,6 +412,7 @@ async function getStockDetail(goodsNo, lat, lng) {
     options: optionResults,
     updatedAt: new Date().toISOString()
   };
+  });
 }
 
 const REGIONS = [
