@@ -11,7 +11,11 @@ const ONLINE_CACHE_TTL = 10 * 60 * 1000;
 
 let busy = false;
 async function withLock(fn) {
-  while (busy) await sleep(200);
+  const start = Date.now();
+  while (busy) {
+    if (Date.now() - start > 10000) return null;
+    await sleep(200);
+  }
   busy = true;
   try {
     return await fn();
@@ -187,7 +191,6 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
 }
 
 async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
-  return withLock(async () => {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return { success: false, error: '상품 조회 실패 (단종 가능성)' };
@@ -204,7 +207,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
 
   let options = [];
   let rawAvailableItems = [];
-  if (true) {
+  if (withOnline) {
     const cached = onlineCache.get(goodsNo);
     if (cached && Date.now() - cached.ts < ONLINE_CACHE_TTL) {
       optionUploadUrl = cached.optionUploadUrl || '';
@@ -212,50 +215,68 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
       options = cached.data.slice();
       console.log('[옵션] 캐시 사용, items:', rawAvailableItems.length);
     } else {
-      try {
-        await page.goto(
-          OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
-          { waitUntil: 'domcontentloaded', timeout: 15000 }
-        );
-        await sleep(2000);
+      const optResult = await withLock(async () => {
+        try {
+          await page.goto(
+            OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
+            { waitUntil: 'domcontentloaded', timeout: 10000 }
+          );
+          await sleep(1000);
 
-        const optJson = await page.evaluate(async (gn) => {
-          const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ goodsNo: gn })
-          });
-          const t = await res.text();
-          try {
-            return JSON.parse(t);
-          } catch {
-            return null;
+          const optJson = await page.evaluate(async (gn) => {
+            const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: JSON.stringify({ goodsNo: gn })
+            });
+            const t = await res.text();
+            try {
+              return JSON.parse(t);
+            } catch {
+              return null;
+            }
+          }, goodsNo);
+
+          if (optJson && optJson.status === 'SUCCESS') {
+            const optInner = unwrapPayload(optJson);
+            const ou = optInner.optionUploadUrl || '';
+            const opts = optInner.goodsInfo?.availableItems || [];
+            const raw = opts.slice();
+            await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+            await sleep(500);
+            return { data: raw, optionUploadUrl: ou };
           }
-        }, goodsNo);
 
-        if (optJson && optJson.status === 'SUCCESS') {
-          const optInner = unwrapPayload(optJson);
-          optionUploadUrl = optInner.optionUploadUrl || '';
-          options = optInner.goodsInfo?.availableItems || [];
-          rawAvailableItems = options.slice();
-          onlineCache.set(goodsNo, {
-            data: rawAvailableItems.slice(),
-            optionUploadUrl,
-            ts: Date.now()
-          });
-          console.log('[옵션] page 성공 + 캐시 저장, items:', rawAvailableItems.length);
+          await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+          await sleep(500);
+          return null;
+        } catch (e) {
+          console.log('[옵션] page 실패:', e.message);
+          await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+          return null;
         }
+      });
 
-        await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
-        await sleep(500);
-      } catch (e) {
-        console.log('[옵션] page 실패:', e.message);
-        await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+      if (optResult) {
+        optionUploadUrl = optResult.optionUploadUrl || '';
+        rawAvailableItems = optResult.data.slice();
+        options = optResult.data.slice();
+        onlineCache.set(goodsNo, {
+          data: rawAvailableItems.slice(),
+          optionUploadUrl,
+          ts: Date.now()
+        });
+        console.log('[옵션] page 성공 + 캐시 저장, items:', rawAvailableItems.length);
+      } else {
+        console.log(
+          '[옵션] 스킵 (락 대기 초과 또는 조회 실패) → 매장 재고만 진행, goodsNo:',
+          goodsNo
+        );
       }
     }
   }
@@ -428,7 +449,6 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
     options: optionResults,
     updatedAt: new Date().toISOString()
   };
-  });
 }
 
 const REGIONS = [
