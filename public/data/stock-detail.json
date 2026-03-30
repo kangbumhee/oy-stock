@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-30T04:41:22.242Z",
+  "updatedAt": "2026-03-30T06:27:12.903Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,19 +17,19 @@
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2373,
-      "to": 670,
-      "date": "2026-03-30T04:41:22.242Z"
+      "from": 670,
+      "to": 673,
+      "date": "2026-03-30T06:27:12.903Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 47,
+      "from": 46,
       "to": 46,
-      "fromQty": 158,
-      "toQty": 155,
-      "date": "2026-03-30T04:41:22.242Z"
+      "fromQty": 155,
+      "toQty": 154,
+      "date": "2026-03-30T06:27:12.903Z"
     }
   ],
   "products": {
@@ -50,7 +50,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 46,
-          "totalQty": 155,
+          "totalQty": 154,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -81,7 +81,7 @@
               "code": "D300",
               "dist": 1.4,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
@@ -91,7 +91,7 @@
               "code": "D573",
               "dist": 1.57,
               "qty": 4,
-              "o2o": 0,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -260,8 +260,8 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
@@ -359,7 +359,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-30T04:41:22.242Z"
+      "updatedAt": "2026-03-30T06:27:12.903Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -379,7 +379,7 @@
           "totalStores": 50,
           "inStock": 45,
           "totalQty": 285,
-          "onlineQty": 381,
+          "onlineQty": 383,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -389,7 +389,7 @@
               "code": "DB6E",
               "dist": 0.36,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
@@ -419,7 +419,7 @@
               "code": "D573",
               "dist": 1.57,
               "qty": 3,
-              "o2o": 1,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -693,7 +693,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 59,
-          "onlineQty": 289,
+          "onlineQty": 290,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1315,7 +1315,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-03-30T04:41:22.242Z"
+      "updatedAt": "2026-03-30T06:27:12.903Z"
     }
   }
 }
