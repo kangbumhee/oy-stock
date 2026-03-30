@@ -207,6 +207,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
 
   let options = [];
   let rawAvailableItems = [];
+  // 온라인 option·캐시 경로는 요청과 무관하게 항상 시도 (if(true) 유지, withOnline으로 바꾸지 말 것)
   if (true) {
     const cached = onlineCache.get(goodsNo);
     if (cached && Date.now() - cached.ts < ONLINE_CACHE_TTL) {
