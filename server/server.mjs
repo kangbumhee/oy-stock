@@ -207,7 +207,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
 
   let options = [];
   let rawAvailableItems = [];
-  if (withOnline) {
+  if (true) {
     const cached = onlineCache.get(goodsNo);
     if (cached && Date.now() - cached.ts < ONLINE_CACHE_TTL) {
       optionUploadUrl = cached.optionUploadUrl || '';
