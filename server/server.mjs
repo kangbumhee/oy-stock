@@ -6,6 +6,9 @@ const OY = 'https://www.oliveyoung.co.kr';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const onlineCache = new Map();
+const ONLINE_CACHE_TTL = 10 * 60 * 1000;
+
 let busy = false;
 async function withLock(fn) {
   while (busy) await sleep(200);
@@ -201,46 +204,59 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
 
   let options = [];
   let rawAvailableItems = [];
-  if (true) {
-    try {
-      await page.goto(
-        OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
-        { waitUntil: 'domcontentloaded', timeout: 15000 }
-      );
-      await sleep(2000);
+  if (withOnline) {
+    const cached = onlineCache.get(goodsNo);
+    if (cached && Date.now() - cached.ts < ONLINE_CACHE_TTL) {
+      optionUploadUrl = cached.optionUploadUrl || '';
+      rawAvailableItems = cached.data.slice();
+      options = cached.data.slice();
+      console.log('[옵션] 캐시 사용, items:', rawAvailableItems.length);
+    } else {
+      try {
+        await page.goto(
+          OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
+          { waitUntil: 'domcontentloaded', timeout: 15000 }
+        );
+        await sleep(2000);
 
-      const optJson = await page.evaluate(async (gn) => {
-        const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify({ goodsNo: gn })
-        });
-        const t = await res.text();
-        try {
-          return JSON.parse(t);
-        } catch {
-          return null;
+        const optJson = await page.evaluate(async (gn) => {
+          const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ goodsNo: gn })
+          });
+          const t = await res.text();
+          try {
+            return JSON.parse(t);
+          } catch {
+            return null;
+          }
+        }, goodsNo);
+
+        if (optJson && optJson.status === 'SUCCESS') {
+          const optInner = unwrapPayload(optJson);
+          optionUploadUrl = optInner.optionUploadUrl || '';
+          options = optInner.goodsInfo?.availableItems || [];
+          rawAvailableItems = options.slice();
+          onlineCache.set(goodsNo, {
+            data: rawAvailableItems.slice(),
+            optionUploadUrl,
+            ts: Date.now()
+          });
+          console.log('[옵션] page 성공 + 캐시 저장, items:', rawAvailableItems.length);
         }
-      }, goodsNo);
 
-      if (optJson && optJson.status === 'SUCCESS') {
-        const optInner = unwrapPayload(optJson);
-        optionUploadUrl = optInner.optionUploadUrl || '';
-        options = optInner.goodsInfo?.availableItems || [];
-        rawAvailableItems = options.slice();
-        console.log('[옵션] page 성공, items:', rawAvailableItems.length);
+        await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+        await sleep(500);
+      } catch (e) {
+        console.log('[옵션] page 실패:', e.message);
+        await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
       }
-
-      await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
-      await sleep(500);
-    } catch (e) {
-      console.log('[옵션] page 실패:', e.message);
-      await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
     }
   }
   // option API가 ERROR/차단일 때 v3 goodsInfo.availableItems로 온라인 수량·오늘배송 복구
