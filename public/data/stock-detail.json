@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-01T04:44:56.800Z",
+  "updatedAt": "2026-04-01T06:24:20.379Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,27 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 80,
       "to": 80,
-      "fromQty": 397,
-      "toQty": 396,
-      "date": "2026-04-01T04:44:56.800Z"
+      "fromQty": 396,
+      "toQty": 393,
+      "date": "2026-04-01T06:24:20.379Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 1830,
-      "to": 507,
-      "date": "2026-04-01T04:44:56.800Z"
+      "from": 507,
+      "to": 496,
+      "date": "2026-04-01T06:24:20.379Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 46,
+      "to": 46,
+      "fromQty": 170,
+      "toQty": 169,
+      "date": "2026-04-01T06:24:20.379Z"
     }
   ],
   "products": {
@@ -50,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 46,
-          "totalQty": 170,
+          "totalQty": 169,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -91,7 +101,7 @@
               "code": "D573",
               "dist": 1.57,
               "qty": 7,
-              "o2o": 3,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -131,7 +141,7 @@
               "code": "D402",
               "dist": 4.81,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 검단로 480"
@@ -140,7 +150,7 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -359,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-01T04:44:56.800Z"
+      "updatedAt": "2026-04-01T06:24:20.379Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -378,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782288ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 271,
-          "onlineQty": 253,
+          "totalQty": 269,
+          "onlineQty": 245,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -469,7 +479,7 @@
               "code": "D511",
               "dist": 4.94,
               "qty": 4,
-              "o2o": 1,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -558,8 +568,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -693,7 +703,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 59,
-          "onlineQty": 254,
+          "onlineQty": 251,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1006,7 +1016,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/8/1583288890856331356.PNG",
           "totalStores": 50,
           "inStock": 10,
-          "totalQty": 66,
+          "totalQty": 65,
           "onlineQty": 0,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -1106,8 +1116,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 10,
-              "o2o": 8,
+              "qty": 9,
+              "o2o": 7,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -1315,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-01T04:44:56.800Z"
+      "updatedAt": "2026-04-01T06:24:20.379Z"
     }
   }
 }
