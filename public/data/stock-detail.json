@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-03T01:47:01.828Z",
+  "updatedAt": "2026-04-03T04:25:37.033Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,29 +17,29 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 79,
+      "from": 80,
       "to": 80,
-      "fromQty": 398,
-      "toQty": 401,
-      "date": "2026-04-03T01:47:01.828Z"
+      "fromQty": 401,
+      "toQty": 400,
+      "date": "2026-04-03T04:25:37.033Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 3093,
-      "to": 3164,
-      "date": "2026-04-03T01:47:01.828Z"
+      "from": 3164,
+      "to": 3163,
+      "date": "2026-04-03T04:25:37.033Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 47,
+      "from": 49,
       "to": 49,
-      "fromQty": 159,
-      "toQty": 169,
-      "date": "2026-04-03T01:47:01.828Z"
+      "fromQty": 169,
+      "toQty": 168,
+      "date": "2026-04-03T04:25:37.033Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 169,
+          "totalQty": 168,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -140,8 +140,8 @@
               "name": "검단사거리점",
               "code": "D402",
               "dist": 4.81,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 검단로 480"
@@ -369,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-03T01:47:01.828Z"
+      "updatedAt": "2026-04-03T04:25:37.033Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782288ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 268,
-          "onlineQty": 2156,
+          "totalQty": 267,
+          "onlineQty": 2149,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -678,7 +678,7 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 2,
+              "qty": 1,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -703,7 +703,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 68,
-          "onlineQty": 1008,
+          "onlineQty": 1014,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1325,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-03T01:47:01.828Z"
+      "updatedAt": "2026-04-03T04:25:37.033Z"
     }
   }
 }
