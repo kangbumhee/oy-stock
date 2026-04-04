@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-04T11:24:17.911Z",
+  "updatedAt": "2026-04-04T12:39:15.444Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,27 +19,27 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 80,
       "to": 80,
-      "fromQty": 393,
-      "toQty": 391,
-      "date": "2026-04-04T11:24:17.911Z"
+      "fromQty": 391,
+      "toQty": 389,
+      "date": "2026-04-04T12:39:15.444Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2836,
-      "to": 2832,
-      "date": "2026-04-04T11:24:17.911Z"
+      "from": 2832,
+      "to": 2820,
+      "date": "2026-04-04T12:39:15.444Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 48,
+      "from": 47,
       "to": 47,
-      "fromQty": 154,
-      "toQty": 152,
-      "date": "2026-04-04T11:24:17.911Z"
+      "fromQty": 152,
+      "toQty": 151,
+      "date": "2026-04-04T12:39:15.444Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 47,
-          "totalQty": 152,
+          "totalQty": 151,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -369,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-04T11:24:17.911Z"
+      "updatedAt": "2026-04-04T12:39:15.444Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782288ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 261,
-          "onlineQty": 1826,
+          "totalQty": 259,
+          "onlineQty": 1817,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -488,8 +488,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -703,7 +703,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 67,
-          "onlineQty": 1006,
+          "onlineQty": 1003,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1325,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-04T11:24:17.911Z"
+      "updatedAt": "2026-04-04T12:39:15.444Z"
     }
   }
 }
