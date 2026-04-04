@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-04T01:28:21.274Z",
+  "updatedAt": "2026-04-04T04:11:13.220Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,17 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 80,
       "to": 80,
-      "fromQty": 395,
-      "toQty": 402,
-      "date": "2026-04-04T01:28:21.274Z"
+      "fromQty": 402,
+      "toQty": 401,
+      "date": "2026-04-04T04:11:13.220Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2858,
-      "to": 2843,
-      "date": "2026-04-04T01:28:21.274Z"
+      "from": 2843,
+      "to": 2836,
+      "date": "2026-04-04T04:11:13.220Z"
     },
     {
       "type": "stock_changed",
@@ -37,9 +37,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 49,
       "to": 49,
-      "fromQty": 163,
-      "toQty": 166,
-      "date": "2026-04-04T01:28:21.274Z"
+      "fromQty": 166,
+      "toQty": 165,
+      "date": "2026-04-04T04:11:13.220Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 166,
+          "totalQty": 165,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -90,8 +90,8 @@
               "name": "김포장기점",
               "code": "D300",
               "dist": 1.4,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
@@ -213,7 +213,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -233,7 +233,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -323,7 +323,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -363,13 +363,13 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-04-04T01:28:21.274Z"
+      "updatedAt": "2026-04-04T04:11:13.220Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782288ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 270,
-          "onlineQty": 1835,
+          "totalQty": 269,
+          "onlineQty": 1828,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -541,7 +541,7 @@
               "qty": 9,
               "o2o": 7,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -561,7 +561,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -651,7 +651,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -691,7 +691,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -855,7 +855,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -875,7 +875,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -965,7 +965,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -1005,7 +1005,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -1169,7 +1169,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -1189,7 +1189,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -1279,7 +1279,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -1319,13 +1319,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-04-04T01:28:21.274Z"
+      "updatedAt": "2026-04-04T04:11:13.220Z"
     }
   }
 }
