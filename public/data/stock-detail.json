@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-04T07:44:39.236Z",
+  "updatedAt": "2026-04-04T08:33:41.450Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,17 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 80,
       "to": 80,
-      "fromQty": 397,
-      "toQty": 396,
-      "date": "2026-04-04T07:44:39.236Z"
+      "fromQty": 396,
+      "toQty": 395,
+      "date": "2026-04-04T08:33:41.450Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2835,
-      "to": 2839,
-      "date": "2026-04-04T07:44:39.236Z"
+      "from": 2839,
+      "to": 2843,
+      "date": "2026-04-04T08:33:41.450Z"
     },
     {
       "type": "stock_changed",
@@ -37,9 +37,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 48,
       "to": 48,
-      "fromQty": 162,
-      "toQty": 159,
-      "date": "2026-04-04T07:44:39.236Z"
+      "fromQty": 159,
+      "toQty": 158,
+      "date": "2026-04-04T08:33:41.450Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 159,
+          "totalQty": 158,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -130,8 +130,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -369,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-04T07:44:39.236Z"
+      "updatedAt": "2026-04-04T08:33:41.450Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782288ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 265,
-          "onlineQty": 1828,
+          "totalQty": 264,
+          "onlineQty": 1832,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -548,8 +548,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -1325,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-04T07:44:39.236Z"
+      "updatedAt": "2026-04-04T08:33:41.450Z"
     }
   }
 }
