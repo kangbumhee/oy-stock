@@ -7,6 +7,11 @@ var App = {
   detailData: null,
   currentTab: 'search',
 
+  /** 온라인 재고 배치 조회용 (상품 클릭 시 abort → 팝업 닫은 뒤 pendingBatch만 이어서) */
+  batchAbortController: null,
+  pendingBatch: [],
+  onlineEnrichSource: null,
+
   init: function () {
     var self = this;
     var loc = Storage.getLocation();
@@ -125,9 +130,11 @@ var App = {
         break;
       }
       case 'showDetail':
+        this._pauseOnlineBatchForPopup();
         this._openDetail(parseInt(el.dataset.index, 10));
         break;
       case 'showFavDetail':
+        this._pauseOnlineBatchForPopup();
         this._openFavDetail(el.dataset.goodsno);
         break;
       case 'toggleFav':
@@ -191,36 +198,139 @@ var App = {
     Storage.setHistory(this.searchHistory);
   },
 
+  _pauseOnlineBatchForPopup: function () {
+    if (this.batchAbortController) {
+      this.batchAbortController.abort();
+      this.batchAbortController = null;
+    }
+  },
+
+  _pushPendingGoodsNo: function (gn) {
+    var g = String(gn || '').trim();
+    if (!g) return;
+    if (this.pendingBatch.indexOf(g) === -1) this.pendingBatch.push(g);
+  },
+
+  _removeFromPendingBatch: function (gn) {
+    var g = String(gn || '').trim();
+    if (!g || !this.pendingBatch.length) return;
+    this.pendingBatch = this.pendingBatch.filter(function (x) {
+      return String(x) !== g;
+    });
+  },
+
+  _sleepUnlessAborted: function (ms, signal) {
+    return new Promise(function (resolve) {
+      if (signal.aborted) {
+        resolve();
+        return;
+      }
+      var t = setTimeout(resolve, ms);
+      signal.addEventListener('abort', function onAb() {
+        clearTimeout(t);
+        signal.removeEventListener('abort', onAb);
+        resolve();
+      });
+    });
+  },
+
+  _runOnlineEnrichBatches: async function (items, batchSignal) {
+    var self = this;
+    var batchSize = 2;
+    for (var i = 0; i < items.length; i += batchSize) {
+      if (batchSignal.aborted) break;
+      var batch = items.slice(i, i + batchSize);
+      var settled = await Promise.allSettled(
+        batch.map(function (item) {
+          return self._fetchStockDetail(item, {
+            onlineOnly: true,
+            batchSignal: batchSignal
+          });
+        })
+      );
+      settled.forEach(function (s) {
+        var r = s.status === 'fulfilled' ? s.value : null;
+        if (!r) return;
+        if (!self.detailData) self.detailData = { products: {} };
+        if (!self.detailData.products) self.detailData.products = {};
+        self.detailData.products[r.goodsNo] = r.data;
+        UI.updateCardBadge(r.goodsNo, r.data);
+        self._removeFromPendingBatch(r.goodsNo);
+      });
+      if (batchSignal.aborted) break;
+      if (i + batchSize < items.length) {
+        await self._sleepUnlessAborted(300, batchSignal);
+      }
+    }
+  },
+
+  _resumePendingOnlineEnrich: function () {
+    var self = this;
+    if (!this.pendingBatch || this.pendingBatch.length === 0) return;
+    if (!CONFIG.REALTIME_API) return;
+    if (this.batchAbortController) return;
+
+    var pendingSet = {};
+    this.pendingBatch.forEach(function (g) {
+      pendingSet[String(g)] = true;
+    });
+
+    var items;
+    if (this.onlineEnrichSource === 'favorites') {
+      items = Storage.getFavorites().filter(function (f) {
+        var g = String(f.goodsNo || f.goodsNumber || '').trim();
+        return g && pendingSet[g];
+      });
+    } else {
+      items = (this.products || []).filter(function (p) {
+        var g = String(p.goodsNumber || p.goodsNo || '').trim();
+        return g && pendingSet[g];
+      });
+    }
+    if (!items.length) return;
+
+    var ac = new AbortController();
+    this.batchAbortController = ac;
+    void (async function () {
+      try {
+        await self._runOnlineEnrichBatches(items, ac.signal);
+      } catch (e) {
+        console.warn('resumePendingOnlineEnrich', e);
+      } finally {
+        if (self.batchAbortController === ac) self.batchAbortController = null;
+      }
+    })();
+  },
+
   _enrichSearchResults: async function (products) {
     try {
       if (!CONFIG.REALTIME_API || !products || !products.length) return;
+
+      if (this.batchAbortController) {
+        this.batchAbortController.abort();
+        this.batchAbortController = null;
+      }
+
       document.querySelectorAll('.badges').forEach(function (b) {
         if (!b.innerHTML.trim()) {
           b.innerHTML = '<span class="badge bg-gray">⏳ 온라인 재고 확인 중...</span>';
         }
       });
       var self = this;
-      var batchSize = 2;
-      for (var i = 0; i < products.length; i += batchSize) {
-        var batch = products.slice(i, i + batchSize);
-        var settled = await Promise.allSettled(
-          batch.map(function (p) {
-            return self._fetchStockDetail(p, { onlineOnly: true });
-          })
-        );
-        settled.forEach(function (s) {
-          var r = s.status === 'fulfilled' ? s.value : null;
-          if (!r) return;
-          if (!self.detailData) self.detailData = { products: {} };
-          if (!self.detailData.products) self.detailData.products = {};
-          self.detailData.products[r.goodsNo] = r.data;
-          UI.updateCardBadge(r.goodsNo, r.data);
-        });
-        if (i + batchSize < products.length) {
-          await new Promise(function (r) {
-            setTimeout(r, 300);
-          });
-        }
+      self.onlineEnrichSource = 'search';
+      self.pendingBatch = [];
+      products.forEach(function (p) {
+        self._pushPendingGoodsNo(p.goodsNumber || p.goodsNo);
+      });
+
+      var ac = new AbortController();
+      self.batchAbortController = ac;
+      try {
+        await self._runOnlineEnrichBatches(products, ac.signal);
+      } catch (e) {
+        console.warn('enrichSearchResults', e);
+      } finally {
+        if (self.batchAbortController === ac) self.batchAbortController = null;
       }
     } catch (e) {
       console.warn('enrichSearchResults', e);
@@ -249,13 +359,22 @@ var App = {
       CONFIG.REALTIME_API +
       (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
       q;
-    var ctrl = new AbortController();
+    var combined = new AbortController();
     var tid = setTimeout(function () {
-      ctrl.abort();
+      combined.abort();
     }, 10000);
-    return fetch(url, { signal: ctrl.signal })
+    function onBatchAbort() {
+      clearTimeout(tid);
+      combined.abort();
+    }
+    if (opts.batchSignal) {
+      if (opts.batchSignal.aborted) onBatchAbort();
+      else opts.batchSignal.addEventListener('abort', onBatchAbort);
+    }
+    return fetch(url, { signal: combined.signal })
       .finally(function () {
         clearTimeout(tid);
+        if (opts.batchSignal) opts.batchSignal.removeEventListener('abort', onBatchAbort);
       })
       .then(function (r) {
         return r.json().then(function (d) {
@@ -270,33 +389,32 @@ var App = {
   _enrichFavorites: async function (favorites) {
     try {
       if (!CONFIG.REALTIME_API || !favorites || !favorites.length) return;
+
+      if (this.batchAbortController) {
+        this.batchAbortController.abort();
+        this.batchAbortController = null;
+      }
+
       document.querySelectorAll('.badges').forEach(function (b) {
         if (!b.innerHTML.trim()) {
           b.innerHTML = '<span class="badge bg-gray">⏳ 온라인 재고 확인 중...</span>';
         }
       });
       var self = this;
-      var batchSize = 2;
-      for (var i = 0; i < favorites.length; i += batchSize) {
-        var batch = favorites.slice(i, i + batchSize);
-        var settled = await Promise.allSettled(
-          batch.map(function (f) {
-            return self._fetchStockDetail(f, { onlineOnly: true });
-          })
-        );
-        settled.forEach(function (s) {
-          var r = s.status === 'fulfilled' ? s.value : null;
-          if (!r) return;
-          if (!self.detailData) self.detailData = { products: {} };
-          if (!self.detailData.products) self.detailData.products = {};
-          self.detailData.products[r.goodsNo] = r.data;
-          UI.updateCardBadge(r.goodsNo, r.data);
-        });
-        if (i + batchSize < favorites.length) {
-          await new Promise(function (r) {
-            setTimeout(r, 300);
-          });
-        }
+      self.onlineEnrichSource = 'favorites';
+      self.pendingBatch = [];
+      favorites.forEach(function (f) {
+        self._pushPendingGoodsNo(f.goodsNo || f.goodsNumber);
+      });
+
+      var ac = new AbortController();
+      self.batchAbortController = ac;
+      try {
+        await self._runOnlineEnrichBatches(favorites, ac.signal);
+      } catch (e) {
+        console.warn('enrichFavorites', e);
+      } finally {
+        if (self.batchAbortController === ac) self.batchAbortController = null;
       }
     } catch (e) {
       console.warn('enrichFavorites', e);

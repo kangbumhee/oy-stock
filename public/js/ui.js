@@ -1082,6 +1082,9 @@ var UI = {
     var root = document.getElementById('popup-root');
     if (root) root.innerHTML = '';
     document.body.style.overflow = '';
+    if (typeof App !== 'undefined' && App._resumePendingOnlineEnrich) {
+      App._resumePendingOnlineEnrich();
+    }
   },
 
   switchTab: function (idx) {
