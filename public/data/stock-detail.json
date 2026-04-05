@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-05T09:33:20.888Z",
+  "updatedAt": "2026-04-05T10:27:13.584Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -14,22 +14,22 @@
   },
   "recentEvents": [
     {
-      "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 79,
-      "to": 79,
-      "fromQty": 386,
-      "toQty": 385,
-      "date": "2026-04-05T09:33:20.888Z"
-    },
-    {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 992,
-      "to": 2586,
-      "date": "2026-04-05T09:33:20.888Z"
+      "from": 2586,
+      "to": 2582,
+      "date": "2026-04-05T10:27:13.584Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 46,
+      "to": 46,
+      "fromQty": 144,
+      "toQty": 142,
+      "date": "2026-04-05T10:27:13.584Z"
     }
   ],
   "products": {
@@ -50,7 +50,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 46,
-          "totalQty": 144,
+          "totalQty": 142,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -359,7 +359,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-05T09:33:20.888Z"
+      "updatedAt": "2026-04-05T10:27:13.584Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -379,7 +379,7 @@
           "totalStores": 50,
           "inStock": 44,
           "totalQty": 255,
-          "onlineQty": 1793,
+          "onlineQty": 1790,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -693,7 +693,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 67,
-          "onlineQty": 793,
+          "onlineQty": 792,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1217,7 +1217,7 @@
               "code": "DB17",
               "dist": 7.81,
               "qty": 11,
-              "o2o": 8,
+              "o2o": 7,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
@@ -1315,7 +1315,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-05T09:33:20.888Z"
+      "updatedAt": "2026-04-05T10:27:13.584Z"
     }
   }
 }
