@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-05T01:51:33.259Z",
+  "updatedAt": "2026-04-05T04:32:51.232Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,9 +17,19 @@
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 3015,
-      "to": 2995,
-      "date": "2026-04-05T01:51:33.259Z"
+      "from": 2995,
+      "to": 994,
+      "date": "2026-04-05T04:32:51.232Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 47,
+      "to": 47,
+      "fromQty": 151,
+      "toQty": 150,
+      "date": "2026-04-05T04:32:51.232Z"
     }
   ],
   "products": {
@@ -40,7 +50,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 47,
-          "totalQty": 151,
+          "totalQty": 150,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -123,15 +133,15 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -183,7 +193,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -303,7 +313,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -349,7 +359,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-05T01:51:33.259Z"
+      "updatedAt": "2026-04-05T04:32:51.232Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -369,7 +379,7 @@
           "totalStores": 50,
           "inStock": 45,
           "totalQty": 259,
-          "onlineQty": 2002,
+          "onlineQty": 399,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -451,7 +461,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -511,7 +521,7 @@
               "qty": 18,
               "o2o": 14,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -631,7 +641,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -683,7 +693,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 67,
-          "onlineQty": 993,
+          "onlineQty": 595,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -765,7 +775,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -825,7 +835,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -945,7 +955,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -1079,7 +1089,7 @@
               "qty": 9,
               "o2o": 7,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -1139,7 +1149,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -1259,7 +1269,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -1305,7 +1315,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-05T01:51:33.259Z"
+      "updatedAt": "2026-04-05T04:32:51.232Z"
     }
   }
 }
