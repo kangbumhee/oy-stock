@@ -190,7 +190,7 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
   return { ok: false, status: 500, data: { error: 'max retries' } };
 }
 
-async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
+async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return { success: false, error: '상품 조회 실패 (단종 가능성)' };
@@ -337,35 +337,41 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
     const baseUpload = optionUploadUrl || uploadUrl;
     const optImage = imgPath ? baseUpload + imgPath : uploadUrl + (gi.goodsThumbnailPath || '');
 
-    const stRes = await oyPostWithRetry('/stock/stock-stores', {
-      productId: String(pid),
-      lat,
-      lon: lng,
-      pageIdx: 1,
-      searchWords: '',
-      mapLat: lat,
-      mapLon: lng
-    });
+    let stores = [];
+    if (!onlineOnly) {
+      const stRes = await oyPostWithRetry('/stock/stock-stores', {
+        productId: String(pid),
+        lat,
+        lon: lng,
+        pageIdx: 1,
+        searchWords: '',
+        mapLat: lat,
+        mapLon: lng
+      });
 
-    const stInner =
-      stRes.ok && stRes.data && stRes.data.status === 'SUCCESS' ? unwrapPayload(stRes.data) : {};
-    const storeList = stInner.storeList || [];
-    const stores = storeList.map((s) => ({
-      name: s.storeName,
-      code: s.storeCode,
-      dist: s.distance,
-      qty: s.remainQuantity || 0,
-      o2o: s.o2oRemainQuantity || 0,
-      pickup: yn(s.pickupYn),
-      open: yn(s.openYn),
-      addr: s.address || s.storeAddr || ''
-    }));
+      const stInner =
+        stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
+          ? unwrapPayload(stRes.data)
+          : {};
+      const storeList = stInner.storeList || [];
+      stores = storeList.map((s) => ({
+        name: s.storeName,
+        code: s.storeCode,
+        dist: s.distance,
+        qty: s.remainQuantity || 0,
+        o2o: s.o2oRemainQuantity || 0,
+        pickup: yn(s.pickupYn),
+        open: yn(s.openYn),
+        addr: s.address || s.storeAddr || ''
+      }));
+    }
 
     console.log(
       '[디버그] 매핑시도 key:',
       String(pid),
       '→ found:',
-      !!onlineMap[String(pid)]
+      !!onlineMap[String(pid)],
+      onlineOnly ? '(online-only, 매장 스킵)' : ''
     );
 
     const onlineInfo = onlineMap[String(pid)] || {};
@@ -390,54 +396,86 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
       stores: stores.slice(0, 30)
     });
 
-    await sleep(400);
+    if (!onlineOnly) {
+      await sleep(400);
+    }
   }
 
   if (optionResults.length === 0 && (gi.masterGoodsNumber || gi.goodsNumber)) {
     const pid = String(gi.masterGoodsNumber || gi.goodsNumber);
-    const stRes = await oyPost('/stock/stock-stores', {
-      productId: pid,
-      lat,
-      lon: lng,
-      pageIdx: 1,
-      searchWords: '',
-      mapLat: lat,
-      mapLon: lng
-    });
-    const stInner =
-      stRes.ok && stRes.data && stRes.data.status === 'SUCCESS' ? unwrapPayload(stRes.data) : {};
-    const storeList = stInner.storeList || [];
-    const stores = storeList.map((s) => ({
-      name: s.storeName,
-      code: s.storeCode,
-      dist: s.distance,
-      qty: s.remainQuantity || 0,
-      o2o: s.o2oRemainQuantity || 0,
-      pickup: yn(s.pickupYn),
-      open: yn(s.openYn),
-      addr: s.address || s.storeAddr || ''
-    }));
-    optionResults.push({
-      name: gi.goodsName,
-      productId: pid,
-      image: uploadUrl + (gi.goodsThumbnailPath || ''),
-      totalStores: stores.length,
-      inStock: stores.filter((s) => s.qty > 0).length,
-      totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
-      onlineQty: gi.quantity ?? 0,
-      maxOrderQty: gi.orderableMaximumQuantity || 0,
-      deliveredToday: !!gi.deliveredToday,
-      presentable: !!gi.presentable,
-      stores: stores.slice(0, 30)
-    });
+    if (onlineOnly) {
+      optionResults.push({
+        name: gi.goodsName,
+        productId: pid,
+        image: uploadUrl + (gi.goodsThumbnailPath || ''),
+        totalStores: 0,
+        inStock: 0,
+        totalQty: 0,
+        onlineQty: gi.quantity ?? 0,
+        maxOrderQty: gi.orderableMaximumQuantity || 0,
+        deliveredToday: !!gi.deliveredToday,
+        presentable: !!gi.presentable,
+        stores: []
+      });
+    } else {
+      const stRes = await oyPost('/stock/stock-stores', {
+        productId: pid,
+        lat,
+        lon: lng,
+        pageIdx: 1,
+        searchWords: '',
+        mapLat: lat,
+        mapLon: lng
+      });
+      const stInner =
+        stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
+          ? unwrapPayload(stRes.data)
+          : {};
+      const storeList = stInner.storeList || [];
+      const stores = storeList.map((s) => ({
+        name: s.storeName,
+        code: s.storeCode,
+        dist: s.distance,
+        qty: s.remainQuantity || 0,
+        o2o: s.o2oRemainQuantity || 0,
+        pickup: yn(s.pickupYn),
+        open: yn(s.openYn),
+        addr: s.address || s.storeAddr || ''
+      }));
+      optionResults.push({
+        name: gi.goodsName,
+        productId: pid,
+        image: uploadUrl + (gi.goodsThumbnailPath || ''),
+        totalStores: stores.length,
+        inStock: stores.filter((s) => s.qty > 0).length,
+        totalQty: stores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
+        onlineQty: gi.quantity ?? 0,
+        maxOrderQty: gi.orderableMaximumQuantity || 0,
+        deliveredToday: !!gi.deliveredToday,
+        presentable: !!gi.presentable,
+        stores: stores.slice(0, 30)
+      });
+    }
   }
 
   const totalInStock = optionResults.reduce((a, o) => a + o.inStock, 0);
+  const anyOnline = optionResults.some((o) => (o.onlineQty || 0) > 0);
   const gName = gi.goodsName || '';
+
+  let status;
+  let statusLabel;
+  if (onlineOnly) {
+    status = anyOnline ? 'active' : 'soldout';
+    statusLabel = anyOnline ? '🛒 온라인 재고' : '🛒 온라인 품절';
+  } else {
+    status = totalInStock > 0 ? 'active' : 'soldout';
+    statusLabel = totalInStock > 0 ? '✅ 재고있음' : '🔴 주변품절';
+  }
 
   return {
     success: true,
-    source: 'live',
+    source: onlineOnly ? 'live-online' : 'live',
+    inventoryScope: onlineOnly ? 'online' : 'store',
     goodsNo,
     goodsName: gName,
     price: gi.priceToPay,
@@ -445,8 +483,8 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false) {
     discountRate: gi.discountRate,
     thumbnail: uploadUrl + (gi.goodsThumbnailPath || ''),
     itemCount: gi.itemCount,
-    status: totalInStock > 0 ? 'active' : 'soldout',
-    statusLabel: totalInStock > 0 ? '✅ 재고있음' : '🔴 주변품절',
+    status,
+    statusLabel,
     options: optionResults,
     updatedAt: new Date().toISOString()
   };
@@ -676,6 +714,7 @@ const server = http.createServer(async (req, res) => {
     const lat = parseFloat(url.searchParams.get('lat')) || 37.6152;
     const lng = parseFloat(url.searchParams.get('lng')) || 126.7156;
     const withOnline = url.searchParams.get('withOnline') === 'true';
+    const onlineOnly = url.searchParams.get('onlineOnly') === 'true';
 
     if (!goodsNo) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
@@ -685,7 +724,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       await ensureSession();
-      const result = await getStockDetail(goodsNo, lat, lng, withOnline);
+      const result = await getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(result));
     } catch (e) {

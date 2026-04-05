@@ -118,6 +118,12 @@ var App = {
     var action = el.dataset.action;
 
     switch (action) {
+      case 'buyNow': {
+        e.stopPropagation();
+        var bGn = el.dataset.goodsno;
+        if (bGn) UI.openOliveYoungProduct(el);
+        break;
+      }
       case 'showDetail':
         this._openDetail(parseInt(el.dataset.index, 10));
         break;
@@ -190,16 +196,16 @@ var App = {
       if (!CONFIG.REALTIME_API || !products || !products.length) return;
       document.querySelectorAll('.badges').forEach(function (b) {
         if (!b.innerHTML.trim()) {
-          b.innerHTML = '<span class="badge bg-gray">⏳ 재고 확인 중...</span>';
+          b.innerHTML = '<span class="badge bg-gray">⏳ 온라인 재고 확인 중...</span>';
         }
       });
       var self = this;
-      var batchSize = 2;
+      var batchSize = 4;
       for (var i = 0; i < products.length; i += batchSize) {
         var batch = products.slice(i, i + batchSize);
         var settled = await Promise.allSettled(
           batch.map(function (p) {
-            return self._fetchStockDetail(p, false);
+            return self._fetchStockDetail(p, { onlineOnly: true });
           })
         );
         settled.forEach(function (s) {
@@ -219,7 +225,10 @@ var App = {
     }
   },
 
-  _fetchStockDetail: function (pOrFav, withOnline) {
+  _fetchStockDetail: function (pOrFav, opts) {
+    opts = opts || {};
+    var onlineOnly = !!opts.onlineOnly;
+    var withOnline = !!opts.withOnline;
     var gn = String(
       (pOrFav && (pOrFav.goodsNumber || pOrFav.goodsNo)) || ''
     ).trim();
@@ -233,6 +242,7 @@ var App = {
       '&lng=' +
       encodeURIComponent(String(self.lng));
     if (withOnline) q += '&withOnline=true';
+    if (onlineOnly) q += '&onlineOnly=true';
     var url =
       CONFIG.REALTIME_API +
       (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
@@ -254,16 +264,16 @@ var App = {
       if (!CONFIG.REALTIME_API || !favorites || !favorites.length) return;
       document.querySelectorAll('.badges').forEach(function (b) {
         if (!b.innerHTML.trim()) {
-          b.innerHTML = '<span class="badge bg-gray">⏳ 재고 확인 중...</span>';
+          b.innerHTML = '<span class="badge bg-gray">⏳ 온라인 재고 확인 중...</span>';
         }
       });
       var self = this;
-      var batchSize = 2;
+      var batchSize = 4;
       for (var i = 0; i < favorites.length; i += batchSize) {
         var batch = favorites.slice(i, i + batchSize);
         var settled = await Promise.allSettled(
           batch.map(function (f) {
-            return self._fetchStockDetail(f, false);
+            return self._fetchStockDetail(f, { onlineOnly: true });
           })
         );
         settled.forEach(function (s) {
@@ -385,12 +395,18 @@ var App = {
     if (!gn) return;
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
-    if (detail && detail.options && detail.options.length > 0) {
+    var hasStoreScope =
+      detail &&
+      detail.options &&
+      detail.options.length > 0 &&
+      detail.inventoryScope !== 'online' &&
+      detail.source !== 'live-online';
+    if (hasStoreScope) {
       UI.showDetailPopup(detail, gn);
       return;
     }
     if (CONFIG.REALTIME_API) {
-      UI.showPopupLoading(p.goodsName, '실시간 매장·온라인 재고 조회 중…');
+      UI.showPopupLoading(p.goodsName, '주변 매장 재고 조회 중…');
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +
@@ -405,6 +421,9 @@ var App = {
         );
         var d = await r.json();
         if (d.success && d.options && d.options.length > 0) {
+          if (!this.detailData) this.detailData = { products: {} };
+          if (!this.detailData.products) this.detailData.products = {};
+          this.detailData.products[gn] = d;
           UI.showDetailPopup(d, gn);
           return;
         }
@@ -431,12 +450,18 @@ var App = {
     var name = fav ? fav.goodsName : gn;
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
-    if (detail && detail.options && detail.options.length > 0) {
+    var hasStoreScopeFav =
+      detail &&
+      detail.options &&
+      detail.options.length > 0 &&
+      detail.inventoryScope !== 'online' &&
+      detail.source !== 'live-online';
+    if (hasStoreScopeFav) {
       UI.showDetailPopup(detail, gn);
       return;
     }
     if (CONFIG.REALTIME_API) {
-      UI.showPopupLoading(name, '실시간 매장·온라인 재고 조회 중…');
+      UI.showPopupLoading(name, '주변 매장 재고 조회 중…');
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +
@@ -451,6 +476,9 @@ var App = {
         );
         var d = await r.json();
         if (d.success && d.options && d.options.length > 0) {
+          if (!this.detailData) this.detailData = { products: {} };
+          if (!this.detailData.products) this.detailData.products = {};
+          this.detailData.products[gn] = d;
           UI.showDetailPopup(d, gn);
           return;
         }
