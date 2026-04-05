@@ -11,12 +11,8 @@ var CONFIG = {
   OY_BASE: 'https://www.oliveyoung.co.kr',
   /** GitHub Actions로 갱신되는 큐레이터(utm_content 포함 oy.run) 캐시 — 프론트에서 먼저 조회 */
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
-  /** JSON/debug용 서버 리다이렉트 (버튼은 브라우저 shorten 우선) */
+  /** JSON/debug용 서버 리다이렉트 */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
-  /** CORS 우회 shorten 프록시 (Vercel → m.oliveyoung) */
-  SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',
-  /** 큐레이터/단축 API registerId (shorten-proxy body) */
-  AFFILIATE_REGISTER_ID: '4ee076cc92da4447a1b4b42c590e4495',
 
   REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',
 

@@ -31,7 +31,8 @@ const REGISTER_ID_DEFAULT = '4ee076cc92da4447a1b4b42c590e4495';
 const SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
 const PLACEHOLDER_CATEGORY = '1000001000000000000';
 
-const POPULAR_PRODUCTS = ['A000000207822', 'A000000154189'];
+/** curator-links 항목이 이 시간 이내면 landing/shorten 재호출 안 함 */
+const CURATOR_ENTRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 const AFFILIATE_REFERER =
@@ -118,16 +119,21 @@ function parseCookieHeader(header, domainHost) {
 }
 
 function collectGoodsNos() {
-  const set = new Set(POPULAR_PRODUCTS);
   try {
     const raw = fs.readFileSync(DETAIL_FILE, 'utf8');
     const j = JSON.parse(raw);
     const products = j.products || {};
-    Object.keys(products).forEach((k) => set.add(k));
+    return Object.keys(products).filter((k) => /^A\d+$/i.test(String(k)));
   } catch {
-    /* no stock-detail */
+    return [];
   }
-  return [...set].filter((g) => /^A\d+$/i.test(String(g)));
+}
+
+function isFreshCuratorEntry(entry) {
+  if (!entry || !entry.shortenedUrl || !entry.generatedAt) return false;
+  const t = Date.parse(entry.generatedAt);
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t < CURATOR_ENTRY_MAX_AGE_MS;
 }
 
 function loadPrevCurator() {
@@ -149,12 +155,13 @@ async function main() {
 
   const goodsList = collectGoodsNos();
   if (goodsList.length === 0) {
-    console.log('goodsNo 목록 없음');
+    console.log('stock-detail.json 에서 goodsNo 없음');
     process.exit(0);
   }
 
   const prev = loadPrevCurator();
   const links = { ...(prev.links || {}) };
+  goodsList.sort();
   const regId = getRegisterId();
   const now = new Date().toISOString();
   const authJwt = getJwtFromCookie(cookieHeader);
@@ -208,6 +215,11 @@ async function main() {
     await sleep(2000);
 
     for (const gn of goodsList) {
+      if (isFreshCuratorEntry(links[gn])) {
+        console.log(`\n📎 ${gn} → 24h 이내 유효한 shortenedUrl 있음, 스킵`);
+        continue;
+      }
+
       const apiKey = generateApiKey();
       console.log(`\n📎 ${gn}`);
 
@@ -376,7 +388,7 @@ async function main() {
         }
       }
 
-      await sleep(800);
+      await sleep(500);
     }
 
     const out = {

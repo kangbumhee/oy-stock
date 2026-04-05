@@ -29,8 +29,8 @@ var UI = {
   },
 
   /**
-   * curator-links.json → shorten-proxy. 새 탭만 사용 (location.href 폴백 없음).
-   * 팝업 차단 시 <a> 클릭 시도 후, 그래도 안 되면 버튼으로 수동 열기 안내.
+   * utm_content·수익 추적: curator-links.json 의 shortenedUrl 만 사용.
+   * 없으면 www 일반 상세로 이동 (shorten-proxy 미사용 — utm_content 없는 oy.run 의미 없음).
    */
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
@@ -38,10 +38,6 @@ var UI = {
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 보기 →';
     var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
-    var longUrl =
-      'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
-      encodeURIComponent(String(goodsNo).trim()) +
-      '&utm_source=shutter&utm_medium=affiliate';
 
     function tryProgrammaticAnchorClick(url) {
       var a = document.createElement('a');
@@ -86,41 +82,11 @@ var UI = {
       try {
         var links = await UI.loadCuratorLinksIndex();
         var entry = links[goodsNo];
-        if (entry && entry.shortenedUrl) {
-          manualFallback = openInNewTabWithoutSameTabNav(entry.shortenedUrl);
-          return;
-        }
-
-        var res = await fetch(
-          CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy',
-          {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json'
-            },
-            body: JSON.stringify({
-              originalUrl: longUrl,
-              registerId:
-                CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495'
-            })
-          }
-        );
-
-        var data = await res.json().catch(function () {
-          return null;
-        });
-        var shortenedUrl =
-          data && data.data && data.data[0] && data.data[0].shortenedUrl;
-
-        if (res.ok && shortenedUrl) {
-          manualFallback = openInNewTabWithoutSameTabNav(shortenedUrl);
-        } else {
-          manualFallback = openInNewTabWithoutSameTabNav(fallbackUrl);
-        }
+        var targetUrl =
+          entry && entry.shortenedUrl ? entry.shortenedUrl : fallbackUrl;
+        manualFallback = openInNewTabWithoutSameTabNav(targetUrl);
       } catch (e) {
-        console.error('shorten 실패:', e);
+        console.error('올리브영 링크 열기 실패:', e);
         manualFallback = openInNewTabWithoutSameTabNav(fallbackUrl);
       } finally {
         if (!manualFallback) {
