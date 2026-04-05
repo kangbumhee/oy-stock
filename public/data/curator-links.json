@@ -1,4 +1,17 @@
 {
-  "updatedAt": null,
-  "links": {}
+  "updatedAt": "2026-04-05T18:48:16.315Z",
+  "links": {
+    "A000000207822": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "error": "landing_failed",
+      "generatedAt": "2026-04-05T18:48:16.315Z"
+    },
+    "A000000154189": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "error": "landing_failed",
+      "generatedAt": "2026-04-05T18:48:16.315Z"
+    }
+  }
 }
