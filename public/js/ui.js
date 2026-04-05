@@ -116,7 +116,17 @@ var UI = {
         var landJson = await landRes.json().catch(function () {
           return null;
         });
+        console.log('[oy-stock] landing HTTP', landRes.status, goodsNo);
+        console.log('[oy-stock] landing 결과:', landJson);
         var activityId = landJson && landJson.affiliateActivityId;
+        console.log('[oy-stock] affiliateActivityId:', activityId);
+        if (activityId) {
+          console.log('[oy-stock] utm_content 포함 URL 생성 (OY_' + activityId + ')');
+        } else {
+          console.log(
+            '[oy-stock] ❌ affiliateActivityId 없음! utm_content 없이 shorten 진행'
+          );
+        }
         var partnerId =
           (landJson && landJson.affiliatePartnerId) || defaultReg;
 
@@ -131,6 +141,7 @@ var UI = {
         var originalUrlForShorten = activityId
           ? longUrlBase + '&utm_content=OY_' + activityId
           : longUrlBase;
+        console.log('[oy-stock] shorten 요청 originalUrl:', originalUrlForShorten);
 
         var shortRes = await fetch(
           CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy',
@@ -156,6 +167,9 @@ var UI = {
           shortJson.data &&
           shortJson.data[0] &&
           shortJson.data[0].shortenedUrl;
+        console.log('[oy-stock] shorten HTTP', shortRes.status);
+        console.log('[oy-stock] shorten 결과:', shortJson);
+        console.log('[oy-stock] shortenedUrl:', shortenedUrl);
 
         var targetUrl = shortenedUrl || fallbackUrl;
         manualFallback = openInNewTabWithoutSameTabNav(targetUrl);
