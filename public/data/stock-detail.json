@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-05T06:11:28.822Z",
+  "updatedAt": "2026-04-05T07:52:26.933Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,27 +19,17 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 80,
       "to": 80,
-      "fromQty": 389,
-      "toQty": 388,
-      "date": "2026-04-05T06:11:28.822Z"
+      "fromQty": 388,
+      "toQty": 387,
+      "date": "2026-04-05T07:52:26.933Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 994,
-      "to": 989,
-      "date": "2026-04-05T06:11:28.822Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 47,
-      "to": 47,
-      "fromQty": 150,
-      "toQty": 146,
-      "date": "2026-04-05T06:11:28.822Z"
+      "from": 989,
+      "to": 993,
+      "date": "2026-04-05T07:52:26.933Z"
     }
   ],
   "products": {
@@ -369,7 +359,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-05T06:11:28.822Z"
+      "updatedAt": "2026-04-05T07:52:26.933Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +378,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 258,
-          "onlineQty": 394,
+          "totalQty": 257,
+          "onlineQty": 398,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1325,7 +1315,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-05T06:11:28.822Z"
+      "updatedAt": "2026-04-05T07:52:26.933Z"
     }
   }
 }
