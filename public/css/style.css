@@ -122,6 +122,7 @@ header h1{font-size:20px;margin-bottom:4px}
 .no-store{text-align:center;padding:20px;color:#999;font-size:13px}
 
 .btn-oy{display:inline-block;padding:10px 20px;background:#16a34a;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;text-align:center}
+button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px}
 .btn-oy:hover{background:#15803d}
 .popup-footer{margin-top:16px;text-align:center}
 

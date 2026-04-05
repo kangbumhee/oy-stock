@@ -9,7 +9,9 @@ var CONFIG = {
   FALLBACK_API: '/api/oliveyoung/stock',
   OY_PRODUCT_URL: 'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=',
   OY_BASE: 'https://www.oliveyoung.co.kr',
-  /** 큐레이터 단축 URL: 서버가 oy.run 으로 302 (쿠키는 서버 env) */
+  /** GitHub Actions로 갱신되는 큐레이터(utm_content 포함 oy.run) 캐시 — 프론트에서 먼저 조회 */
+  CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
+  /** JSON/debug용 서버 리다이렉트 (버튼은 브라우저 shorten 우선) */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
 
   REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',

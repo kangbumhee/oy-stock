@@ -1,13 +1,140 @@
 var UI = {
-  /** 올리브영 상품 이동: 큐레이터 리다이렉트 API(실패 시 서버가 일반 상세로 폴백) */
-  oliveyoungProductHref: function (goodsNo, categoryNumber) {
+  _curatorLinksPromise: null,
+
+  /** 일반 올리브영 상품 상세(www) — shorten 실패·에러 팝업 폴백 */
+  oliveyoungFallbackUrl: function (goodsNo, categoryNumber) {
     var gn = String(goodsNo || '').trim();
     if (!gn) return CONFIG.OY_PRODUCT_URL;
-    var q = 'goodsNo=' + encodeURIComponent(gn);
+    var url = CONFIG.OY_PRODUCT_URL + encodeURIComponent(gn);
     if (categoryNumber) {
-      q += '&categoryNumber=' + encodeURIComponent(String(categoryNumber));
+      url += '&categoryNumber=' + encodeURIComponent(String(categoryNumber));
     }
-    return CONFIG.CURATOR_REDIRECT_PATH + '?' + q;
+    return url;
+  },
+
+  /** shorten API용 x-api-key (Asia/Seoul 분 단위) */
+  generateOyShortenApiKey: function () {
+    var parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(new Date());
+    var t = {};
+    for (var i = 0; i < parts.length; i++) {
+      t[parts[i].type] = parts[i].value;
+    }
+    var timeStr = t.year + t.month + t.day + t.hour + t.minute;
+    var raw = 'e3ea1c526eef4570946ebdf083dad7a7:shrt-auth:' + timeStr;
+    return btoa(raw);
+  },
+
+  loadCuratorLinksIndex: function () {
+    if (UI._curatorLinksPromise != null) return UI._curatorLinksPromise;
+    var url = CONFIG.CURATOR_LINKS_JSON_URL || '/data/curator-links.json';
+    UI._curatorLinksPromise = fetch(url)
+      .then(function (r) {
+        if (!r.ok) return {};
+        return r.json().then(function (data) {
+          return (data && data.links) || {};
+        });
+      })
+      .catch(function () {
+        return {};
+      });
+    return UI._curatorLinksPromise;
+  },
+
+  /**
+   * curator-links.json에 oy.run 있으면 사용, 없으면 브라우저에서 shorten API 호출.
+   * (Vercel 서버→올리브영은 Cloudflare 403)
+   */
+  openOliveYoungProduct: function (el) {
+    var goodsNo = el.dataset.goodsno;
+    if (!goodsNo) return;
+    var categoryNumber = el.dataset.category || '';
+    var origLabel = el.getAttribute('data-original-label') || '올리브영에서 보기 →';
+    var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
+    var pendingWin = window.open('about:blank', '_blank', 'noopener,noreferrer');
+
+    el.disabled = true;
+    el.textContent = '링크 생성 중...';
+
+    var finish = function () {
+      el.disabled = false;
+      el.textContent = origLabel;
+    };
+
+    var openUrl = function (url) {
+      if (pendingWin) {
+        try {
+          pendingWin.location.href = url;
+        } catch (err) {
+          window.location.href = url;
+        }
+      } else {
+        var w2 = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!w2) window.location.href = url;
+      }
+      finish();
+    };
+
+    var longUrl =
+      'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+      encodeURIComponent(String(goodsNo).trim()) +
+      '&utm_source=shutter&utm_medium=affiliate';
+
+    UI.loadCuratorLinksIndex().then(function (links) {
+      var entry = links[goodsNo];
+      if (entry && entry.shortenedUrl) {
+        openUrl(entry.shortenedUrl);
+        return;
+      }
+      return fetch('https://m.oliveyoung.co.kr/base/shorten/v2/verified', {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/plain, */*',
+          'x-api-key': UI.generateOyShortenApiKey()
+        },
+        body: JSON.stringify([
+          {
+            originalUrl: longUrl,
+            registerId: '4ee076cc92da4447a1b4b42c590e4495'
+          }
+        ])
+      })
+        .then(function (r) {
+          return r.text().then(function (t) {
+            var json;
+            try {
+              json = JSON.parse(t);
+            } catch (e) {
+              return { ok: false, json: null };
+            }
+            return { ok: r.ok, json: json };
+          });
+        })
+        .then(function (parsed) {
+          var row = parsed && parsed.json && parsed.json.data && parsed.json.data[0];
+          var shortenedUrl = row && row.shortenedUrl;
+          if (parsed && parsed.ok && shortenedUrl) {
+            openUrl(shortenedUrl);
+          } else {
+            openUrl(fallbackUrl);
+          }
+        })
+        .catch(function () {
+          openUrl(fallbackUrl);
+        });
+    }).catch(function () {
+      openUrl(fallbackUrl);
+    });
   },
 
   esc: function (s) {
@@ -480,6 +607,10 @@ var UI = {
         UI.closePopup();
         return;
       }
+      if (action === 'openOliveYoung') {
+        UI.openOliveYoungProduct(el);
+        return;
+      }
       if (action === 'switchTab') {
         UI.switchTab(parseInt(el.dataset.idx, 10));
         return;
@@ -546,7 +677,7 @@ var UI = {
   showPopupError: function (name, msg, goodsNo) {
     var root = document.getElementById('popup-root');
     if (!root) return;
-    var oyLink = UI.oliveyoungProductHref(goodsNo);
+    var oyLink = UI.oliveyoungFallbackUrl(goodsNo);
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -559,7 +690,7 @@ var UI = {
       '</p>' +
       '<p class="popup-note">즐겨찾기에 추가하면 다음 수집 시 자동으로 재고가 업데이트됩니다.</p>' +
       '<a href="' +
-      oyLink +
+      UI.esc(oyLink) +
       '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 확인 →</a></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
@@ -568,7 +699,10 @@ var UI = {
   showDetailPopup: function (detail, goodsNo) {
     var root = document.getElementById('popup-root');
     if (!root) return;
-    var oyLink = UI.oliveyoungProductHref(goodsNo, detail && detail.categoryNumber);
+    var cat =
+      detail && detail.categoryNumber != null && detail.categoryNumber !== ''
+        ? String(detail.categoryNumber)
+        : '';
     var isFav = Storage.isFavorite(goodsNo);
     var timeStr = detail.updatedAt
       ? new Date(detail.updatedAt).toLocaleString('ko-KR', {
@@ -741,9 +875,11 @@ var UI = {
       favBtn +
       optTabs +
       optPanels +
-      '<div class="popup-footer"><a href="' +
-      oyLink +
-      '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 보기 →</a></div>' +
+      '<div class="popup-footer"><button type="button" class="btn-oy" data-action="openOliveYoung" data-goodsno="' +
+      UI.esc(goodsNo) +
+      '" data-category="' +
+      UI.esc(cat) +
+      '" data-original-label="올리브영에서 보기 →">올리브영에서 보기 →</button></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
   },
