@@ -29,7 +29,7 @@ var UI = {
   },
 
   /**
-   * curator-links.json에 oy.run 있으면 사용, 없으면 Vercel shorten 프록시 호출.
+   * curator-links.json → shorten-proxy 순. URL 확정 후 window.open 한 번만 (about:blank 없음).
    */
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
@@ -37,80 +37,66 @@ var UI = {
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 보기 →';
     var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
-    var pendingWin = window.open('about:blank', '_blank', 'noopener,noreferrer');
-
-    el.disabled = true;
-    el.textContent = '링크 생성 중...';
-
-    var finish = function () {
-      el.disabled = false;
-      el.textContent = origLabel;
-    };
-
-    var openUrl = function (url) {
-      if (pendingWin) {
-        try {
-          pendingWin.location.href = url;
-        } catch (err) {
-          window.location.href = url;
-        }
-      } else {
-        var w2 = window.open(url, '_blank', 'noopener,noreferrer');
-        if (!w2) window.location.href = url;
-      }
-      finish();
-    };
-
     var longUrl =
       'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
       encodeURIComponent(String(goodsNo).trim()) +
       '&utm_source=shutter&utm_medium=affiliate';
 
-    UI.loadCuratorLinksIndex().then(function (links) {
-      var entry = links[goodsNo];
-      if (entry && entry.shortenedUrl) {
-        openUrl(entry.shortenedUrl);
-        return;
+    function openInNewTabOrNavigate(url) {
+      var newTab = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!newTab) {
+        window.location.href = url;
       }
-      return fetch(CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy', {
-        method: 'POST',
-        mode: 'cors',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
-        body: JSON.stringify({
-          originalUrl: longUrl,
-          registerId:
-            CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495'
-        })
-      })
-        .then(function (r) {
-          return r.text().then(function (t) {
-            var json;
-            try {
-              json = JSON.parse(t);
-            } catch (e) {
-              return { ok: false, json: null };
-            }
-            return { ok: r.ok, json: json };
-          });
-        })
-        .then(function (parsed) {
-          var row = parsed && parsed.json && parsed.json.data && parsed.json.data[0];
-          var shortenedUrl = row && row.shortenedUrl;
-          if (parsed && parsed.ok && shortenedUrl) {
-            openUrl(shortenedUrl);
-          } else {
-            openUrl(fallbackUrl);
+    }
+
+    el.disabled = true;
+    el.textContent = '링크 생성 중...';
+
+    (async function () {
+      try {
+        var links = await UI.loadCuratorLinksIndex();
+        var entry = links[goodsNo];
+        if (entry && entry.shortenedUrl) {
+          openInNewTabOrNavigate(entry.shortenedUrl);
+          return;
+        }
+
+        var res = await fetch(
+          CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy',
+          {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json'
+            },
+            body: JSON.stringify({
+              originalUrl: longUrl,
+              registerId:
+                CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495'
+            })
           }
-        })
-        .catch(function () {
-          openUrl(fallbackUrl);
+        );
+
+        var data = await res.json().catch(function () {
+          return null;
         });
-    }).catch(function () {
-      openUrl(fallbackUrl);
-    });
+        var shortenedUrl =
+          data && data.data && data.data[0] && data.data[0].shortenedUrl;
+
+        if (res.ok && shortenedUrl) {
+          openInNewTabOrNavigate(shortenedUrl);
+        } else {
+          openInNewTabOrNavigate(fallbackUrl);
+        }
+      } catch (e) {
+        console.error('shorten 실패:', e);
+        openInNewTabOrNavigate(fallbackUrl);
+      } finally {
+        el.disabled = false;
+        el.textContent = origLabel;
+      }
+    })();
   },
 
   esc: function (s) {
