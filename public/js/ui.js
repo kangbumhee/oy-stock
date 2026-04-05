@@ -29,8 +29,10 @@ var UI = {
   },
 
   /**
-   * utm_content·수익 추적: curator-links.json 의 shortenedUrl 만 사용.
-   * 없으면 www 일반 상세로 이동 (shorten-proxy 미사용 — utm_content 없는 oy.run 의미 없음).
+   * 1) curator-links.json 의 shortenedUrl
+   * 2) 없으면 landing-proxy → shorten-proxy (성공 시 utm_content)
+   * 3) landing 실패 시에도 shorten(utm 없음) → oy.run
+   * 4) shorten 실패 시 www 일반 상세
    */
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
@@ -38,6 +40,12 @@ var UI = {
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 보기 →';
     var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
+    var longUrlBase =
+      'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+      encodeURIComponent(String(goodsNo).trim()) +
+      '&utm_source=shutter&utm_medium=affiliate';
+    var defaultReg =
+      CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495';
 
     function tryProgrammaticAnchorClick(url) {
       var a = document.createElement('a');
@@ -82,8 +90,66 @@ var UI = {
       try {
         var links = await UI.loadCuratorLinksIndex();
         var entry = links[goodsNo];
-        var targetUrl =
-          entry && entry.shortenedUrl ? entry.shortenedUrl : fallbackUrl;
+        if (entry && entry.shortenedUrl) {
+          manualFallback = openInNewTabWithoutSameTabNav(entry.shortenedUrl);
+          return;
+        }
+
+        var landingPayload = { goodsNo: goodsNo };
+        if (categoryNumber) {
+          landingPayload.categoryNumber = categoryNumber;
+        }
+
+        var landRes = await fetch(
+          CONFIG.LANDING_PROXY_PATH || '/api/oliveyoung/landing-proxy',
+          {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json'
+            },
+            body: JSON.stringify(landingPayload)
+          }
+        );
+
+        var landJson = await landRes.json().catch(function () {
+          return null;
+        });
+        var activityId = landJson && landJson.affiliateActivityId;
+        var partnerId =
+          (landJson && landJson.affiliatePartnerId) || defaultReg;
+
+        var originalUrlForShorten = activityId
+          ? longUrlBase + '&utm_content=OY_' + activityId
+          : longUrlBase;
+
+        var shortRes = await fetch(
+          CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy',
+          {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json'
+            },
+            body: JSON.stringify({
+              originalUrl: originalUrlForShorten,
+              registerId: partnerId
+            })
+          }
+        );
+
+        var shortJson = await shortRes.json().catch(function () {
+          return null;
+        });
+        var shortenedUrl =
+          shortJson &&
+          shortJson.data &&
+          shortJson.data[0] &&
+          shortJson.data[0].shortenedUrl;
+
+        var targetUrl = shortenedUrl || fallbackUrl;
         manualFallback = openInNewTabWithoutSameTabNav(targetUrl);
       } catch (e) {
         console.error('올리브영 링크 열기 실패:', e);

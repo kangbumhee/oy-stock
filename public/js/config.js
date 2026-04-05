@@ -13,6 +13,9 @@ var CONFIG = {
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
+  LANDING_PROXY_PATH: '/api/oliveyoung/landing-proxy',
+  SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',
+  AFFILIATE_REGISTER_ID: '4ee076cc92da4447a1b4b42c590e4495',
 
   REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',
 
