@@ -81,7 +81,8 @@ var UI = {
         },
         body: JSON.stringify({
           originalUrl: longUrl,
-          registerId: '4ee076cc92da4447a1b4b42c590e4495'
+          registerId:
+            CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495'
         })
       })
         .then(function (r) {
