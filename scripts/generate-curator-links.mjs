@@ -7,11 +7,14 @@
  * (detail-stock.mjs 와 달리 큐레이터 API는 로그인 세션 필요 — 무인 www만으로는 부족할 수 있음)
  *
  * env:
- *   OY_CURATOR_COOKIE — 필수(비어 있으면 스킵, exit 0)
+ *   OY_CURATOR_COOKIE — 필수(비어 있으면 스킵, exit 0). linkageString 포함 권장.
  *   OLIVEYOUNG_AFFILIATE_REGISTER_ID — 선택 (기본 4ee076cc92da4447a1b4b42c590e4495)
+ *
+ * landing API는 authorization(JWT) 필수. JWT = linkageString(hex) AES-128-ECB 복호화.
  */
 
 import { chromium } from 'playwright';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -30,7 +33,43 @@ const PLACEHOLDER_CATEGORY = '1000001000000000000';
 
 const POPULAR_PRODUCTS = ['A000000207822', 'A000000154189'];
 
+const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
+const AFFILIATE_REFERER =
+  'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search';
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function decryptLinkageString(hexString) {
+  const encrypted = Buffer.from(String(hexString).trim(), 'hex');
+  const decipher = crypto.createDecipheriv(
+    'aes-128-ecb',
+    LINKAGE_AES_KEY,
+    Buffer.alloc(0)
+  );
+  decipher.setAutoPadding(true);
+  let decrypted = decipher.update(encrypted, undefined, 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted.trim();
+}
+
+/** Cookie 문자열에서 linkageString → JWT (Bearer 없이 그대로) */
+function getJwtFromCookie(cookieString) {
+  const m = String(cookieString).match(/(?:^|;\s*)linkageString=([^;]+)/i);
+  if (!m) return null;
+  let hex = m[1].trim();
+  try {
+    hex = decodeURIComponent(hex);
+  } catch {
+    /* keep */
+  }
+  hex = hex.trim();
+  try {
+    return decryptLinkageString(hex);
+  } catch (e) {
+    console.warn('linkageString 복호화 실패:', e.message || e);
+    return null;
+  }
+}
 
 function generateApiKey() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -118,6 +157,15 @@ async function main() {
   const links = { ...(prev.links || {}) };
   const regId = getRegisterId();
   const now = new Date().toISOString();
+  const authJwt = getJwtFromCookie(cookieHeader);
+
+  if (!authJwt) {
+    console.warn(
+      '⚠️ linkageString 없거나 복호화 실패 → landing API가 code 3000 등으로 실패할 수 있음'
+    );
+  } else {
+    console.log('✅ linkageString → JWT 추출 성공 (앞 50자):', authJwt.slice(0, 50) + '…');
+  }
 
   console.log(`대상 상품 ${goodsList.length}개 | registerId ${regId.slice(0, 8)}…\n`);
 
@@ -152,23 +200,43 @@ async function main() {
       return;
     }
 
+    console.log('큐레이터 상품 검색 페이지 워밍업…');
+    await page.goto(AFFILIATE_REFERER, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+    await sleep(2000);
+
     for (const gn of goodsList) {
       const apiKey = generateApiKey();
       console.log(`\n📎 ${gn}`);
 
       const pack = await page.evaluate(
-        async ({ goodsNo, registerId, apiKey, placeholderCat }) => {
+        async ({
+          goodsNo,
+          registerId,
+          apiKey,
+          placeholderCat,
+          authJwt: jwt
+        }) => {
           async function landing(body) {
+            const headers = {
+              'Content-Type': 'application/json',
+              Accept: 'application/json, text/plain, */*',
+              Origin: 'https://m.oliveyoung.co.kr',
+              Referer:
+                'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search',
+              'x-api-key': apiKey
+            };
+            if (jwt) {
+              headers.authorization = jwt;
+            }
             const r = await fetch(
               'https://m.oliveyoung.co.kr/review/api/affiliate/v1/activities/landing',
               {
                 method: 'POST',
                 credentials: 'include',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Accept: 'application/json',
-                  'x-api-key': apiKey
-                },
+                headers,
                 body: JSON.stringify(body)
               }
             );
@@ -190,7 +258,9 @@ async function main() {
                 credentials: 'include',
                 headers: {
                   'Content-Type': 'application/json',
-                  Accept: 'application/json',
+                  Accept: 'application/json, text/plain, */*',
+                  Origin: 'https://m.oliveyoung.co.kr',
+                  Referer: 'https://m.oliveyoung.co.kr/',
                   'x-api-key': apiKey
                 },
                 body: JSON.stringify([{ originalUrl, registerId: rid }])
@@ -270,7 +340,8 @@ async function main() {
           goodsNo: gn,
           registerId: regId,
           apiKey,
-          placeholderCat: PLACEHOLDER_CATEGORY
+          placeholderCat: PLACEHOLDER_CATEGORY,
+          authJwt: authJwt || ''
         }
       );
 
