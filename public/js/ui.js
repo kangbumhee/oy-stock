@@ -29,7 +29,8 @@ var UI = {
   },
 
   /**
-   * curator-links.json → shorten-proxy 순. URL 확정 후 window.open 한 번만 (about:blank 없음).
+   * curator-links.json → shorten-proxy. 새 탭만 사용 (location.href 폴백 없음).
+   * 팝업 차단 시 <a> 클릭 시도 후, 그래도 안 되면 버튼으로 수동 열기 안내.
    */
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
@@ -42,22 +43,51 @@ var UI = {
       encodeURIComponent(String(goodsNo).trim()) +
       '&utm_source=shutter&utm_medium=affiliate';
 
-    function openInNewTabOrNavigate(url) {
+    function tryProgrammaticAnchorClick(url) {
+      var a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    /**
+     * @returns {boolean} true면 수동 버튼 모드(finally에서 라벨 복구 안 함)
+     * location.href 는 쓰지 않음(현재 탭 이탈 방지).
+     */
+    function openInNewTabWithoutSameTabNav(url) {
       var newTab = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!newTab) {
-        window.location.href = url;
+      if (newTab && !newTab.closed) {
+        return false;
       }
+      tryProgrammaticAnchorClick(url);
+      if (!newTab) {
+        el.removeAttribute('data-action');
+        el.disabled = false;
+        el.textContent = '여기를 클릭해서 열기 →';
+        el.onclick = function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          window.open(url, '_blank', 'noopener,noreferrer');
+        };
+        return true;
+      }
+      return false;
     }
 
     el.disabled = true;
     el.textContent = '링크 생성 중...';
 
     (async function () {
+      var manualFallback = false;
       try {
         var links = await UI.loadCuratorLinksIndex();
         var entry = links[goodsNo];
         if (entry && entry.shortenedUrl) {
-          openInNewTabOrNavigate(entry.shortenedUrl);
+          manualFallback = openInNewTabWithoutSameTabNav(entry.shortenedUrl);
           return;
         }
 
@@ -85,16 +115,18 @@ var UI = {
           data && data.data && data.data[0] && data.data[0].shortenedUrl;
 
         if (res.ok && shortenedUrl) {
-          openInNewTabOrNavigate(shortenedUrl);
+          manualFallback = openInNewTabWithoutSameTabNav(shortenedUrl);
         } else {
-          openInNewTabOrNavigate(fallbackUrl);
+          manualFallback = openInNewTabWithoutSameTabNav(fallbackUrl);
         }
       } catch (e) {
         console.error('shorten 실패:', e);
-        openInNewTabOrNavigate(fallbackUrl);
+        manualFallback = openInNewTabWithoutSameTabNav(fallbackUrl);
       } finally {
-        el.disabled = false;
-        el.textContent = origLabel;
+        if (!manualFallback) {
+          el.disabled = false;
+          el.textContent = origLabel;
+        }
       }
     })();
   },
