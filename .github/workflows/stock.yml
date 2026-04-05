@@ -28,6 +28,12 @@ jobs:
 
       - run: node scripts/detail-stock.mjs
 
+      - name: Generate curator links
+        env:
+          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
+        run: node scripts/generate-curator-links.mjs
+
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
