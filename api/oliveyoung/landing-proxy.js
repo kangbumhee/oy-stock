@@ -4,6 +4,8 @@
  * env:
  *   OLIVEYOUNG_LINKAGE_STRING — linkageString 값(hex). AES-128-ECB 복호화 → Authorization JWT
  *   OLIVEYOUNG_LINKAGE_JWT — 선택, 설정 시 복호화 생략하고 그대로 Authorization
+ *
+ * GET ?check=1 — JWT 만료·출처 점검 (올리브영 API 호출 없음)
  */
 
 const crypto = require('crypto');
@@ -42,17 +44,109 @@ function generateApiKey() {
   return Buffer.from(raw, 'utf8').toString('base64');
 }
 
-function getAuthJwt() {
+function getJwtFromEnv() {
   const direct = (process.env.OLIVEYOUNG_LINKAGE_JWT || '').trim();
-  if (direct) return direct;
-
+  if (direct) {
+    return { jwt: direct, jwtSource: 'direct', decryptError: null };
+  }
   const hex = (process.env.OLIVEYOUNG_LINKAGE_STRING || '').trim();
-  if (!hex) return null;
+  if (!hex) {
+    return { jwt: null, jwtSource: null, decryptError: null };
+  }
   try {
-    return decryptLinkageString(hex);
+    return {
+      jwt: decryptLinkageString(hex),
+      jwtSource: 'linkage',
+      decryptError: null
+    };
+  } catch (e) {
+    return {
+      jwt: null,
+      jwtSource: 'linkage',
+      decryptError: String(e.message || e)
+    };
+  }
+}
+
+/** JWT payload 디코드 (검증 없음). exp 는 초 단위 Unix time */
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const json = Buffer.from(b64, 'base64').toString('utf8');
+    return JSON.parse(json);
   } catch {
     return null;
   }
+}
+
+function buildJwtCheckResponse() {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const { jwt, jwtSource, decryptError } = getJwtFromEnv();
+
+  if (decryptError) {
+    return {
+      jwtValid: false,
+      jwtExp: null,
+      jwtExpSeconds: null,
+      jwtSource: 'linkage',
+      decryptError,
+      note: 'OLIVEYOUNG_LINKAGE_STRING 복호화 실패'
+    };
+  }
+
+  if (!jwt) {
+    return {
+      jwtValid: false,
+      jwtExp: null,
+      jwtExpSeconds: null,
+      jwtSource: null,
+      note: 'OLIVEYOUNG_LINKAGE_JWT / OLIVEYOUNG_LINKAGE_STRING 미설정'
+    };
+  }
+
+  const payload = decodeJwtPayload(jwt);
+  if (!payload) {
+    return {
+      jwtValid: null,
+      jwtExp: null,
+      jwtExpSeconds: null,
+      jwtSource: jwtSource || 'unknown',
+      note: 'JWT 형식 아님(점 2개 구간 없음) — 토큰 그대로 authorization 사용',
+      tokenLength: jwt.length
+    };
+  }
+
+  const expSec =
+    payload.exp != null && Number.isFinite(Number(payload.exp))
+      ? Number(payload.exp)
+      : null;
+  const jwtValid = expSec == null ? null : expSec > nowSec;
+  const jwtExp =
+    expSec != null ? new Date(expSec * 1000).toISOString() : null;
+
+  return {
+    jwtValid,
+    jwtExp,
+    jwtExpSeconds: expSec,
+    nowSeconds: nowSec,
+    secondsRemaining:
+      expSec != null ? Math.max(0, expSec - nowSec) : null,
+    jwtSource: jwtSource || 'unknown',
+    sub: payload.sub,
+    iat:
+      payload.iat != null
+        ? new Date(Number(payload.iat) * 1000).toISOString()
+        : undefined
+  };
+}
+
+function getAuthJwt() {
+  const { jwt } = getJwtFromEnv();
+  return jwt;
 }
 
 function isValidGoodsNo(g) {
@@ -61,7 +155,7 @@ function isValidGoodsNo(g) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -70,10 +164,30 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  if (req.method === 'GET') {
+    const q = req.query || {};
+    if (q.check === '1' || q.check === 'true') {
+      const body = buildJwtCheckResponse();
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(body));
+      return;
+    }
+    res.statusCode = 400;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(
+      JSON.stringify({
+        error: 'bad_request',
+        message: 'landing 호출은 POST, JWT 점검은 GET ?check=1'
+      })
+    );
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.end(JSON.stringify({ error: 'POST only' }));
+    res.end(JSON.stringify({ error: 'Method not allowed' }));
     return;
   }
 

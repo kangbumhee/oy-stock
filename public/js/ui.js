@@ -120,6 +120,14 @@ var UI = {
         var partnerId =
           (landJson && landJson.affiliatePartnerId) || defaultReg;
 
+        if (!activityId) {
+          console.error('[landing-proxy] affiliateActivityId 없음 → utm_content 생략', {
+            goodsNo: goodsNo,
+            httpStatus: landRes.status,
+            response: landJson
+          });
+        }
+
         var originalUrlForShorten = activityId
           ? longUrlBase + '&utm_content=OY_' + activityId
           : longUrlBase;
@@ -239,7 +247,7 @@ var UI = {
     var bar =
       '<div class="sbar"><span>검색결과 <b>' +
       products.length +
-      '</b>개</span><span class="ok">목록: 온라인 재고만 · 카드 클릭 → 주변 매장 재고 · 바로구매 → 큐레이터 링크</span></div>';
+      '</b>개</span><span class="ok">상품 클릭 → 재고확인 | ⭐ → 즐겨찾기</span></div>';
 
     var cards = products
       .map(function (p, i) {
@@ -544,8 +552,8 @@ var UI = {
       favorites.length +
       '</b>개</span>' +
       (timeStr
-        ? '<span class="ok">📦 공개 캐시 ' + timeStr + ' · 목록은 온라인만 실시간</span>'
-        : '<span class="ok">목록: 온라인만 실시간 · 카드 클릭 → 매장 재고</span>') +
+        ? '<span class="ok">📦 공개 캐시 ' + timeStr + '</span>'
+        : '<span class="ok">매장·온라인 재고는 실시간 조회</span>') +
       '</div>';
     var cards = favorites
       .map(function (f) {
