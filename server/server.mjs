@@ -191,15 +191,34 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
 }
 
 async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
+  try {
+    return await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
+  } catch (e) {
+    console.error('[getStockDetail] 예외', goodsNo, e.message || e);
+    return {
+      success: false,
+      error: true,
+      goodsNo,
+      message: String(e.message || e)
+    };
+  }
+}
+
+async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
   const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
-    return { success: false, error: '상품 조회 실패 (단종 가능성)' };
+    return {
+      success: false,
+      error: true,
+      goodsNo,
+      message: '상품 조회 실패 (단종 가능성)'
+    };
   }
 
   const infoInner = unwrapPayload(infoRes.data);
   const gi = infoInner.goodsInfo;
   if (!gi) {
-    return { success: false, error: '상품 정보 없음' };
+    return { success: false, error: true, goodsNo, message: '상품 정보 없음' };
   }
 
   const uploadUrl = infoInner.goodsUploadUrl || '';
@@ -722,16 +741,47 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const stockJsonHdr = {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*'
+    };
+
     try {
       await ensureSession();
-      const result = await getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(result));
     } catch (e) {
-      console.error('에러:', e.message);
+      console.error('[api/stock] 세션:', e.message);
       sessionReady = false;
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+      res.writeHead(200, stockJsonHdr);
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: true,
+          goodsNo,
+          message: String(e.message || e)
+        })
+      );
+      return;
+    }
+
+    try {
+      const result = await getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly);
+      const out = result.success
+        ? result
+        : { ...result, error: true, goodsNo: result.goodsNo || goodsNo };
+      res.writeHead(200, stockJsonHdr);
+      res.end(JSON.stringify(out));
+    } catch (e) {
+      console.error('[api/stock] 예외:', e.message);
+      sessionReady = false;
+      res.writeHead(200, stockJsonHdr);
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: true,
+          goodsNo,
+          message: String(e.message || e)
+        })
+      );
     }
     return;
   }

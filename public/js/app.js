@@ -200,7 +200,7 @@ var App = {
         }
       });
       var self = this;
-      var batchSize = 4;
+      var batchSize = 2;
       for (var i = 0; i < products.length; i += batchSize) {
         var batch = products.slice(i, i + batchSize);
         var settled = await Promise.allSettled(
@@ -216,9 +216,11 @@ var App = {
           self.detailData.products[r.goodsNo] = r.data;
           UI.updateCardBadge(r.goodsNo, r.data);
         });
-        await new Promise(function (r) {
-          setTimeout(r, 500);
-        });
+        if (i + batchSize < products.length) {
+          await new Promise(function (r) {
+            setTimeout(r, 300);
+          });
+        }
       }
     } catch (e) {
       console.warn('enrichSearchResults', e);
@@ -247,12 +249,18 @@ var App = {
       CONFIG.REALTIME_API +
       (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
       q;
-    return fetch(url)
-      .then(function (r) {
-        return r.json();
+    var ctrl = new AbortController();
+    var tid = setTimeout(function () {
+      ctrl.abort();
+    }, 10000);
+    return fetch(url, { signal: ctrl.signal })
+      .finally(function () {
+        clearTimeout(tid);
       })
-      .then(function (d) {
-        return d.success ? { goodsNo: gn, data: d } : null;
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return d && d.success ? { goodsNo: gn, data: d } : null;
+        });
       })
       .catch(function () {
         return null;
@@ -268,7 +276,7 @@ var App = {
         }
       });
       var self = this;
-      var batchSize = 4;
+      var batchSize = 2;
       for (var i = 0; i < favorites.length; i += batchSize) {
         var batch = favorites.slice(i, i + batchSize);
         var settled = await Promise.allSettled(
@@ -284,9 +292,11 @@ var App = {
           self.detailData.products[r.goodsNo] = r.data;
           UI.updateCardBadge(r.goodsNo, r.data);
         });
-        await new Promise(function (r) {
-          setTimeout(r, 500);
-        });
+        if (i + batchSize < favorites.length) {
+          await new Promise(function (r) {
+            setTimeout(r, 300);
+          });
+        }
       }
     } catch (e) {
       console.warn('enrichFavorites', e);
