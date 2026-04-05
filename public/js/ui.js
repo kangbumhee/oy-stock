@@ -1,4 +1,15 @@
 var UI = {
+  /** 올리브영 상품 이동: 큐레이터 리다이렉트 API(실패 시 서버가 일반 상세로 폴백) */
+  oliveyoungProductHref: function (goodsNo, categoryNumber) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return CONFIG.OY_PRODUCT_URL;
+    var q = 'goodsNo=' + encodeURIComponent(gn);
+    if (categoryNumber) {
+      q += '&categoryNumber=' + encodeURIComponent(String(categoryNumber));
+    }
+    return CONFIG.CURATOR_REDIRECT_PATH + '?' + q;
+  },
+
   esc: function (s) {
     if (!s) return '';
     var d = document.createElement('div');
@@ -535,7 +546,7 @@ var UI = {
   showPopupError: function (name, msg, goodsNo) {
     var root = document.getElementById('popup-root');
     if (!root) return;
-    var oyLink = CONFIG.OY_PRODUCT_URL + encodeURIComponent(goodsNo || '');
+    var oyLink = UI.oliveyoungProductHref(goodsNo);
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -557,7 +568,7 @@ var UI = {
   showDetailPopup: function (detail, goodsNo) {
     var root = document.getElementById('popup-root');
     if (!root) return;
-    var oyLink = CONFIG.OY_PRODUCT_URL + encodeURIComponent(goodsNo);
+    var oyLink = UI.oliveyoungProductHref(goodsNo, detail && detail.categoryNumber);
     var isFav = Storage.isFavorite(goodsNo);
     var timeStr = detail.updatedAt
       ? new Date(detail.updatedAt).toLocaleString('ko-KR', {

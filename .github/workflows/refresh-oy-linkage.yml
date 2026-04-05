@@ -1,0 +1,27 @@
+# 매일 한국 자정 무렵(UTC 15:00) linkageString 갱신 → Vercel OLIVEYOUNG_LINKAGE_STRING PATCH
+name: Refresh OliveYoung linkageString
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Refresh Vercel env
+        env:
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
+          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: node scripts/refresh-oy-linkage.mjs

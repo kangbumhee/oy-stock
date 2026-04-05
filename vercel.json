@@ -7,6 +7,7 @@
     { "src": "api/oliveyoung/inventory.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/curator-redirect.js", "use": "@vercel/node" },
     { "src": "api/favorites/sync.js", "use": "@vercel/node" },
     { "src": "api/kakao/geo.js", "use": "@vercel/node" }
   ],
@@ -25,6 +26,10 @@
     { "src": "/api/oliveyoung/search", "dest": "/api/oliveyoung/search.js" },
     { "src": "/api/oliveyoung/inventory", "dest": "/api/oliveyoung/inventory.js" },
     { "src": "/api/oliveyoung/options", "dest": "/api/oliveyoung/options.js" },
+    {
+      "src": "/api/oliveyoung/curator-redirect",
+      "dest": "/api/oliveyoung/curator-redirect.js"
+    },
     { "src": "/api/proxy(.*)", "dest": "/api/proxy.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]

@@ -1,2 +1,4 @@
 .vercel
 node_modules/
+scripts/.tmp-linkage-secret.txt
+scripts/_vercel-env-once.mjs
