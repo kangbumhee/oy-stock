@@ -8,6 +8,7 @@
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/curator-redirect.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/shorten-proxy.js", "use": "@vercel/node" },
     { "src": "api/favorites/sync.js", "use": "@vercel/node" },
     { "src": "api/kakao/geo.js", "use": "@vercel/node" }
   ],
@@ -29,6 +30,10 @@
     {
       "src": "/api/oliveyoung/curator-redirect",
       "dest": "/api/oliveyoung/curator-redirect.js"
+    },
+    {
+      "src": "/api/oliveyoung/shorten-proxy",
+      "dest": "/api/oliveyoung/shorten-proxy.js"
     },
     { "src": "/api/proxy(.*)", "dest": "/api/proxy.js" },
     { "src": "/(.*)", "dest": "/public/$1" }

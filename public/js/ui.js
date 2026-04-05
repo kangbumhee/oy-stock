@@ -12,26 +12,6 @@ var UI = {
     return url;
   },
 
-  /** shorten API용 x-api-key (Asia/Seoul 분 단위) */
-  generateOyShortenApiKey: function () {
-    var parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Seoul',
-      year: '2-digit',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).formatToParts(new Date());
-    var t = {};
-    for (var i = 0; i < parts.length; i++) {
-      t[parts[i].type] = parts[i].value;
-    }
-    var timeStr = t.year + t.month + t.day + t.hour + t.minute;
-    var raw = 'e3ea1c526eef4570946ebdf083dad7a7:shrt-auth:' + timeStr;
-    return btoa(raw);
-  },
-
   loadCuratorLinksIndex: function () {
     if (UI._curatorLinksPromise != null) return UI._curatorLinksPromise;
     var url = CONFIG.CURATOR_LINKS_JSON_URL || '/data/curator-links.json';
@@ -49,8 +29,7 @@ var UI = {
   },
 
   /**
-   * curator-links.json에 oy.run 있으면 사용, 없으면 브라우저에서 shorten API 호출.
-   * (Vercel 서버→올리브영은 Cloudflare 403)
+   * curator-links.json에 oy.run 있으면 사용, 없으면 Vercel shorten 프록시 호출.
    */
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
@@ -93,21 +72,17 @@ var UI = {
         openUrl(entry.shortenedUrl);
         return;
       }
-      return fetch('https://m.oliveyoung.co.kr/base/shorten/v2/verified', {
+      return fetch(CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy', {
         method: 'POST',
         mode: 'cors',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json, text/plain, */*',
-          'x-api-key': UI.generateOyShortenApiKey()
+          Accept: 'application/json'
         },
-        body: JSON.stringify([
-          {
-            originalUrl: longUrl,
-            registerId: '4ee076cc92da4447a1b4b42c590e4495'
-          }
-        ])
+        body: JSON.stringify({
+          originalUrl: longUrl,
+          registerId: '4ee076cc92da4447a1b4b42c590e4495'
+        })
       })
         .then(function (r) {
           return r.text().then(function (t) {

@@ -13,6 +13,8 @@ var CONFIG = {
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 (버튼은 브라우저 shorten 우선) */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
+  /** CORS 우회 shorten 프록시 (Vercel → m.oliveyoung) */
+  SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',
 
   REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',
 
