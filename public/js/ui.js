@@ -248,7 +248,10 @@ var UI = {
     if (favSection) favSection.style.display = tab === 'favorites' ? '' : 'none';
   },
 
-  renderProducts: function (products, detailData) {
+  /** 검색 그리드: 공개 캐시(stock-detail.json) 기준 온라인만 표시, 매장 뱃지는 숨김(수집 위치와 사용자 위치 불일치) */
+  renderProducts: function (products, detailData, opts) {
+    opts = opts || {};
+    var searchListCacheMode = !!opts.searchListCacheMode;
     var c = document.getElementById('product-list');
     if (!c) return;
     if (!products || !products.length) {
@@ -258,10 +261,26 @@ var UI = {
     var detailMap = {};
     if (detailData && detailData.products) detailMap = detailData.products;
 
+    var cacheStaleHours = 0;
+    if (searchListCacheMode && detailData && detailData.updatedAt) {
+      cacheStaleHours =
+        (Date.now() - new Date(detailData.updatedAt).getTime()) / 3600000;
+    }
+
     var bar =
       '<div class="sbar"><span>검색결과 <b>' +
       products.length +
-      '</b>개</span><span class="ok">상품 클릭 → 재고확인 | ⭐ → 즐겨찾기</span></div>';
+      '</b>개</span><span class="ok">' +
+      (searchListCacheMode
+        ? '온라인: 공개 캐시 · 클릭 시 실시간 매장·온라인'
+        : '상품 클릭 → 재고확인 | ⭐ → 즐겨찾기') +
+      '</span></div>';
+    if (searchListCacheMode && cacheStaleHours > 6) {
+      bar +=
+        '<div class="sbar-warn">⚠️ 공개 캐시 수집 시점: 약 ' +
+        Math.floor(cacheStaleHours) +
+        '시간 전 데이터입니다. 카드를 누르면 최신 재고를 조회합니다.</div>';
+    }
 
     var cards = products
       .map(function (p, i) {
@@ -269,6 +288,7 @@ var UI = {
         var isFav = Storage.isFavorite(gn);
         var detail = detailMap[gn];
         var listOnlineOnly = UI.inventoryOnlineOnly(detail);
+        if (searchListCacheMode) listOnlineOnly = true;
         var catHint =
           p.categoryNumber != null && String(p.categoryNumber).trim() !== ''
             ? String(p.categoryNumber).trim()
@@ -319,6 +339,9 @@ var UI = {
               detail.options.length +
               '개 ▾</button>';
           }
+        } else if (searchListCacheMode) {
+          onlineBadge =
+            '<span class="badge bg-missing">온라인 재고 확인 필요</span>';
         }
 
         var optPanel = '';

@@ -302,41 +302,6 @@ var App = {
     })();
   },
 
-  _enrichSearchResults: async function (products) {
-    try {
-      if (!CONFIG.REALTIME_API || !products || !products.length) return;
-
-      if (this.batchAbortController) {
-        this.batchAbortController.abort();
-        this.batchAbortController = null;
-      }
-
-      document.querySelectorAll('.badges').forEach(function (b) {
-        if (!b.innerHTML.trim()) {
-          b.innerHTML = '<span class="badge bg-gray">⏳ 온라인 재고 확인 중...</span>';
-        }
-      });
-      var self = this;
-      self.onlineEnrichSource = 'search';
-      self.pendingBatch = [];
-      products.forEach(function (p) {
-        self._pushPendingGoodsNo(p.goodsNumber || p.goodsNo);
-      });
-
-      var ac = new AbortController();
-      self.batchAbortController = ac;
-      try {
-        await self._runOnlineEnrichBatches(products, ac.signal);
-      } catch (e) {
-        console.warn('enrichSearchResults', e);
-      } finally {
-        if (self.batchAbortController === ac) self.batchAbortController = null;
-      }
-    } catch (e) {
-      console.warn('enrichSearchResults', e);
-    }
-  },
-
   _fetchStockDetail: function (pOrFav, opts) {
     opts = opts || {};
     var onlineOnly = !!opts.onlineOnly;
@@ -443,8 +408,7 @@ var App = {
       })
       .then(function (detail) {
         self.detailData = detail || self.detailData;
-        UI.renderProducts(self.products, self.detailData);
-        void self._enrichSearchResults(self.products);
+        UI.renderProducts(self.products, self.detailData, { searchListCacheMode: true });
       })
       .catch(function (err) {
         UI.showError(err.message || '검색 실패');
