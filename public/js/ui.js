@@ -218,6 +218,36 @@ var UI = {
     );
   },
 
+  /**
+   * 검색 API JSON → 상품 배열.
+   * 실제 응답: data.inventory = { totalCount, products: [...], ... } (배열은 .products)
+   * 구버전/대체: data.products
+   */
+  productsFromSearchApiResponse: function (d) {
+    var data = d;
+    var dd = (data && data.data) || {};
+    console.log('inventory 타입:', typeof (dd && dd.inventory));
+    var invForLog = dd && dd.inventory;
+    var invJson = '';
+    try {
+      invJson = JSON.stringify(invForLog) || '';
+    } catch (e) {
+      invJson = '';
+    }
+    console.log('inventory 첫 항목:', invJson.slice(0, 300));
+    var inv = dd.inventory != null ? dd.inventory : data && data.inventory;
+    var flat =
+      dd.products != null
+        ? dd.products
+        : data && data.products != null
+          ? data.products
+          : null;
+    if (Array.isArray(inv)) return inv;
+    if (inv && typeof inv === 'object' && Array.isArray(inv.products)) return inv.products;
+    if (Array.isArray(flat)) return flat;
+    return [];
+  },
+
   renderHistory: function (arr) {
     var c = document.getElementById('search-history');
     if (!c) return;
