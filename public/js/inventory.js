@@ -1,10 +1,49 @@
 var Inventory = {
   showHistory: function () {
+    var favs = Storage.getFavorites();
+    var favSet = {};
+    favs.forEach(function (f) {
+      var g = String(f.goodsNo || f.goodsNumber || '').trim();
+      if (g) favSet[g] = true;
+    });
+
+    function openHistoryPopup(bodyHtml) {
+      var root = document.getElementById('popup-root');
+      if (!root) return;
+      UI.closePopup();
+      root.innerHTML =
+        '<div class="popup-overlay">' +
+        '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
+        '<div class="popup-content popup-history-wrap">' +
+        '<div class="popup-header"><h3>📋 즐겨찾기 이력</h3><button type="button" data-action="closePopup">✕</button></div>' +
+        bodyHtml +
+        '</div></div>';
+      document.body.style.overflow = 'hidden';
+    }
+
+    if (!favs.length) {
+      openHistoryPopup(
+        '<div class="empty-state" style="padding:24px 16px"><p>즐겨찾기한 상품이 없습니다.</p>' +
+          '<p class="sub" style="margin-top:8px">검색 결과에서 ⭐을 눌러 추가하면 이 탭에서 변동 이력을 볼 수 있어요.</p></div>'
+      );
+      return;
+    }
+
     API.loadHistory().then(function (data) {
-      if (!data || !data.events || !data.events.length) {
-        alert('변경 이력이 없습니다.');
+      var events = (data && data.events) || [];
+      var filtered = events.filter(function (e) {
+        var gn = String(e.goodsNo || '').trim();
+        return gn && favSet[gn];
+      });
+
+      if (!filtered.length) {
+        openHistoryPopup(
+          '<div class="empty-state" style="padding:24px 16px"><p>즐겨찾기 상품의 기록된 이력이 없습니다.</p>' +
+            '<p class="sub" style="margin-top:8px">수집 주기에 따라 나중에 표시될 수 있어요.</p></div>'
+        );
         return;
       }
+
       var typeLabels = {
         new: '🆕 신규',
         discontinued: '⛔ 단종',
@@ -19,7 +58,7 @@ var Inventory = {
         online_back: '🛒✅ 온라인 재입고',
         online_changed: '🛒📦 온라인 재고 변동'
       };
-      var rows = data.events.slice(0, 100).map(function (e) {
+      var rows = filtered.slice(0, 100).map(function (e) {
         var time = new Date(e.date).toLocaleString('ko-KR', {
           timeZone: 'Asia/Seoul',
           month: 'numeric',
@@ -114,18 +153,13 @@ var Inventory = {
           '</span></div>'
         );
       });
-      var root = document.getElementById('popup-root');
-      if (!root) return;
-      UI.closePopup();
-      root.innerHTML =
-        '<div class="popup-overlay">' +
-        '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
-        '<div class="popup-content popup-history-wrap">' +
-        '<div class="popup-header"><h3>📋 변경 이력</h3><button type="button" data-action="closePopup">✕</button></div>' +
-        '<div class="inv-history-scroll">' +
-        rows.join('') +
-        '</div></div></div>';
-      document.body.style.overflow = 'hidden';
+      openHistoryPopup(
+        '<div class="inv-history-scroll">' + rows.join('') + '</div>'
+      );
+    }).catch(function () {
+      openHistoryPopup(
+        '<div class="empty-state" style="padding:24px 16px"><p>이력 데이터를 불러오지 못했습니다.</p></div>'
+      );
     });
   }
 };
