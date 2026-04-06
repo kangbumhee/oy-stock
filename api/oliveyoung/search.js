@@ -97,8 +97,15 @@ module.exports = async function handler(req, res) {
     res.setHeader('X-Cache', 'MISS');
     res.end(text);
   } catch (e) {
+    // fetch / AbortController timeout / r.text() 등에서 throw 시 여기로 옴
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.end(JSON.stringify({ success: false, message: e.message || 'Proxy error' }));
+    res.setHeader('X-Cache', 'ERROR');
+    res.end(
+      JSON.stringify({
+        error: e && e.message != null ? String(e.message) : 'Proxy error',
+        stack: e && e.stack ? String(e.stack).slice(0, 500) : undefined
+      })
+    );
   }
 };
