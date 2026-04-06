@@ -1,4 +1,4 @@
-# 매일 한국 자정 무렵(UTC 15:00) linkageString 갱신 → Vercel OLIVEYOUNG_LINKAGE_STRING PATCH
+# 매일 한국 자정 무렵(UTC 15:00) OY_REFRESH_COOKIE의 linkageString → JWT 검증 후 Vercel OLIVEYOUNG_LINKAGE_STRING PATCH
 name: Refresh OliveYoung linkageString
 
 on:

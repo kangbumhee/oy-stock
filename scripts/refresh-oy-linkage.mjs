@@ -1,20 +1,23 @@
 /**
- * additionalInfo.do?refreshYn=Y 로 새 linkageString(hex) 받은 뒤
- * Vercel 프로젝트의 OLIVEYOUNG_LINKAGE_STRING 값을 PATCH.
+ * additionalInfo.do 는 403 등으로 막힐 수 있어, OY_REFRESH_COOKIE(또는 조합 쿠키)에 있는
+ * linkageString(hex)를 그대로 읽어 AES 복호화 → JWT exp 확인 후
+ * Vercel OLIVEYOUNG_LINKAGE_STRING(hex)을 PATCH.
  *
  * GitHub Secrets (또는 로컬 env):
- *   OY_REFRESH_COOKIE — 권장: Cookie 헤더 전체 (OYSESSIONID=…; linkageString=…; …)
- *   또는 OY_SESSION_ID + OY_LINKAGE_STRING — 위와 같이 조합
+ *   OY_REFRESH_COOKIE — 권장: Cookie 헤더 전체 (… linkageString=<hex> …)
+ *   또는 OY_SESSION_ID + OY_LINKAGE_STRING — buildCookie 로 linkageString= 조합
  *   VERCEL_TOKEN — https://vercel.com/account/tokens
  *   VERCEL_PROJECT_ID — Project Settings → General
  *   VERCEL_TEAM_ID — (선택) 팀 프로젝트일 때만
+ *
+ * 한계: 쿠키의 linkageString JWT가 아직 유효할 때만 의미 있음.
+ * OY_REFRESH_COOKIE 는 수동으로 주기적으로 갱신 필요(약 30일·만료 전 등).
  */
 
-const REFRESH_URL =
-  'https://m.oliveyoung.co.kr/m/login/additionalInfo.do?refreshYn=Y';
+import crypto from 'crypto';
+
 const ENV_KEY = 'OLIVEYOUNG_LINKAGE_STRING';
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 
 function buildCookie() {
   const full = (process.env.OY_REFRESH_COOKIE || '').trim();
@@ -27,43 +30,58 @@ function buildCookie() {
   return '';
 }
 
-function parseLinkageFromResponse(res) {
-  const lines = [];
-  if (typeof res.headers.getSetCookie === 'function') {
-    lines.push(...res.headers.getSetCookie());
-  } else {
-    const single = res.headers.get('set-cookie');
-    if (single) lines.push(single);
-  }
-  for (const line of lines) {
-    const m = /linkageString=([^;]+)/i.exec(line);
-    if (m) {
-      try {
-        return decodeURIComponent(m[1].trim());
-      } catch {
-        return m[1].trim();
-      }
+/** OY_REFRESH_COOKIE 우선, 없으면 buildCookie() 전체에서 추출 */
+function extractLinkageHexFromEnv() {
+  const fromRefresh = process.env.OY_REFRESH_COOKIE?.match(
+    /linkageString=([^;]+)/i
+  );
+  if (fromRefresh?.[1]) {
+    let hex = fromRefresh[1].trim();
+    try {
+      hex = decodeURIComponent(hex);
+    } catch {
+      /* keep */
     }
+    return hex.trim();
   }
-  return null;
+  const cookie = buildCookie();
+  if (!cookie) return null;
+  const m = cookie.match(/(?:^|;\s*)linkageString=([^;]+)/i);
+  if (!m) return null;
+  let hex = m[1].trim();
+  try {
+    hex = decodeURIComponent(hex);
+  } catch {
+    /* keep */
+  }
+  return hex.trim();
 }
 
-async function refreshLinkage(cookie) {
-  const r = await fetch(REFRESH_URL, {
-    method: 'GET',
-    headers: {
-      Cookie: cookie,
-      'User-Agent': UA,
-      Accept: '*/*'
-    },
-    redirect: 'manual'
-  });
-  const hex = parseLinkageFromResponse(r);
-  if (!hex) {
-    console.error('Set-Cookie에 linkageString 없음. status=', r.status);
+function decryptLinkageString(hexString) {
+  const encrypted = Buffer.from(String(hexString).trim(), 'hex');
+  const decipher = crypto.createDecipheriv(
+    'aes-128-ecb',
+    LINKAGE_AES_KEY,
+    Buffer.alloc(0)
+  );
+  decipher.setAutoPadding(true);
+  let decrypted = decipher.update(encrypted, undefined, 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted.trim();
+}
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const json = Buffer.from(b64, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch {
     return null;
   }
-  return hex;
 }
 
 function teamQs(teamId) {
@@ -99,32 +117,64 @@ async function vercelPatchEnv(projectId, envRecordId, value, token, teamId) {
 }
 
 async function main() {
-  const cookie = buildCookie();
-  if (!cookie) {
-    console.error(
-      'OY_REFRESH_COOKIE 또는 (OY_SESSION_ID + OY_LINKAGE_STRING) 필요'
-    );
-    process.exit(1);
-  }
-
   const token = (process.env.VERCEL_TOKEN || '').trim();
   const projectId = (process.env.VERCEL_PROJECT_ID || '').trim();
   const teamId = (process.env.VERCEL_TEAM_ID || '').trim();
 
   if (!token || !projectId) {
-    console.error('VERCEL_TOKEN, VERCEL_PROJECT_ID 필요');
+    console.error('[실패] VERCEL_TOKEN, VERCEL_PROJECT_ID 필요');
     process.exit(1);
   }
 
-  console.log('1) additionalInfo 로 linkageString 갱신…');
-  const newHex = await refreshLinkage(cookie);
-  if (!newHex) {
+  console.log('1) OY_REFRESH_COOKIE / 조합 쿠키에서 linkageString(hex) 추출…');
+  const linkageHex = extractLinkageHexFromEnv();
+  if (!linkageHex) {
+    console.error(
+      '[실패] linkageString 없음. OY_REFRESH_COOKIE 또는 OY_SESSION_ID+OY_LINKAGE_STRING 설정'
+    );
     process.exit(1);
   }
-  console.log('   새 linkageString 길이:', newHex.length);
+  console.log('   hex 길이:', linkageHex.length);
+
+  let jwt;
+  try {
+    jwt = decryptLinkageString(linkageHex);
+  } catch (e) {
+    console.error('[실패] AES 복호화:', e.message || e);
+    process.exit(1);
+  }
+
+  const payload = decodeJwtPayload(jwt);
+  if (!payload) {
+    console.error('[실패] JWT payload 디코드 불가');
+    process.exit(1);
+  }
+
+  if (payload.exp != null) {
+    console.log('JWT 만료:', new Date(payload.exp * 1000).toLocaleString());
+    console.log(
+      '남은 시간:',
+      Math.round((payload.exp - Date.now() / 1000) / 3600),
+      '시간'
+    );
+    const nowSec = Date.now() / 1000;
+    if (payload.exp <= nowSec) {
+      console.error('[실패] JWT 만료됨. OY_REFRESH_COOKIE 를 브라우저에서 새로 복사하세요.');
+      process.exit(1);
+    }
+  } else {
+    console.warn('[경고] JWT에 exp 없음 — 그대로 Vercel 반영 시도');
+  }
 
   console.log('2) Vercel에서', ENV_KEY, '항목 조회…');
-  const list = await vercelListEnv(projectId, token, teamId);
+  let list;
+  try {
+    list = await vercelListEnv(projectId, token, teamId);
+  } catch (e) {
+    console.error('[실패]', e.message || e);
+    process.exit(1);
+  }
+
   const envs = list.envs || list;
   const targetFilter = (process.env.VERCEL_ENV_TARGETS || '')
     .split(',')
@@ -140,22 +190,30 @@ async function main() {
 
   if (toPatch.length === 0) {
     console.error(
-      '일치하는 env 없음. Vercel Project에',
+      '[실패] 일치하는 env 없음. Vercel Project에',
       ENV_KEY,
-      '를 추가한 뒤 다시 실행하세요.'
+      '추가 후 재실행'
     );
     process.exit(1);
   }
 
   for (const e of toPatch) {
-    console.log('   PATCH', e.target, e.id);
-    await vercelPatchEnv(projectId, e.id, newHex, token, teamId);
+    try {
+      console.log('   PATCH', e.target, e.id, '…');
+      await vercelPatchEnv(projectId, e.id, linkageHex, token, teamId);
+      console.log('   [성공]', e.target, e.id);
+    } catch (err) {
+      console.error('   [실패]', e.target, e.id, err.message || err);
+      process.exit(1);
+    }
   }
 
-  console.log('완료. Vercel에 재배포 없이 다음 요청부터 새 값이 적용됩니다.');
+  console.log(
+    '[완료] OLIVEYOUNG_LINKAGE_STRING 반영. 재배포 없이 다음 요청부터 적용됩니다.'
+  );
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error('[실패]', err);
   process.exit(1);
 });
