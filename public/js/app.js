@@ -150,6 +150,11 @@ var App = {
         if (kw) this.doSearch(kw);
         break;
       }
+      case 'clearSearchHistory':
+        this.searchHistory = [];
+        Storage.setHistory([]);
+        UI.renderHistory([]);
+        break;
       case 'tabSearch':
         this.currentTab = 'search';
         UI.setActiveTab('search');

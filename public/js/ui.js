@@ -211,7 +211,7 @@ var UI = {
       c.innerHTML = '';
       return;
     }
-    c.innerHTML = arr
+    var tags = arr
       .map(function (h) {
         return (
           '<button type="button" class="history-tag" data-action="searchHistory" data-keyword="' +
@@ -222,6 +222,13 @@ var UI = {
         );
       })
       .join('');
+    c.innerHTML =
+      '<div class="history-row">' +
+      '<div class="history-tags">' +
+      tags +
+      '</div>' +
+      '<button type="button" class="history-clear-btn" data-action="clearSearchHistory" title="전체 삭제">🗑 전체 삭제</button>' +
+      '</div>';
   },
 
   showLoading: function (msg) {
@@ -261,26 +268,10 @@ var UI = {
     var detailMap = {};
     if (detailData && detailData.products) detailMap = detailData.products;
 
-    var cacheStaleHours = 0;
-    if (searchListCacheMode && detailData && detailData.updatedAt) {
-      cacheStaleHours =
-        (Date.now() - new Date(detailData.updatedAt).getTime()) / 3600000;
-    }
-
     var bar =
       '<div class="sbar"><span>검색결과 <b>' +
       products.length +
-      '</b>개</span><span class="ok">' +
-      (searchListCacheMode
-        ? '온라인: 공개 캐시 · 클릭 시 실시간 매장·온라인'
-        : '상품 클릭 → 재고확인 | ⭐ → 즐겨찾기') +
-      '</span></div>';
-    if (searchListCacheMode && cacheStaleHours > 6) {
-      bar +=
-        '<div class="sbar-warn">⚠️ 공개 캐시 수집 시점: 약 ' +
-        Math.floor(cacheStaleHours) +
-        '시간 전 데이터입니다. 카드를 누르면 최신 재고를 조회합니다.</div>';
-    }
+      '</b>개</span><span class="ok">상품 클릭 → 재고확인 | ⭐ → 즐겨찾기</span></div>';
 
     var cards = products
       .map(function (p, i) {
@@ -339,9 +330,6 @@ var UI = {
               detail.options.length +
               '개 ▾</button>';
           }
-        } else if (searchListCacheMode) {
-          onlineBadge =
-            '<span class="badge bg-missing">온라인 재고 확인 필요</span>';
         }
 
         var optPanel = '';
