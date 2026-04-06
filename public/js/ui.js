@@ -284,15 +284,39 @@ var UI = {
         '</p></div>';
   },
 
+  clearResults: function () {
+    var c = document.getElementById('product-list');
+    if (!c) return;
+    c.innerHTML = '';
+  },
+
   showSearchLoading: function (keyword) {
     var c = document.getElementById('product-list');
     if (!c) return;
     c.innerHTML =
       '<div class="search-in-progress">' +
       '<div class="spinner search-in-progress-spinner"></div>' +
-      '<p>「' +
+      '<p class="search-in-progress-msg"><strong>\'' +
       UI.esc(keyword) +
-      '」 검색 중…</p>' +
+      '\'</strong> 검색 중…</p>' +
+      '<p class="search-in-progress-hint">잠시만 기다려 주세요</p>' +
+      '</div>';
+  },
+
+  showSearchError: function (message, keyword) {
+    var c = document.getElementById('product-list');
+    if (!c) return;
+    var kw = String(keyword || '').trim();
+    c.innerHTML =
+      '<div class="empty-state search-error-state">' +
+      '<p>⚠️ ' +
+      UI.esc(message || '검색 실패') +
+      '</p>' +
+      (kw
+        ? '<button type="button" class="retry-search-btn btn-oy" data-action="retrySearch" data-keyword="' +
+          UI.esc(kw) +
+          '">다시 시도</button>'
+        : '') +
       '</div>';
   },
 

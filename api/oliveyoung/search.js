@@ -2,6 +2,8 @@ const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_CACHE_MAX = 200;
 const searchCache = new Map();
 
+const UPSTREAM_TIMEOUT_MS = 30000;
+
 function cacheKey(keyword, lat, lng, size) {
   return (
     String(keyword || '')
@@ -26,6 +28,22 @@ function pruneSearchCache() {
     if (first == null) break;
     searchCache.delete(first);
   }
+}
+
+async function fetchUpstreamInventory(url) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'OliveyoungStockChecker/1.0' },
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(t);
+  }
+  const text = await r.text();
+  return { r, text };
 }
 
 module.exports = async function handler(req, res) {
@@ -69,26 +87,30 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  const url =
+    'https://mcp.aka.page/api/oliveyoung/inventory?keyword=' +
+    encodeURIComponent(keyword) +
+    '&lat=' +
+    encodeURIComponent(lat) +
+    '&lng=' +
+    encodeURIComponent(lng) +
+    '&size=' +
+    encodeURIComponent(size);
+
   try {
-    const url =
-      'https://mcp.aka.page/api/oliveyoung/inventory?keyword=' +
-      encodeURIComponent(keyword) +
-      '&lat=' +
-      encodeURIComponent(lat) +
-      '&lng=' +
-      encodeURIComponent(lng) +
-      '&size=' +
-      encodeURIComponent(size);
+    let result;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        result = await fetchUpstreamInventory(url);
+        if (result.r.status < 500) break;
+        if (attempt === 0) continue;
+        break;
+      } catch (e) {
+        if (attempt === 1) throw e;
+      }
+    }
 
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 20000);
-    const r = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'OliveyoungStockChecker/1.0' },
-      signal: controller.signal
-    });
-    clearTimeout(t);
-
-    const text = await r.text();
+    const { r, text } = result;
     pruneSearchCache();
     searchCache.set(ck, { body: text, status: r.status, ts: Date.now() });
 
@@ -97,13 +119,15 @@ module.exports = async function handler(req, res) {
     res.setHeader('X-Cache', 'MISS');
     res.end(text);
   } catch (e) {
-    // fetch / AbortController timeout / r.text() 등에서 throw 시 여기로 옴
+    const msg = e && e.message != null ? String(e.message) : 'Proxy error';
+    const isAbort = e && e.name === 'AbortError';
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('X-Cache', 'ERROR');
     res.end(
       JSON.stringify({
-        error: e && e.message != null ? String(e.message) : 'Proxy error',
+        error: isAbort ? `업스트림 타임아웃 (${UPSTREAM_TIMEOUT_MS / 1000}s): ${msg}` : msg,
+        code: isAbort ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_FETCH',
         stack: e && e.stack ? String(e.stack).slice(0, 500) : undefined
       })
     );

@@ -13,8 +13,19 @@ var API = {
     var init = {};
     if (opts.signal) init.signal = opts.signal;
     return fetch(url, Object.keys(init).length ? init : undefined).then(function (r) {
-      if (!r.ok) throw new Error('서버오류 ' + r.status);
-      return r.json();
+      if (r.ok) return r.json();
+      return r.text().then(function (t) {
+        var detail = '';
+        try {
+          var j = JSON.parse(t);
+          detail = j.error || j.message || '';
+        } catch (e) {
+          if (t) detail = String(t).slice(0, 280);
+        }
+        throw new Error(
+          detail ? '서버오류 ' + r.status + ': ' + detail : '서버오류 ' + r.status
+        );
+      });
     });
   },
 

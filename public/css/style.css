@@ -58,6 +58,9 @@ header h1{font-size:20px;margin-bottom:4px}
 
 .search-in-progress{text-align:center;padding:32px 16px;color:#666;font-size:14px}
 .search-in-progress-spinner{width:28px;height:28px;margin:0 auto 12px;border-width:3px}
+.search-in-progress-msg{font-size:16px;color:#374151;margin:0 0 6px}
+.search-in-progress-hint{font-size:13px;color:#9ca3af;margin:0}
+.search-error-state .retry-search-btn{margin-top:16px;max-width:280px}
 
 .popup-skel-meta{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px}
 .popup-skel-meta-text{flex:1;min-width:0}

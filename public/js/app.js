@@ -156,6 +156,15 @@ var App = {
         if (kw) this.doSearch(kw);
         break;
       }
+      case 'retrySearch': {
+        var rkw = String(el.dataset.keyword || '').trim();
+        if (rkw) {
+          var inpr = document.getElementById('search-input');
+          if (inpr) inpr.value = rkw;
+          this.doSearch(rkw);
+        }
+        break;
+      }
       case 'clearSearchHistory':
         this.searchHistory = [];
         Storage.setHistory([]);
@@ -420,6 +429,9 @@ var App = {
       .slice(0, 20);
     this._save();
     UI.renderHistory(this.searchHistory);
+
+    self.products = [];
+    UI.clearResults();
     UI.showSearchLoading(kw);
 
     API.loadDetailCache().then(function (d) {
@@ -442,7 +454,7 @@ var App = {
       .catch(function (err) {
         if (err && err.name === 'AbortError') return;
         if (seq !== self._searchSeq) return;
-        UI.showError(err.message || '검색 실패');
+        UI.showSearchError(err.message || '검색 실패', kw);
       });
   },
 
