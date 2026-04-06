@@ -2,8 +2,11 @@
   "name": "oliveyoung-stock-checker",
   "version": "8.0.0",
   "private": true,
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
+    "nodemailer": "^6.9.16",
     "playwright": "^1.50.0"
   }
 }

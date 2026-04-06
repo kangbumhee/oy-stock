@@ -3,6 +3,8 @@
  * linkageString(hex)를 그대로 읽어 AES 복호화 → JWT exp 확인 후
  * Vercel OLIVEYOUNG_LINKAGE_STRING(hex)을 PATCH.
  *
+ * JWT 만료 7일 이내(또는 이미 만료)이고 ALERT_EMAIL_* 가 설정되어 있으면 Gmail SMTP로 알림.
+ *
  * GitHub Secrets (또는 로컬 env):
  *   OY_REFRESH_COOKIE — 권장: Cookie 헤더 전체 (… linkageString=<hex> …)
  *   또는 OY_SESSION_ID + OY_LINKAGE_STRING — buildCookie 로 linkageString= 조합
@@ -10,14 +12,21 @@
  *   VERCEL_PROJECT_ID — Project Settings → General
  *   VERCEL_TEAM_ID — (선택) 팀 프로젝트일 때만
  *
+ *   ALERT_EMAIL_FROM — 발신 Gmail
+ *   ALERT_EMAIL_PASSWORD — Gmail 앱 비밀번호 (일반 비밀번호 아님)
+ *   ALERT_EMAIL_TO — 수신 주소
+ *
  * 한계: 쿠키의 linkageString JWT가 아직 유효할 때만 의미 있음.
  * OY_REFRESH_COOKIE 는 수동으로 주기적으로 갱신 필요(약 30일·만료 전 등).
  */
 
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 const ENV_KEY = 'OLIVEYOUNG_LINKAGE_STRING';
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
+const MS_PER_DAY = 86400000;
+const ALERT_WITHIN_MS = 7 * MS_PER_DAY;
 
 function buildCookie() {
   const full = (process.env.OY_REFRESH_COOKIE || '').trim();
@@ -81,6 +90,101 @@ function decodeJwtPayload(token) {
     return JSON.parse(json);
   } catch {
     return null;
+  }
+}
+
+function alertEmailConfigured() {
+  return !!(
+    (process.env.ALERT_EMAIL_FROM || '').trim() &&
+    (process.env.ALERT_EMAIL_PASSWORD || '').trim() &&
+    (process.env.ALERT_EMAIL_TO || '').trim()
+  );
+}
+
+/**
+ * @param {{ expired: boolean, expMs: number, msRemaining: number }} p
+ */
+async function sendLinkageExpiryAlert(p) {
+  if (!alertEmailConfigured()) {
+    console.log('[알림] ALERT_EMAIL_* 미설정 — 만료 경고 메일 생략');
+    return;
+  }
+
+  const from = (process.env.ALERT_EMAIL_FROM || '').trim();
+  const pass = (process.env.ALERT_EMAIL_PASSWORD || '').trim();
+  const to = (process.env.ALERT_EMAIL_TO || '').trim();
+  const repo = (process.env.GITHUB_REPOSITORY || 'kangbumhee/oy-stock').trim();
+  const secretsUrl = `https://github.com/${repo}/settings/secrets/actions`;
+  const actionsUrl = `https://github.com/${repo}/actions`;
+
+  const expDateStr = new Date(p.expMs).toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul'
+  });
+
+  let daysLeftLabel;
+  let subject;
+  if (p.expired) {
+    daysLeftLabel = '이미 만료됨 (즉시 갱신 필요)';
+    subject = '🚨 [oy-stock] 올리브영 JWT 만료됨 — OY_REFRESH_COOKIE 즉시 갱신';
+  } else {
+    const ceilDays = Math.max(0, Math.ceil(p.msRemaining / MS_PER_DAY));
+    daysLeftLabel = `${ceilDays}일`;
+    const within3 =
+      p.msRemaining > 0 && p.msRemaining <= 3 * MS_PER_DAY;
+    subject = within3
+      ? `🚨 [oy-stock] 올리브영 쿠키 만료 ${ceilDays}일 전!`
+      : `⚠️ [oy-stock] 올리브영 쿠키 만료 ${ceilDays}일 전!`;
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: from, pass }
+  });
+
+  const html = `
+      <h2>${p.expired ? '🚨 OY_REFRESH_COOKIE / JWT 만료됨' : '⚠️ OY_REFRESH_COOKIE 만료 예정'}</h2>
+      <p><strong>만료일(한국 기준):</strong> ${expDateStr}</p>
+      <p><strong>남은 일수:</strong> ${daysLeftLabel}</p>
+
+      <h3>🔐 Gmail 알림용 앱 비밀번호 (Secrets 설정 시)</h3>
+      <ol>
+        <li>Google 계정 → <strong>보안</strong></li>
+        <li><strong>2단계 인증</strong> 켜기</li>
+        <li><strong>앱 비밀번호</strong> → 새 앱 비밀번호 생성</li>
+        <li>생성된 16자리 코드를 GitHub Secret <code>ALERT_EMAIL_PASSWORD</code>에 저장 (일반 Gmail 비밀번호 아님)</li>
+      </ol>
+
+      <h3>📋 OY_REFRESH_COOKIE 갱신 방법</h3>
+      <ol>
+        <li>올리브영 큐레이터 페이지 접속<br>
+            <a href="https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search">
+            https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search</a></li>
+        <li>F12 → <strong>Network</strong> 탭 열기</li>
+        <li><strong>Preserve log</strong> ✅ 체크</li>
+        <li>아무 상품 <strong>링크 복사</strong> 버튼 클릭</li>
+        <li>Network에서 <strong>landing</strong> 요청 선택</li>
+        <li><strong>Request Headers</strong> → <code>cookie:</code> 값 전체 복사</li>
+        <li>GitHub Secret 업데이트:<br>
+            <a href="${secretsUrl}">${secretsUrl}</a></li>
+        <li><code>OY_REFRESH_COOKIE</code> → Update → 새 값 붙여넣기</li>
+        <li>저장 후 Actions에서 워크플로 수동 실행:<br>
+            <a href="${actionsUrl}">${actionsUrl}</a>
+            → <em>Refresh OliveYoung linkageString</em></li>
+      </ol>
+
+      <p>✅ 완료되면 Vercel <code>OLIVEYOUNG_LINKAGE_STRING</code> 반영 및 큐레이터 연동이 계속 동작합니다.</p>
+    `;
+
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html
+    });
+    console.log('[알림] 만료 경고 메일 발송 완료 →', to);
+  } catch (e) {
+    console.error('[알림] 메일 발송 실패:', e.message || e);
   }
 }
 
@@ -151,14 +255,26 @@ async function main() {
   }
 
   if (payload.exp != null) {
-    console.log('JWT 만료:', new Date(payload.exp * 1000).toLocaleString());
+    const nowSec = Date.now() / 1000;
+    const expSec = payload.exp;
+    const expMs = expSec * 1000;
+    const expired = expSec <= nowSec;
+    const msRemaining = expMs - Date.now();
+
+    console.log('JWT 만료:', new Date(expMs).toLocaleString());
     console.log(
       '남은 시간:',
-      Math.round((payload.exp - Date.now() / 1000) / 3600),
+      Math.round((expSec - nowSec) / 3600),
       '시간'
     );
-    const nowSec = Date.now() / 1000;
-    if (payload.exp <= nowSec) {
+
+    const needAlert =
+      expired || (msRemaining > 0 && msRemaining <= ALERT_WITHIN_MS);
+    if (needAlert) {
+      await sendLinkageExpiryAlert({ expired, expMs, msRemaining });
+    }
+
+    if (expired) {
       console.error('[실패] JWT 만료됨. OY_REFRESH_COOKIE 를 브라우저에서 새로 복사하세요.');
       process.exit(1);
     }
