@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-06T08:20:25.065Z",
+  "updatedAt": "2026-04-06T10:03:39.743Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -15,13 +15,31 @@
   "recentEvents": [
     {
       "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 80,
+      "to": 79,
+      "fromQty": 381,
+      "toQty": 379,
+      "date": "2026-04-06T10:03:39.743Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 899,
+      "to": 2198,
+      "date": "2026-04-06T10:03:39.743Z"
+    },
+    {
+      "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 48,
       "to": 48,
-      "fromQty": 152,
-      "toQty": 148,
-      "date": "2026-04-06T08:20:25.065Z"
+      "fromQty": 148,
+      "toQty": 146,
+      "date": "2026-04-06T10:03:39.743Z"
     }
   ],
   "products": {
@@ -42,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 148,
+          "totalQty": 146,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -52,8 +70,8 @@
               "name": "김포라베니체점",
               "code": "DB6E",
               "dist": 0.36,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
@@ -132,8 +150,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -351,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-06T08:20:25.065Z"
+      "updatedAt": "2026-04-06T10:03:39.743Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -370,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 252,
-          "onlineQty": 325,
+          "totalQty": 251,
+          "onlineQty": 1420,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -440,8 +458,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 10,
-              "o2o": 8,
+              "qty": 9,
+              "o2o": 7,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -685,7 +703,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 67,
-          "onlineQty": 574,
+          "onlineQty": 778,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -997,8 +1015,8 @@
           "productId": "8809635332430",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/8/1583288890856331356.PNG",
           "totalStores": 50,
-          "inStock": 10,
-          "totalQty": 62,
+          "inStock": 9,
+          "totalQty": 61,
           "onlineQty": 0,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -1307,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-06T08:20:25.065Z"
+      "updatedAt": "2026-04-06T10:03:39.743Z"
     }
   }
 }
