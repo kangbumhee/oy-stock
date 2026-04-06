@@ -240,6 +240,18 @@ var UI = {
         '</p></div>';
   },
 
+  showSearchLoading: function (keyword) {
+    var c = document.getElementById('product-list');
+    if (!c) return;
+    c.innerHTML =
+      '<div class="search-in-progress">' +
+      '<div class="spinner search-in-progress-spinner"></div>' +
+      '<p>「' +
+      UI.esc(keyword) +
+      '」 검색 중…</p>' +
+      '</div>';
+  },
+
   showError: function (msg) {
     var c = document.getElementById('product-list');
     if (c) c.innerHTML = '<div class="empty-state"><p>⚠️ ' + UI.esc(msg) + '</p></div>';
@@ -373,7 +385,7 @@ var UI = {
 
         var img = p.imageUrl || (detail ? detail.thumbnail : '') || '';
         var imgTag = img
-          ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
+          ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy" decoding="async">'
           : '<div class="no-img">📦</div>';
         var cardSoldClass =
           detail && detail.status === 'discontinued'
@@ -673,7 +685,7 @@ var UI = {
 
         var img = (detail ? detail.thumbnail : '') || f.imageUrl || '';
         var imgTag = img
-          ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy">'
+          ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy" decoding="async">'
           : '<div class="no-img">📦</div>';
         var price = detail ? detail.price : f.price || f.priceToPay || 0;
         var disc = (detail ? detail.discountRate : f.discountRate) || 0;
@@ -785,6 +797,70 @@ var UI = {
         return;
       }
     });
+  },
+
+  /** 팝업: 상품 기본 정보 먼저, 재고 영역만 로딩 */
+  showPopupStockSkeleton: function (preview) {
+    var root = document.getElementById('popup-root');
+    if (!root) return;
+    var name = preview.goodsName || '';
+    var gn = String(preview.goodsNo || '').trim();
+    var cat = preview.category != null ? String(preview.category) : '';
+    var price = preview.price;
+    var orig = preview.originalPrice;
+    var disc = preview.discountRate || 0;
+    var imgUrl = preview.imageUrl || '';
+    var isFav = gn ? Storage.isFavorite(gn) : false;
+    var thumb = imgUrl
+      ? '<img src="' +
+        UI.esc(imgUrl) +
+        '" alt="" class="popup-skel-thumb" loading="lazy" decoding="async">'
+      : '<div class="popup-skel-thumb popup-skel-thumb-ph" aria-hidden="true"></div>';
+    var priceRow =
+      price != null && price !== ''
+        ? '<div class="popup-price-row">' +
+          (disc > 0 ? '<span class="disc">' + disc + '%</span>' : '') +
+          '<span class="price">' +
+          UI.num(price) +
+          '원</span>' +
+          (orig && orig !== price ? '<span class="orig">' + UI.num(orig) + '원</span>' : '') +
+          '</div>'
+        : '<div class="popup-price-row"><span class="price" style="color:#999">가격 확인 중…</span></div>';
+    var buyRow =
+      '<div class="popup-buy-inline">' +
+      '<button type="button" class="btn-buy-popup-inline" data-action="buyNow" data-goodsno="' +
+      UI.esc(gn) +
+      '" data-category="' +
+      UI.esc(cat) +
+      '" data-original-label="구매 바로가기">구매 바로가기</button>' +
+      '</div>';
+    var favBtn =
+      '<button type="button" class="popup-fav-btn' +
+      (isFav ? ' active' : '') +
+      '" data-action="toggleFavPopup" data-goodsno="' +
+      UI.esc(gn) +
+      '">' +
+      (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
+      '</button>';
+    root.innerHTML =
+      '<div class="popup-overlay">' +
+      '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
+      '<div class="popup-content">' +
+      '<div class="popup-header"><h3>' +
+      UI.esc(name) +
+      '</h3><button type="button" data-action="closePopup">✕</button></div>' +
+      buyRow +
+      '<div class="popup-skel-meta">' +
+      thumb +
+      '<div class="popup-skel-meta-text">' +
+      priceRow +
+      favBtn +
+      '</div></div>' +
+      '<div class="popup-stock-loading">' +
+      '<div class="spinner popup-stock-loading-spinner"></div>' +
+      '<p>주변 매장·온라인 재고 조회 중…</p>' +
+      '</div></div></div>';
+    document.body.style.overflow = 'hidden';
   },
 
   showPopupLoading: function (name, sub, goodsNo, category) {
@@ -910,7 +986,11 @@ var UI = {
 
     var optPanels = opts
       .map(function (o, i) {
-        var optImg = o.image ? '<img src="' + UI.esc(o.image) + '" class="opt-img" alt="">' : '';
+        var optImg = o.image
+          ? '<img src="' +
+            UI.esc(o.image) +
+            '" class="opt-img" alt="" loading="lazy" decoding="async">'
+          : '';
         var onlineStatus = '';
         if (o.onlineQty != null) {
           if (o.onlineQty > 0) {

@@ -12,6 +12,9 @@ var App = {
   pendingBatch: [],
   onlineEnrichSource: null,
 
+  _searchSeq: 0,
+  _searchAbortCtrl: null,
+
   init: function () {
     var self = this;
     var loc = Storage.getLocation();
@@ -393,29 +396,50 @@ var App = {
 
   doSearch: function (keyword) {
     var self = this;
-    this.searchHistory = [keyword]
+    var kw = String(keyword || '').trim();
+    if (!kw) return;
+
+    var seq = ++self._searchSeq;
+
+    if (self._searchAbortCtrl) {
+      try {
+        self._searchAbortCtrl.abort();
+      } catch (e) {}
+    }
+    self._searchAbortCtrl = new AbortController();
+
+    this.searchHistory = [kw]
       .concat(
         this.searchHistory.filter(function (h) {
-          return h !== keyword;
+          return h !== kw;
         })
       )
       .slice(0, 20);
     this._save();
     UI.renderHistory(this.searchHistory);
-    UI.showLoading('"' + keyword + '" 검색 중...');
+    UI.showSearchLoading(kw);
 
-    API.search(keyword, this.lat, this.lng, CONFIG.SEARCH_SIZE)
+    API.loadDetailCache().then(function (d) {
+      if (seq !== self._searchSeq) return;
+      if (d) self.detailData = d;
+      if (self.products && self.products.length) {
+        UI.renderProducts(self.products, self.detailData, { searchListCacheMode: true });
+      }
+    });
+
+    API.search(kw, self.lat, self.lng, CONFIG.SEARCH_SIZE, {
+      signal: self._searchAbortCtrl.signal
+    })
       .then(function (d) {
+        if (seq !== self._searchSeq) return;
         if (d.success === false) throw new Error(d.message || d.error || '실패');
         var inv = (d.data && d.data.inventory) || d.inventory || {};
         self.products = inv.products || [];
-        return API.loadDetailCache();
-      })
-      .then(function (detail) {
-        self.detailData = detail || self.detailData;
         UI.renderProducts(self.products, self.detailData, { searchListCacheMode: true });
       })
       .catch(function (err) {
+        if (err && err.name === 'AbortError') return;
+        if (seq !== self._searchSeq) return;
         UI.showError(err.message || '검색 실패');
       });
   },
@@ -509,7 +533,15 @@ var App = {
           : p.masterCategoryNumber != null && String(p.masterCategoryNumber).trim() !== ''
             ? String(p.masterCategoryNumber).trim()
             : '';
-      UI.showPopupLoading(p.goodsName, '주변 매장 재고 조회 중…', gn, catHint);
+      UI.showPopupStockSkeleton({
+        goodsName: p.goodsName,
+        goodsNo: gn,
+        category: catHint,
+        price: p.priceToPay,
+        originalPrice: p.originalPrice,
+        discountRate: p.discountRate || 0,
+        imageUrl: p.imageUrl || ''
+      });
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +
@@ -568,7 +600,15 @@ var App = {
         fav && fav.categoryNumber != null && String(fav.categoryNumber).trim() !== ''
           ? String(fav.categoryNumber).trim()
           : '';
-      UI.showPopupLoading(name, '주변 매장 재고 조회 중…', gn, favCat);
+      UI.showPopupStockSkeleton({
+        goodsName: name,
+        goodsNo: gn,
+        category: favCat,
+        price: fav ? fav.price || fav.priceToPay : null,
+        originalPrice: fav ? fav.originalPrice : null,
+        discountRate: fav ? fav.discountRate || 0 : 0,
+        imageUrl: fav ? fav.imageUrl || '' : ''
+      });
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +

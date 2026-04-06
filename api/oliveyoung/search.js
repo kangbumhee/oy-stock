@@ -1,3 +1,33 @@
+const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCH_CACHE_MAX = 200;
+const searchCache = new Map();
+
+function cacheKey(keyword, lat, lng, size) {
+  return (
+    String(keyword || '')
+      .trim()
+      .toLowerCase() +
+    '|' +
+    String(lat) +
+    '|' +
+    String(lng) +
+    '|' +
+    String(size)
+  );
+}
+
+function pruneSearchCache() {
+  const now = Date.now();
+  for (const [k, v] of searchCache) {
+    if (now - v.ts > SEARCH_CACHE_TTL_MS) searchCache.delete(k);
+  }
+  while (searchCache.size > SEARCH_CACHE_MAX) {
+    const first = searchCache.keys().next().value;
+    if (first == null) break;
+    searchCache.delete(first);
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -29,6 +59,16 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  const ck = cacheKey(keyword, lat, lng, size);
+  const hit = searchCache.get(ck);
+  if (hit && Date.now() - hit.ts < SEARCH_CACHE_TTL_MS) {
+    res.statusCode = hit.status;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('X-Cache', 'HIT');
+    res.end(hit.body);
+    return;
+  }
+
   try {
     const url =
       'https://mcp.aka.page/api/oliveyoung/inventory?keyword=' +
@@ -49,8 +89,12 @@ module.exports = async function handler(req, res) {
     clearTimeout(t);
 
     const text = await r.text();
+    pruneSearchCache();
+    searchCache.set(ck, { body: text, status: r.status, ts: Date.now() });
+
     res.statusCode = r.status;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('X-Cache', 'MISS');
     res.end(text);
   } catch (e) {
     res.statusCode = 500;

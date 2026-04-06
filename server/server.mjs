@@ -9,6 +9,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const onlineCache = new Map();
 const ONLINE_CACHE_TTL = 10 * 60 * 1000;
 
+/** 팝업 등 동일 상품·위치 반복 조회 시 Playwright 부하 완화 (TTL 짧게 유지) */
+const detailResponseCache = new Map();
+const DETAIL_RESPONSE_TTL_MS = 3 * 60 * 1000;
+const DETAIL_RESPONSE_CACHE_MAX = 80;
+
+function detailResponseCacheKey(goodsNo, lat, lng, withOnline, onlineOnly) {
+  return `${goodsNo}|${lat}|${lng}|${withOnline ? 1 : 0}|${onlineOnly ? 1 : 0}`;
+}
+
+function pruneDetailResponseCache() {
+  const now = Date.now();
+  for (const [k, v] of detailResponseCache) {
+    if (now - v.ts > DETAIL_RESPONSE_TTL_MS) detailResponseCache.delete(k);
+  }
+  while (detailResponseCache.size > DETAIL_RESPONSE_CACHE_MAX) {
+    const first = detailResponseCache.keys().next().value;
+    if (first == null) break;
+    detailResponseCache.delete(first);
+  }
+}
+
 let busy = false;
 async function withLock(fn) {
   const start = Date.now();
@@ -191,8 +212,22 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
 }
 
 async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
+  const ck = detailResponseCacheKey(goodsNo, lat, lng, withOnline, onlineOnly);
+  const hit = detailResponseCache.get(ck);
+  if (hit && Date.now() - hit.ts < DETAIL_RESPONSE_TTL_MS) {
+    try {
+      return JSON.parse(JSON.stringify(hit.data));
+    } catch {
+      /* fall through */
+    }
+  }
   try {
-    return await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
+    const result = await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
+    if (result && result.success) {
+      pruneDetailResponseCache();
+      detailResponseCache.set(ck, { data: result, ts: Date.now() });
+    }
+    return result;
   } catch (e) {
     console.error('[getStockDetail] 예외', goodsNo, e.message || e);
     return {
@@ -226,8 +261,16 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
 
   let options = [];
   let rawAvailableItems = [];
-  // 온라인 option·캐시 경로는 요청과 무관하게 항상 시도 (if(true) 유지, withOnline으로 바꾸지 말 것)
-  if (true) {
+  const itemCount = Number(gi.itemCount) || 1;
+  const v3Avail = Array.isArray(gi.availableItems) ? gi.availableItems : [];
+
+  if (v3Avail.length > 0) {
+    rawAvailableItems = v3Avail.slice();
+    options = v3Avail.slice();
+    console.log('[옵션] v3 availableItems만 사용 → 상세 page.goto 생략, items:', options.length);
+  } else if (itemCount <= 1) {
+    console.log('[옵션] 단일 상품 → 옵션 page·API 생략');
+  } else {
     const cached = onlineCache.get(goodsNo);
     if (cached && Date.now() - cached.ts < ONLINE_CACHE_TTL) {
       optionUploadUrl = cached.optionUploadUrl || '';
@@ -241,7 +284,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
             OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
             { waitUntil: 'domcontentloaded', timeout: 10000 }
           );
-          await sleep(1000);
+          await sleep(550);
 
           const optJson = await page.evaluate(async (gn) => {
             const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
@@ -268,12 +311,12 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
             const opts = optInner.goodsInfo?.availableItems || [];
             const raw = opts.slice();
             await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
-            await sleep(500);
+            await sleep(350);
             return { data: raw, optionUploadUrl: ou };
           }
 
           await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
-          await sleep(500);
+          await sleep(350);
           return null;
         } catch (e) {
           console.log('[옵션] page 실패:', e.message);
@@ -416,7 +459,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
     });
 
     if (!onlineOnly) {
-      await sleep(400);
+      await sleep(220);
     }
   }
 

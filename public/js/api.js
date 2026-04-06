@@ -1,5 +1,6 @@
 var API = {
-  search: function (keyword, lat, lng, size) {
+  search: function (keyword, lat, lng, size, opts) {
+    opts = opts || {};
     var url =
       '/api/oliveyoung/search?keyword=' +
       encodeURIComponent(keyword) +
@@ -9,7 +10,9 @@ var API = {
       (lng || CONFIG.DEFAULT_LNG) +
       '&size=' +
       (size || CONFIG.SEARCH_SIZE);
-    return fetch(url).then(function (r) {
+    var init = {};
+    if (opts.signal) init.signal = opts.signal;
+    return fetch(url, Object.keys(init).length ? init : undefined).then(function (r) {
       if (!r.ok) throw new Error('서버오류 ' + r.status);
       return r.json();
     });
