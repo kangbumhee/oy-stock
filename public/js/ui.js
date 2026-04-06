@@ -37,6 +37,12 @@ var UI = {
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
     if (!goodsNo) return;
+    if (el.dataset.oyOpening === '1') {
+      console.log('[oy] openOliveYoung 중복 진입 스킵', goodsNo);
+      return;
+    }
+    el.dataset.oyOpening = '1';
+    console.log('[oy] openOliveYoung 실행', goodsNo);
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 구매 →';
     var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
@@ -64,11 +70,18 @@ var UI = {
      */
     function openInNewTabWithoutSameTabNav(url) {
       var newTab = window.open(url, '_blank', 'noopener,noreferrer');
-      if (newTab && !newTab.closed) {
-        return false;
+      if (newTab != null) {
+        try {
+          if (!newTab.closed) {
+            return false;
+          }
+        } catch (err) {
+          /* cross-origin: closed 접근 불가 → 이미 탭 열림으로 간주 */
+          return false;
+        }
       }
       tryProgrammaticAnchorClick(url);
-      if (!newTab) {
+      if (newTab == null) {
         el.removeAttribute('data-action');
         el.disabled = false;
         el.textContent = '여기를 클릭해서 열기 →';
@@ -177,6 +190,7 @@ var UI = {
         console.error('올리브영 링크 열기 실패:', e);
         manualFallback = openInNewTabWithoutSameTabNav(fallbackUrl);
       } finally {
+        el.removeAttribute('data-oy-opening');
         if (!manualFallback) {
           el.disabled = false;
           el.textContent = origLabel;
@@ -738,65 +752,85 @@ var UI = {
     c.innerHTML = bar + '<div class="grid">' + cards + '</div>';
   },
 
+  _handlePopupRootClick: function (e) {
+    var root = document.getElementById('popup-root');
+    var el = e.target.closest('[data-action]');
+    if (!el || !root || !root.contains(el)) return;
+    var action = el.dataset.action;
+
+    if (action === 'closePopup') {
+      e.preventDefault();
+      e.stopPropagation();
+      UI.closePopup();
+      return;
+    }
+    if (action === 'openOliveYoung') {
+      e.preventDefault();
+      e.stopPropagation();
+      UI.openOliveYoungProduct(el);
+      return;
+    }
+    if (action === 'buyNow') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (el.dataset.goodsno) UI.openOliveYoungProduct(el);
+      return;
+    }
+    if (action === 'switchTab') {
+      e.preventDefault();
+      e.stopPropagation();
+      UI.switchTab(parseInt(el.dataset.idx, 10));
+      return;
+    }
+    if (action === 'toggleFavPopup') {
+      e.preventDefault();
+      e.stopPropagation();
+      App._toggleFavFromPopup(el.dataset.goodsno, el);
+      return;
+    }
+    if (action === 'loadAllStockOpt') {
+      e.preventDefault();
+      e.stopPropagation();
+      var gno = el.dataset.goodsno;
+      var pid = el.dataset.productid;
+      if (!gno || !pid || el.classList.contains('loading')) return;
+      if (!CONFIG.REALTIME_API) return;
+      el.classList.add('loading');
+      el.textContent = '🗺️ 전국 조회 중... (5~10초)';
+
+      var allUrl =
+        CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
+        '?goodsNo=' +
+        encodeURIComponent(gno) +
+        '&productId=' +
+        encodeURIComponent(pid);
+
+      fetch(allUrl)
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (d) {
+          if (d.success && d.options && d.options.length > 0) {
+            UI.showAllStockPanel(d);
+            el.textContent = '🗺️ 전국 재고 (조회완료)';
+            el.classList.remove('loading');
+          } else {
+            el.textContent = '⚠️ 조회 실패: ' + (d.error || '데이터 없음');
+            el.classList.remove('loading');
+          }
+        })
+        .catch(function () {
+          el.textContent = '⚠️ 서버 연결 실패';
+          el.classList.remove('loading');
+        });
+    }
+  },
+
   _bindPopupEvents: function () {
     var root = document.getElementById('popup-root');
-    if (!root) return;
-    root.addEventListener('click', function (e) {
-      var el = e.target.closest('[data-action]');
-      if (!el) return;
-      var action = el.dataset.action;
-      if (action === 'closePopup') {
-        UI.closePopup();
-        return;
-      }
-      if (action === 'openOliveYoung') {
-        UI.openOliveYoungProduct(el);
-        return;
-      }
-      if (action === 'switchTab') {
-        UI.switchTab(parseInt(el.dataset.idx, 10));
-        return;
-      }
-      if (action === 'toggleFavPopup') {
-        App._toggleFavFromPopup(el.dataset.goodsno, el);
-        return;
-      }
-      if (action === 'loadAllStockOpt') {
-        var gno = el.dataset.goodsno;
-        var pid = el.dataset.productid;
-        if (!gno || !pid || el.classList.contains('loading')) return;
-        if (!CONFIG.REALTIME_API) return;
-        el.classList.add('loading');
-        el.textContent = '🗺️ 전국 조회 중... (5~10초)';
-
-        var allUrl =
-          CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
-          '?goodsNo=' +
-          encodeURIComponent(gno) +
-          '&productId=' +
-          encodeURIComponent(pid);
-
-        fetch(allUrl)
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (d) {
-            if (d.success && d.options && d.options.length > 0) {
-              UI.showAllStockPanel(d);
-              el.textContent = '🗺️ 전국 재고 (조회완료)';
-              el.classList.remove('loading');
-            } else {
-              el.textContent = '⚠️ 조회 실패: ' + (d.error || '데이터 없음');
-              el.classList.remove('loading');
-            }
-          })
-          .catch(function () {
-            el.textContent = '⚠️ 서버 연결 실패';
-            el.classList.remove('loading');
-          });
-        return;
-      }
-    });
+    if (!root || root.dataset.uiPopupClickBound === '1') return;
+    root.dataset.uiPopupClickBound = '1';
+    root.addEventListener('click', UI._handlePopupRootClick);
   },
 
   /** 팝업: 상품 기본 정보 먼저, 재고 영역만 로딩 */

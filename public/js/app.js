@@ -127,7 +127,10 @@ var App = {
 
     switch (action) {
       case 'buyNow': {
+        e.preventDefault();
         e.stopPropagation();
+        var popRoot = document.getElementById('popup-root');
+        if (popRoot && popRoot.contains(el)) break;
         var bGn = el.dataset.goodsno;
         if (bGn) UI.openOliveYoungProduct(el);
         break;
