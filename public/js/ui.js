@@ -401,14 +401,7 @@ var UI = {
           i +
           '">' +
           (isFav ? '★' : '☆') +
-          '</button></div>' +
-          '<div class="card-buy-quick">' +
-          '<button type="button" class="btn-buy-under-name" data-action="buyNow" data-goodsno="' +
-          UI.esc(gn) +
-          '" data-category="' +
-          UI.esc(catHint) +
-          '" data-original-label="구매 바로가기">구매 바로가기</button>' +
-          '</div><div class="card-price">' +
+          '</button></div><div class="card-price">' +
           disc +
           '<span class="price">' +
           UI.num(p.priceToPay) +
@@ -705,14 +698,7 @@ var UI = {
           UI.esc(detail ? detail.goodsName : f.goodsName) +
           '</p><button type="button" class="fav-btn active" data-action="removeFav" data-goodsno="' +
           UI.esc(gid) +
-          '">★</button></div>' +
-          '<div class="card-buy-quick">' +
-          '<button type="button" class="btn-buy-under-name" data-action="buyNow" data-goodsno="' +
-          UI.esc(gid) +
-          '" data-category="' +
-          UI.esc(favCat) +
-          '" data-original-label="구매 바로가기">구매 바로가기</button>' +
-          '</div><div class="card-price">' +
+          '">★</button></div><div class="card-price">' +
           (disc > 0 ? '<span class="disc">' + disc + '%</span>' : '') +
           '<span class="price">' +
           UI.num(price) +
@@ -790,9 +776,22 @@ var UI = {
     });
   },
 
-  showPopupLoading: function (name, sub) {
+  showPopupLoading: function (name, sub, goodsNo, category) {
     var root = document.getElementById('popup-root');
     if (!root) return;
+    var gn = goodsNo != null ? String(goodsNo).trim() : '';
+    var cat = category != null ? String(category) : '';
+    var buyRow = '';
+    if (gn) {
+      buyRow =
+        '<div class="popup-buy-inline">' +
+        '<button type="button" class="btn-buy-popup-inline" data-action="buyNow" data-goodsno="' +
+        UI.esc(gn) +
+        '" data-category="' +
+        UI.esc(cat) +
+        '" data-original-label="구매 바로가기">구매 바로가기</button>' +
+        '</div>';
+    }
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -800,6 +799,7 @@ var UI = {
       '<div class="popup-header"><h3>' +
       UI.esc(name) +
       '</h3><button type="button" data-action="closePopup">✕</button></div>' +
+      buyRow +
       '<div class="loading"><div class="spinner"></div><p>' +
       UI.esc(sub || '데이터 로드 중...') +
       '</p></div>' +
@@ -997,6 +997,15 @@ var UI = {
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
 
+    var buyUnderTitle =
+      '<div class="popup-buy-inline">' +
+      '<button type="button" class="btn-buy-popup-inline" data-action="buyNow" data-goodsno="' +
+      UI.esc(goodsNo) +
+      '" data-category="' +
+      UI.esc(cat) +
+      '" data-original-label="구매 바로가기">구매 바로가기</button>' +
+      '</div>';
+
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -1004,6 +1013,7 @@ var UI = {
       '<div class="popup-header"><h3>' +
       UI.esc(detail.goodsName) +
       '</h3><button type="button" data-action="closePopup">✕</button></div>' +
+      buyUnderTitle +
       cacheInfo +
       statusBadge +
       priceHtml +

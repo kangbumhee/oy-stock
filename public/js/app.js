@@ -534,7 +534,13 @@ var App = {
       return;
     }
     if (CONFIG.REALTIME_API) {
-      UI.showPopupLoading(p.goodsName, '주변 매장 재고 조회 중…');
+      var catHint =
+        p.categoryNumber != null && String(p.categoryNumber).trim() !== ''
+          ? String(p.categoryNumber).trim()
+          : p.masterCategoryNumber != null && String(p.masterCategoryNumber).trim() !== ''
+            ? String(p.masterCategoryNumber).trim()
+            : '';
+      UI.showPopupLoading(p.goodsName, '주변 매장 재고 조회 중…', gn, catHint);
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +
@@ -589,7 +595,11 @@ var App = {
       return;
     }
     if (CONFIG.REALTIME_API) {
-      UI.showPopupLoading(name, '주변 매장 재고 조회 중…');
+      var favCat =
+        fav && fav.categoryNumber != null && String(fav.categoryNumber).trim() !== ''
+          ? String(fav.categoryNumber).trim()
+          : '';
+      UI.showPopupLoading(name, '주변 매장 재고 조회 중…', gn, favCat);
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +

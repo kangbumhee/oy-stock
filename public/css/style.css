@@ -58,29 +58,10 @@ header h1{font-size:20px;margin-bottom:4px}
 .bg-purple{background:#9333ea}
 .bg-blue{background:#2563eb}
 .bg-gray{background:#999}
-.card-body{padding:10px;position:relative;z-index:1}
+.card-body{padding:10px}
 .card-top{display:flex;align-items:flex-start;gap:4px}
 .card-name{flex:1;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
-.card-buy-quick{margin-top:6px;pointer-events:auto}
-.btn-buy-under-name{
-  width:100%;
-  box-sizing:border-box;
-  padding:7px 8px;
-  font-size:12px;
-  font-weight:700;
-  font-family:inherit;
-  border:1px solid #16a34a;
-  border-radius:6px;
-  background:#fff;
-  color:#15803d;
-  cursor:pointer;
-  pointer-events:auto;
-  -webkit-tap-highlight-color:transparent;
-}
-.btn-buy-under-name:hover{background:#ecfdf5}
-.btn-buy-under-name:active{background:#d1fae5}
-.btn-buy-under-name:disabled{opacity:.85;cursor:wait}
-.card-price{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;margin-top:6px}
+.card-price{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;margin-top:4px}
 .disc{color:#dc2626;font-weight:700;font-size:14px}
 .price{font-weight:700;font-size:14px}
 .orig{text-decoration:line-through;color:#999;font-size:12px}
@@ -95,7 +76,26 @@ header h1{font-size:20px;margin-bottom:4px}
 #fav-section{padding:0 16px 24px}
 
 .popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
-.popup-content{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .25s ease-out}
+.popup-content{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .25s ease-out;position:relative}
+.popup-buy-inline{margin-bottom:8px;position:relative;z-index:2;pointer-events:auto}
+.btn-buy-popup-inline{
+  width:100%;
+  box-sizing:border-box;
+  padding:8px 10px;
+  font-size:13px;
+  font-weight:700;
+  font-family:inherit;
+  border:1px solid #16a34a;
+  border-radius:8px;
+  background:#fff;
+  color:#15803d;
+  cursor:pointer;
+  pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-buy-popup-inline:hover{background:#ecfdf5}
+.btn-buy-popup-inline:active{background:#d1fae5}
+.btn-buy-popup-inline:disabled{opacity:.85;cursor:wait}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .popup-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .popup-header h3{font-size:16px;line-height:1.3;flex:1;padding-right:10px}
