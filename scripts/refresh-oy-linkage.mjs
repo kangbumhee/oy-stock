@@ -113,9 +113,6 @@ async function sendLinkageExpiryAlert(p) {
   const from = (process.env.ALERT_EMAIL_FROM || '').trim();
   const pass = (process.env.ALERT_EMAIL_PASSWORD || '').trim();
   const to = (process.env.ALERT_EMAIL_TO || '').trim();
-  const repo = (process.env.GITHUB_REPOSITORY || 'kangbumhee/oy-stock').trim();
-  const secretsUrl = `https://github.com/${repo}/settings/secrets/actions`;
-  const actionsUrl = `https://github.com/${repo}/actions`;
 
   const expDateStr = new Date(p.expMs).toLocaleString('ko-KR', {
     timeZone: 'Asia/Seoul'
@@ -156,20 +153,22 @@ async function sendLinkageExpiryAlert(p) {
 
       <h3>📋 OY_REFRESH_COOKIE 갱신 방법</h3>
       <ol>
-        <li>올리브영 큐레이터 페이지 접속<br>
-            <a href="https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search">
-            https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search</a></li>
+        <li>올리브영 큐레이터 대시보드 접속 (반드시 이 주소로!)<br>
+            <a href="https://m.oliveyoung.co.kr/m/mtn/affiliate/dashboard">
+            https://m.oliveyoung.co.kr/m/mtn/affiliate/dashboard</a></li>
+        <li>로그인 후 페이지 완전히 로드될 때까지 기다리기</li>
         <li>F12 → <strong>Network</strong> 탭 열기</li>
         <li><strong>Preserve log</strong> ✅ 체크</li>
         <li>아무 상품 <strong>링크 복사</strong> 버튼 클릭</li>
-        <li>Network에서 <strong>landing</strong> 요청 선택</li>
+        <li>Network에서 <strong>landing</strong> 요청 클릭</li>
         <li><strong>Request Headers</strong> → <code>cookie:</code> 값 전체 복사</li>
         <li>GitHub Secret 업데이트:<br>
-            <a href="${secretsUrl}">${secretsUrl}</a></li>
-        <li><code>OY_REFRESH_COOKIE</code> → Update → 새 값 붙여넣기</li>
-        <li>저장 후 Actions에서 워크플로 수동 실행:<br>
-            <a href="${actionsUrl}">${actionsUrl}</a>
-            → <em>Refresh OliveYoung linkageString</em></li>
+            <a href="https://github.com/kangbumhee/oy-stock/settings/secrets/actions">
+            https://github.com/kangbumhee/oy-stock/settings/secrets/actions</a></li>
+        <li><code>OY_REFRESH_COOKIE</code> → Update → 새 값 붙여넣기 → Save</li>
+        <li>Actions 수동 실행으로 확인:<br>
+            <a href="https://github.com/kangbumhee/oy-stock/actions">
+            https://github.com/kangbumhee/oy-stock/actions</a></li>
       </ol>
 
       <p>✅ 완료되면 Vercel <code>OLIVEYOUNG_LINKAGE_STRING</code> 반영 및 큐레이터 연동이 계속 동작합니다.</p>
