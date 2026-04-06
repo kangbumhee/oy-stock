@@ -436,8 +436,17 @@ var App = {
       .then(function (d) {
         if (seq !== self._searchSeq) return;
         if (d.success === false) throw new Error(d.message || d.error || '실패');
-        var inv = (d.data && d.data.inventory) || d.inventory || {};
-        self.products = inv.products || [];
+        var data = d.data || {};
+        var inv = data.inventory || d.inventory;
+        var products = [];
+        if (inv != null && Array.isArray(inv.products)) {
+          products = inv.products;
+        } else if (Array.isArray(data.products)) {
+          products = data.products;
+        } else if (Array.isArray(d.products)) {
+          products = d.products;
+        }
+        self.products = products;
         UI.renderProducts(self.products, self.detailData, { searchListCacheMode: true });
       })
       .catch(function (err) {
