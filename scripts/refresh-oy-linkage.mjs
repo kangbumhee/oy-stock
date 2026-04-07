@@ -153,19 +153,37 @@ async function sendLinkageExpiryAlert(p) {
 
       <h3>📋 OY_REFRESH_COOKIE 갱신 방법</h3>
       <ol>
-        <li>올리브영 큐레이터 대시보드 접속 (반드시 이 주소로!)<br>
+        <li>올리브영 큐레이터 대시보드 접속<br>
             <a href="https://m.oliveyoung.co.kr/m/mtn/affiliate/dashboard">
             https://m.oliveyoung.co.kr/m/mtn/affiliate/dashboard</a></li>
         <li>로그인 후 페이지 완전히 로드될 때까지 기다리기</li>
-        <li>F12 → <strong>Network</strong> 탭 열기</li>
-        <li><strong>Preserve log</strong> ✅ 체크</li>
-        <li>아무 상품 <strong>링크 복사</strong> 버튼 클릭</li>
-        <li>Network에서 <strong>landing</strong> 요청 클릭</li>
-        <li><strong>Request Headers</strong> → <code>cookie:</code> 값 전체 복사</li>
+        <li>F12 → <strong>Console</strong> 탭 열고 아래 코드 붙여넣고 실행:<br>
+            <pre style="background:#f4f4f4;padding:10px;border-radius:4px;font-size:12px;overflow-x:auto;">(() =&gt; {
+  const cookies = document.cookie.split(';').map(c =&gt; c.trim());
+  const ls = cookies.find(c =&gt; c.startsWith('linkageString='));
+  if (!ls) {
+    console.log('❌ linkageString 없음 - Network 탭에서 가져와야 함');
+    return;
+  }
+  console.log('✅ linkageString 있음!');
+  console.log('길이:', ls.split('=')[1].length);
+  console.log('\\n=== 전체 쿠키 (OY_REFRESH_COOKIE에 넣을 값) ===');
+  console.log(document.cookie);
+})();</pre>
+        </li>
+        <li>✅ linkageString 있음! 이 뜨면 콘솔에 출력된 전체 쿠키값 복사</li>
+        <li>❌ linkageString 없음 이 뜨면 아래 Network 방법 사용:
+            <ul>
+              <li>Network 탭 → Preserve log ✅</li>
+              <li>아무 상품 &quot;링크 복사&quot; 버튼 클릭</li>
+              <li>Network에서 &quot;landing&quot; 요청 클릭</li>
+              <li>Request Headers → cookie: 값 전체 복사</li>
+            </ul>
+        </li>
         <li>GitHub Secret 업데이트:<br>
             <a href="https://github.com/kangbumhee/oy-stock/settings/secrets/actions">
             https://github.com/kangbumhee/oy-stock/settings/secrets/actions</a></li>
-        <li><code>OY_REFRESH_COOKIE</code> → Update → 새 값 붙여넣기 → Save</li>
+        <li><code>OY_REFRESH_COOKIE</code> → Update → 복사한 값 붙여넣기 → Save</li>
         <li>Actions 수동 실행으로 확인:<br>
             <a href="https://github.com/kangbumhee/oy-stock/actions">
             https://github.com/kangbumhee/oy-stock/actions</a></li>
