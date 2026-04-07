@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-07T04:29:24.072Z",
+  "updatedAt": "2026-04-07T06:16:08.920Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,27 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 79,
       "to": 79,
-      "fromQty": 377,
-      "toQty": 375,
-      "date": "2026-04-07T04:29:24.072Z"
+      "fromQty": 375,
+      "toQty": 373,
+      "date": "2026-04-07T06:16:08.920Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2145,
-      "to": 2150,
-      "date": "2026-04-07T04:29:24.072Z"
+      "from": 2150,
+      "to": 851,
+      "date": "2026-04-07T06:16:08.920Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 50,
+      "to": 49,
+      "fromQty": 154,
+      "toQty": 153,
+      "date": "2026-04-07T06:16:08.920Z"
     }
   ],
   "products": {
@@ -49,8 +59,8 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
-          "inStock": 50,
-          "totalQty": 154,
+          "inStock": 49,
+          "totalQty": 153,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -100,7 +110,7 @@
               "name": "걸포북변역점",
               "code": "DCA9",
               "dist": 2.14,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -359,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-07T04:29:24.072Z"
+      "updatedAt": "2026-04-07T06:16:08.920Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -378,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 248,
-          "onlineQty": 1381,
+          "totalQty": 246,
+          "onlineQty": 285,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -408,7 +418,7 @@
               "name": "김포장기점",
               "code": "D300",
               "dist": 1.4,
-              "qty": 3,
+              "qty": 2,
               "o2o": 1,
               "pickup": true,
               "open": true,
@@ -693,7 +703,7 @@
           "totalStores": 50,
           "inStock": 25,
           "totalQty": 66,
-          "onlineQty": 769,
+          "onlineQty": 566,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1315,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-07T04:29:24.072Z"
+      "updatedAt": "2026-04-07T06:16:08.920Z"
     }
   }
 }
