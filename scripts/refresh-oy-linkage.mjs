@@ -3,7 +3,9 @@
  * linkageString(hex)를 그대로 읽어 AES 복호화 → JWT exp 확인 후
  * Vercel OLIVEYOUNG_LINKAGE_STRING(hex)을 PATCH.
  *
- * JWT 만료 7일 이내(또는 이미 만료)이고 ALERT_EMAIL_* 가 설정되어 있으면 Gmail SMTP로 알림.
+ * ALERT_EMAIL_* 설정 시 Gmail SMTP 알림:
+ *   - Vercel PATCH 성공 → 메일 없음 (정상 갱신 완료)
+ *   - linkageString 없음 / JWT 만료 / Vercel 실패 → 메일 발송
  *
  * GitHub Secrets (또는 로컬 env):
  *   OY_REFRESH_COOKIE — 권장: Cookie 헤더 전체 (… linkageString=<hex> …)
@@ -26,7 +28,14 @@ import nodemailer from 'nodemailer';
 const ENV_KEY = 'OLIVEYOUNG_LINKAGE_STRING';
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 const MS_PER_DAY = 86400000;
-const ALERT_WITHIN_MS = 7 * MS_PER_DAY;
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function buildCookie() {
   const full = (process.env.OY_REFRESH_COOKIE || '').trim();
@@ -101,48 +110,7 @@ function alertEmailConfigured() {
   );
 }
 
-/**
- * @param {{ expired: boolean, expMs: number, msRemaining: number }} p
- */
-async function sendLinkageExpiryAlert(p) {
-  if (!alertEmailConfigured()) {
-    console.log('[알림] ALERT_EMAIL_* 미설정 — 만료 경고 메일 생략');
-    return;
-  }
-
-  const from = (process.env.ALERT_EMAIL_FROM || '').trim();
-  const pass = (process.env.ALERT_EMAIL_PASSWORD || '').trim();
-  const to = (process.env.ALERT_EMAIL_TO || '').trim();
-
-  const expDateStr = new Date(p.expMs).toLocaleString('ko-KR', {
-    timeZone: 'Asia/Seoul'
-  });
-
-  let daysLeftLabel;
-  let subject;
-  if (p.expired) {
-    daysLeftLabel = '이미 만료됨 (즉시 갱신 필요)';
-    subject = '🚨 [oy-stock] 올리브영 JWT 만료됨 — OY_REFRESH_COOKIE 즉시 갱신';
-  } else {
-    const ceilDays = Math.max(0, Math.ceil(p.msRemaining / MS_PER_DAY));
-    daysLeftLabel = `${ceilDays}일`;
-    const within3 =
-      p.msRemaining > 0 && p.msRemaining <= 3 * MS_PER_DAY;
-    subject = within3
-      ? `🚨 [oy-stock] 올리브영 쿠키 만료 ${ceilDays}일 전!`
-      : `⚠️ [oy-stock] 올리브영 쿠키 만료 ${ceilDays}일 전!`;
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: from, pass }
-  });
-
-  const html = `
-      <h2>${p.expired ? '🚨 OY_REFRESH_COOKIE / JWT 만료됨' : '⚠️ OY_REFRESH_COOKIE 만료 예정'}</h2>
-      <p><strong>만료일(한국 기준):</strong> ${expDateStr}</p>
-      <p><strong>남은 일수:</strong> ${daysLeftLabel}</p>
-
+const RENEWAL_STEPS_HTML = `
       <h3>🔐 Gmail 알림용 앱 비밀번호 (Secrets 설정 시)</h3>
       <ol>
         <li>Google 계정 → <strong>보안</strong></li>
@@ -190,6 +158,74 @@ async function sendLinkageExpiryAlert(p) {
       </ol>
 
       <p>✅ 완료되면 Vercel <code>OLIVEYOUNG_LINKAGE_STRING</code> 반영 및 큐레이터 연동이 계속 동작합니다.</p>
+`;
+
+/**
+ * @param {{
+ *   expired?: boolean,
+ *   expMs?: number,
+ *   msRemaining?: number,
+ *   noLinkageString?: boolean,
+ *   vercelError?: string
+ * }} p
+ */
+async function sendLinkageExpiryAlert(p) {
+  if (!alertEmailConfigured()) {
+    console.log('[알림] ALERT_EMAIL_* 미설정 — 알림 메일 생략');
+    return;
+  }
+
+  const from = (process.env.ALERT_EMAIL_FROM || '').trim();
+  const pass = (process.env.ALERT_EMAIL_PASSWORD || '').trim();
+  const to = (process.env.ALERT_EMAIL_TO || '').trim();
+
+  let subject;
+  let headline;
+  let metaBlock = '';
+  let errorBlock = '';
+
+  if (p.noLinkageString) {
+    subject = '🚨 [oy-stock] OY_REFRESH_COOKIE에 linkageString 없음';
+    headline = '🚨 linkageString을 찾을 수 없음';
+    metaBlock =
+      '<p>Cookie 문자열에 <code>linkageString=</code> 이 없습니다. 아래 절차로 쿠키를 다시 복사해 주세요.</p>';
+  } else if (p.vercelError) {
+    subject = '🚨 [oy-stock] Vercel OLIVEYOUNG_LINKAGE_STRING 반영 실패';
+    headline = '🚨 Vercel 환경변수 반영 실패';
+    errorBlock = `<p><strong>사유:</strong> ${escapeHtml(p.vercelError)}</p>`;
+    if (p.expMs != null) {
+      const expDateStr = new Date(p.expMs).toLocaleString('ko-KR', {
+        timeZone: 'Asia/Seoul'
+      });
+      const daysLeftLabel = p.expired
+        ? '이미 만료됨 (즉시 갱신 필요)'
+        : `${Math.max(0, Math.ceil((p.msRemaining ?? 0) / MS_PER_DAY))}일`;
+      metaBlock = `<p><strong>JWT 만료일(한국 기준):</strong> ${expDateStr}</p>
+      <p><strong>남은 일수:</strong> ${daysLeftLabel}</p>`;
+    }
+  } else if (p.expired && p.expMs != null) {
+    const expDateStr = new Date(p.expMs).toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul'
+    });
+    subject = '🚨 [oy-stock] 올리브영 JWT 만료됨 — OY_REFRESH_COOKIE 즉시 갱신';
+    headline = '🚨 OY_REFRESH_COOKIE / JWT 만료됨';
+    metaBlock = `<p><strong>만료일(한국 기준):</strong> ${expDateStr}</p>
+      <p><strong>남은 일수:</strong> 이미 만료됨 (즉시 갱신 필요)</p>`;
+  } else {
+    console.warn('[알림] sendLinkageExpiryAlert: 알 수 없는 유형 — 메일 생략');
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: from, pass }
+  });
+
+  const html = `
+      <h2>${headline}</h2>
+      ${errorBlock}
+      ${metaBlock}
+      ${RENEWAL_STEPS_HTML}
     `;
 
   try {
@@ -199,7 +235,7 @@ async function sendLinkageExpiryAlert(p) {
       subject,
       html
     });
-    console.log('[알림] 만료 경고 메일 발송 완료 →', to);
+    console.log('[알림] 알림 메일 발송 완료 →', to);
   } catch (e) {
     console.error('[알림] 메일 발송 실패:', e.message || e);
   }
@@ -253,6 +289,7 @@ async function main() {
     console.error(
       '[실패] linkageString 없음. OY_REFRESH_COOKIE 또는 OY_SESSION_ID+OY_LINKAGE_STRING 설정'
     );
+    await sendLinkageExpiryAlert({ noLinkageString: true });
     process.exit(1);
   }
   console.log('   hex 길이:', linkageHex.length);
@@ -271,12 +308,17 @@ async function main() {
     process.exit(1);
   }
 
+  /** @type {{ expMs: number, msRemaining: number, expired: boolean } | null} */
+  let jwtAlertCtx = null;
+
   if (payload.exp != null) {
     const nowSec = Date.now() / 1000;
     const expSec = payload.exp;
     const expMs = expSec * 1000;
     const expired = expSec <= nowSec;
     const msRemaining = expMs - Date.now();
+
+    jwtAlertCtx = { expMs, msRemaining, expired };
 
     console.log('JWT 만료:', new Date(expMs).toLocaleString());
     console.log(
@@ -285,13 +327,8 @@ async function main() {
       '시간'
     );
 
-    const needAlert =
-      expired || (msRemaining > 0 && msRemaining <= ALERT_WITHIN_MS);
-    if (needAlert) {
-      await sendLinkageExpiryAlert({ expired, expMs, msRemaining });
-    }
-
     if (expired) {
+      await sendLinkageExpiryAlert({ expired: true, expMs, msRemaining });
       console.error('[실패] JWT 만료됨. OY_REFRESH_COOKIE 를 브라우저에서 새로 복사하세요.');
       process.exit(1);
     }
@@ -304,7 +341,12 @@ async function main() {
   try {
     list = await vercelListEnv(projectId, token, teamId);
   } catch (e) {
-    console.error('[실패]', e.message || e);
+    const em = e.message || String(e);
+    console.error('[실패]', em);
+    await sendLinkageExpiryAlert({
+      vercelError: em,
+      ...(jwtAlertCtx || {})
+    });
     process.exit(1);
   }
 
@@ -322,11 +364,12 @@ async function main() {
   }
 
   if (toPatch.length === 0) {
-    console.error(
-      '[실패] 일치하는 env 없음. Vercel Project에',
-      ENV_KEY,
-      '추가 후 재실행'
-    );
+    const em = `일치하는 env 없음. Vercel Project에 ${ENV_KEY} 추가 후 재실행`;
+    console.error('[실패]', em);
+    await sendLinkageExpiryAlert({
+      vercelError: em,
+      ...(jwtAlertCtx || {})
+    });
     process.exit(1);
   }
 
@@ -336,7 +379,12 @@ async function main() {
       await vercelPatchEnv(projectId, e.id, linkageHex, token, teamId);
       console.log('   [성공]', e.target, e.id);
     } catch (err) {
-      console.error('   [실패]', e.target, e.id, err.message || err);
+      const em = err.message || String(err);
+      console.error('   [실패]', e.target, e.id, em);
+      await sendLinkageExpiryAlert({
+        vercelError: `${e.target} / ${e.id}: ${em}`,
+        ...(jwtAlertCtx || {})
+      });
       process.exit(1);
     }
   }
