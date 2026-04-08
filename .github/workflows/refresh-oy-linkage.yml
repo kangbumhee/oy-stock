@@ -1,4 +1,4 @@
-# 매일 한국 자정 무렵(UTC 15:00) linkageString → JWT 검증 후 Vercel PATCH. 알림 메일은 실패·만료·linkage 없음일 때만.
+# 매일 한국 자정 무렵(UTC 15:00) linkageString → JWT 검증 후 Vercel PATCH → Deploy Hook으로 자동 재배포.
 name: Refresh OliveYoung linkageString
 
 on:
@@ -30,4 +30,5 @@ jobs:
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: node scripts/refresh-oy-linkage.mjs

@@ -241,6 +241,25 @@ async function sendLinkageExpiryAlert(p) {
   }
 }
 
+async function triggerVercelRedeploy() {
+  const hookUrl = (process.env.VERCEL_DEPLOY_HOOK || '').trim();
+  if (!hookUrl) {
+    console.log('[재배포] VERCEL_DEPLOY_HOOK 미설정 — 수동 재배포 필요');
+    console.log('         Vercel Dashboard → Settings → Git → Deploy Hooks 에서 생성 후');
+    console.log('         GitHub Secret VERCEL_DEPLOY_HOOK 에 URL 저장하세요.');
+    return false;
+  }
+  console.log('3) Vercel 재배포 트리거…');
+  const r = await fetch(hookUrl, { method: 'POST' });
+  if (!r.ok) {
+    const t = await r.text();
+    console.error('[재배포 실패]', r.status, t);
+    return false;
+  }
+  console.log('[재배포] Vercel 빌드 시작됨 — 1~2분 후 반영됩니다.');
+  return true;
+}
+
 function teamQs(teamId) {
   return teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
 }
@@ -389,9 +408,12 @@ async function main() {
     }
   }
 
-  console.log(
-    '[완료] OLIVEYOUNG_LINKAGE_STRING 반영. 재배포 없이 다음 요청부터 적용됩니다.'
-  );
+  console.log('[완료] OLIVEYOUNG_LINKAGE_STRING Vercel 환경변수 반영 완료.');
+
+  const redeployed = await triggerVercelRedeploy();
+  if (!redeployed) {
+    console.log('[안내] 환경변수만 갱신됨. 실제 적용하려면 Vercel 재배포가 필요합니다.');
+  }
 }
 
 main().catch((err) => {
