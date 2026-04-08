@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-08T11:48:59.732Z",
+  "updatedAt": "2026-04-08T13:06:41.097Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,27 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 78,
       "to": 78,
-      "fromQty": 367,
-      "toQty": 366,
-      "date": "2026-04-08T11:48:59.732Z"
+      "fromQty": 366,
+      "toQty": 365,
+      "date": "2026-04-08T13:06:41.097Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 1667,
-      "to": 1663,
-      "date": "2026-04-08T11:48:59.732Z"
+      "from": 1663,
+      "to": 1662,
+      "date": "2026-04-08T13:06:41.097Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 47,
+      "to": 48,
+      "fromQty": 154,
+      "toQty": 154,
+      "date": "2026-04-08T13:06:41.097Z"
     }
   ],
   "products": {
@@ -49,7 +59,7 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
-          "inStock": 47,
+          "inStock": 48,
           "totalQty": 154,
           "onlineQty": 0,
           "maxOrderQty": 0,
@@ -103,7 +113,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -223,7 +233,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -233,7 +243,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -343,7 +353,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -359,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-08T11:48:59.732Z"
+      "updatedAt": "2026-04-08T13:06:41.097Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -378,7 +388,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 244,
+          "totalQty": 243,
           "onlineQty": 1130,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -431,7 +441,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -551,7 +561,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -561,7 +571,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -578,8 +588,8 @@
               "name": "일산주엽점",
               "code": "DE0D",
               "dist": 7.66,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
@@ -671,7 +681,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -693,7 +703,7 @@
           "totalStores": 50,
           "inStock": 24,
           "totalQty": 62,
-          "onlineQty": 533,
+          "onlineQty": 532,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -745,7 +755,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -865,7 +875,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -875,7 +885,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -985,7 +995,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -1059,7 +1069,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -1179,7 +1189,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -1189,7 +1199,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -1299,7 +1309,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -1315,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-08T11:48:59.732Z"
+      "updatedAt": "2026-04-08T13:06:41.097Z"
     }
   }
 }
