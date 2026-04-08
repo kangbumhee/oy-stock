@@ -1,6 +1,34 @@
 {
   "events": [
     {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 78,
+      "to": 78,
+      "fromQty": 370,
+      "toQty": 367,
+      "date": "2026-04-08T10:02:33.646Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 770,
+      "to": 1667,
+      "date": "2026-04-08T10:02:33.646Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 48,
+      "to": 47,
+      "fromQty": 156,
+      "toQty": 154,
+      "date": "2026-04-08T10:02:33.646Z"
+    },
+    {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
@@ -3954,27 +3982,6 @@
       "type": "new",
       "goodsNo": "A000000242874",
       "goodsName": "엔비피시스 글램 글로우 립 틴트 3Colors",
-      "keyword": "립틴트",
-      "date": "2026-03-28T18:52:31.543Z"
-    },
-    {
-      "type": "new",
-      "goodsNo": "A000000243610",
-      "goodsName": "엔비피시스 글램 플럼핑 립 글로스 / 글램 글로우 립 틴트",
-      "keyword": "립틴트",
-      "date": "2026-03-28T18:52:31.543Z"
-    },
-    {
-      "type": "new",
-      "goodsNo": "A000000212223",
-      "goodsName": "딘토 블러링 립베일 틴트 10종",
-      "keyword": "립틴트",
-      "date": "2026-03-28T18:52:31.543Z"
-    },
-    {
-      "type": "new",
-      "goodsNo": "A000000209309",
-      "goodsName": "앤디얼 글로우 립 컬러 틴트 8colors",
       "keyword": "립틴트",
       "date": "2026-03-28T18:52:31.543Z"
     }
