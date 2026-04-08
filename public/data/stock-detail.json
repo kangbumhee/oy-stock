@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-08T06:18:36.702Z",
+  "updatedAt": "2026-04-08T08:09:16.052Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -14,22 +14,12 @@
   },
   "recentEvents": [
     {
-      "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 78,
-      "to": 78,
-      "fromQty": 371,
-      "toQty": 370,
-      "date": "2026-04-08T06:18:36.702Z"
-    },
-    {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 1798,
-      "to": 779,
-      "date": "2026-04-08T06:18:36.702Z"
+      "from": 779,
+      "to": 770,
+      "date": "2026-04-08T08:09:16.052Z"
     }
   ],
   "products": {
@@ -201,7 +191,7 @@
               "code": "DD4B",
               "dist": 5.86,
               "qty": 6,
-              "o2o": 2,
+              "o2o": 4,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -359,7 +349,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-08T06:18:36.702Z"
+      "updatedAt": "2026-04-08T08:09:16.052Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -379,7 +369,7 @@
           "totalStores": 50,
           "inStock": 45,
           "totalQty": 245,
-          "onlineQty": 241,
+          "onlineQty": 233,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -693,7 +683,7 @@
           "totalStores": 50,
           "inStock": 24,
           "totalQty": 65,
-          "onlineQty": 538,
+          "onlineQty": 537,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1315,7 +1305,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-08T06:18:36.702Z"
+      "updatedAt": "2026-04-08T08:09:16.052Z"
     }
   }
 }
