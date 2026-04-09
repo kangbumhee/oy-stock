@@ -1,6 +1,16 @@
 {
   "events": [
     {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 78,
+      "to": 78,
+      "fromQty": 362,
+      "toQty": 360,
+      "date": "2026-04-09T08:16:06.254Z"
+    },
+    {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
@@ -4002,13 +4012,6 @@
       "type": "new",
       "goodsNo": "A000000200378",
       "goodsName": "[립컨실러 증정 NEW] 페리페라 오버 블러 틴트 3.5g 15 Colors 단품/기획",
-      "keyword": "립틴트",
-      "date": "2026-03-28T18:52:31.543Z"
-    },
-    {
-      "type": "new",
-      "goodsNo": "A000000207056",
-      "goodsName": "[물놀이틴트] 3CE 레이지 팝 립 스테인 4.5g 9종",
       "keyword": "립틴트",
       "date": "2026-03-28T18:52:31.543Z"
     }
