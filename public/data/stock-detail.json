@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-09T01:29:03.267Z",
+  "updatedAt": "2026-04-09T04:29:05.991Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,27 +19,17 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 78,
       "to": 78,
-      "fromQty": 365,
-      "toQty": 364,
-      "date": "2026-04-09T01:29:03.267Z"
+      "fromQty": 364,
+      "toQty": 362,
+      "date": "2026-04-09T04:29:05.991Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 1643,
-      "to": 1638,
-      "date": "2026-04-09T01:29:03.267Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 48,
-      "to": 49,
-      "fromQty": 154,
-      "toQty": 162,
-      "date": "2026-04-09T01:29:03.267Z"
+      "from": 1638,
+      "to": 1634,
+      "date": "2026-04-09T04:29:05.991Z"
     }
   ],
   "products": {
@@ -363,13 +353,13 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-04-09T01:29:03.267Z"
+      "updatedAt": "2026-04-09T04:29:05.991Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,7 +378,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 242,
+          "totalQty": 240,
           "onlineQty": 1111,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -458,7 +448,7 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 9,
+              "qty": 8,
               "o2o": 6,
               "pickup": true,
               "open": true,
@@ -691,7 +681,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -703,7 +693,7 @@
           "totalStores": 50,
           "inStock": 24,
           "totalQty": 62,
-          "onlineQty": 527,
+          "onlineQty": 523,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1005,7 +995,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -1319,13 +1309,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-04-09T01:29:03.267Z"
+      "updatedAt": "2026-04-09T04:29:05.991Z"
     }
   }
 }
