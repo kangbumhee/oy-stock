@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-10T11:51:26.715Z",
+  "updatedAt": "2026-04-10T12:55:12.694Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,19 +17,29 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 74,
+      "from": 73,
       "to": 73,
-      "fromQty": 352,
-      "toQty": 346,
-      "date": "2026-04-10T11:51:26.715Z"
+      "fromQty": 346,
+      "toQty": 345,
+      "date": "2026-04-10T12:55:12.694Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2842,
-      "to": 2831,
-      "date": "2026-04-10T11:51:26.715Z"
+      "from": 2831,
+      "to": 2824,
+      "date": "2026-04-10T12:55:12.694Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 49,
+      "to": 49,
+      "fromQty": 148,
+      "toQty": 146,
+      "date": "2026-04-10T12:55:12.694Z"
     }
   ],
   "products": {
@@ -50,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 148,
+          "totalQty": 146,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -110,8 +120,8 @@
               "name": "홈플러스김포점",
               "code": "DE2B",
               "dist": 2.29,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": false,
               "open": true,
               "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
@@ -359,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-10T11:51:26.715Z"
+      "updatedAt": "2026-04-10T12:55:12.694Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -379,7 +389,7 @@
           "totalStores": 50,
           "inStock": 41,
           "totalQty": 231,
-          "onlineQty": 2349,
+          "onlineQty": 2342,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -692,7 +702,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
           "inStock": 23,
-          "totalQty": 58,
+          "totalQty": 57,
           "onlineQty": 482,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -952,8 +962,8 @@
               "name": "인천검암점",
               "code": "D375",
               "dist": 8.33,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 승학로 491"
@@ -1315,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-10T11:51:26.715Z"
+      "updatedAt": "2026-04-10T12:55:12.694Z"
     }
   }
 }
