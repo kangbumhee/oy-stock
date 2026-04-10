@@ -141,9 +141,14 @@ header h1{font-size:20px;margin-bottom:4px}
 .popup-error p{margin-bottom:8px}
 .popup-note{font-size:12px;color:#999}
 
-.popup-fav-btn{width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:.2s;font-family:inherit}
+.popup-fav-btn{width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:0;transition:.2s;font-family:inherit}
 .popup-fav-btn.active{border-color:#f59e0b;background:#fffbeb;color:#d97706}
 .popup-fav-btn:hover{border-color:#f59e0b}
+.popup-share-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.popup-skel-meta-text .popup-fav-btn{margin-bottom:12px}
+.popup-share-btn{width:100%;padding:10px;border:2px solid #7dd3fc;border-radius:8px;background:#f0f9ff;font-size:14px;font-weight:600;color:#0369a1;cursor:pointer;transition:.2s;font-family:inherit}
+.popup-share-btn:hover:not(:disabled){background:#e0f2fe;border-color:#38bdf8}
+.popup-share-btn:disabled{opacity:.7;cursor:wait}
 
 .opt-tabs{display:flex;overflow-x:auto;gap:4px;margin-bottom:12px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .opt-tab{padding:6px 12px;background:#f0f0f0;border:none;border-radius:16px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit}

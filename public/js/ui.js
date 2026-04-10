@@ -842,6 +842,12 @@ var UI = {
       App._toggleFavFromPopup(el.dataset.goodsno, el);
       return;
     }
+    if (action === 'shareStockSnapshot') {
+      e.preventDefault();
+      e.stopPropagation();
+      UI.shareStockSnapshot(el.dataset.goodsno);
+      return;
+    }
     if (action === 'loadAllStockOpt') {
       e.preventDefault();
       e.stopPropagation();
@@ -885,6 +891,101 @@ var UI = {
     if (!root || root.dataset.uiPopupClickBound === '1') return;
     root.dataset.uiPopupClickBound = '1';
     root.addEventListener('click', UI._handlePopupRootClick);
+  },
+
+  /** 재고 상세 팝업을 이미지로 저장·공유 (html2canvas) */
+  shareStockSnapshot: function (goodsNo) {
+    var content = document.querySelector('#popup-root .popup-content');
+    if (!content) return;
+    if (typeof html2canvas !== 'function') {
+      alert('공유 기능을 불러오지 못했습니다. 페이지를 새로고침 해 주세요.');
+      return;
+    }
+    var btn = document.querySelector('[data-action="shareStockSnapshot"]');
+    var oldText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '이미지 만드는 중…';
+    }
+    var safeName =
+      'oy-stock-' +
+      String(goodsNo || 'goods').replace(/[^A-Za-z0-9_-]/g, '') +
+      '-' +
+      new Date().toISOString().slice(0, 10) +
+      '.png';
+
+    html2canvas(content, {
+      scale: Math.min(2, (window.devicePixelRatio || 1) * 1.25),
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      backgroundColor: '#ffffff',
+      ignoreElements: function (el) {
+        if (!el || !el.matches) return false;
+        if (el.classList && el.classList.contains('popup-share-actions')) return true;
+        if (el.matches('.popup-header button[data-action="closePopup"]')) return true;
+        if (el.matches('.popup-footer')) return true;
+        return false;
+      }
+    })
+      .then(function (canvas) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = oldText;
+        }
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob);
+            else reject(new Error('toBlob failed'));
+          }, 'image/png');
+        });
+      })
+      .then(function (blob) {
+        var file = new File([blob], safeName, { type: 'image/png' });
+        var canWebShare =
+          navigator.share &&
+          navigator.canShare &&
+          navigator.canShare({ files: [file] });
+        if (canWebShare) {
+          return navigator
+            .share({
+              files: [file],
+              title: '올리브영 매장 재고',
+              text: '재고 확인 결과'
+            })
+            .catch(function (err) {
+              if (err && err.name === 'AbortError') return;
+              UI._downloadBlob(blob, safeName);
+              if (typeof UI.showSyncStatus === 'function') {
+                UI.showSyncStatus('이미지를 저장했습니다', false);
+              }
+            });
+        }
+        UI._downloadBlob(blob, safeName);
+        if (typeof UI.showSyncStatus === 'function') {
+          UI.showSyncStatus('이미지를 저장했습니다', false);
+        }
+      })
+      .catch(function (err) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = oldText;
+        }
+        console.error('[shareStockSnapshot]', err);
+        alert('이미지를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      });
+  },
+
+  _downloadBlob: function (blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   },
 
   /** 팝업: 상품 기본 정보 먼저, 재고 영역만 로딩 */
@@ -1175,6 +1276,12 @@ var UI = {
       '">' +
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
+    var shareBtn =
+      '<button type="button" class="popup-share-btn" data-action="shareStockSnapshot" data-goodsno="' +
+      UI.esc(goodsNo) +
+      '">📷 재고 결과 이미지로 공유</button>';
+    var shareActions =
+      '<div class="popup-share-actions">' + favBtn + shareBtn + '</div>';
 
     var buyUnderTitle =
       '<div class="popup-buy-inline">' +
@@ -1196,7 +1303,7 @@ var UI = {
       cacheInfo +
       statusBadge +
       priceHtml +
-      favBtn +
+      shareActions +
       optTabs +
       optPanels +
       '<div class="popup-footer"><button type="button" class="btn-oy btn-oy-cta" data-action="openOliveYoung" data-goodsno="' +
