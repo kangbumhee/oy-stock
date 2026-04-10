@@ -914,66 +914,124 @@ var UI = {
       new Date().toISOString().slice(0, 10) +
       '.png';
 
-    html2canvas(content, {
-      scale: Math.min(2, (window.devicePixelRatio || 1) * 1.25),
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-      backgroundColor: '#ffffff',
-      ignoreElements: function (el) {
-        if (!el || !el.matches) return false;
-        if (el.classList && el.classList.contains('popup-share-actions')) return true;
-        if (el.matches('.popup-header button[data-action="closePopup"]')) return true;
-        if (el.matches('.popup-footer')) return true;
-        return false;
-      }
-    })
-      .then(function (canvas) {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = oldText;
-        }
-        return new Promise(function (resolve, reject) {
-          canvas.toBlob(function (blob) {
-            if (blob) resolve(blob);
-            else reject(new Error('toBlob failed'));
-          }, 'image/png');
-        });
-      })
-      .then(function (blob) {
-        var file = new File([blob], safeName, { type: 'image/png' });
-        var canWebShare =
-          navigator.share &&
-          navigator.canShare &&
-          navigator.canShare({ files: [file] });
-        if (canWebShare) {
-          return navigator
-            .share({
-              files: [file],
-              title: '올리브영 매장 재고',
-              text: '재고 확인 결과'
-            })
-            .catch(function (err) {
-              if (err && err.name === 'AbortError') return;
-              UI._downloadBlob(blob, safeName);
-              if (typeof UI.showSyncStatus === 'function') {
-                UI.showSyncStatus('이미지를 저장했습니다', false);
-              }
-            });
-        }
-        UI._downloadBlob(blob, safeName);
-        if (typeof UI.showSyncStatus === 'function') {
-          UI.showSyncStatus('이미지를 저장했습니다', false);
-        }
-      })
-      .catch(function (err) {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = oldText;
-        }
-        console.error('[shareStockSnapshot]', err);
-        alert('이미지를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    var el = content;
+    var prevMax = el.style.maxHeight;
+    var prevOv = el.style.overflow;
+    var prevH = el.style.height;
+    el.style.maxHeight = 'none';
+    el.style.overflow = 'visible';
+    el.style.height = 'auto';
+    el.scrollTop = 0;
+
+    var panels = el.querySelectorAll('.opt-panel');
+    var panelBack = [];
+    var i;
+    for (i = 0; i < panels.length; i++) {
+      var p = panels[i];
+      panelBack.push({
+        display: p.style.display,
+        marginTop: p.style.marginTop,
+        active: p.classList.contains('active')
       });
+      p.style.display = 'block';
+      p.classList.add('active');
+      if (i > 0) p.style.marginTop = '12px';
+    }
+
+    function restoreLayout() {
+      el.style.maxHeight = prevMax;
+      el.style.overflow = prevOv;
+      el.style.height = prevH;
+      for (i = 0; i < panels.length; i++) {
+        var pb = panelBack[i];
+        var pj = panels[i];
+        pj.style.display = pb.display;
+        pj.style.marginTop = pb.marginTop || '';
+        if (!pb.active) pj.classList.remove('active');
+      }
+    }
+
+    function finishBtn() {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        var w = el.scrollWidth;
+        var h = el.scrollHeight;
+        html2canvas(el, {
+          scale: Math.min(2, (window.devicePixelRatio || 1) * 1.25),
+          width: w,
+          height: h,
+          windowWidth: w,
+          windowHeight: h,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: '#ffffff',
+          ignoreElements: function (node) {
+            if (!node || !node.matches) return false;
+            if (node.classList && node.classList.contains('popup-share-actions')) return true;
+            if (node.matches('.popup-header button[data-action="closePopup"]')) return true;
+            if (node.matches('.popup-footer')) return true;
+            return false;
+          },
+          onclone: function (clonedDoc) {
+            var pc = clonedDoc.querySelector('.popup-content');
+            if (pc) {
+              pc.style.maxHeight = 'none';
+              pc.style.overflow = 'visible';
+              pc.style.height = 'auto';
+            }
+          }
+        })
+          .then(function (canvas) {
+            return new Promise(function (resolve, reject) {
+              canvas.toBlob(function (blob) {
+                if (blob) resolve(blob);
+                else reject(new Error('toBlob failed'));
+              }, 'image/png');
+            });
+          })
+          .then(function (blob) {
+            var file = new File([blob], safeName, { type: 'image/png' });
+            var canWebShare =
+              navigator.share &&
+              navigator.canShare &&
+              navigator.canShare({ files: [file] });
+            if (canWebShare) {
+              return navigator
+                .share({
+                  files: [file],
+                  title: '올리브영 매장 재고',
+                  text: '재고 확인 결과'
+                })
+                .catch(function (err) {
+                  if (err && err.name === 'AbortError') return;
+                  UI._downloadBlob(blob, safeName);
+                  if (typeof UI.showSyncStatus === 'function') {
+                    UI.showSyncStatus('이미지를 저장했습니다', false);
+                  }
+                });
+            }
+            UI._downloadBlob(blob, safeName);
+            if (typeof UI.showSyncStatus === 'function') {
+              UI.showSyncStatus('이미지를 저장했습니다', false);
+            }
+          })
+          .catch(function (err) {
+            console.error('[shareStockSnapshot]', err);
+            alert('이미지를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+          })
+          .finally(function () {
+            restoreLayout();
+            finishBtn();
+          });
+      });
+    });
   },
 
   _downloadBlob: function (blob, filename) {
