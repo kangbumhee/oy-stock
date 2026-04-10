@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-10T04:42:52.936Z",
+  "updatedAt": "2026-04-10T06:29:08.973Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,9 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 75,
       "to": 75,
-      "fromQty": 360,
-      "toQty": 357,
-      "date": "2026-04-10T04:42:52.936Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2969,
-      "to": 744,
-      "date": "2026-04-10T04:42:52.936Z"
+      "fromQty": 357,
+      "toQty": 356,
+      "date": "2026-04-10T06:29:08.973Z"
     },
     {
       "type": "stock_changed",
@@ -37,9 +29,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 49,
       "to": 49,
-      "fromQty": 158,
-      "toQty": 157,
-      "date": "2026-04-10T04:42:52.936Z"
+      "fromQty": 157,
+      "toQty": 155,
+      "date": "2026-04-10T06:29:08.973Z"
     }
   ],
   "products": {
@@ -60,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 157,
+          "totalQty": 155,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -140,8 +132,8 @@
               "name": "검단사거리점",
               "code": "D402",
               "dist": 4.81,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 검단로 480"
@@ -210,7 +202,7 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -369,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-10T04:42:52.936Z"
+      "updatedAt": "2026-04-10T06:29:08.973Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +380,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 43,
-          "totalQty": 238,
-          "onlineQty": 253,
+          "totalQty": 237,
+          "onlineQty": 255,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -399,7 +391,7 @@
               "code": "DB6E",
               "dist": 0.36,
               "qty": 3,
-              "o2o": 1,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
@@ -689,7 +681,7 @@
               "code": "BA34",
               "dist": 8.97,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
@@ -703,7 +695,7 @@
           "totalStores": 50,
           "inStock": 23,
           "totalQty": 60,
-          "onlineQty": 491,
+          "onlineQty": 489,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1325,7 +1317,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-10T04:42:52.936Z"
+      "updatedAt": "2026-04-10T06:29:08.973Z"
     }
   }
 }
