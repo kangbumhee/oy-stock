@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-11T05:56:47.301Z",
+  "updatedAt": "2026-04-11T06:57:09.919Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -18,18 +18,18 @@
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 73,
-      "to": 73,
-      "fromQty": 349,
-      "toQty": 346,
-      "date": "2026-04-11T05:56:47.301Z"
+      "to": 72,
+      "fromQty": 346,
+      "toQty": 345,
+      "date": "2026-04-11T06:57:09.919Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2775,
-      "to": 2771,
-      "date": "2026-04-11T05:56:47.301Z"
+      "from": 2771,
+      "to": 2772,
+      "date": "2026-04-11T06:57:09.919Z"
     },
     {
       "type": "stock_changed",
@@ -37,9 +37,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 47,
       "to": 47,
-      "fromQty": 157,
-      "toQty": 156,
-      "date": "2026-04-11T05:56:47.301Z"
+      "fromQty": 156,
+      "toQty": 154,
+      "date": "2026-04-11T06:57:09.919Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 47,
-          "totalQty": 156,
+          "totalQty": 154,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -250,8 +250,8 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
@@ -369,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-11T05:56:47.301Z"
+      "updatedAt": "2026-04-11T06:57:09.919Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -387,9 +387,9 @@
           "productId": "8809635333529",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
-          "inStock": 41,
-          "totalQty": 232,
-          "onlineQty": 2292,
+          "inStock": 40,
+          "totalQty": 231,
+          "onlineQty": 2293,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -578,7 +578,7 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -1325,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-11T05:56:47.301Z"
+      "updatedAt": "2026-04-11T06:57:09.919Z"
     }
   }
 }
