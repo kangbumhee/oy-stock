@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-11T13:51:23.891Z",
+  "updatedAt": "2026-04-11T14:31:28.467Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,19 +17,9 @@
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2770,
-      "to": 2761,
-      "date": "2026-04-11T13:51:23.891Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 47,
-      "to": 47,
-      "fromQty": 150,
-      "toQty": 149,
-      "date": "2026-04-11T13:51:23.891Z"
+      "from": 2761,
+      "to": 2757,
+      "date": "2026-04-11T14:31:28.467Z"
     }
   ],
   "products": {
@@ -153,7 +143,7 @@
               "qty": 5,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -273,7 +263,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -283,7 +273,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -293,7 +283,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -359,7 +349,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-11T13:51:23.891Z"
+      "updatedAt": "2026-04-11T14:31:28.467Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -379,7 +369,7 @@
           "totalStores": 50,
           "inStock": 39,
           "totalQty": 224,
-          "onlineQty": 2292,
+          "onlineQty": 2287,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -481,7 +471,7 @@
               "qty": 5,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -601,7 +591,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -611,7 +601,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -621,7 +611,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -693,7 +683,7 @@
           "totalStores": 50,
           "inStock": 23,
           "totalQty": 57,
-          "onlineQty": 469,
+          "onlineQty": 470,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -795,7 +785,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -915,7 +905,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -925,7 +915,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -935,7 +925,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -1109,7 +1099,7 @@
               "qty": 8,
               "o2o": 6,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -1117,7 +1107,7 @@
               "code": "D399",
               "dist": 5.11,
               "qty": 7,
-              "o2o": 5,
+              "o2o": 4,
               "pickup": true,
               "open": false,
               "addr": "인천광역시 서구 완정로 14"
@@ -1229,7 +1219,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -1239,7 +1229,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -1249,7 +1239,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -1315,7 +1305,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-11T13:51:23.891Z"
+      "updatedAt": "2026-04-11T14:31:28.467Z"
     }
   }
 }
