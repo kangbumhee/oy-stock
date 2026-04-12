@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-12T04:44:08.898Z",
+  "updatedAt": "2026-04-12T06:21:19.061Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,29 +17,29 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 71,
+      "from": 70,
       "to": 70,
-      "fromQty": 336,
-      "toQty": 334,
-      "date": "2026-04-12T04:44:08.898Z"
+      "fromQty": 334,
+      "toQty": 333,
+      "date": "2026-04-12T06:21:19.061Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 2720,
-      "to": 613,
-      "date": "2026-04-12T04:44:08.898Z"
+      "from": 613,
+      "to": 606,
+      "date": "2026-04-12T06:21:19.061Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 47,
+      "from": 45,
       "to": 45,
-      "fromQty": 149,
-      "toQty": 146,
-      "date": "2026-04-12T04:44:08.898Z"
+      "fromQty": 146,
+      "toQty": 145,
+      "date": "2026-04-12T06:21:19.061Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 146,
+          "totalQty": 145,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -250,7 +250,7 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -369,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-12T04:44:08.898Z"
+      "updatedAt": "2026-04-12T06:21:19.061Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 38,
-          "totalQty": 221,
-          "onlineQty": 146,
+          "totalQty": 220,
+          "onlineQty": 144,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -568,8 +568,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -703,7 +703,7 @@
           "totalStores": 50,
           "inStock": 23,
           "totalQty": 57,
-          "onlineQty": 467,
+          "onlineQty": 462,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1325,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-12T04:44:08.898Z"
+      "updatedAt": "2026-04-12T06:21:19.061Z"
     }
   }
 }
