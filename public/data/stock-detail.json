@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-12T07:59:30.438Z",
+  "updatedAt": "2026-04-12T08:55:34.995Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,17 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 70,
       "to": 70,
-      "fromQty": 333,
-      "toQty": 332,
-      "date": "2026-04-12T07:59:30.438Z"
+      "fromQty": 332,
+      "toQty": 330,
+      "date": "2026-04-12T08:55:34.995Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 606,
-      "to": 611,
-      "date": "2026-04-12T07:59:30.438Z"
+      "from": 611,
+      "to": 612,
+      "date": "2026-04-12T08:55:34.995Z"
     },
     {
       "type": "stock_changed",
@@ -37,9 +37,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 45,
       "to": 45,
-      "fromQty": 145,
-      "toQty": 144,
-      "date": "2026-04-12T07:59:30.438Z"
+      "fromQty": 144,
+      "toQty": 141,
+      "date": "2026-04-12T08:55:34.995Z"
     }
   ],
   "products": {
@@ -60,7 +60,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 45,
-          "totalQty": 144,
+          "totalQty": 141,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -120,8 +120,8 @@
               "name": "홈플러스김포점",
               "code": "DE2B",
               "dist": 2.29,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": false,
               "open": true,
               "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
@@ -230,8 +230,8 @@
               "name": "검단아라점",
               "code": "DDD8",
               "dist": 6.69,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
@@ -250,8 +250,8 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
@@ -369,7 +369,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-12T07:59:30.438Z"
+      "updatedAt": "2026-04-12T08:55:34.995Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +388,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 38,
-          "totalQty": 219,
-          "onlineQty": 147,
+          "totalQty": 217,
+          "onlineQty": 148,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -458,8 +458,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -618,8 +618,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -1325,7 +1325,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-12T07:59:30.438Z"
+      "updatedAt": "2026-04-12T08:55:34.995Z"
     }
   }
 }
