@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-12T08:55:34.995Z",
+  "updatedAt": "2026-04-12T09:40:15.297Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,27 +19,17 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 70,
       "to": 70,
-      "fromQty": 332,
-      "toQty": 330,
-      "date": "2026-04-12T08:55:34.995Z"
+      "fromQty": 330,
+      "toQty": 329,
+      "date": "2026-04-12T09:40:15.297Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 611,
-      "to": 612,
-      "date": "2026-04-12T08:55:34.995Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 45,
-      "to": 45,
-      "fromQty": 144,
-      "toQty": 141,
-      "date": "2026-04-12T08:55:34.995Z"
+      "from": 612,
+      "to": 2514,
+      "date": "2026-04-12T09:40:15.297Z"
     }
   ],
   "products": {
@@ -369,7 +359,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-12T08:55:34.995Z"
+      "updatedAt": "2026-04-12T09:40:15.297Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +378,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 38,
-          "totalQty": 217,
-          "onlineQty": 148,
+          "totalQty": 216,
+          "onlineQty": 2048,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -703,7 +693,7 @@
           "totalStores": 50,
           "inStock": 23,
           "totalQty": 57,
-          "onlineQty": 464,
+          "onlineQty": 466,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1325,7 +1315,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-12T08:55:34.995Z"
+      "updatedAt": "2026-04-12T09:40:15.297Z"
     }
   }
 }
