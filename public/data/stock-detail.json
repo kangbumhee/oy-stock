@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-13T13:09:13.628Z",
+  "updatedAt": "2026-04-13T15:10:50.706Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,29 +17,19 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 71,
+      "from": 70,
       "to": 70,
-      "fromQty": 329,
-      "toQty": 325,
-      "date": "2026-04-13T13:09:13.628Z"
+      "fromQty": 325,
+      "toQty": 324,
+      "date": "2026-04-13T15:10:50.706Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 1929,
-      "to": 1920,
-      "date": "2026-04-13T13:09:13.628Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 47,
-      "to": 47,
-      "fromQty": 142,
-      "toQty": 141,
-      "date": "2026-04-13T13:09:13.628Z"
+      "from": 1920,
+      "to": 1903,
+      "date": "2026-04-13T15:10:50.706Z"
     }
   ],
   "products": {
@@ -71,9 +61,9 @@
               "code": "DB6E",
               "dist": 0.36,
               "qty": 2,
-              "o2o": 1,
+              "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
             },
             {
@@ -83,7 +73,7 @@
               "qty": 5,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강1로78번길 6-2"
             },
             {
@@ -93,7 +83,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
             },
             {
@@ -103,7 +93,7 @@
               "qty": 7,
               "o2o": 5,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
             },
             {
@@ -133,7 +123,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 847"
             },
             {
@@ -141,9 +131,9 @@
               "code": "D402",
               "dist": 4.81,
               "qty": 3,
-              "o2o": 2,
+              "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -151,9 +141,9 @@
               "code": "D511",
               "dist": 4.94,
               "qty": 3,
-              "o2o": 2,
+              "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강9로76번길 21"
             },
             {
@@ -163,7 +153,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -173,7 +163,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 완정로 14"
             },
             {
@@ -181,9 +171,9 @@
               "code": "DB7C",
               "dist": 5.2,
               "qty": 2,
-              "o2o": 1,
+              "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
             },
             {
@@ -193,7 +183,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
@@ -203,7 +193,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -213,7 +203,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -253,7 +243,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
             },
             {
@@ -263,7 +253,7 @@
               "qty": 6,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
             },
             {
@@ -273,7 +263,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
             },
             {
@@ -283,7 +273,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -293,7 +283,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -303,7 +293,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -313,7 +303,7 @@
               "qty": 9,
               "o2o": 7,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 24"
             },
             {
@@ -323,7 +313,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -333,7 +323,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
             },
             {
@@ -343,7 +333,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
             },
             {
@@ -363,13 +353,13 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-04-13T13:09:13.628Z"
+      "updatedAt": "2026-04-13T15:10:50.706Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -388,8 +378,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 38,
-          "totalQty": 213,
-          "onlineQty": 1477,
+          "totalQty": 212,
+          "onlineQty": 1461,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -401,7 +391,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
             },
             {
@@ -411,7 +401,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강1로78번길 6-2"
             },
             {
@@ -421,7 +411,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
             },
             {
@@ -431,7 +421,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
             },
             {
@@ -458,10 +448,10 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 847"
             },
             {
@@ -471,7 +461,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -481,7 +471,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강9로76번길 21"
             },
             {
@@ -491,7 +481,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -501,7 +491,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 완정로 14"
             },
             {
@@ -511,7 +501,7 @@
               "qty": 16,
               "o2o": 12,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
             },
             {
@@ -521,7 +511,7 @@
               "qty": 5,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
@@ -531,7 +521,7 @@
               "qty": 18,
               "o2o": 14,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -541,7 +531,7 @@
               "qty": 9,
               "o2o": 7,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -581,7 +571,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
             },
             {
@@ -591,7 +581,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
             },
             {
@@ -601,7 +591,7 @@
               "qty": 8,
               "o2o": 6,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
             },
             {
@@ -611,7 +601,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -621,7 +611,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -631,7 +621,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -641,7 +631,7 @@
               "qty": 21,
               "o2o": 16,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 24"
             },
             {
@@ -651,7 +641,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -661,7 +651,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
             },
             {
@@ -671,7 +661,7 @@
               "qty": 6,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
             },
             {
@@ -691,7 +681,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -703,7 +693,7 @@
           "totalStores": 50,
           "inStock": 23,
           "totalQty": 56,
-          "onlineQty": 443,
+          "onlineQty": 442,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -715,7 +705,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
             },
             {
@@ -725,7 +715,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강1로78번길 6-2"
             },
             {
@@ -735,7 +725,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
             },
             {
@@ -745,7 +735,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
             },
             {
@@ -775,7 +765,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 847"
             },
             {
@@ -785,7 +775,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -795,7 +785,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강9로76번길 21"
             },
             {
@@ -805,7 +795,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -815,7 +805,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 완정로 14"
             },
             {
@@ -825,7 +815,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
             },
             {
@@ -835,7 +825,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
@@ -845,7 +835,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -855,7 +845,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -895,7 +885,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
             },
             {
@@ -905,7 +895,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
             },
             {
@@ -915,7 +905,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
             },
             {
@@ -925,7 +915,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -935,7 +925,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -945,7 +935,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -955,7 +945,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 24"
             },
             {
@@ -965,7 +955,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -975,7 +965,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
             },
             {
@@ -985,7 +975,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
             },
             {
@@ -1005,7 +995,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -1029,7 +1019,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
             },
             {
@@ -1039,7 +1029,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강1로78번길 6-2"
             },
             {
@@ -1049,7 +1039,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
             },
             {
@@ -1059,7 +1049,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
             },
             {
@@ -1089,7 +1079,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 847"
             },
             {
@@ -1099,7 +1089,7 @@
               "qty": 8,
               "o2o": 6,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 검단로 480"
             },
             {
@@ -1109,7 +1099,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강9로76번길 21"
             },
             {
@@ -1119,7 +1109,7 @@
               "qty": 8,
               "o2o": 6,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포한강4로 525"
             },
             {
@@ -1129,7 +1119,7 @@
               "qty": 6,
               "o2o": 4,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 완정로 14"
             },
             {
@@ -1139,7 +1129,7 @@
               "qty": 7,
               "o2o": 5,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
             },
             {
@@ -1149,7 +1139,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
@@ -1159,7 +1149,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 원당대로 854"
             },
             {
@@ -1169,7 +1159,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
             },
             {
@@ -1209,7 +1199,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
             },
             {
@@ -1219,7 +1209,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
             },
             {
@@ -1229,7 +1219,7 @@
               "qty": 9,
               "o2o": 7,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
             },
             {
@@ -1239,7 +1229,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
             },
             {
@@ -1249,7 +1239,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
             },
             {
@@ -1259,7 +1249,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
             },
             {
@@ -1269,7 +1259,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 정발산로 24"
             },
             {
@@ -1279,7 +1269,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 승학로 491"
             },
             {
@@ -1289,7 +1279,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
             },
             {
@@ -1299,7 +1289,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
             },
             {
@@ -1319,13 +1309,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-04-13T13:09:13.628Z"
+      "updatedAt": "2026-04-13T15:10:50.706Z"
     }
   }
 }
