@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-13T07:52:32.828Z",
+  "updatedAt": "2026-04-13T09:48:25.985Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,19 +17,19 @@
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 542,
-      "to": 537,
-      "date": "2026-04-13T07:52:32.828Z"
+      "from": 537,
+      "to": 1930,
+      "date": "2026-04-13T09:48:25.985Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 48,
-      "to": 48,
-      "fromQty": 148,
-      "toQty": 144,
-      "date": "2026-04-13T07:52:32.828Z"
+      "to": 47,
+      "fromQty": 144,
+      "toQty": 142,
+      "date": "2026-04-13T09:48:25.985Z"
     }
   ],
   "products": {
@@ -49,8 +49,8 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
-          "inStock": 48,
-          "totalQty": 144,
+          "inStock": 47,
+          "totalQty": 142,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -230,8 +230,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -340,7 +340,7 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -359,7 +359,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-13T07:52:32.828Z"
+      "updatedAt": "2026-04-13T09:48:25.985Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -379,7 +379,7 @@
           "totalStores": 50,
           "inStock": 39,
           "totalQty": 216,
-          "onlineQty": 82,
+          "onlineQty": 1482,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -693,7 +693,7 @@
           "totalStores": 50,
           "inStock": 23,
           "totalQty": 57,
-          "onlineQty": 455,
+          "onlineQty": 448,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1315,7 +1315,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-13T07:52:32.828Z"
+      "updatedAt": "2026-04-13T09:48:25.985Z"
     }
   }
 }
