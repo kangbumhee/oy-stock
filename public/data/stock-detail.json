@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-15T04:41:58.746Z",
+  "updatedAt": "2026-04-15T06:29:37.625Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,18 +12,7 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 49,
-      "to": 49,
-      "fromQty": 146,
-      "toQty": 145,
-      "date": "2026-04-15T04:41:58.746Z"
-    }
-  ],
+  "recentEvents": [],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -73,7 +62,7 @@
               "code": "D300",
               "dist": 1.4,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
@@ -113,7 +102,7 @@
               "code": "DF3E",
               "dist": 3.97,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -153,7 +142,7 @@
               "code": "D399",
               "dist": 5.11,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 완정로 14"
@@ -351,7 +340,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-15T04:41:58.746Z"
+      "updatedAt": "2026-04-15T06:29:37.625Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -461,7 +450,7 @@
               "code": "D511",
               "dist": 4.94,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -679,7 +668,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-15T04:41:58.746Z"
+      "updatedAt": "2026-04-15T06:29:37.625Z"
     }
   }
 }
