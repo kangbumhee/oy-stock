@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-15T06:29:37.625Z",
+  "updatedAt": "2026-04-15T08:24:50.821Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,7 +12,18 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [],
+  "recentEvents": [
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 41,
+      "to": 41,
+      "fromQty": 219,
+      "toQty": 218,
+      "date": "2026-04-15T08:24:50.821Z"
+    }
+  ],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -340,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-15T06:29:37.625Z"
+      "updatedAt": "2026-04-15T08:24:50.821Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -359,7 +370,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 41,
-          "totalQty": 219,
+          "totalQty": 218,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -609,8 +620,8 @@
               "name": "웨스턴돔중앙점",
               "code": "DCE8",
               "dist": 8.06,
-              "qty": 20,
-              "o2o": 16,
+              "qty": 19,
+              "o2o": 15,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 24"
@@ -668,7 +679,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-15T06:29:37.625Z"
+      "updatedAt": "2026-04-15T08:24:50.821Z"
     }
   }
 }
