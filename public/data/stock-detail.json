@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-15T11:51:50.930Z",
+  "updatedAt": "2026-04-15T13:09:13.570Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,7 +12,18 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [],
+  "recentEvents": [
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 48,
+      "to": 48,
+      "fromQty": 143,
+      "toQty": 142,
+      "date": "2026-04-15T13:09:13.570Z"
+    }
+  ],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -31,7 +42,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 143,
+          "totalQty": 142,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -84,7 +95,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -94,7 +105,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
             },
             {
@@ -194,7 +205,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -204,7 +215,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -214,7 +225,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -324,7 +335,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -340,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-15T11:51:50.930Z"
+      "updatedAt": "2026-04-15T13:09:13.570Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -412,7 +423,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -422,7 +433,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
             },
             {
@@ -522,7 +533,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -532,7 +543,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -542,7 +553,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -652,7 +663,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -668,7 +679,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-15T11:51:50.930Z"
+      "updatedAt": "2026-04-15T13:09:13.570Z"
     }
   }
 }
