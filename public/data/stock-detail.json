@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-16T11:56:09.647Z",
+  "updatedAt": "2026-04-16T13:18:57.334Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,18 +12,7 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 40,
-      "to": 40,
-      "fromQty": 212,
-      "toQty": 210,
-      "date": "2026-04-16T11:56:09.647Z"
-    }
-  ],
+  "recentEvents": [],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -95,7 +84,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -105,7 +94,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
             },
             {
@@ -205,7 +194,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -215,7 +204,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -225,7 +214,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -335,7 +324,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -351,7 +340,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-16T11:56:09.647Z"
+      "updatedAt": "2026-04-16T13:18:57.334Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -423,7 +412,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -433,7 +422,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
             },
             {
@@ -533,7 +522,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": false,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -543,7 +532,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -553,7 +542,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -663,7 +652,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -679,7 +668,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-16T11:56:09.647Z"
+      "updatedAt": "2026-04-16T13:18:57.334Z"
     }
   }
 }
