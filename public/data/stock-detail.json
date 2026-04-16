@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-16T10:11:00.704Z",
+  "updatedAt": "2026-04-16T11:56:09.647Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,19 +19,9 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 40,
       "to": 40,
-      "fromQty": 214,
-      "toQty": 212,
-      "date": "2026-04-16T10:11:00.704Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 49,
-      "to": 48,
-      "fromQty": 143,
-      "toQty": 139,
-      "date": "2026-04-16T10:11:00.704Z"
+      "fromQty": 212,
+      "toQty": 210,
+      "date": "2026-04-16T11:56:09.647Z"
     }
   ],
   "products": {
@@ -361,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-16T10:11:00.704Z"
+      "updatedAt": "2026-04-16T11:56:09.647Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -380,7 +370,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 40,
-          "totalQty": 212,
+          "totalQty": 210,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -650,8 +640,8 @@
               "name": "마두역점",
               "code": "DB4E",
               "dist": 8.52,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
@@ -689,7 +679,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-16T10:11:00.704Z"
+      "updatedAt": "2026-04-16T11:56:09.647Z"
     }
   }
 }
