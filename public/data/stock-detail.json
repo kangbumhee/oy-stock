@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-16T02:00:26.555Z",
+  "updatedAt": "2026-04-16T04:56:10.589Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -15,23 +15,13 @@
   "recentEvents": [
     {
       "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "from": 40,
-      "to": 41,
-      "fromQty": 216,
-      "toQty": 217,
-      "date": "2026-04-16T02:00:26.555Z"
-    },
-    {
-      "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 48,
+      "from": 49,
       "to": 49,
-      "fromQty": 142,
-      "toQty": 147,
-      "date": "2026-04-16T02:00:26.555Z"
+      "fromQty": 147,
+      "toQty": 145,
+      "date": "2026-04-16T04:56:10.589Z"
     }
   ],
   "products": {
@@ -52,7 +42,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 147,
+          "totalQty": 145,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -112,7 +102,7 @@
               "name": "홈플러스김포점",
               "code": "DE2B",
               "dist": 2.29,
-              "qty": 2,
+              "qty": 1,
               "o2o": 0,
               "pickup": false,
               "open": true,
@@ -232,8 +222,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -361,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-16T02:00:26.555Z"
+      "updatedAt": "2026-04-16T04:56:10.589Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -689,7 +679,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-16T02:00:26.555Z"
+      "updatedAt": "2026-04-16T04:56:10.589Z"
     }
   }
 }
