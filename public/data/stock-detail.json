@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-17T01:56:15.856Z",
+  "updatedAt": "2026-04-17T04:46:34.807Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,9 +19,9 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 40,
       "to": 40,
-      "fromQty": 210,
-      "toQty": 214,
-      "date": "2026-04-17T01:56:15.856Z"
+      "fromQty": 214,
+      "toQty": 212,
+      "date": "2026-04-17T04:46:34.807Z"
     },
     {
       "type": "stock_changed",
@@ -29,9 +29,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 48,
       "to": 48,
-      "fromQty": 139,
-      "toQty": 153,
-      "date": "2026-04-17T01:56:15.856Z"
+      "fromQty": 153,
+      "toQty": 148,
+      "date": "2026-04-17T04:46:34.807Z"
     }
   ],
   "products": {
@@ -52,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 153,
+          "totalQty": 148,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -172,7 +172,7 @@
               "name": "김포풍무점",
               "code": "DB7C",
               "dist": 5.2,
-              "qty": 2,
+              "qty": 1,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -223,7 +223,7 @@
               "code": "DDD8",
               "dist": 6.69,
               "qty": 4,
-              "o2o": 0,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
@@ -232,8 +232,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -262,8 +262,8 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
@@ -302,8 +302,8 @@
               "name": "웨스턴돔중앙점",
               "code": "DCE8",
               "dist": 8.06,
-              "qty": 9,
-              "o2o": 7,
+              "qty": 8,
+              "o2o": 6,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 24"
@@ -361,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-17T01:56:15.856Z"
+      "updatedAt": "2026-04-17T04:46:34.807Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -380,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 40,
-          "totalQty": 214,
+          "totalQty": 212,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -480,8 +480,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -580,8 +580,8 @@
               "name": "일산주엽점",
               "code": "DE0D",
               "dist": 7.66,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
@@ -689,7 +689,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-17T01:56:15.856Z"
+      "updatedAt": "2026-04-17T04:46:34.807Z"
     }
   }
 }
