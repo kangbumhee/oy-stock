@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-18T10:34:37.805Z",
+  "updatedAt": "2026-04-18T11:29:46.207Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,7 +12,18 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [],
+  "recentEvents": [
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 47,
+      "to": 47,
+      "fromQty": 144,
+      "toQty": 143,
+      "date": "2026-04-18T11:29:46.207Z"
+    }
+  ],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -31,7 +42,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 47,
-          "totalQty": 144,
+          "totalQty": 143,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -191,8 +202,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -340,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-18T10:34:37.805Z"
+      "updatedAt": "2026-04-18T11:29:46.207Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -668,7 +679,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-18T10:34:37.805Z"
+      "updatedAt": "2026-04-18T11:29:46.207Z"
     }
   }
 }
