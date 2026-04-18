@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-18T11:29:46.207Z",
+  "updatedAt": "2026-04-18T12:44:45.478Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -15,13 +15,23 @@
   "recentEvents": [
     {
       "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 41,
+      "to": 41,
+      "fromQty": 203,
+      "toQty": 202,
+      "date": "2026-04-18T12:44:45.478Z"
+    },
+    {
+      "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 47,
       "to": 47,
-      "fromQty": 144,
-      "toQty": 143,
-      "date": "2026-04-18T11:29:46.207Z"
+      "fromQty": 143,
+      "toQty": 140,
+      "date": "2026-04-18T12:44:45.478Z"
     }
   ],
   "products": {
@@ -42,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 47,
-          "totalQty": 143,
+          "totalQty": 140,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -112,8 +122,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -351,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-18T11:29:46.207Z"
+      "updatedAt": "2026-04-18T12:44:45.478Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -370,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 41,
-          "totalQty": 203,
+          "totalQty": 202,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -679,7 +689,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-18T11:29:46.207Z"
+      "updatedAt": "2026-04-18T12:44:45.478Z"
     }
   }
 }
