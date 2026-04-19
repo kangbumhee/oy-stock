@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-19T11:29:56.015Z",
+  "updatedAt": "2026-04-19T12:43:57.590Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -12,7 +12,18 @@
     "discontinued": 0,
     "errors": 0
   },
-  "recentEvents": [],
+  "recentEvents": [
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 46,
+      "to": 45,
+      "fromQty": 136,
+      "toQty": 135,
+      "date": "2026-04-19T12:43:57.590Z"
+    }
+  ],
   "products": {
     "A000000154189": {
       "goodsNo": "A000000154189",
@@ -30,8 +41,8 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
-          "inStock": 46,
-          "totalQty": 136,
+          "inStock": 45,
+          "totalQty": 135,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -340,7 +351,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-19T11:29:56.015Z"
+      "updatedAt": "2026-04-19T12:43:57.590Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -668,7 +679,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-19T11:29:56.015Z"
+      "updatedAt": "2026-04-19T12:43:57.590Z"
     }
   }
 }
