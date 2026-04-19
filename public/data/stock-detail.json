@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-19T04:55:44.643Z",
+  "updatedAt": "2026-04-19T06:26:46.555Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,9 +19,19 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 41,
       "to": 41,
-      "fromQty": 202,
-      "toQty": 200,
-      "date": "2026-04-19T04:55:44.643Z"
+      "fromQty": 200,
+      "toQty": 199,
+      "date": "2026-04-19T06:26:46.555Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 47,
+      "to": 46,
+      "fromQty": 139,
+      "toQty": 137,
+      "date": "2026-04-19T06:26:46.555Z"
     }
   ],
   "products": {
@@ -41,8 +51,8 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
-          "inStock": 47,
-          "totalQty": 139,
+          "inStock": 46,
+          "totalQty": 137,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -202,7 +212,7 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": false,
               "open": true,
@@ -351,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-19T04:55:44.643Z"
+      "updatedAt": "2026-04-19T06:26:46.555Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -370,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 41,
-          "totalQty": 200,
+          "totalQty": 199,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -679,7 +689,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-19T04:55:44.643Z"
+      "updatedAt": "2026-04-19T06:26:46.555Z"
     }
   }
 }
