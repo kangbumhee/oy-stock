@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-21T08:30:10.696Z",
+  "updatedAt": "2026-04-21T10:14:37.709Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,9 +19,19 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 41,
       "to": 41,
-      "fromQty": 198,
-      "toQty": 197,
-      "date": "2026-04-21T08:30:10.696Z"
+      "fromQty": 197,
+      "toQty": 196,
+      "date": "2026-04-21T10:14:37.709Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 48,
+      "to": 48,
+      "fromQty": 161,
+      "toQty": 159,
+      "date": "2026-04-21T10:14:37.709Z"
     }
   ],
   "products": {
@@ -42,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 48,
-          "totalQty": 161,
+          "totalQty": 159,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -182,8 +192,8 @@
               "name": "인천원당점",
               "code": "D559",
               "dist": 5.34,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 원당대로 854"
@@ -272,8 +282,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -351,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-21T08:30:10.696Z"
+      "updatedAt": "2026-04-21T10:14:37.709Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -370,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 41,
-          "totalQty": 197,
+          "totalQty": 196,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -679,7 +689,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-21T08:30:10.696Z"
+      "updatedAt": "2026-04-21T10:14:37.709Z"
     }
   }
 }
