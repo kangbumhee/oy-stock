@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-22T11:55:37.197Z",
+  "updatedAt": "2026-04-22T13:11:54.031Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,9 +19,9 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 41,
       "to": 41,
-      "fromQty": 198,
-      "toQty": 194,
-      "date": "2026-04-22T11:55:37.197Z"
+      "fromQty": 194,
+      "toQty": 192,
+      "date": "2026-04-22T13:11:54.031Z"
     },
     {
       "type": "stock_changed",
@@ -29,9 +29,9 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
       "from": 49,
       "to": 49,
-      "fromQty": 169,
-      "toQty": 166,
-      "date": "2026-04-22T11:55:37.197Z"
+      "fromQty": 166,
+      "toQty": 165,
+      "date": "2026-04-22T13:11:54.031Z"
     }
   ],
   "products": {
@@ -52,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 166,
+          "totalQty": 165,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -105,7 +105,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -225,7 +225,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -235,7 +235,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -345,7 +345,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -361,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-22T11:55:37.197Z"
+      "updatedAt": "2026-04-22T13:11:54.031Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -380,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 41,
-          "totalQty": 194,
+          "totalQty": 192,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -433,7 +433,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
             },
             {
@@ -553,7 +553,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
             },
             {
@@ -563,7 +563,7 @@
               "qty": 3,
               "o2o": 2,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
             },
             {
@@ -660,8 +660,8 @@
               "name": "일산후곡점",
               "code": "D381",
               "dist": 8.57,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
@@ -673,7 +673,7 @@
               "qty": 1,
               "o2o": 0,
               "pickup": true,
-              "open": true,
+              "open": false,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
             },
             {
@@ -689,7 +689,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-22T11:55:37.197Z"
+      "updatedAt": "2026-04-22T13:11:54.031Z"
     }
   }
 }
