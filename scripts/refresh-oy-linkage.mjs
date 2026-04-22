@@ -9,6 +9,7 @@
  *
  * GitHub Secrets (또는 로컬 env):
  *   OY_REFRESH_COOKIE — 권장: Cookie 헤더 전체 (… linkageString=<hex> …)
+ *   OY_CURATOR_COOKIE — 선택: OY_REFRESH_COOKIE가 없을 때 같은 방식으로 사용
  *   또는 OY_SESSION_ID + OY_LINKAGE_STRING — buildCookie 로 linkageString= 조합
  *   VERCEL_TOKEN — https://vercel.com/account/tokens
  *   VERCEL_PROJECT_ID — Project Settings → General
@@ -38,7 +39,9 @@ function escapeHtml(s) {
 }
 
 function buildCookie() {
-  const full = (process.env.OY_REFRESH_COOKIE || '').trim();
+  const full =
+    (process.env.OY_REFRESH_COOKIE || '').trim() ||
+    (process.env.OY_CURATOR_COOKIE || '').trim();
   if (full) return full;
   const sid = (process.env.OY_SESSION_ID || '').trim();
   const ls = (process.env.OY_LINKAGE_STRING || '').trim();
@@ -48,13 +51,13 @@ function buildCookie() {
   return '';
 }
 
-/** OY_REFRESH_COOKIE 우선, 없으면 buildCookie() 전체에서 추출 */
+/** OY_REFRESH_COOKIE / OY_CURATOR_COOKIE 우선, 없으면 buildCookie() 전체에서 추출 */
 function extractLinkageHexFromEnv() {
-  const fromRefresh = process.env.OY_REFRESH_COOKIE?.match(
-    /linkageString=([^;]+)/i
-  );
-  if (fromRefresh?.[1]) {
-    let hex = fromRefresh[1].trim();
+  const cookieSources = [process.env.OY_REFRESH_COOKIE, process.env.OY_CURATOR_COOKIE];
+  for (const source of cookieSources) {
+    const m = source?.match(/linkageString=([^;]+)/i);
+    if (!m?.[1]) continue;
+    let hex = m[1].trim();
     try {
       hex = decodeURIComponent(hex);
     } catch {
@@ -62,6 +65,7 @@ function extractLinkageHexFromEnv() {
     }
     return hex.trim();
   }
+
   const cookie = buildCookie();
   if (!cookie) return null;
   const m = cookie.match(/(?:^|;\s*)linkageString=([^;]+)/i);

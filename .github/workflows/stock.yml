@@ -31,6 +31,12 @@ jobs:
       - name: Generate curator links
         env:
           OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
+          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
+          OY_LINKAGE_JWT: ${{ secrets.OY_LINKAGE_JWT }}
+          OLIVEYOUNG_LINKAGE_STRING: ${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}
+          OLIVEYOUNG_LINKAGE_JWT: ${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}
           OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
         run: node scripts/generate-curator-links.mjs
 

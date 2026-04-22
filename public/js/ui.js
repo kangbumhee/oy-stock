@@ -144,16 +144,15 @@ var UI = {
           (landJson && landJson.affiliatePartnerId) || defaultReg;
 
         if (!activityId) {
-          console.error('[landing-proxy] affiliateActivityId 없음 → utm_content 생략', {
+          console.error('[landing-proxy] affiliateActivityId 없음 → 수익 링크 생성 중단', {
             goodsNo: goodsNo,
             httpStatus: landRes.status,
             response: landJson
           });
+          throw new Error('affiliateActivityId missing');
         }
 
-        var originalUrlForShorten = activityId
-          ? longUrlBase + '&utm_content=OY_' + activityId
-          : longUrlBase;
+        var originalUrlForShorten = longUrlBase + '&utm_content=OY_' + activityId;
         console.log('[oy-stock] shorten 요청 originalUrl:', originalUrlForShorten);
 
         var shortRes = await fetch(

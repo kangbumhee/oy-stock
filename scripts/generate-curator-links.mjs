@@ -7,7 +7,9 @@
  * (detail-stock.mjs 와 달리 큐레이터 API는 로그인 세션 필요 — 무인 www만으로는 부족할 수 있음)
  *
  * env:
- *   OY_CURATOR_COOKIE — 필수(비어 있으면 스킵, exit 0). linkageString 포함 권장.
+ *   OY_CURATOR_COOKIE — 선택. linkageString 포함 권장.
+ *   OY_REFRESH_COOKIE / OY_LINKAGE_STRING / OLIVEYOUNG_LINKAGE_STRING /
+ *   OLIVEYOUNG_LINKAGE_JWT — 선택. OY_CURATOR_COOKIE가 만료되면 자동 후보로 사용.
  *   OLIVEYOUNG_AFFILIATE_REGISTER_ID — 선택 (기본 4ee076cc92da4447a1b4b42c590e4495)
  *
  * landing API는 authorization(JWT) 필수. JWT = linkageString(hex) AES-128-ECB 복호화.
@@ -53,23 +55,122 @@ function decryptLinkageString(hexString) {
   return decrypted.trim();
 }
 
-/** Cookie 문자열에서 linkageString → JWT (Bearer 없이 그대로) */
-function getJwtFromCookie(cookieString) {
-  const m = String(cookieString).match(/(?:^|;\s*)linkageString=([^;]+)/i);
-  if (!m) return null;
-  let hex = m[1].trim();
+function decodeCookieValue(v) {
+  let out = String(v || '').trim();
   try {
-    hex = decodeURIComponent(hex);
+    out = decodeURIComponent(out);
   } catch {
     /* keep */
   }
-  hex = hex.trim();
+  return out.trim();
+}
+
+function extractCookieValue(cookieString, name) {
+  const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = String(cookieString || '').match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]+)', 'i'));
+  return m ? decodeCookieValue(m[1]) : '';
+}
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
   try {
-    return decryptLinkageString(hex);
-  } catch (e) {
-    console.warn('linkageString 복호화 실패:', e.message || e);
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    return JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+  } catch {
     return null;
   }
+}
+
+function authCandidateFromJwt(jwt, source, cookieHeader) {
+  const token = String(jwt || '').trim();
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  const expSec =
+    payload && payload.exp != null && Number.isFinite(Number(payload.exp))
+      ? Number(payload.exp)
+      : null;
+  return {
+    jwt: token,
+    source,
+    cookieHeader: cookieHeader || '',
+    expSec,
+    expired: expSec != null ? expSec <= Date.now() / 1000 : false,
+    sub: payload && payload.sub
+  };
+}
+
+function authCandidateFromLinkageHex(hex, source, cookieHeader) {
+  const raw = decodeCookieValue(hex);
+  if (!raw) return null;
+  try {
+    return authCandidateFromJwt(decryptLinkageString(raw), source, cookieHeader);
+  } catch (e) {
+    console.warn(`${source} linkageString 복호화 실패:`, e.message || e);
+    return null;
+  }
+}
+
+function buildSessionCookie() {
+  const sid = (process.env.OY_SESSION_ID || '').trim();
+  const ls = (process.env.OY_LINKAGE_STRING || '').trim();
+  if (sid && ls) return `OYSESSIONID=${sid}; linkageString=${ls}`;
+  return '';
+}
+
+function collectAuthCandidates() {
+  const candidates = [];
+  const cookieSources = [
+    ['OY_CURATOR_COOKIE', (process.env.OY_CURATOR_COOKIE || '').trim()],
+    ['OY_REFRESH_COOKIE', (process.env.OY_REFRESH_COOKIE || '').trim()],
+    ['OY_SESSION_ID+OY_LINKAGE_STRING', buildSessionCookie()]
+  ];
+
+  for (const [source, cookieHeader] of cookieSources) {
+    if (!cookieHeader) continue;
+    const hex = extractCookieValue(cookieHeader, 'linkageString');
+    const candidate = authCandidateFromLinkageHex(hex, source, cookieHeader);
+    if (candidate) candidates.push(candidate);
+  }
+
+  const linkageSources = [
+    ['OY_LINKAGE_STRING', process.env.OY_LINKAGE_STRING],
+    ['OLIVEYOUNG_LINKAGE_STRING', process.env.OLIVEYOUNG_LINKAGE_STRING]
+  ];
+  for (const [source, hex] of linkageSources) {
+    const candidate = authCandidateFromLinkageHex(hex, source, '');
+    if (candidate) candidates.push(candidate);
+  }
+
+  const jwtSources = [
+    ['OY_LINKAGE_JWT', process.env.OY_LINKAGE_JWT],
+    ['OLIVEYOUNG_LINKAGE_JWT', process.env.OLIVEYOUNG_LINKAGE_JWT]
+  ];
+  for (const [source, jwt] of jwtSources) {
+    const candidate = authCandidateFromJwt(jwt, source, '');
+    if (candidate) candidates.push(candidate);
+  }
+
+  return candidates;
+}
+
+function selectAuthCandidate(candidates) {
+  const valid = candidates.filter((c) => !c.expired);
+  const pool = valid.length ? valid : candidates;
+  return pool
+    .slice()
+    .sort((a, b) => {
+      const ae = a.expSec == null ? 0 : a.expSec;
+      const be = b.expSec == null ? 0 : b.expSec;
+      return be - ae;
+    })[0] || null;
+}
+
+function describeExp(candidate) {
+  if (!candidate || candidate.expSec == null) return '만료 정보 없음';
+  return new Date(candidate.expSec * 1000).toISOString();
 }
 
 function generateApiKey() {
@@ -145,10 +246,13 @@ function loadPrevCurator() {
 }
 
 async function main() {
-  const cookieHeader = (process.env.OY_CURATOR_COOKIE || '').trim();
-  if (!cookieHeader) {
+  const authCandidates = collectAuthCandidates();
+  const selectedAuth = selectAuthCandidate(authCandidates);
+  const cookieHeader = selectedAuth?.cookieHeader || '';
+
+  if (!selectedAuth) {
     console.log(
-      'OY_CURATOR_COOKIE 없음 → 큐레이터 링크 생성 스킵 (GitHub Secrets에 쿠키 추가 후 재실행)'
+      '큐레이터 인증 후보 없음 → 링크 생성 스킵 (OY_CURATOR_COOKIE / OY_REFRESH_COOKIE / linkageString 계열 Secret 확인)'
     );
     process.exit(0);
   }
@@ -164,14 +268,25 @@ async function main() {
   goodsList.sort();
   const regId = getRegisterId();
   const now = new Date().toISOString();
-  const authJwt = getJwtFromCookie(cookieHeader);
+  const authJwt = selectedAuth.jwt;
 
-  if (!authJwt) {
-    console.warn(
-      '⚠️ linkageString 없거나 복호화 실패 → landing API가 code 3000 등으로 실패할 수 있음'
+  for (const candidate of authCandidates) {
+    if (candidate.expired) {
+      console.warn(
+        `⚠️ ${candidate.source} JWT 만료됨 (${describeExp(candidate)}) → 다른 후보 사용 시도`
+      );
+    }
+  }
+
+  if (selectedAuth.expired) {
+    console.error(
+      `⚠️ 유효한 JWT 후보가 없어 만료된 ${selectedAuth.source} 사용 시도 (${describeExp(selectedAuth)})`
     );
+    process.exit(1);
   } else {
-    console.log('✅ linkageString → JWT 추출 성공 (앞 50자):', authJwt.slice(0, 50) + '…');
+    console.log(
+      `✅ ${selectedAuth.source} 인증 사용 | JWT 만료: ${describeExp(selectedAuth)}`
+    );
   }
 
   console.log(`대상 상품 ${goodsList.length}개 | registerId ${regId.slice(0, 8)}…\n`);
@@ -181,10 +296,12 @@ async function main() {
     userAgent:
       'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     locale: 'ko-KR'
-  });
+    });
 
-  try {
-    await ctx.addCookies(parseCookieHeader(cookieHeader, OY_M));
+    try {
+      if (cookieHeader) {
+        await ctx.addCookies(parseCookieHeader(cookieHeader, OY_M));
+    }
 
     const page = await ctx.newPage();
     console.log('www 워밍업…');
@@ -213,6 +330,9 @@ async function main() {
       timeout: 60000
     });
     await sleep(2000);
+
+    let generatedCount = 0;
+    let landingFailureCount = 0;
 
     for (const gn of goodsList) {
       if (isFreshCuratorEntry(links[gn])) {
@@ -358,6 +478,7 @@ async function main() {
       );
 
       if (pack.ok && !pack.partial) {
+        generatedCount += 1;
         links[gn] = {
           shortenedUrl: pack.shortenedUrl,
           originalUrl: pack.originalUrl,
@@ -367,6 +488,7 @@ async function main() {
         };
         console.log('  ✅ oy.run + utm');
       } else if (pack.ok && pack.partial) {
+        generatedCount += 1;
         links[gn] = {
           shortenedUrl: null,
           originalUrl: pack.originalUrl,
@@ -377,6 +499,7 @@ async function main() {
         };
         console.log('  ⚠️ landing만 성공 (단축 실패)');
       } else {
+        landingFailureCount += 1;
         console.log('  ❌ landing 실패', JSON.stringify(pack.detail || pack).slice(0, 200));
         if (!links[gn]) {
           links[gn] = {
@@ -397,6 +520,13 @@ async function main() {
     };
     fs.writeFileSync(CURATOR_FILE, JSON.stringify(out, null, 2), 'utf8');
     console.log(`\n저장: ${CURATOR_FILE}`);
+
+    if (generatedCount === 0 && landingFailureCount > 0) {
+      console.error(
+        `큐레이터 landing 전부 실패 (${landingFailureCount}건). 쿠키/토큰 Secret을 갱신하세요.`
+      );
+      process.exitCode = 1;
+    }
   } finally {
     await browser.close();
   }

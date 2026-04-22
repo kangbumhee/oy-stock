@@ -22,6 +22,7 @@ jobs:
       - name: Refresh Vercel env
         env:
           OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
           OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
           OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

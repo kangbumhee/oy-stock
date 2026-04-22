@@ -44,28 +44,124 @@ function generateApiKey() {
   return Buffer.from(raw, 'utf8').toString('base64');
 }
 
-function getJwtFromEnv() {
-  const direct = (process.env.OLIVEYOUNG_LINKAGE_JWT || '').trim();
-  if (direct) {
-    return { jwt: direct, jwtSource: 'direct', decryptError: null };
-  }
-  const hex = (process.env.OLIVEYOUNG_LINKAGE_STRING || '').trim();
-  if (!hex) {
-    return { jwt: null, jwtSource: null, decryptError: null };
-  }
+function decodeCookieValue(v) {
+  let out = String(v || '').trim();
   try {
-    return {
-      jwt: decryptLinkageString(hex),
-      jwtSource: 'linkage',
-      decryptError: null
-    };
-  } catch (e) {
-    return {
-      jwt: null,
-      jwtSource: 'linkage',
-      decryptError: String(e.message || e)
-    };
+    out = decodeURIComponent(out);
+  } catch (_) {
+    /* keep */
   }
+  return out.trim();
+}
+
+function extractCookieValue(cookieString, name) {
+  const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = String(cookieString || '').match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]+)', 'i'));
+  return m ? decodeCookieValue(m[1]) : '';
+}
+
+function buildSessionCookie() {
+  const sid = (process.env.OY_SESSION_ID || '').trim();
+  const ls = (process.env.OY_LINKAGE_STRING || '').trim();
+  if (sid && ls) return `OYSESSIONID=${sid}; linkageString=${ls}`;
+  return '';
+}
+
+function authCandidateFromJwt(jwt, source) {
+  const token = String(jwt || '').trim();
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  const expSec =
+    payload && payload.exp != null && Number.isFinite(Number(payload.exp))
+      ? Number(payload.exp)
+      : null;
+  return {
+    jwt: token,
+    source,
+    expSec,
+    expired: expSec != null ? expSec <= Date.now() / 1000 : false,
+    sub: payload && payload.sub,
+    iat: payload && payload.iat
+  };
+}
+
+function authCandidateFromLinkageHex(hex, source, errors) {
+  const raw = decodeCookieValue(hex);
+  if (!raw) return null;
+  try {
+    return authCandidateFromJwt(decryptLinkageString(raw), source);
+  } catch (e) {
+    errors.push(`${source}: ${String(e.message || e)}`);
+    return null;
+  }
+}
+
+function collectAuthCandidates() {
+  const errors = [];
+  const candidates = [];
+  const cookieSources = [
+    ['OY_REFRESH_COOKIE', (process.env.OY_REFRESH_COOKIE || '').trim()],
+    ['OY_CURATOR_COOKIE', (process.env.OY_CURATOR_COOKIE || '').trim()],
+    ['OY_SESSION_ID+OY_LINKAGE_STRING', buildSessionCookie()]
+  ];
+
+  for (const [source, cookieHeader] of cookieSources) {
+    if (!cookieHeader) continue;
+    const candidate = authCandidateFromLinkageHex(
+      extractCookieValue(cookieHeader, 'linkageString'),
+      source,
+      errors
+    );
+    if (candidate) candidates.push(candidate);
+  }
+
+  const linkageSources = [
+    ['OLIVEYOUNG_LINKAGE_STRING', process.env.OLIVEYOUNG_LINKAGE_STRING],
+    ['OY_LINKAGE_STRING', process.env.OY_LINKAGE_STRING]
+  ];
+  for (const [source, hex] of linkageSources) {
+    const candidate = authCandidateFromLinkageHex(hex, source, errors);
+    if (candidate) candidates.push(candidate);
+  }
+
+  const jwtSources = [
+    ['OLIVEYOUNG_LINKAGE_JWT', process.env.OLIVEYOUNG_LINKAGE_JWT],
+    ['OY_LINKAGE_JWT', process.env.OY_LINKAGE_JWT]
+  ];
+  for (const [source, jwt] of jwtSources) {
+    const candidate = authCandidateFromJwt(jwt, source);
+    if (candidate) candidates.push(candidate);
+  }
+
+  return { candidates, errors };
+}
+
+function selectAuthCandidate(candidates) {
+  const valid = candidates.filter((c) => !c.expired);
+  const pool = valid.length ? valid : candidates;
+  return pool
+    .slice()
+    .sort((a, b) => {
+      const ae = a.expSec == null ? 0 : a.expSec;
+      const be = b.expSec == null ? 0 : b.expSec;
+      return be - ae;
+    })[0] || null;
+}
+
+function getJwtFromEnv(options = {}) {
+  const { allowExpired = false } = options;
+  const { candidates, errors } = collectAuthCandidates();
+  const selected = selectAuthCandidate(candidates);
+  if (!selected) {
+    return { jwt: null, jwtSource: null, decryptError: errors[0] || null, selected: null, candidates };
+  }
+  return {
+    jwt: selected.expired && !allowExpired ? null : selected.jwt,
+    jwtSource: selected.source,
+    decryptError: null,
+    selected,
+    candidates
+  };
 }
 
 /** JWT payload 디코드 (검증 없음). exp 는 초 단위 Unix time */
@@ -85,16 +181,19 @@ function decodeJwtPayload(token) {
 
 function buildJwtCheckResponse() {
   const nowSec = Math.floor(Date.now() / 1000);
-  const { jwt, jwtSource, decryptError } = getJwtFromEnv();
+  const { jwt, jwtSource, decryptError, selected, candidates } = getJwtFromEnv({
+    allowExpired: true
+  });
 
   if (decryptError) {
     return {
       jwtValid: false,
       jwtExp: null,
       jwtExpSeconds: null,
-      jwtSource: 'linkage',
+      jwtSource: jwtSource || 'linkage',
       decryptError,
-      note: 'OLIVEYOUNG_LINKAGE_STRING 복호화 실패'
+      note: 'linkageString 복호화 실패',
+      candidateSources: candidates.map((c) => c.source)
     };
   }
 
@@ -104,7 +203,9 @@ function buildJwtCheckResponse() {
       jwtExp: null,
       jwtExpSeconds: null,
       jwtSource: null,
-      note: 'OLIVEYOUNG_LINKAGE_JWT / OLIVEYOUNG_LINKAGE_STRING 미설정'
+      note:
+        '큐레이터 인증 후보 미설정 (OLIVEYOUNG_LINKAGE_STRING / OY_REFRESH_COOKIE 등 확인)',
+      candidateSources: candidates.map((c) => c.source)
     };
   }
 
@@ -116,7 +217,9 @@ function buildJwtCheckResponse() {
       jwtExpSeconds: null,
       jwtSource: jwtSource || 'unknown',
       note: 'JWT 형식 아님(점 2개 구간 없음) — 토큰 그대로 authorization 사용',
-      tokenLength: jwt.length
+      tokenLength: jwt.length,
+      selectedSource: selected && selected.source,
+      candidateSources: candidates.map((c) => c.source)
     };
   }
 
@@ -136,6 +239,8 @@ function buildJwtCheckResponse() {
     secondsRemaining:
       expSec != null ? Math.max(0, expSec - nowSec) : null,
     jwtSource: jwtSource || 'unknown',
+    selectedSource: selected && selected.source,
+    candidateSources: candidates.map((c) => c.source),
     sub: payload.sub,
     iat:
       payload.iat != null
