@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-23T10:17:48.441Z",
+  "updatedAt": "2026-04-23T11:56:51.389Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,19 +19,19 @@
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 40,
       "to": 40,
-      "fromQty": 196,
-      "toQty": 195,
-      "date": "2026-04-23T10:17:48.441Z"
+      "fromQty": 195,
+      "toQty": 192,
+      "date": "2026-04-23T11:56:51.389Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "from": 50,
+      "from": 49,
       "to": 49,
-      "fromQty": 167,
-      "toQty": 165,
-      "date": "2026-04-23T10:17:48.441Z"
+      "fromQty": 165,
+      "toQty": 162,
+      "date": "2026-04-23T11:56:51.389Z"
     }
   ],
   "products": {
@@ -52,7 +52,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
           "totalStores": 50,
           "inStock": 49,
-          "totalQty": 165,
+          "totalQty": 162,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -152,8 +152,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -212,8 +212,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -361,7 +361,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-23T10:17:48.441Z"
+      "updatedAt": "2026-04-23T11:56:51.389Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -380,7 +380,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 40,
-          "totalQty": 195,
+          "totalQty": 192,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -530,8 +530,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -689,7 +689,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-04-23T10:17:48.441Z"
+      "updatedAt": "2026-04-23T11:56:51.389Z"
     }
   }
 }
