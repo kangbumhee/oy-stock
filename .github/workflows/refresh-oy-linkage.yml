@@ -1,9 +1,7 @@
-# 매일 한국 자정 무렵(UTC 15:00) linkageString → JWT 검증 후 Vercel PATCH → Deploy Hook으로 자동 재배포.
+# 수동 실행 시 linkageString → JWT 검증 후 Vercel PATCH → Deploy Hook으로 재배포.
 name: Refresh OliveYoung linkageString
 
 on:
-  schedule:
-    - cron: '0 15 * * *'
   workflow_dispatch:
 
 jobs:
