@@ -4,6 +4,26 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 39,
+      "to": 41,
+      "fromQty": 179,
+      "toQty": 179,
+      "date": "2026-04-28T04:38:24.316Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 49,
+      "to": 50,
+      "fromQty": 163,
+      "toQty": 166,
+      "date": "2026-04-28T04:38:24.316Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "from": 38,
       "to": 39,
       "fromQty": 183,
@@ -4536,20 +4556,6 @@
       "type": "new",
       "goodsNo": "A000000240562",
       "goodsName": "[레이PICK/수분코팅] 풀리 쌀 세라 수분 선크림 50ml",
-      "keyword": "선크림",
-      "date": "2026-03-28T18:52:31.543Z"
-    },
-    {
-      "type": "new",
-      "goodsNo": "A000000248226",
-      "goodsName": "[톤업/파데프리] 아비브 글루타치온좀 CC 선크림 토닝 튜브 50ml 더블 기획",
-      "keyword": "선크림",
-      "date": "2026-03-28T18:52:31.543Z"
-    },
-    {
-      "type": "new",
-      "goodsNo": "A000000219094",
-      "goodsName": "[UV에이징케어](50%용량증정)에스트라 더마UV365 비타C 광채수분 선크림 40ml 기획(+20ml)",
       "keyword": "선크림",
       "date": "2026-03-28T18:52:31.543Z"
     }
