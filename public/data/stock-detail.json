@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-29T05:18:37.132Z",
+  "updatedAt": "2026-05-30T04:56:43.643Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -7,23 +7,39 @@
   },
   "summary": {
     "total": 2,
-    "active": 0,
+    "active": 2,
     "soldout": 0,
-    "discontinued": 2,
+    "discontinued": 0,
     "errors": 0
   },
   "recentEvents": [
     {
-      "type": "discontinued",
+      "type": "restocked",
       "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
-      "date": "2026-05-29T05:18:37.132Z"
+      "goodsName": "[피지순삭/망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "from": 0,
+      "to": 32,
+      "fromQty": 0,
+      "toQty": 133,
+      "date": "2026-05-30T04:56:43.643Z"
     },
     {
-      "type": "discontinued",
+      "type": "restocked",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
-      "date": "2026-05-29T05:18:37.132Z"
+      "from": 0,
+      "to": 80,
+      "fromQty": 0,
+      "toQty": 575,
+      "date": "2026-05-30T04:56:43.643Z"
+    },
+    {
+      "type": "online_back",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+      "from": 0,
+      "to": 2125,
+      "date": "2026-05-30T04:56:43.643Z"
     }
   ],
   "products": {
@@ -33,21 +49,21 @@
       "price": 14900,
       "originalPrice": 16000,
       "discountRate": 6,
-      "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
-      "itemCount": 1,
-      "status": "discontinued",
-      "statusLabel": "⛔ 단종/삭제",
+      "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418918ko.png?l=ko",
+      "itemCount": 2,
+      "status": "active",
+      "statusLabel": "✅ 재고있음",
       "options": [
         {
-          "name": "어노브 볼륨 업 컬링 에센스 147ml (수분 컬크림)",
+          "name": " 147ml",
           "productId": "8809485532721",
-          "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418916ko.png?l=ko",
-          "totalStores": 50,
-          "inStock": 47,
-          "totalQty": 217,
-          "onlineQty": 0,
-          "maxOrderQty": 0,
-          "deliveredToday": false,
+          "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
+          "totalStores": 49,
+          "inStock": 44,
+          "totalQty": 205,
+          "onlineQty": 433,
+          "maxOrderQty": 6,
+          "deliveredToday": true,
           "presentable": false,
           "stores": [
             {
@@ -74,8 +90,8 @@
               "name": "김포장기점",
               "code": "D300",
               "dist": 1.4,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
@@ -84,8 +100,8 @@
               "name": "김포운양점",
               "code": "D573",
               "dist": 1.57,
-              "qty": 10,
-              "o2o": 8,
+              "qty": 9,
+              "o2o": 7,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -134,8 +150,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -194,8 +210,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -314,7 +330,7 @@
               "name": "마두역점",
               "code": "DB4E",
               "dist": 8.52,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -334,8 +350,8 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
@@ -344,8 +360,322 @@
               "name": "김포고촌점",
               "code": "BA34",
               "dist": 8.97,
-              "qty": 5,
+              "qty": 10,
+              "o2o": 8,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
+            }
+          ]
+        },
+        {
+          "name": "147ml+워터에센스미스트30ml",
+          "productId": "8809669509624",
+          "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/5527419672874344827.png",
+          "totalStores": 49,
+          "inStock": 36,
+          "totalQty": 370,
+          "onlineQty": 1692,
+          "maxOrderQty": 6,
+          "deliveredToday": true,
+          "presentable": false,
+          "stores": [
+            {
+              "name": "김포라베니체점",
+              "code": "DB6E",
+              "dist": 0.36,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포한강4로 8 라베니체 마치에비뉴4차 212~214호"
+            },
+            {
+              "name": "김포한강로점",
+              "code": "DEC6",
+              "dist": 1.23,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포한강1로78번길 6-2"
+            },
+            {
+              "name": "김포장기점",
+              "code": "D300",
+              "dist": 1.4,
+              "qty": 1,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포한강4로 119 승문프라자 1층"
+            },
+            {
+              "name": "김포운양점",
+              "code": "D573",
+              "dist": 1.57,
+              "qty": 11,
+              "o2o": 8,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
+            },
+            {
+              "name": "걸포북변역점",
+              "code": "DCA9",
+              "dist": 2.14,
+              "qty": 8,
+              "o2o": 6,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
+            },
+            {
+              "name": "홈플러스김포점",
+              "code": "DE2B",
+              "dist": 2.29,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 중봉로 14 홈플러스김포점 1F"
+            },
+            {
+              "name": "김포사우점",
+              "code": "DF3E",
+              "dist": 3.97,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포대로 847"
+            },
+            {
+              "name": "검단사거리점",
+              "code": "D402",
+              "dist": 4.81,
+              "qty": 23,
+              "o2o": 18,
+              "pickup": true,
+              "open": true,
+              "addr": "인천광역시 서구 검단로 480"
+            },
+            {
+              "name": "김포구래점",
+              "code": "D511",
+              "dist": 4.94,
+              "qty": 38,
+              "o2o": 30,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포한강9로76번길 21"
+            },
+            {
+              "name": "김포구래로데오점",
+              "code": "DE12",
+              "dist": 5.08,
+              "qty": 20,
+              "o2o": 16,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포한강4로 525"
+            },
+            {
+              "name": "검단신도시점",
+              "code": "D399",
+              "dist": 5.11,
+              "qty": 1,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "인천광역시 서구 완정로 14"
+            },
+            {
+              "name": "김포풍무점",
+              "code": "DB7C",
+              "dist": 5.2,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
+            },
+            {
+              "name": "김포풍무역점",
+              "code": "DD02",
+              "dist": 5.33,
+              "qty": 6,
               "o2o": 4,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
+            },
+            {
+              "name": "인천원당점",
+              "code": "D559",
+              "dist": 5.34,
+              "qty": 7,
+              "o2o": 5,
+              "pickup": true,
+              "open": true,
+              "addr": "인천광역시 서구 원당대로 854"
+            },
+            {
+              "name": "인천검단센트럴점",
+              "code": "DD4B",
+              "dist": 5.86,
+              "qty": 8,
+              "o2o": 6,
+              "pickup": true,
+              "open": true,
+              "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
+            },
+            {
+              "name": "스타필드마켓일산점",
+              "code": "DF6E",
+              "dist": 5.91,
+              "qty": 16,
+              "o2o": 12,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
+            },
+            {
+              "name": "검단아라점",
+              "code": "DDD8",
+              "dist": 6.69,
+              "qty": 6,
+              "o2o": 4,
+              "pickup": true,
+              "open": true,
+              "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
+            },
+            {
+              "name": "고양원마운트점",
+              "code": "BAC0",
+              "dist": 6.89,
+              "qty": 4,
+              "o2o": 3,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산서구 한류월드로 300"
+            },
+            {
+              "name": "대화역점",
+              "code": "D451",
+              "dist": 6.89,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산서구 중앙로 1581"
+            },
+            {
+              "name": "일산주엽점",
+              "code": "DE0D",
+              "dist": 7.66,
+              "qty": 6,
+              "o2o": 4,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
+            },
+            {
+              "name": "주엽역점",
+              "code": "DB17",
+              "dist": 7.81,
+              "qty": 7,
+              "o2o": 5,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
+            },
+            {
+              "name": "라페스타사거리점",
+              "code": "B126",
+              "dist": 7.96,
+              "qty": 2,
+              "o2o": 1,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
+            },
+            {
+              "name": "라페스타점",
+              "code": "D057",
+              "dist": 7.98,
+              "qty": 10,
+              "o2o": 8,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
+            },
+            {
+              "name": "정발산로점",
+              "code": "D178",
+              "dist": 8.03,
+              "qty": 10,
+              "o2o": 8,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
+            },
+            {
+              "name": "웨스턴돔중앙점",
+              "code": "DCE8",
+              "dist": 8.06,
+              "qty": 19,
+              "o2o": 15,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산동구 정발산로 24"
+            },
+            {
+              "name": "인천검암점",
+              "code": "D375",
+              "dist": 8.33,
+              "qty": 6,
+              "o2o": 4,
+              "pickup": true,
+              "open": true,
+              "addr": "인천광역시 서구 승학로 491"
+            },
+            {
+              "name": "마두역점",
+              "code": "DB4E",
+              "dist": 8.52,
+              "qty": 9,
+              "o2o": 7,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산동구 중앙로 1182"
+            },
+            {
+              "name": "일산후곡점",
+              "code": "D381",
+              "dist": 8.57,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
+            },
+            {
+              "name": "파주초롱꽃마을점",
+              "code": "DEA6",
+              "dist": 8.73,
+              "qty": 8,
+              "o2o": 6,
+              "pickup": true,
+              "open": true,
+              "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
+            },
+            {
+              "name": "김포고촌점",
+              "code": "BA34",
+              "dist": 8.97,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
@@ -353,26 +683,26 @@
           ]
         }
       ],
-      "updatedAt": "2026-05-29T05:18:37.132Z"
+      "updatedAt": "2026-05-30T04:56:43.643Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
-      "goodsName": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+      "goodsName": "[피지순삭/망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
       "price": 7500,
       "originalPrice": 7900,
       "discountRate": 5,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
       "itemCount": 1,
-      "status": "discontinued",
-      "statusLabel": "⛔ 단종/삭제",
+      "status": "active",
+      "statusLabel": "✅ 재고있음",
       "options": [
         {
-          "name": "[망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
+          "name": "[피지순삭/망곰 콜라보] 일소 딥 클린 마스터(블랙헤드제거기) (+피지압출면봉 10P)",
           "productId": "8809635333529",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782282ko.jpg?l=ko",
-          "totalStores": 50,
-          "inStock": 35,
-          "totalQty": 142,
+          "totalStores": 49,
+          "inStock": 32,
+          "totalQty": 133,
           "onlineQty": 0,
           "maxOrderQty": 0,
           "deliveredToday": false,
@@ -382,7 +712,7 @@
               "name": "김포라베니체점",
               "code": "DB6E",
               "dist": 0.36,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -422,8 +752,8 @@
               "name": "걸포북변역점",
               "code": "DCA9",
               "dist": 2.14,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
@@ -442,7 +772,7 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -681,7 +1011,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-05-29T05:18:37.132Z"
+      "updatedAt": "2026-05-30T04:56:43.643Z"
     }
   }
 }
