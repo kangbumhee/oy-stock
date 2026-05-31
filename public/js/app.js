@@ -6,11 +6,25 @@ var App = {
   locationName: CONFIG.DEFAULT_LOCATION,
   detailData: null,
   currentTab: 'search',
+  hotProducts: [],
+  hotUpdatedAt: null,
+  hotLastStockRunAt: null,
+  hotFetchedAt: 0,
+  hotAutoTimer: null,
+  hotServerEstimates: {},
+  hotPurchaseLimits: {},
+  hotSortMode: 'view',
+  hotRange: (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d'),
+  hotFetchedRange: '',
+  hotRefreshState: 'idle',
+  hotRefreshMessage: '',
+  hotRefreshTimer: null,
 
   /** 온라인 재고 배치 조회용 (상품 클릭 시 abort → 팝업 닫은 뒤 pendingBatch만 이어서) */
   batchAbortController: null,
   pendingBatch: [],
   onlineEnrichSource: null,
+  velocityRefreshTimer: null,
 
   _searchSeq: 0,
   _searchAbortCtrl: null,
@@ -143,6 +157,35 @@ var App = {
         this._pauseOnlineBatchForPopup();
         this._openFavDetail(el.dataset.goodsno);
         break;
+      case 'showRankDetail':
+        this._pauseOnlineBatchForPopup();
+        this._openRankDetail(el.dataset.goodsno);
+        break;
+      case 'showHotDetail':
+        this._pauseOnlineBatchForPopup();
+        this._openHotDetail(el.dataset.goodsno);
+        break;
+      case 'refreshRanking':
+        e.preventDefault();
+        this._refreshVelocityRankingNow();
+        break;
+      case 'refreshHotRanking':
+        e.preventDefault();
+        this._loadHotRanking(true, { userInitiated: true });
+        break;
+      case 'setHotSort':
+        e.preventDefault();
+        e.stopPropagation();
+        this.hotSortMode =
+          el.dataset.sort === 'revenue' ? 'revenue' : el.dataset.sort === 'sales' ? 'sales' : 'view';
+        this._renderHotRanking();
+        break;
+      case 'setHotRange':
+        e.preventDefault();
+        e.stopPropagation();
+        this.hotRange = el.dataset.range || (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d');
+        this._loadHotRanking(true);
+        break;
       case 'toggleFav':
         this._toggleFav(parseInt(el.dataset.index, 10));
         break;
@@ -172,10 +215,22 @@ var App = {
         break;
       case 'tabSearch':
         this.currentTab = 'search';
+        this._stopHotAutoRefresh();
+        this._pauseOnlineBatchForPopup();
         UI.setActiveTab('search');
+        if (this.products && this.products.length) this._startVelocityAutoRefresh();
+        break;
+      case 'tabHot':
+        this.currentTab = 'hot';
+        this._stopVelocityAutoRefresh();
+        UI.setActiveTab('hot');
+        this._loadHotRanking(false);
         break;
       case 'tabFavorites':
         this.currentTab = 'favorites';
+        this._stopVelocityAutoRefresh();
+        this._stopHotAutoRefresh();
+        this._pauseOnlineBatchForPopup();
         UI.setActiveTab('favorites');
         this._renderFavorites();
         break;
@@ -218,6 +273,516 @@ var App = {
     Storage.setHistory(this.searchHistory);
   },
 
+  _searchNeedsFull: function (data, products, fullSize) {
+    var count = products && products.length ? products.length : 0;
+    if (!data || count >= fullSize) return false;
+    var dd = (data && data.data) || {};
+    if (dd.nextPage === true) return true;
+    if (typeof dd.totalCount === 'number' && dd.totalCount > count) return true;
+    var inv = dd.inventory;
+    if (inv && typeof inv.totalCount === 'number' && inv.totalCount > count) return true;
+    return count >= (CONFIG.SEARCH_PREVIEW_SIZE || fullSize);
+  },
+
+  _goodsNosFromProducts: function (products) {
+    return (products || [])
+      .map(function (p) {
+        return String((p && (p.goodsNumber || p.goodsNo)) || '').trim();
+      })
+      .filter(function (gn) {
+        return gn !== '';
+      });
+  },
+
+  _productMetaForGoodsNo: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return null;
+    var product = (this.products || []).find(function (p) {
+      return String(p.goodsNumber || p.goodsNo || '') === gn;
+    });
+    if (product) {
+      return {
+        goodsNo: gn,
+        goodsName: product.goodsName || '',
+        imageUrl: product.imageUrl || '',
+        priceToPay: product.priceToPay || 0,
+        originalPrice: product.originalPrice || 0,
+        discountRate: product.discountRate || 0
+      };
+    }
+    var hot = (this.hotProducts || []).find(function (p) {
+      return String(p.goodsNumber || p.goodsNo || '') === gn;
+    });
+    if (hot) {
+      return {
+        goodsNo: gn,
+        goodsName: hot.goodsName || '',
+        imageUrl: hot.imageUrl || '',
+        priceToPay: hot.priceToPay || hot.price || 0,
+        originalPrice: hot.originalPrice || 0,
+        discountRate: hot.discountRate || 0
+      };
+    }
+    var fav = Storage.getFavorites().find(function (f) {
+      return String(f.goodsNo || f.goodsNumber || '') === gn;
+    });
+    return fav || null;
+  },
+
+  _recordVelocitySnapshot: function (goodsNo, detail, meta, opts) {
+    opts = opts || {};
+    try {
+      if (detail && detail.options && detail.options.length) {
+        this.hotPurchaseLimits[String(goodsNo || '').trim()] = Storage.getPurchaseLimitInfo(detail);
+      }
+      Storage.recordVelocitySnapshot(goodsNo, detail, meta || this._productMetaForGoodsNo(goodsNo), {
+        maxItems: CONFIG.VELOCITY_RANK_MAX_ITEMS || 180,
+        ts: opts.ts
+      });
+      if (this.currentTab === 'hot') this._renderHotRanking();
+      else this._renderVelocityRanking();
+    } catch (e) {
+      console.warn('recordVelocitySnapshot', e);
+    }
+  },
+
+  _renderVelocityRanking: function () {
+    var goodsNos = this._goodsNosFromProducts(this.products);
+    if (!goodsNos.length) {
+      UI.renderVelocityRanking([], { hasProducts: false });
+      return;
+    }
+    var rows = Storage.getVelocityRanking(goodsNos, {
+      windowMs: CONFIG.VELOCITY_RANK_WINDOW_MS || 30 * 60 * 1000,
+      limit: CONFIG.VELOCITY_RANK_LIMIT || 8
+    });
+    UI.renderVelocityRanking(rows, {
+      hasProducts: true,
+      windowLabel: '30분'
+    });
+  },
+
+  _hotGoodsNos: function () {
+    return this._goodsNosFromProducts(this.hotProducts);
+  },
+
+  _hotRangeMs: function () {
+    var ranges = CONFIG.HOT_RANK_RANGES || {};
+    var cfg = ranges[this.hotRange] || ranges[CONFIG.HOT_RANK_DEFAULT_RANGE || '1d'];
+    var hours = cfg && cfg.hours ? Number(cfg.hours) : 24;
+    return Math.max(1, hours) * 60 * 60 * 1000;
+  },
+
+  _hotEstimateMap: function () {
+    var merged = {};
+    Object.keys(this.hotServerEstimates || {}).forEach(function (gn) {
+      var r = this.hotServerEstimates[gn];
+      if (!r) return;
+      merged[gn] = {
+        goodsNo: r.goodsNo || gn,
+        goodsName: r.goodsName || gn,
+        imageUrl: r.imageUrl || '',
+        price: r.price || 0,
+        originalPrice: r.originalPrice || 0,
+        discountRate: r.discountRate || 0,
+        fromTotal: r.fromTotal || 0,
+        toTotal: r.toTotal || 0,
+        drop: r.estimatedSales || r.drop || 0,
+        estimatedSales: r.estimatedSales || r.drop || 0,
+        windowEstimatedSales:
+          r.windowEstimatedSales != null
+            ? r.windowEstimatedSales
+            : r.dailyEstimatedSales != null
+              ? r.dailyEstimatedSales
+              : r.estimatedSales || r.drop || 0,
+        dailyEstimatedSales:
+          r.dailyEstimatedSales != null
+            ? r.dailyEstimatedSales
+            : r.estimatedSales || r.drop || 0,
+        estimatedRevenue:
+          r.estimatedRevenue != null
+            ? r.estimatedRevenue
+            : r.revenue != null
+              ? r.revenue
+              : (r.price || 0) * (r.estimatedSales || r.drop || 0),
+        dailyEstimatedRevenue:
+          r.dailyEstimatedRevenue != null
+            ? r.dailyEstimatedRevenue
+            : r.estimatedRevenue != null
+              ? r.estimatedRevenue
+              : r.revenue != null
+                ? r.revenue
+                : (r.price || 0) * (r.estimatedSales || r.drop || 0),
+        windowEstimatedRevenue:
+          r.windowEstimatedRevenue != null
+            ? r.windowEstimatedRevenue
+            : r.dailyEstimatedRevenue != null
+              ? r.dailyEstimatedRevenue
+              : r.estimatedRevenue != null
+                ? r.estimatedRevenue
+                : r.revenue != null
+                  ? r.revenue
+                  : (r.price || 0) * (r.estimatedSales || r.drop || 0),
+        perMin: (r.perHour || 0) / 60,
+        perHour: r.perHour || 0,
+        elapsedMs:
+          r.fromTs && r.toTs ? Math.max(1, new Date(r.toTs) - new Date(r.fromTs)) : 0,
+        restockUnits: r.restockUnits || 0,
+        restockEvents: r.restockEvents || 0,
+        restockAdjusted: !!r.restockAdjusted,
+        fromTs: r.fromTs,
+        toTs: r.toTs,
+        optionCount: r.optionCount || 0,
+        hasToday: !!r.hasToday,
+        purchaseLimit: r.purchaseLimit || null,
+        salesRank: r.salesRank,
+        revenueRank: r.revenueRank,
+        rankTrends: r.rankTrends || {},
+        chart: r.chart || [],
+        viewChart: r.viewChart || [],
+        salesChart: r.salesChart || [],
+        revenueChart: r.revenueChart || [],
+        source: 'server'
+      };
+    }, this);
+    var local = Storage.getVelocityEstimateMap(this._hotGoodsNos(), {
+      windowMs: this._hotRangeMs()
+    });
+    Object.keys(local || {}).forEach(function (gn) {
+      if (!merged[gn]) {
+        merged[gn] = local[gn];
+        return;
+      }
+      if (!merged[gn].price && local[gn].price) merged[gn].price = local[gn].price;
+      if ((!merged[gn].chart || !merged[gn].chart.length) && local[gn].chart) {
+        merged[gn].chart = local[gn].chart;
+      }
+    });
+    return merged;
+  },
+
+  _renderHotRanking: function () {
+    UI.renderHotRanking(this.hotProducts, {
+      updatedAt: this.hotUpdatedAt,
+      lastStockRunAt: this.hotLastStockRunAt,
+      estimates: this._hotEstimateMap(),
+      purchaseLimits: this.hotPurchaseLimits,
+      sortMode: this.hotSortMode,
+      range: this.hotRange,
+      refreshState: this.hotRefreshState,
+      refreshMessage: this.hotRefreshMessage
+    });
+  },
+
+  _setHotRefreshState: function (state, message, clearAfterMs) {
+    if (this.hotRefreshTimer) {
+      clearTimeout(this.hotRefreshTimer);
+      this.hotRefreshTimer = null;
+    }
+
+    this.hotRefreshState = state || 'idle';
+    this.hotRefreshMessage = message || '';
+    if (this.currentTab === 'hot') this._renderHotRanking();
+
+    if (clearAfterMs) {
+      var self = this;
+      var expectedState = this.hotRefreshState;
+      this.hotRefreshTimer = setTimeout(function () {
+        if (self.hotRefreshState !== expectedState) return;
+        self.hotRefreshState = 'idle';
+        self.hotRefreshMessage = '';
+        self.hotRefreshTimer = null;
+        if (self.currentTab === 'hot') self._renderHotRanking();
+      }, clearAfterMs);
+    }
+  },
+
+  _startHotAutoRefresh: function () {
+    var self = this;
+    if (this.hotAutoTimer) clearInterval(this.hotAutoTimer);
+    var ms = Number(CONFIG.HOT_RANK_AUTO_REFRESH_MS) || 3 * 60 * 1000;
+    this.hotAutoTimer = setInterval(function () {
+      if (self.currentTab !== 'hot') return;
+      var root = document.getElementById('popup-root');
+      if (root && root.innerHTML.trim()) return;
+      self._loadHotRanking(true);
+    }, ms);
+    if (this.hotAutoTimer.unref) this.hotAutoTimer.unref();
+  },
+
+  _stopHotAutoRefresh: function () {
+    if (this.hotAutoTimer) clearInterval(this.hotAutoTimer);
+    this.hotAutoTimer = null;
+  },
+
+  _applyCachedHotSnapshots: function (products) {
+    var goodsNos = this._goodsNosFromProducts(products);
+    var goodsSet = {};
+    goodsNos.forEach(function (gn) {
+      goodsSet[gn] = true;
+    });
+    var cache;
+    try {
+      cache = Storage.getOnlineDetailCache(CONFIG.ONLINE_DETAIL_CACHE_TTL_MS || 0);
+    } catch (e) {
+      cache = { items: {} };
+    }
+    var entries = (cache && cache.items) || {};
+    Object.keys(entries).forEach(function (gn) {
+      if (!goodsSet[gn] || !entries[gn] || !entries[gn].data) return;
+      var detail = entries[gn].data;
+      if (!this.detailData) this.detailData = { products: {} };
+      if (!this.detailData.products) this.detailData.products = {};
+      this.detailData.products[gn] = detail;
+      this._recordVelocitySnapshot(gn, detail, this._productMetaForGoodsNo(gn), {
+        ts: entries[gn].ts
+      });
+    }, this);
+    this._renderHotRanking();
+  },
+
+  _enrichHotRankingStock: function (products) {
+    if (!CONFIG.REALTIME_API || !products || !products.length) return;
+    if (this.batchAbortController) {
+      this.batchAbortController.abort();
+      this.batchAbortController = null;
+    }
+    var limit = parseInt(String(CONFIG.HOT_RANK_STOCK_ENRICH_LIMIT), 10);
+    if (!isFinite(limit) || limit <= 0) return;
+    var items = products
+      .filter(function (p) {
+        return String((p && (p.goodsNumber || p.goodsNo)) || '').trim() !== '';
+      })
+      .slice(0, limit);
+    if (!items.length) return;
+
+    var self = this;
+    self._applyCachedHotSnapshots(items);
+    self.onlineEnrichSource = 'hot';
+    self.pendingBatch = [];
+    items.forEach(function (p) {
+      self._pushPendingGoodsNo(p.goodsNumber || p.goodsNo);
+    });
+
+    var ac = new AbortController();
+    self.batchAbortController = ac;
+    void (async function () {
+      try {
+        await self._runOnlineEnrichBatches(items, ac.signal, {
+          batchSize: CONFIG.HOT_RANK_BATCH_SIZE || 3,
+          delayMs: CONFIG.HOT_RANK_BATCH_DELAY_MS || 120
+        });
+      } catch (e) {
+        console.warn('enrichHotRankingStock', e);
+      } finally {
+        if (self.batchAbortController === ac) self.batchAbortController = null;
+        if (self.currentTab === 'hot') self._renderHotRanking();
+      }
+    })();
+  },
+
+  _loadHotRanking: function (force, opts) {
+    opts = opts || {};
+    var self = this;
+    var now = Date.now();
+    var showRefreshFeedback = !!opts.userInitiated;
+    if (showRefreshFeedback && this.hotRefreshState === 'loading') return;
+
+    if (
+      !force &&
+      this.hotProducts &&
+      this.hotProducts.length &&
+      this.hotFetchedRange === this.hotRange &&
+      now - this.hotFetchedAt < (CONFIG.HOT_RANK_CACHE_TTL_MS || 45000)
+    ) {
+      this._renderHotRanking();
+      this._startHotAutoRefresh();
+      return;
+    }
+
+    if (showRefreshFeedback) {
+      this.hotRefreshState = 'loading';
+      this.hotRefreshMessage = '새로고침 중...';
+      if (this.hotProducts && this.hotProducts.length) this._renderHotRanking();
+    }
+
+    if (!this.hotProducts || !this.hotProducts.length) UI.showHotRankingLoading();
+    API.hotRanking(CONFIG.HOT_RANK_SIZE || 100, { range: this.hotRange })
+      .then(function (data) {
+        var dd = (data && data.data) || {};
+        self.hotProducts = dd.products || [];
+        self.hotServerEstimates = dd.estimates || {};
+        self.hotPurchaseLimits = {};
+        self.hotProducts.forEach(function (p) {
+          if (p && p.goodsNo && p.purchaseLimit) self.hotPurchaseLimits[p.goodsNo] = p.purchaseLimit;
+        });
+        Object.keys(self.hotServerEstimates || {}).forEach(function (gn) {
+          var e = self.hotServerEstimates[gn];
+          if (e && e.purchaseLimit) self.hotPurchaseLimits[gn] = e.purchaseLimit;
+        });
+        self.hotUpdatedAt = dd.updatedAt || new Date().toISOString();
+        self.hotLastStockRunAt = dd.lastStockRunAt || dd.updatedAt || null;
+        self.hotFetchedAt = Date.now();
+        self.hotFetchedRange = self.hotRange;
+        if (showRefreshFeedback) {
+          self._setHotRefreshState('success', '방금 갱신됨', 2400);
+          UI.showSyncStatus('인기템 새로고침 완료', false, 1800);
+        } else {
+          self._renderHotRanking();
+        }
+        self._startHotAutoRefresh();
+        if (dd.source !== 'hot-ranking-history') {
+          self._enrichHotRankingStock(self.hotProducts);
+        }
+      })
+      .catch(function (err) {
+        if (!self.hotProducts || !self.hotProducts.length) UI.renderHotRanking([], {});
+        if (showRefreshFeedback) self._setHotRefreshState('error', '새로고침 실패', 3500);
+        UI.showSyncStatus(err.message || '조회 인기템 로드 실패', true);
+      });
+  },
+
+  _startVelocityAutoRefresh: function () {
+    var self = this;
+    if (this.velocityRefreshTimer) clearInterval(this.velocityRefreshTimer);
+    var ms = Number(CONFIG.VELOCITY_AUTO_REFRESH_MS) || 60000;
+    this.velocityRefreshTimer = setInterval(function () {
+      if (self.currentTab !== 'search' || !self.products || !self.products.length) return;
+      var root = document.getElementById('popup-root');
+      if (root && root.innerHTML.trim()) return;
+      self._enrichSearchOnline(self.products);
+    }, ms);
+    if (this.velocityRefreshTimer.unref) this.velocityRefreshTimer.unref();
+  },
+
+  _stopVelocityAutoRefresh: function () {
+    if (this.velocityRefreshTimer) clearInterval(this.velocityRefreshTimer);
+    this.velocityRefreshTimer = null;
+  },
+
+  _refreshVelocityRankingNow: function () {
+    this._renderVelocityRanking();
+    if (this.products && this.products.length) {
+      this._enrichSearchOnline(this.products);
+    }
+  },
+
+  _onlineOnlySnapshot: function (detail) {
+    if (!detail || !detail.options || !detail.options.length) return null;
+    var options = (detail.options || []).map(function (o) {
+      return {
+        name: o.name || '',
+        productId: o.productId || '',
+        image: o.image || '',
+        totalStores: 0,
+        inStock: 0,
+        totalQty: 0,
+        onlineQty: o.onlineQty || 0,
+        maxOrderQty: o.maxOrderQty || 0,
+        deliveredToday: !!o.deliveredToday,
+        presentable: !!o.presentable,
+        stores: []
+      };
+    });
+    var totalOnline = options.reduce(function (a, o) {
+      return a + (o.onlineQty || 0);
+    }, 0);
+    return {
+      success: true,
+      source: 'live-online',
+      inventoryScope: 'online',
+      goodsNo: detail.goodsNo || '',
+      goodsName: detail.goodsName || '',
+      price: detail.price,
+      originalPrice: detail.originalPrice,
+      discountRate: detail.discountRate,
+      thumbnail: detail.thumbnail || '',
+      itemCount: detail.itemCount,
+      status: totalOnline > 0 ? 'active' : 'soldout',
+      statusLabel: totalOnline > 0 ? '🛒 온라인 재고' : '🛒 온라인 품절',
+      options: options,
+      updatedAt: detail.updatedAt || new Date().toISOString()
+    };
+  },
+
+  _rememberOnlineStock: function (goodsNo, detail) {
+    var snapshot = this._onlineOnlySnapshot(detail);
+    if (!snapshot) return null;
+    snapshot.goodsNo = snapshot.goodsNo || String(goodsNo || '').trim();
+    try {
+      Storage.setOnlineDetail(
+        snapshot.goodsNo,
+        snapshot,
+        CONFIG.ONLINE_DETAIL_CACHE_MAX || 120
+      );
+    } catch (e) {}
+    return snapshot;
+  },
+
+  _cachedOnlineDetailMap: function (products) {
+    try {
+      return Storage.getOnlineDetails(
+        this._goodsNosFromProducts(products),
+        CONFIG.ONLINE_DETAIL_CACHE_TTL_MS || 0
+      );
+    } catch (e) {
+      return {};
+    }
+  },
+
+  _detailDataForSearchList: function (products) {
+    var merged = { products: {} };
+    if (this.detailData && this.detailData.products) {
+      Object.keys(this.detailData.products).forEach(function (gn) {
+        merged.products[gn] = this.detailData.products[gn];
+      }, this);
+    }
+    var cachedOnline = this._cachedOnlineDetailMap(products);
+    Object.keys(cachedOnline).forEach(function (gn) {
+      merged.products[gn] = cachedOnline[gn];
+    });
+    return merged;
+  },
+
+  _applyCachedOnlineBadges: function (products) {
+    var goodsNos = this._goodsNosFromProducts(products);
+    var goodsSet = {};
+    goodsNos.forEach(function (gn) {
+      goodsSet[gn] = true;
+    });
+    var cache;
+    try {
+      cache = Storage.getOnlineDetailCache(CONFIG.ONLINE_DETAIL_CACHE_TTL_MS || 0);
+    } catch (e) {
+      cache = { items: {} };
+    }
+    var entries = (cache && cache.items) || {};
+    Object.keys(entries).forEach(function (gn) {
+      if (!goodsSet[gn] || !entries[gn] || !entries[gn].data) return;
+      var detail = entries[gn].data;
+      if (!this.detailData) this.detailData = { products: {} };
+      if (!this.detailData.products) this.detailData.products = {};
+      if (!UI.inventoryOnlineOnly(this.detailData.products[gn])) {
+        this.detailData.products[gn] = detail;
+      }
+      this._recordVelocitySnapshot(gn, detail, this._productMetaForGoodsNo(gn), {
+        ts: entries[gn].ts
+      });
+      UI.updateCardBadge(gn, detail);
+    }, this);
+    this._renderVelocityRanking();
+  },
+
+  _renderSearchResponse: function (data) {
+    this.products = UI.productsFromSearchApiResponse(data);
+    UI.renderProducts(this.products, this._detailDataForSearchList(this.products), {
+      searchListCacheMode: true
+    });
+    this._renderVelocityRanking();
+    if (this.products && this.products.length) this._startVelocityAutoRefresh();
+    return this.products;
+  },
+
   _pauseOnlineBatchForPopup: function () {
     if (this.batchAbortController) {
       this.batchAbortController.abort();
@@ -254,9 +819,12 @@ var App = {
     });
   },
 
-  _runOnlineEnrichBatches: async function (items, batchSignal) {
+  _runOnlineEnrichBatches: async function (items, batchSignal, opts) {
+    opts = opts || {};
     var self = this;
-    var batchSize = 2;
+    var batchSize = parseInt(String(opts.batchSize || CONFIG.SEARCH_ONLINE_BATCH_SIZE || 4), 10);
+    if (!isFinite(batchSize) || batchSize < 1) batchSize = 4;
+    var delayMs = Number(opts.delayMs || CONFIG.SEARCH_ONLINE_BATCH_DELAY_MS || 80);
     for (var i = 0; i < items.length; i += batchSize) {
       if (batchSignal.aborted) break;
       var batch = items.slice(i, i + batchSize);
@@ -264,6 +832,7 @@ var App = {
         batch.map(function (item) {
           return self._fetchStockDetail(item, {
             onlineOnly: true,
+            fresh: true,
             batchSignal: batchSignal
           });
         })
@@ -273,13 +842,15 @@ var App = {
         if (!r) return;
         if (!self.detailData) self.detailData = { products: {} };
         if (!self.detailData.products) self.detailData.products = {};
-        self.detailData.products[r.goodsNo] = r.data;
-        UI.updateCardBadge(r.goodsNo, r.data);
+        var onlineSnapshot = self._rememberOnlineStock(r.goodsNo, r.data) || r.data;
+        self.detailData.products[r.goodsNo] = onlineSnapshot;
+        UI.updateCardBadge(r.goodsNo, onlineSnapshot);
+        self._recordVelocitySnapshot(r.goodsNo, onlineSnapshot);
         self._removeFromPendingBatch(r.goodsNo);
       });
       if (batchSignal.aborted) break;
       if (i + batchSize < items.length) {
-        await self._sleepUnlessAborted(300, batchSignal);
+        await self._sleepUnlessAborted(delayMs, batchSignal);
       }
     }
   },
@@ -340,6 +911,7 @@ var App = {
       encodeURIComponent(String(self.lng));
     if (withOnline) q += '&withOnline=true';
     if (onlineOnly) q += '&onlineOnly=true';
+    if (opts.fresh) q += '&fresh=true';
     var url =
       CONFIG.REALTIME_API +
       (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
@@ -347,7 +919,7 @@ var App = {
     var combined = new AbortController();
     var tid = setTimeout(function () {
       combined.abort();
-    }, 10000);
+    }, CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 20000);
     function onBatchAbort() {
       clearTimeout(tid);
       combined.abort();
@@ -406,6 +978,43 @@ var App = {
     }
   },
 
+  _enrichSearchOnline: function (products) {
+    if (!CONFIG.REALTIME_API || !products || !products.length) return;
+    if (this.batchAbortController) {
+      this.batchAbortController.abort();
+      this.batchAbortController = null;
+    }
+
+    var limit = parseInt(String(CONFIG.SEARCH_ONLINE_ENRICH_LIMIT || 20), 10);
+    if (!isFinite(limit) || limit < 1) limit = 20;
+    var items = products
+      .filter(function (p) {
+        return String((p && (p.goodsNumber || p.goodsNo)) || '').trim() !== '';
+      })
+      .slice(0, limit);
+    if (!items.length) return;
+
+    var self = this;
+    self._applyCachedOnlineBadges(items);
+    self.onlineEnrichSource = 'search';
+    self.pendingBatch = [];
+    items.forEach(function (p) {
+      self._pushPendingGoodsNo(p.goodsNumber || p.goodsNo);
+    });
+
+    var ac = new AbortController();
+    self.batchAbortController = ac;
+    void (async function () {
+      try {
+        await self._runOnlineEnrichBatches(items, ac.signal);
+      } catch (e) {
+        console.warn('enrichSearchOnline', e);
+      } finally {
+        if (self.batchAbortController === ac) self.batchAbortController = null;
+      }
+    })();
+  },
+
   doSearch: function (keyword) {
     var self = this;
     var kw = String(keyword || '').trim();
@@ -432,30 +1041,79 @@ var App = {
 
     self.products = [];
     UI.clearResults();
-    UI.showSearchLoading(kw);
+    UI.renderVelocityRanking([], { hasProducts: false });
+    self._stopVelocityAutoRefresh();
+
+    var fullSize = CONFIG.SEARCH_SIZE;
+    var previewSize = parseInt(String(CONFIG.SEARCH_PREVIEW_SIZE || fullSize), 10);
+    if (!isFinite(previewSize) || previewSize < 1) previewSize = fullSize;
+    previewSize = Math.min(previewSize, fullSize);
+
+    var fullCached = API.getCachedSearch(kw, self.lat, self.lng, fullSize);
+    var previewCached =
+      !fullCached && previewSize < fullSize
+        ? API.getCachedSearch(kw, self.lat, self.lng, previewSize)
+        : null;
+    var cachedSearch = fullCached || previewCached;
+    var cachedProducts = [];
+    if (cachedSearch) {
+      cachedProducts = self._renderSearchResponse(cachedSearch);
+      self._enrichSearchOnline(cachedProducts);
+    } else {
+      UI.showSearchLoading(kw);
+    }
 
     API.loadDetailCache().then(function (d) {
       if (seq !== self._searchSeq) return;
       if (d) self.detailData = d;
       if (self.products && self.products.length) {
-        UI.renderProducts(self.products, self.detailData, { searchListCacheMode: true });
+        UI.renderProducts(self.products, self._detailDataForSearchList(self.products), {
+          searchListCacheMode: true
+        });
       }
     });
 
-    API.search(kw, self.lat, self.lng, CONFIG.SEARCH_SIZE, {
-      signal: self._searchAbortCtrl.signal
-    })
-      .then(function (d) {
-        if (seq !== self._searchSeq) return;
+    function fetchAndRender(size) {
+      return API.search(kw, self.lat, self.lng, size, {
+        signal: self._searchAbortCtrl.signal
+      }).then(function (d) {
+        if (seq !== self._searchSeq) return null;
         if (d.success === false) throw new Error(d.message || d.error || '실패');
-        self.products = UI.productsFromSearchApiResponse(d);
-        UI.renderProducts(self.products, self.detailData, { searchListCacheMode: true });
-      })
-      .catch(function (err) {
+        var products = self._renderSearchResponse(d);
+        self._enrichSearchOnline(products);
+        return { data: d, products: products };
+      });
+    }
+
+    var request;
+    if (fullCached) {
+      request = fetchAndRender(fullSize);
+    } else if (previewCached) {
+      request = self._searchNeedsFull(previewCached, cachedProducts, fullSize)
+        ? fetchAndRender(fullSize)
+        : null;
+    } else {
+      request = fetchAndRender(previewSize).then(function (result) {
+        if (!result || seq !== self._searchSeq) return null;
+        if (
+          previewSize < fullSize &&
+          ((!result.products || result.products.length === 0) ||
+            self._searchNeedsFull(result.data, result.products, fullSize))
+        ) {
+          return fetchAndRender(fullSize);
+        }
+        return result;
+      });
+    }
+
+    if (request) {
+      request.catch(function (err) {
         if (err && err.name === 'AbortError') return;
         if (seq !== self._searchSeq) return;
+        if (self.products && self.products.length) return;
         UI.showSearchError(err.message || '검색 실패', kw);
       });
+    }
   },
 
   _renderFavorites: function () {
@@ -523,9 +1181,39 @@ var App = {
     return;
   },
 
+  _openRankDetail: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return;
+    var idx = (this.products || []).findIndex(function (p) {
+      return String(p.goodsNumber || p.goodsNo || '') === gn;
+    });
+    if (idx >= 0) {
+      this._openDetail(idx);
+      return;
+    }
+    this._openFavDetail(gn);
+  },
+
+  _openHotDetail: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return;
+    var product = (this.hotProducts || []).find(function (p) {
+      return String(p.goodsNumber || p.goodsNo || '') === gn;
+    });
+    if (product) {
+      this._openProductDetail(product);
+      return;
+    }
+    this._openRankDetail(gn);
+  },
+
   _openDetail: async function (idx) {
     var p = this.products[idx];
     if (!p) return;
+    return this._openProductDetail(p);
+  },
+
+  _openProductDetail: async function (p) {
     var gn = String(p.goodsNumber || p.goodsNo || '').trim();
     if (!gn) return;
     var detail =
@@ -536,7 +1224,7 @@ var App = {
       detail.options.length > 0 &&
       detail.inventoryScope !== 'online' &&
       detail.source !== 'live-online';
-    if (hasStoreScope) {
+    if (!CONFIG.REALTIME_API && hasStoreScope) {
       UI.showDetailPopup(detail, gn);
       return;
     }
@@ -566,13 +1254,16 @@ var App = {
             encodeURIComponent(String(this.lat)) +
             '&lng=' +
             encodeURIComponent(String(this.lng)) +
-            '&withOnline=true'
+            '&fresh=true'
         );
         var d = await r.json();
         if (d.success && d.options && d.options.length > 0) {
           if (!this.detailData) this.detailData = { products: {} };
           if (!this.detailData.products) this.detailData.products = {};
           this.detailData.products[gn] = d;
+          var onlineSnapshot = this._rememberOnlineStock(gn, d);
+          if (onlineSnapshot) UI.updateCardBadge(gn, onlineSnapshot);
+          this._recordVelocitySnapshot(gn, onlineSnapshot || d, this._productMetaForGoodsNo(gn));
           UI.showDetailPopup(d, gn);
           return;
         }
@@ -605,7 +1296,7 @@ var App = {
       detail.options.length > 0 &&
       detail.inventoryScope !== 'online' &&
       detail.source !== 'live-online';
-    if (hasStoreScopeFav) {
+    if (!CONFIG.REALTIME_API && hasStoreScopeFav) {
       UI.showDetailPopup(detail, gn);
       return;
     }
@@ -633,13 +1324,16 @@ var App = {
             encodeURIComponent(String(this.lat)) +
             '&lng=' +
             encodeURIComponent(String(this.lng)) +
-            '&withOnline=true'
+            '&fresh=true'
         );
         var d = await r.json();
         if (d.success && d.options && d.options.length > 0) {
           if (!this.detailData) this.detailData = { products: {} };
           if (!this.detailData.products) this.detailData.products = {};
           this.detailData.products[gn] = d;
+          var favOnlineSnapshot = this._rememberOnlineStock(gn, d);
+          if (favOnlineSnapshot) UI.updateCardBadge(gn, favOnlineSnapshot);
+          this._recordVelocitySnapshot(gn, favOnlineSnapshot || d, this._productMetaForGoodsNo(gn));
           UI.showDetailPopup(d, gn);
           return;
         }

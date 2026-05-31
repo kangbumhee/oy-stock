@@ -13,6 +13,9 @@ const ONLINE_CACHE_TTL = 10 * 60 * 1000;
 const detailResponseCache = new Map();
 const DETAIL_RESPONSE_TTL_MS = 3 * 60 * 1000;
 const DETAIL_RESPONSE_CACHE_MAX = 80;
+const allRegionsResponseCache = new Map();
+const ALL_REGIONS_RESPONSE_TTL_MS = 3 * 60 * 1000;
+const ALL_REGIONS_RESPONSE_CACHE_MAX = 80;
 
 function detailResponseCacheKey(goodsNo, lat, lng, withOnline, onlineOnly) {
   return `${goodsNo}|${lat}|${lng}|${withOnline ? 1 : 0}|${onlineOnly ? 1 : 0}`;
@@ -27,6 +30,22 @@ function pruneDetailResponseCache() {
     const first = detailResponseCache.keys().next().value;
     if (first == null) break;
     detailResponseCache.delete(first);
+  }
+}
+
+function allRegionsResponseCacheKey(goodsNo, productId) {
+  return `${goodsNo}|${productId || ''}`;
+}
+
+function pruneAllRegionsResponseCache() {
+  const now = Date.now();
+  for (const [k, v] of allRegionsResponseCache) {
+    if (now - v.ts > ALL_REGIONS_RESPONSE_TTL_MS) allRegionsResponseCache.delete(k);
+  }
+  while (allRegionsResponseCache.size > ALL_REGIONS_RESPONSE_CACHE_MAX) {
+    const first = allRegionsResponseCache.keys().next().value;
+    if (first == null) break;
+    allRegionsResponseCache.delete(first);
   }
 }
 
@@ -50,8 +69,11 @@ let page = null;
 let sessionReady = false;
 let sessionCreatedAt = 0;
 let initPromise = null;
+let keepAliveTimer = null;
+let keepAliveRunning = false;
 
-const SESSION_MAX_AGE = 10 * 60 * 1000;
+const SESSION_MAX_AGE = Number(process.env.SESSION_MAX_AGE_MS || 55 * 60 * 1000);
+const SESSION_KEEPALIVE_MS = Number(process.env.SESSION_KEEPALIVE_MS || 5 * 60 * 1000);
 
 function unwrapPayload(json) {
   if (!json || typeof json !== 'object') return {};
@@ -84,6 +106,46 @@ async function ensureSession() {
   } finally {
     initPromise = null;
   }
+}
+
+function sessionAgeSeconds() {
+  return sessionCreatedAt ? Math.floor((Date.now() - sessionCreatedAt) / 1000) : 0;
+}
+
+function sessionHealthPayload() {
+  return {
+    ok: true,
+    session: sessionReady,
+    warming: !!initPromise || keepAliveRunning,
+    uptime: process.uptime(),
+    age: sessionAgeSeconds(),
+    maxAge: Math.floor(SESSION_MAX_AGE / 1000)
+  };
+}
+
+async function keepSessionWarm(reason) {
+  if (keepAliveRunning) {
+    if (initPromise) await initPromise;
+    return;
+  }
+  keepAliveRunning = true;
+  try {
+    await ensureSession();
+    console.log(`[keepalive] 세션 준비 완료 (${reason}, age=${sessionAgeSeconds()}s)`);
+  } catch (e) {
+    sessionReady = false;
+    console.error(`[keepalive] 세션 준비 실패 (${reason}):`, e.message || e);
+  } finally {
+    keepAliveRunning = false;
+  }
+}
+
+function startSessionKeepAlive() {
+  if (keepAliveTimer) return;
+  keepAliveTimer = setInterval(() => {
+    void keepSessionWarm('interval');
+  }, SESSION_KEEPALIVE_MS);
+  if (keepAliveTimer.unref) keepAliveTimer.unref();
 }
 
 async function _createSession() {
@@ -211,9 +273,89 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
   return { ok: false, status: 500, data: { error: 'max retries' } };
 }
 
-async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
+function isGoodsInfoSuccess(res) {
+  if (!res || !res.ok || !res.data || res.data.status !== 'SUCCESS') return false;
+  const inner = unwrapPayload(res.data);
+  return !!(inner && inner.goodsInfo);
+}
+
+function compactApiFailure(res) {
+  if (!res) return 'empty response';
+  const data = res.data;
+  if (data && typeof data === 'object') {
+    return JSON.stringify({
+      httpStatus: res.status,
+      status: data.status,
+      message: data.message || data.error || data.errorMessage || ''
+    });
+  }
+  return JSON.stringify({ httpStatus: res.status, data: String(data || '').slice(0, 160) });
+}
+
+async function fetchGoodsInfoOnDetailPage(goodsNo) {
+  return withLock(async () => {
+    try {
+      await ensureSession();
+      await page.goto(
+        OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
+        { waitUntil: 'domcontentloaded', timeout: 15000 }
+      );
+      await sleep(700);
+
+      return await page.evaluate(async (gn) => {
+        const r = await fetch('/oystore/api/stock/stock-goods-info-v3', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ goodsNo: gn })
+        });
+        const t = await r.text();
+        try {
+          return { ok: r.ok, status: r.status, data: JSON.parse(t) };
+        } catch {
+          return { ok: false, status: r.status, data: t };
+        }
+      }, goodsNo);
+    } catch (e) {
+      console.log('[상품정보] 상세 페이지 재시도 실패:', goodsNo, e.message || e);
+      return null;
+    } finally {
+      if (page) await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+      await sleep(250);
+    }
+  });
+}
+
+async function getGoodsInfoResponse(goodsNo) {
+  const direct = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
+  if (isGoodsInfoSuccess(direct)) return direct;
+
+  console.log('[상품정보] direct 실패 → 상세 진입 재시도:', goodsNo, compactApiFailure(direct));
+  const pageRetry = await fetchGoodsInfoOnDetailPage(goodsNo);
+  if (isGoodsInfoSuccess(pageRetry)) return pageRetry;
+
+  console.log('[상품정보] 상세 재시도 실패 → 세션 재생성:', goodsNo, compactApiFailure(pageRetry));
+  sessionReady = false;
+  try {
+    await ensureSession();
+  } catch (e) {
+    console.error('[상품정보] 세션 재생성 실패:', e.message || e);
+  }
+
+  const resetRetry = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
+  if (isGoodsInfoSuccess(resetRetry)) return resetRetry;
+
+  console.log('[상품정보] 최종 실패:', goodsNo, compactApiFailure(resetRetry));
+  return resetRetry || pageRetry || direct;
+}
+
+async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false, fresh = false) {
   const ck = detailResponseCacheKey(goodsNo, lat, lng, withOnline, onlineOnly);
-  const hit = detailResponseCache.get(ck);
+  const hit = fresh ? null : detailResponseCache.get(ck);
   if (hit && Date.now() - hit.ts < DETAIL_RESPONSE_TTL_MS) {
     try {
       return JSON.parse(JSON.stringify(hit.data));
@@ -223,7 +365,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
   }
   try {
     const result = await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
-    if (result && result.success) {
+    if (result && result.success && !fresh) {
       pruneDetailResponseCache();
       detailResponseCache.set(ck, { data: result, ts: Date.now() });
     }
@@ -240,7 +382,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
 }
 
 async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
-  const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
+  const infoRes = await getGoodsInfoResponse(goodsNo);
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return {
       success: false,
@@ -268,8 +410,8 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
     rawAvailableItems = v3Avail.slice();
     options = v3Avail.slice();
     console.log('[옵션] v3 availableItems만 사용 → 상세 page.goto 생략, items:', options.length);
-  } else if (itemCount <= 1) {
-    console.log('[옵션] 단일 상품 → 옵션 page·API 생략');
+  } else if (itemCount <= 1 && !withOnline && !onlineOnly) {
+    console.log('[옵션] 단일 상품 → 온라인 옵션 API 생략');
   } else {
     const cached = onlineCache.get(goodsNo);
     if (cached && Date.now() - cached.ts < ONLINE_CACHE_TTL) {
@@ -278,52 +420,71 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       options = cached.data.slice();
       console.log('[옵션] 캐시 사용, items:', rawAvailableItems.length);
     } else {
-      const optResult = await withLock(async () => {
-        try {
-          await page.goto(
-            OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
-            { waitUntil: 'domcontentloaded', timeout: 10000 }
-          );
-          await sleep(550);
+      let optResult = null;
+      let optResultSource = '';
+      try {
+        const directOpt = await oyPost('/stock/stock-goods-info-option', { goodsNo });
+        if (directOpt.ok && directOpt.data && directOpt.data.status === 'SUCCESS') {
+          const optInner = unwrapPayload(directOpt.data);
+          const ou = optInner.optionUploadUrl || '';
+          const opts = optInner.goodsInfo?.availableItems || [];
+          optResult = { data: opts.slice(), optionUploadUrl: ou };
+          optResultSource = 'direct API';
+          console.log('[옵션] direct API 성공, items:', opts.length);
+        }
+      } catch (e) {
+        console.log('[옵션] direct API 실패:', e.message);
+      }
 
-          const optJson = await page.evaluate(async (gn) => {
-            const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
-              method: 'POST',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-              },
-              body: JSON.stringify({ goodsNo: gn })
-            });
-            const t = await res.text();
-            try {
-              return JSON.parse(t);
-            } catch {
-              return null;
+      if (!optResult) {
+        optResult = await withLock(async () => {
+          try {
+            await page.goto(
+              OY + '/store/goods/getGoodsDetail.do?goodsNo=' + encodeURIComponent(goodsNo),
+              { waitUntil: 'domcontentloaded', timeout: 10000 }
+            );
+            await sleep(550);
+
+            const optJson = await page.evaluate(async (gn) => {
+              const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Accept: 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ goodsNo: gn })
+              });
+              const t = await res.text();
+              try {
+                return JSON.parse(t);
+              } catch {
+                return null;
+              }
+            }, goodsNo);
+
+            if (optJson && optJson.status === 'SUCCESS') {
+              const optInner = unwrapPayload(optJson);
+              const ou = optInner.optionUploadUrl || '';
+              const opts = optInner.goodsInfo?.availableItems || [];
+              const raw = opts.slice();
+              await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+              await sleep(350);
+              return { data: raw, optionUploadUrl: ou };
             }
-          }, goodsNo);
 
-          if (optJson && optJson.status === 'SUCCESS') {
-            const optInner = unwrapPayload(optJson);
-            const ou = optInner.optionUploadUrl || '';
-            const opts = optInner.goodsInfo?.availableItems || [];
-            const raw = opts.slice();
             await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
             await sleep(350);
-            return { data: raw, optionUploadUrl: ou };
+            return null;
+          } catch (e) {
+            console.log('[옵션] page 실패:', e.message);
+            await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
+            return null;
           }
-
-          await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
-          await sleep(350);
-          return null;
-        } catch (e) {
-          console.log('[옵션] page 실패:', e.message);
-          await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
-          return null;
-        }
-      });
+        });
+        if (optResult) optResultSource = 'page fallback';
+      }
 
       if (optResult) {
         optionUploadUrl = optResult.optionUploadUrl || '';
@@ -334,7 +495,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
           optionUploadUrl,
           ts: Date.now()
         });
-        console.log('[옵션] page 성공 + 캐시 저장, items:', rawAvailableItems.length);
+        console.log('[옵션] ' + optResultSource + ' 성공 + 캐시 저장, items:', rawAvailableItems.length);
       } else {
         console.log(
           '[옵션] 스킵 (락 대기 초과 또는 조회 실패) → 매장 재고만 진행, goodsNo:',
@@ -566,7 +727,17 @@ const REGIONS = [
 ];
 
 async function getStockAllRegions(goodsNo, targetProductId) {
-  const infoRes = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
+  const cacheKey = allRegionsResponseCacheKey(goodsNo, targetProductId);
+  const cacheHit = allRegionsResponseCache.get(cacheKey);
+  if (cacheHit && Date.now() - cacheHit.ts < ALL_REGIONS_RESPONSE_TTL_MS) {
+    try {
+      return JSON.parse(JSON.stringify(cacheHit.data));
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const infoRes = await getGoodsInfoResponse(goodsNo);
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return { success: false, error: '상품 조회 실패' };
   }
@@ -578,7 +749,10 @@ async function getStockAllRegions(goodsNo, targetProductId) {
 
   let options = [];
   let optionUploadUrl = '';
-  if (Number(gi.itemCount) > 1) {
+  const v3Avail = Array.isArray(gi.availableItems) ? gi.availableItems : [];
+  if (v3Avail.length > 0) {
+    options = v3Avail.slice();
+  } else if (Number(gi.itemCount) > 1) {
     const optRes = await oyPost('/stock/stock-goods-info-option', { goodsNo });
     if (optRes.ok && optRes.data && optRes.data.status === 'SUCCESS') {
       const optInner = unwrapPayload(optRes.data);
@@ -605,9 +779,7 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     options = filtered;
   }
 
-  const half = Math.ceil(REGIONS.length / 2);
-  const batch1 = REGIONS.slice(0, half);
-  const batch2 = REGIONS.slice(half);
+  const regionBatchSize = 5;
 
   async function fetchStoresForRegions(pid, regions) {
     const promises = regions.map((region) =>
@@ -643,10 +815,12 @@ async function getStockAllRegions(goodsNo, targetProductId) {
   }
 
   async function fetchStoresAllRegions(pid) {
-    const r1 = await fetchStoresForRegions(pid, batch1);
-    await sleep(1000);
-    const r2 = await fetchStoresForRegions(pid, batch2);
-    return [...r1, ...r2];
+    const rows = [];
+    for (let i = 0; i < REGIONS.length; i += regionBatchSize) {
+      rows.push(...(await fetchStoresForRegions(pid, REGIONS.slice(i, i + regionBatchSize))));
+      if (i + regionBatchSize < REGIONS.length) await sleep(150);
+    }
+    return rows;
   }
 
   const optionResults = [];
@@ -682,7 +856,7 @@ async function getStockAllRegions(goodsNo, targetProductId) {
       stores: allStores.slice(0, 100)
     });
 
-    await sleep(300);
+    if (!targetProductId && options.length > 1) await sleep(120);
   }
 
   if (
@@ -713,14 +887,7 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     });
   }
 
-  try {
-    await page.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 10000 });
-    await sleep(2000);
-  } catch (e) {
-    console.log('세션 리프레시 스킵:', e.message);
-  }
-
-  return {
+  const response = {
     success: true,
     source: 'live-all',
     goodsNo,
@@ -732,6 +899,9 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     options: optionResults,
     updatedAt: new Date().toISOString()
   };
+  pruneAllRegionsResponseCache();
+  allRegionsResponseCache.set(cacheKey, { data: response, ts: Date.now() });
+  return JSON.parse(JSON.stringify(response));
 }
 
 /** CORS — 모든 응답에 동일 헤더 (Vercel 등 크로스 오리진 + 프리플라이트) */
@@ -759,15 +929,11 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname === '/health') {
+    if (url.searchParams.get('warm') === '1' || url.searchParams.get('warm') === 'true') {
+      await keepSessionWarm('health');
+    }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-    res.end(
-      JSON.stringify({
-        ok: true,
-        session: sessionReady,
-        uptime: process.uptime(),
-        age: sessionCreatedAt ? Math.floor((Date.now() - sessionCreatedAt) / 1000) : 0
-      })
-    );
+    res.end(JSON.stringify(sessionHealthPayload()));
     return;
   }
 
@@ -777,6 +943,7 @@ const server = http.createServer(async (req, res) => {
     const lng = parseFloat(url.searchParams.get('lng')) || 126.7156;
     const withOnline = url.searchParams.get('withOnline') === 'true';
     const onlineOnly = url.searchParams.get('onlineOnly') === 'true';
+    const fresh = url.searchParams.get('fresh') === 'true';
 
     if (!goodsNo) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
@@ -807,7 +974,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const result = await getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly);
+      const result = await getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly, fresh);
       const out = result.success
         ? result
         : { ...result, error: true, goodsNo: result.goodsNo || goodsNo };
@@ -856,17 +1023,19 @@ const server = http.createServer(async (req, res) => {
   res.end('Not Found');
 });
 
-server.listen(PORT, async () => {
-  console.log(`서버 시작: http://localhost:${PORT}`);
-  try {
-    await ensureSession();
-  } catch (e) {
-    console.error('초기 세션 실패:', e.message);
-  }
-});
+async function startServer() {
+  server.listen(PORT, () => {
+    console.log(`서버 시작: http://localhost:${PORT}`);
+    startSessionKeepAlive();
+    void keepSessionWarm('startup');
+  });
+}
+
+void startServer();
 
 process.on('SIGTERM', async () => {
   console.log('종료 중...');
+  if (keepAliveTimer) clearInterval(keepAliveTimer);
   if (browser) {
     try {
       await browser.close();

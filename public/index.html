@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>올리브영 재고 확인</title>
-  <link rel="stylesheet" href="/css/style.css?v=20260429-1">
+  <link rel="preconnect" href="https://mcp.aka.page">
+  <link rel="preconnect" href="https://oy-stock-api-3596046881.asia-northeast3.run.app">
+  <link rel="dns-prefetch" href="//mcp.aka.page">
+  <link rel="dns-prefetch" href="//oy-stock-api-3596046881.asia-northeast3.run.app">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260531-5">
+  <link rel="stylesheet" href="/css/style.css?v=20260531-16">
 </head>
 <body>
   <div id="app">
@@ -20,6 +25,7 @@
 
     <nav class="tabs">
       <button type="button" class="main-tab active" data-tab="search" data-action="tabSearch">🔍 검색</button>
+      <button type="button" class="main-tab" data-tab="hot" data-action="tabHot">🔥 인기템</button>
       <button type="button" class="main-tab" data-tab="favorites" data-action="tabFavorites">⭐ 즐겨찾기 <span id="fav-count" class="fav-count"></span></button>
       <button type="button" class="main-tab" data-action="showHistory">📋 즐겨찾기 이력</button>
     </nav>
@@ -35,6 +41,7 @@
       </form>
       <div id="search-history"></div>
       <div id="popular-keywords" aria-label="인기 검색어"></div>
+      <div id="velocity-ranking"></div>
       <div id="product-list">
         <div class="empty-state">
           <p>상품명을 검색하거나 ⭐ 즐겨찾기에서 확인하세요</p>
@@ -42,6 +49,10 @@
         </div>
       </div>
     </main>
+
+    <section id="hot-section" style="display:none">
+      <div id="hot-rank-root"></div>
+    </section>
 
     <section id="fav-section" style="display:none">
       <div id="fav-list"></div>
@@ -51,15 +62,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
-  <script src="/js/config.js?v=20260429-1"></script>
-  <script src="/js/storage.js?v=20260429-1"></script>
-  <script src="/js/api.js?v=20260429-1"></script>
-  <script src="/js/ui.js?v=20260429-1"></script>
-  <script src="/js/options.js?v=20260429-1"></script>
-  <script src="/js/search.js?v=20260429-1"></script>
-  <script src="/js/regions.js?v=20260429-1"></script>
-  <script src="/js/inventory.js?v=20260429-1"></script>
-  <script src="/js/app.js?v=20260429-1"></script>
+  <script src="/js/config.js?v=20260531-12"></script>
+  <script src="/js/storage.js?v=20260531-9"></script>
+  <script src="/js/api.js?v=20260531-10"></script>
+  <script src="/js/ui.js?v=20260531-22"></script>
+  <script src="/js/options.js?v=20260531-5"></script>
+  <script src="/js/search.js?v=20260531-5"></script>
+  <script src="/js/regions.js?v=20260531-5"></script>
+  <script src="/js/inventory.js?v=20260531-5"></script>
+  <script src="/js/app.js?v=20260531-16"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       Regions.renderSelector();

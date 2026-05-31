@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'server/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 
 jobs:
@@ -25,20 +29,21 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          cd server
           gcloud run deploy oy-stock-api \
             --source . \
             --region asia-northeast3 \
             --allow-unauthenticated \
             --memory 2Gi \
             --cpu 1 \
-            --min-instances 0 \
+            --min-instances 1 \
             --max-instances 2 \
             --timeout 120 \
-            --cpu-throttling \
+            --no-cpu-throttling \
+            --set-env-vars PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+            --clear-base-image \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Health Check
         run: |
           sleep 30
-          curl -f https://oy-stock-api-3596046881.asia-northeast3.run.app/health || echo "Health check failed"
+          curl -f https://oy-stock-api-3596046881.asia-northeast3.run.app/health?warm=1 || echo "Health check failed"

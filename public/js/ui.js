@@ -1,5 +1,7 @@
 var UI = {
   _curatorLinksPromise: null,
+  _allStockCache: {},
+  _allStockInflight: {},
 
   /** 일반 올리브영 상품 상세(www) — shorten 실패·에러 팝업 폴백 */
   oliveyoungFallbackUrl: function (goodsNo, categoryNumber) {
@@ -96,7 +98,7 @@ var UI = {
     }
 
     el.disabled = true;
-    el.textContent = '링크 생성 중...';
+    el.textContent = '사이트여는중';
 
     (async function () {
       var manualFallback = false;
@@ -205,8 +207,460 @@ var UI = {
     return d.innerHTML;
   },
 
+  escAttr: function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  },
+
   num: function (n) {
     return (n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  },
+
+  formatRankTime: function (ts) {
+    if (!ts) return '';
+    try {
+      return new Date(ts).toLocaleTimeString('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return '';
+    }
+  },
+
+  formatRankElapsed: function (ms) {
+    var sec = Math.max(0, Math.round((Number(ms) || 0) / 1000));
+    var min = Math.floor(sec / 60);
+    var rem = sec % 60;
+    if (min <= 0) return rem + '초';
+    return min + '분' + (rem ? ' ' + rem + '초' : '');
+  },
+
+  formatWon: function (n) {
+    var v = Math.round(Number(n) || 0);
+    return v > 0 ? UI.num(v) + '원' : '계산대기';
+  },
+
+  hotRangeLabel: function (range) {
+    var ranges = (typeof CONFIG !== 'undefined' && CONFIG.HOT_RANK_RANGES) || {};
+    return (ranges[range] && ranges[range].label) || '24시간';
+  },
+
+  hotRangeMetricLabel: function (range) {
+    if (range === '1d') return '24시간';
+    return UI.hotRangeLabel(range);
+  },
+
+  formatChartDate: function (ts) {
+    if (!ts) return '';
+    try {
+      return new Date(ts).toLocaleString('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return '';
+    }
+  },
+
+  hotChartMeta: function (mode) {
+    if (mode === 'revenue') {
+      return {
+        mode: 'revenue',
+        valueKey: 'revenue',
+        deltaKey: 'revenueDelta',
+        valueLabel: '기간매출',
+        emptyLabel: '매출 그래프 준비중'
+      };
+    }
+    if (mode === 'sales') {
+      return {
+        mode: 'sales',
+        valueKey: 'sales',
+        deltaKey: 'salesDelta',
+        valueLabel: '기간판매',
+        emptyLabel: '판매 그래프 준비중'
+      };
+    }
+    if (mode === 'view') {
+      return {
+        mode: 'view',
+        valueKey: 'rank',
+        deltaKey: 'rankDelta',
+        valueLabel: '조회순',
+        emptyLabel: '조회순 그래프 준비중',
+        lowerIsBetter: true
+      };
+    }
+    return {
+      mode: 'stock',
+      valueKey: 'total',
+      deltaKey: 'delta',
+      valueLabel: '온라인 재고',
+      emptyLabel: '그래프 준비중'
+    };
+  },
+
+  hotChartValueText: function (mode, value) {
+    var n = Math.round(Number(value) || 0);
+    if (mode === 'revenue') return UI.num(n) + '원';
+    if (mode === 'view') return UI.hotRankText(n);
+    return UI.num(n) + '개';
+  },
+
+  hotChartDeltaText: function (mode, delta) {
+    var n = Math.round(Number(delta) || 0);
+    if (mode === 'view') {
+      if (!n) return '순위 유지';
+      return n < 0 ? '상승 ' + UI.num(Math.abs(n)) + '계단' : '하락 ' + UI.num(Math.abs(n)) + '계단';
+    }
+    if (!n) return '변화 없음';
+    var sign = n > 0 ? '+' : '-';
+    var abs = Math.abs(n);
+    if (mode === 'revenue') return '매출 ' + sign + UI.num(abs) + '원';
+    if (mode === 'sales') return '판매 +' + UI.num(abs) + '개';
+    return n > 0 ? '입고 +' + UI.num(abs) + '개' : '감소 ' + UI.num(abs) + '개';
+  },
+
+  hotRankText: function (rank) {
+    var n = Math.round(Number(rank) || 0);
+    return n > 0 && n < 9999 ? '#' + UI.num(n) : '순위권 밖';
+  },
+
+  hotChartRankText: function (label, prevRank, rank) {
+    var current = Math.round(Number(rank) || 0);
+    if (!current || current >= 9999) return '';
+    var prev = Math.round(Number(prevRank) || current);
+    var prefix = label || '순위';
+    if (!prev || prev >= 9999) return prefix + ' 순위권 밖 → ' + UI.hotRankText(current);
+    if (prev === current) return prefix + ' ' + UI.hotRankText(current) + ' 유지';
+    return prefix + ' ' + UI.hotRankText(prev) + ' → ' + UI.hotRankText(current);
+  },
+
+  renderRankTrendBadge: function (trend, mode) {
+    var metric =
+      mode === 'revenue' ? '매출순' : mode === 'sales' ? '판매량순' : '조회순';
+    if (!trend) {
+      return (
+        '<div class="hot-trend hot-trend-empty" title="' +
+        UI.escAttr(metric + ' 1시간 변동 데이터 대기') +
+        '"><span>1H</span><strong>-</strong></div>'
+      );
+    }
+
+    var status = trend.status || trend.direction || 'flat';
+    var big = trend.isBig ? ' big' : '';
+    var label = trend.label || '보합';
+    var caption = '1H';
+    if (status === 'entry') caption = 'NEW';
+    else if (trend.isBig && status === 'up') caption = '급등';
+    else if (trend.isBig && status === 'down') caption = '급락';
+
+    var title;
+    if (status === 'entry') {
+      title = metric + ' 1시간 전 없음 → 현재 #' + UI.num(trend.currentRank) + ' 진입';
+    } else if (status === 'flat') {
+      title = metric + ' 1시간 변동 없음 · 현재 #' + UI.num(trend.currentRank);
+    } else {
+      title =
+        metric +
+        ' 1시간 변동: #' +
+        UI.num(trend.previousRank) +
+        ' → #' +
+        UI.num(trend.currentRank) +
+        ' (' +
+        (status === 'up' ? '상승 ' : '하락 ') +
+        UI.num(trend.absDelta || 0) +
+        '계단)';
+    }
+
+    return (
+      '<div class="hot-trend ' +
+      UI.esc(status) +
+      big +
+      '" title="' +
+      UI.escAttr(title) +
+      '"><span>' +
+      UI.esc(caption) +
+      '</span><strong>' +
+      UI.esc(label) +
+      '</strong></div>'
+    );
+  },
+
+  renderHotSparkline: function (points, opts) {
+    opts = opts || {};
+    var meta = UI.hotChartMeta(opts.mode || 'stock');
+    points = Array.isArray(points) ? points : [];
+    if (points.length < 2) {
+      return '<div class="hot-chart hot-chart-empty">' + UI.esc(meta.emptyLabel) + '</div>';
+    }
+    var width = 150;
+    var height = 38;
+    var pad = 4;
+    var clean = points
+      .map(function (p) {
+        var value = Number(p[meta.valueKey]);
+        if (!isFinite(value) && meta.valueKey === 'total') value = Number(p.stockTotal);
+        var delta = Number(p[meta.deltaKey]);
+        if (!isFinite(delta) && meta.deltaKey === 'delta') delta = Number(p.stockDelta);
+        return {
+          ts: Date.parse(p.ts),
+          value: isFinite(value) ? value : 0,
+          delta: isFinite(delta) ? delta : 0,
+          rank: Number(p.rank) || 0,
+          prevRank: Number(p.prevRank) || Number(p.rank) || 0,
+          rankLabel: p.rankLabel || (meta.mode === 'revenue' ? '매출순' : meta.mode === 'sales' ? '판매순' : meta.mode === 'view' ? '조회순' : '')
+        };
+      })
+      .filter(function (p) {
+        return isFinite(p.ts);
+      });
+    if (clean.length < 2) {
+      return '<div class="hot-chart hot-chart-empty">' + UI.esc(meta.emptyLabel) + '</div>';
+    }
+    var minTs = clean[0].ts;
+    var maxTs = clean[clean.length - 1].ts;
+    var minTotal = Math.min.apply(
+      null,
+      clean.map(function (p) {
+        return p.value;
+      })
+    );
+    var maxTotal = Math.max.apply(
+      null,
+      clean.map(function (p) {
+        return p.value;
+      })
+    );
+    var spanTs = Math.max(1, maxTs - minTs);
+    var spanTotal = Math.max(1, maxTotal - minTotal);
+    var coords = clean.map(function (p) {
+      var x = pad + ((p.ts - minTs) / spanTs) * (width - pad * 2);
+      var y = meta.lowerIsBetter
+        ? pad + ((p.value - minTotal) / spanTotal) * (height - pad * 2)
+        : height - pad - ((p.value - minTotal) / spanTotal) * (height - pad * 2);
+      var deltaClass =
+        meta.mode === 'view'
+          ? p.delta < 0
+            ? 'up'
+            : p.delta > 0
+              ? 'down'
+              : ''
+          : p.delta > 0
+            ? 'up'
+            : p.delta < 0
+              ? 'down'
+              : '';
+      return {
+        x: Math.round(x * 10) / 10,
+        y: Math.round(y * 10) / 10,
+        xNorm: (x - pad) / (width - pad * 2),
+        yNorm: y / height,
+        ts: p.ts,
+        label: UI.formatChartDate(p.ts),
+        value: p.value,
+        delta: p.delta,
+        valueLabel: meta.valueLabel,
+        valueText: UI.hotChartValueText(meta.mode, p.value),
+        deltaText: UI.hotChartDeltaText(meta.mode, p.delta),
+        deltaClass: deltaClass,
+        rankText: UI.hotChartRankText(p.rankLabel, p.prevRank, p.rank),
+        marker: meta.mode === 'view' ? p.delta !== 0 : p.delta > 0
+      };
+    });
+    var line = coords
+      .map(function (p) {
+        return p.x + ',' + p.y;
+      })
+      .join(' ');
+    var markers = coords
+      .filter(function (p) {
+        return p.marker;
+      })
+      .map(function (p) {
+        return '<circle cx="' + p.x + '" cy="' + p.y + '" r="2.4"></circle>';
+      })
+      .join('');
+    return (
+      '<div class="hot-chart ' +
+      UI.escAttr(meta.mode) +
+      '" data-points="' +
+      UI.escAttr(JSON.stringify(coords)) +
+      '" data-mode="' +
+      UI.escAttr(meta.mode) +
+      '">' +
+      '<svg viewBox="0 0 ' +
+      width +
+      ' ' +
+      height +
+      '" aria-hidden="true">' +
+      '<polyline points="' +
+      line +
+      '"></polyline>' +
+      markers +
+      '</svg><div class="hot-chart-cross"></div><div class="hot-chart-dot"></div><div class="hot-chart-tip"></div>' +
+      '</div>'
+    );
+  },
+
+  bindHotCharts: function (root) {
+    if (!root || root.dataset.hotChartBound === '1') return;
+    root.dataset.hotChartBound = '1';
+    root.addEventListener('mousemove', function (e) {
+      var chart = e.target.closest && e.target.closest('.hot-chart[data-points]');
+      if (!chart || !root.contains(chart)) return;
+      var points;
+      try {
+        points = chart._points || JSON.parse(chart.dataset.points || '[]');
+        chart._points = points;
+      } catch (err) {
+        points = [];
+      }
+      if (!points.length) return;
+      var rect = chart.getBoundingClientRect();
+      var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+      var nearest = points[0];
+      var best = Math.abs((nearest.xNorm || 0) - ratio);
+      points.forEach(function (p) {
+        var diff = Math.abs((p.xNorm || 0) - ratio);
+        if (diff < best) {
+          best = diff;
+          nearest = p;
+        }
+      });
+      var left = Math.max(0, Math.min(rect.width, (nearest.xNorm || 0) * rect.width));
+      var top = Math.max(3, Math.min(rect.height - 3, (nearest.yNorm || 0) * rect.height));
+      var cross = chart.querySelector('.hot-chart-cross');
+      var dot = chart.querySelector('.hot-chart-dot');
+      var tip = chart.querySelector('.hot-chart-tip');
+      if (!cross || !dot || !tip) return;
+      cross.style.left = left + 'px';
+      dot.style.left = left + 'px';
+      dot.style.top = top + 'px';
+      tip.classList.toggle('right', left > rect.width * 0.58);
+      tip.style.left = left + 'px';
+      tip.innerHTML =
+        '<b>' +
+        UI.esc(nearest.label || '') +
+        '</b><span>' +
+        UI.esc(nearest.valueLabel || '지표') +
+        ' ' +
+        UI.esc(nearest.valueText || '') +
+        '</span><em class="' +
+        UI.esc(nearest.deltaClass || '') +
+        '">' +
+        UI.esc(nearest.deltaText || '변화 없음') +
+        '</em>' +
+        (nearest.rankText ? '<span class="rank">' + UI.esc(nearest.rankText) + '</span>' : '');
+      chart.classList.add('active');
+    });
+    root.addEventListener('mouseleave', function (e) {
+      var chart = e.target.closest && e.target.closest('.hot-chart[data-points]');
+      if (chart) chart.classList.remove('active');
+    }, true);
+  },
+
+  renderVelocityRanking: function (rows, state) {
+    state = state || {};
+    var root = document.getElementById('velocity-ranking');
+    if (!root) return;
+    if (!state.hasProducts) {
+      root.innerHTML = '';
+      return;
+    }
+
+    rows = rows || [];
+    var head =
+      '<section class="velocity-panel">' +
+      '<div class="velocity-head">' +
+      '<div><h2>🔥 실시간 재고 급감 TOP</h2>' +
+      '<p>온라인 총재고 변화 기준 · 최근 ' +
+      UI.esc(state.windowLabel || '30분') +
+      '</p></div>' +
+      '<button type="button" class="velocity-refresh" data-action="refreshRanking" title="다시 측정">↻</button>' +
+      '</div>';
+
+    if (!rows.length) {
+      root.innerHTML =
+        head +
+        '<div class="velocity-empty">' +
+        '<strong>재고 변화 측정 중</strong>' +
+        '<span>같은 상품의 실시간 재고가 2번 이상 관측되면 순위가 표시됩니다.</span>' +
+        '</div></section>';
+      return;
+    }
+
+    var body = rows
+      .map(function (r) {
+        var img = r.imageUrl
+          ? '<img src="' + UI.esc(r.imageUrl) + '" alt="" loading="lazy" decoding="async">'
+          : '<div class="velocity-no-img">📦</div>';
+        var from = UI.num(r.fromTotal);
+        var to = UI.num(r.toTotal);
+        var drop = UI.num(r.drop);
+        var perMin = Math.round((r.perMin || 0) * 10) / 10;
+        var pct = Math.round((r.dropPct || 0) * 10) / 10;
+        var evidence =
+          '근거: ' +
+          UI.formatRankTime(r.fromTs) +
+          ' → ' +
+          UI.formatRankTime(r.toTs) +
+          ' · ' +
+          UI.formatRankElapsed(r.elapsedMs) +
+          ' · 옵션 ' +
+          UI.num(r.optionCount || 0) +
+          '개 합계';
+        return (
+          '<article class="velocity-row" data-action="showRankDetail" data-goodsno="' +
+          UI.esc(r.goodsNo) +
+          '">' +
+          '<div class="velocity-rank">#' +
+          r.rank +
+          '</div>' +
+          '<div class="velocity-thumb">' +
+          img +
+          '</div>' +
+          '<div class="velocity-main">' +
+          '<p class="velocity-name">' +
+          UI.esc(r.goodsName) +
+          '</p>' +
+          '<div class="velocity-stock"><b>' +
+          from +
+          '</b><span>→</span><b>' +
+          to +
+          '</b><em>-' +
+          drop +
+          '개</em></div>' +
+          '<div class="velocity-proof">' +
+          UI.esc(evidence) +
+          '</div>' +
+          '</div>' +
+          '<div class="velocity-metric">' +
+          '<strong>분당 ' +
+          UI.num(perMin) +
+          '개</strong>' +
+          '<span>감소율 ' +
+          pct +
+          '%</span>' +
+          (r.hasToday ? '<span>오늘배송</span>' : '') +
+          '<button type="button" class="velocity-buy" data-action="buyNow" data-goodsno="' +
+          UI.esc(r.goodsNo) +
+          '" data-original-label="바로구매">바로구매</button>' +
+          '</div>' +
+          '</article>'
+        );
+      })
+      .join('');
+
+    root.innerHTML = head + '<div class="velocity-list">' + body + '</div></section>';
   },
 
   /** 목록용 실시간 조회: 매장 재고 없이 온라인만 채운 응답 */
@@ -329,9 +783,299 @@ var UI = {
       t.classList.toggle('active', t.dataset.tab === tab);
     });
     var searchSection = document.getElementById('search-section');
+    var hotSection = document.getElementById('hot-section');
     var favSection = document.getElementById('fav-section');
     if (searchSection) searchSection.style.display = tab === 'search' ? '' : 'none';
+    if (hotSection) hotSection.style.display = tab === 'hot' ? '' : 'none';
     if (favSection) favSection.style.display = tab === 'favorites' ? '' : 'none';
+  },
+
+  showHotRankingLoading: function () {
+    var root = document.getElementById('hot-rank-root');
+    if (!root) return;
+    root.innerHTML =
+      '<div class="loading hot-loading"><div class="spinner"></div><p>조회 인기템 불러오는 중...</p></div>';
+  },
+
+  renderHotRanking: function (products, state) {
+    state = state || {};
+    var root = document.getElementById('hot-rank-root');
+    if (!root) return;
+    products = products || [];
+    var estimates = state.estimates || {};
+    var purchaseLimits = state.purchaseLimits || {};
+    var sortMode =
+      state.sortMode === 'revenue' ? 'revenue' : state.sortMode === 'sales' ? 'sales' : 'view';
+    var range = state.range || (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d');
+    var metricLabel = UI.hotRangeMetricLabel(range);
+    var refreshState = state.refreshState || 'idle';
+    var isRefreshing = refreshState === 'loading';
+    var refreshMessage = state.refreshMessage || '';
+    var refreshStatusAttr = refreshMessage
+      ? ' role="status" aria-live="polite"'
+      : ' aria-hidden="true"';
+    var refreshStatusHtml =
+      '<span class="hot-refresh-status ' +
+      UI.esc(refreshState) +
+      '"' +
+      refreshStatusAttr +
+      '>' +
+      (refreshMessage ? UI.esc(refreshMessage) : '&nbsp;') +
+      '</span>';
+    var ranges = CONFIG.HOT_RANK_RANGES || {
+      '1d': { label: '24시간' },
+      '7d': { label: '7일' },
+      '30d': { label: '30일' }
+    };
+    var stockUpdatedAt = state.lastStockRunAt || state.updatedAt || '';
+    var updatedAt = stockUpdatedAt ? UI.formatRankTime(stockUpdatedAt) : '';
+    var measuredCount = Object.keys(estimates).filter(function (gn) {
+      if (!estimates[gn]) return false;
+      var dailySales =
+        estimates[gn].dailyEstimatedSales != null
+          ? estimates[gn].dailyEstimatedSales
+          : estimates[gn].drop || estimates[gn].estimatedSales || 0;
+      return Number(dailySales) > 0;
+    }).length;
+    var rangeButtons = Object.keys(ranges)
+      .map(function (key) {
+        return (
+          '<button type="button" data-action="setHotRange" data-range="' +
+          UI.esc(key) +
+          '" class="' +
+          (range === key ? 'active' : '') +
+          '">' +
+          UI.esc(ranges[key].label || key) +
+          '</button>'
+        );
+      })
+      .join('');
+
+    if (!products.length) {
+      root.innerHTML =
+        '<div class="empty-state"><p>조회 인기템을 불러오지 못했습니다</p>' +
+        '<button type="button" class="retry-search-btn btn-oy" data-action="refreshHotRanking">다시 시도</button></div>';
+      return;
+    }
+
+    var head =
+      '<section class="hot-panel">' +
+      '<div class="hot-head">' +
+      '<div><h2>🔥 조회 인기템 TOP ' +
+      UI.num(products.length) +
+      '</h2><p>' +
+      (updatedAt ? updatedAt + ' 재고수집 · ' : '') +
+      UI.esc(UI.hotRangeLabel(range)) +
+      ' 그래프 · ' +
+      UI.esc(metricLabel) +
+      ' 판매 ' +
+      UI.num(measuredCount) +
+      '개 측정</p></div>' +
+      '<div class="hot-actions">' +
+      '<div class="hot-range" role="group" aria-label="그래프 기간">' +
+      rangeButtons +
+      '</div>' +
+      '<div class="hot-sort" role="group" aria-label="인기템 정렬">' +
+      '<button type="button" data-action="setHotSort" data-sort="view" class="' +
+      (sortMode === 'view' ? 'active' : '') +
+      '">조회순</button>' +
+      '<button type="button" data-action="setHotSort" data-sort="sales" class="' +
+      (sortMode === 'sales' ? 'active' : '') +
+      '">판매량순</button>' +
+      '<button type="button" data-action="setHotSort" data-sort="revenue" class="' +
+      (sortMode === 'revenue' ? 'active' : '') +
+      '">매출순</button>' +
+      '</div>' +
+      refreshStatusHtml +
+      '<button type="button" class="velocity-refresh hot-refresh' +
+      (isRefreshing ? ' is-refreshing' : '') +
+      '" data-action="refreshHotRanking" title="새로고침" aria-label="' +
+      (isRefreshing ? '인기템 새로고침 중' : '인기템 새로고침') +
+      '"' +
+      (isRefreshing ? ' aria-busy="true" disabled' : '') +
+      '><span class="refresh-glyph">↻</span></button>' +
+      '</div>' +
+      '</div>';
+
+    var sortedProducts = products.slice();
+    if (sortMode === 'sales' || sortMode === 'revenue') {
+      sortedProducts.sort(function (a, b) {
+        var agn = String(a.goodsNo || a.goodsNumber || '');
+        var bgn = String(b.goodsNo || b.goodsNumber || '');
+        var ae = estimates[agn] || {};
+        var be = estimates[bgn] || {};
+        var ad = Number(
+          ae.dailyEstimatedSales != null ? ae.dailyEstimatedSales : ae.drop || ae.estimatedSales || 0
+        );
+        var bd = Number(
+          be.dailyEstimatedSales != null ? be.dailyEstimatedSales : be.drop || be.estimatedSales || 0
+        );
+        if (sortMode === 'revenue') {
+          var ar = Number(
+            ae.dailyEstimatedRevenue != null
+              ? ae.dailyEstimatedRevenue
+              : ae.estimatedRevenue != null
+                ? ae.estimatedRevenue
+                : ae.revenue != null
+                  ? ae.revenue
+                  : ad * (ae.price || a.price || 0)
+          );
+          var br = Number(
+            be.dailyEstimatedRevenue != null
+              ? be.dailyEstimatedRevenue
+              : be.estimatedRevenue != null
+                ? be.estimatedRevenue
+                : be.revenue != null
+                  ? be.revenue
+                  : bd * (be.price || b.price || 0)
+          );
+          if (br !== ar) return br - ar;
+        }
+        if (bd !== ad) return bd - ad;
+        return (a.rank || 9999) - (b.rank || 9999);
+      });
+    }
+
+    var body = sortedProducts
+      .map(function (p, idx) {
+        var gn = String(p.goodsNo || p.goodsNumber || '');
+        var estimate = estimates[gn];
+        var img = p.imageUrl
+          ? '<img src="' + UI.esc(p.imageUrl) + '" alt="" loading="lazy" decoding="async">'
+          : '<div class="velocity-no-img">📦</div>';
+        var rank = sortMode === 'view' ? p.rank || idx + 1 : idx + 1;
+        var viewCount = UI.num(p.viewCount || 0);
+        var purchaseLimit =
+          (estimate && estimate.purchaseLimit) || purchaseLimits[gn] || p.purchaseLimit || null;
+        var limitText = purchaseLimit
+          ? purchaseLimit.label || (purchaseLimit.limited ? '구매제한' : '제한없음')
+          : '구매제한 확인중';
+        var limitClass =
+          purchaseLimit && purchaseLimit.limited
+            ? 'hot-limit hot-limit-on'
+            : purchaseLimit && purchaseLimit.checked
+              ? 'hot-limit'
+              : 'hot-limit hot-limit-pending';
+        var chartMode =
+          sortMode === 'revenue' ? 'revenue' : sortMode === 'sales' ? 'sales' : 'view';
+        var trend =
+          estimate && estimate.rankTrends
+            ? estimate.rankTrends[chartMode] || null
+            : null;
+        var trendHtml = UI.renderRankTrendBadge(trend, chartMode);
+        var chartPoints = [];
+        if (estimate) {
+          chartPoints =
+            chartMode === 'revenue'
+              ? estimate.revenueChart || []
+              : chartMode === 'sales'
+                ? estimate.salesChart || []
+                : estimate.viewChart || [];
+        }
+        var salesBlock = '';
+        if (
+          estimate &&
+          (estimate.observationCount >= 2 ||
+            (estimate.fromTs && estimate.toTs && String(estimate.fromTs) !== String(estimate.toTs)))
+        ) {
+          var drop = estimate.drop || estimate.estimatedSales || 0;
+          var dailyDrop =
+            estimate.dailyEstimatedSales != null ? estimate.dailyEstimatedSales : drop;
+          var perHour = estimate.perHour != null ? estimate.perHour : (estimate.perMin || 0) * 60;
+          var price = Number(estimate.price || p.price || 0);
+          var revenue = Number(
+            estimate.estimatedRevenue != null
+              ? estimate.estimatedRevenue
+              : estimate.revenue != null
+                ? estimate.revenue
+                : drop * price || 0
+          );
+          var dailyRevenue =
+            estimate.dailyEstimatedRevenue != null ? Number(estimate.dailyEstimatedRevenue) : revenue;
+          var restock =
+            estimate.restockUnits > 0
+              ? '<span class="hot-restock">입고 +' +
+                UI.num(estimate.restockUnits) +
+                '개 보정</span>'
+              : '';
+          salesBlock =
+            '<div class="hot-sales hot-sales-ok"><strong>' +
+            UI.esc(metricLabel) +
+            '판매 ' +
+            UI.num(dailyDrop) +
+            '개</strong><span>' +
+            UI.esc(metricLabel) +
+            '매출 ' +
+            UI.formatWon(dailyRevenue) +
+            '</span><span>' +
+            UI.num(estimate.fromTotal) +
+            ' → ' +
+            UI.num(estimate.toTotal) +
+            ' · 시간당 ' +
+            UI.num(Math.round(perHour * 10) / 10) +
+            '개</span>' +
+            restock +
+            '</div>' +
+            UI.renderHotSparkline(chartPoints, { mode: chartMode });
+        } else {
+          var waitingText = '재고 스냅샷 누적 대기';
+          if (estimate && Number(estimate.observationCount || 0) === 1) {
+            waitingText =
+              '첫 수집 ' +
+              UI.formatRankTime(estimate.toTs || estimate.fromTs) +
+              ' · 재고 ' +
+              UI.num(estimate.toTotal || estimate.fromTotal || 0) +
+              '개 · 다음 체크 후 계산';
+          }
+          salesBlock =
+            '<div class="hot-sales"><strong>측정중</strong><span>' +
+            UI.esc(waitingText) +
+            '</span></div>' +
+            UI.renderHotSparkline(chartPoints, { mode: chartMode });
+        }
+        return (
+          '<article class="hot-row" data-action="showHotDetail" data-goodsno="' +
+          UI.esc(gn) +
+          '">' +
+          '<div class="hot-trend-slot">' +
+          trendHtml +
+          '</div>' +
+          '<div class="hot-rank">#' +
+          UI.num(rank) +
+          '</div>' +
+          '<div class="hot-thumb">' +
+          img +
+          '</div>' +
+          '<div class="hot-main">' +
+          '<p class="hot-name">' +
+          UI.esc(p.goodsName) +
+          '</p>' +
+          '<div class="hot-meta"><span>' +
+          viewCount +
+          '명이 보고있어요</span>' +
+          (sortMode !== 'view' ? '<span>조회순 #' + UI.num(p.rank || idx + 1) + '</span>' : '') +
+          (estimate && estimate.salesRank ? '<span>판매순 #' + UI.num(estimate.salesRank) + '</span>' : '') +
+          (estimate && estimate.revenueRank ? '<span>매출순 #' + UI.num(estimate.revenueRank) + '</span>' : '') +
+          '<span class="' +
+          limitClass +
+          '">' +
+          UI.esc(limitText) +
+          '</span>' +
+          '</div>' +
+          salesBlock +
+          '</div>' +
+          '<button type="button" class="velocity-buy hot-buy" data-action="buyNow" data-goodsno="' +
+          UI.esc(gn) +
+          '" data-category="' +
+          UI.esc(p.categoryNumber || '') +
+          '" data-original-label="바로구매">바로구매</button>' +
+          '</article>'
+        );
+      })
+      .join('');
+
+    root.innerHTML = head + '<div class="hot-list">' + body + '</div></section>';
+    UI.bindHotCharts(root);
   },
 
   /** 검색 그리드: 공개 캐시(stock-detail.json) 기준 온라인만 표시, 매장 뱃지는 숨김(수집 위치와 사용자 위치 불일치) */
@@ -357,6 +1101,9 @@ var UI = {
         var gn = String(p.goodsNumber || p.goodsNo || '');
         var isFav = Storage.isFavorite(gn);
         var detail = detailMap[gn];
+        if (searchListCacheMode && detail && !UI.inventoryOnlineOnly(detail)) {
+          detail = null;
+        }
         var listOnlineOnly = UI.inventoryOnlineOnly(detail);
         if (searchListCacheMode) listOnlineOnly = true;
         var catHint =
@@ -855,19 +1602,9 @@ var UI = {
       if (!gno || !pid || el.classList.contains('loading')) return;
       if (!CONFIG.REALTIME_API) return;
       el.classList.add('loading');
-      el.textContent = '🗺️ 전국 조회 중... (5~10초)';
+      el.textContent = '🗺️ 전국 조회 중...';
 
-      var allUrl =
-        CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
-        '?goodsNo=' +
-        encodeURIComponent(gno) +
-        '&productId=' +
-        encodeURIComponent(pid);
-
-      fetch(allUrl)
-        .then(function (r) {
-          return r.json();
-        })
+      UI.fetchAllStock(gno, pid)
         .then(function (d) {
           if (d.success && d.options && d.options.length > 0) {
             UI.showAllStockPanel(d);
@@ -883,6 +1620,78 @@ var UI = {
           el.classList.remove('loading');
         });
     }
+  },
+
+  fetchAllStock: function (goodsNo, productId, timeoutMs) {
+    var gno = String(goodsNo || '').trim();
+    var pid = String(productId || '').trim();
+    var key = gno + '|' + pid;
+    if (!gno || !pid || !CONFIG.REALTIME_API) {
+      return Promise.resolve({ success: false, error: 'invalid_request' });
+    }
+    if (UI._allStockCache[key]) return Promise.resolve(UI._allStockCache[key]);
+    if (UI._allStockInflight[key]) return UI._allStockInflight[key];
+
+    var allUrl =
+      CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
+      '?goodsNo=' +
+      encodeURIComponent(gno) +
+      '&productId=' +
+      encodeURIComponent(pid);
+    var controller = new AbortController();
+    var tid = setTimeout(function () {
+      controller.abort();
+    }, timeoutMs || 15000);
+
+    UI._allStockInflight[key] = fetch(allUrl, { signal: controller.signal })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        if (d && d.success && d.options && d.options.length > 0) {
+          UI._allStockCache[key] = d;
+          UI.markAllStockButtonReady(gno, pid);
+        }
+        return d;
+      })
+      .finally(function () {
+        clearTimeout(tid);
+        delete UI._allStockInflight[key];
+      });
+    return UI._allStockInflight[key];
+  },
+
+  prefetchAllStockForDetail: function (detail, goodsNo) {
+    if (!detail || !CONFIG.REALTIME_API || !detail.options || !detail.options.length) return;
+    var first = detail.options.find(function (o) {
+      return o && o.productId != null && String(o.productId).trim() !== '';
+    });
+    if (!first) return;
+    UI.fetchAllStock(goodsNo, first.productId).catch(function () {});
+  },
+
+  prefetchAllStockButton: function (btn) {
+    if (!btn || !btn.dataset) return;
+    var gno = btn.dataset.goodsno;
+    var pid = btn.dataset.productid;
+    if (!gno || !pid) return;
+    UI.fetchAllStock(gno, pid).catch(function () {});
+  },
+
+  markAllStockButtonReady: function (goodsNo, productId) {
+    var gno = String(goodsNo || '').trim();
+    var pid = String(productId || '').trim();
+    if (!gno || !pid) return;
+    document.querySelectorAll('[data-action="loadAllStockOpt"]').forEach(function (btn) {
+      if (
+        String(btn.dataset.goodsno || '') === gno &&
+        String(btn.dataset.productid || '') === pid &&
+        !btn.classList.contains('loading')
+      ) {
+        btn.dataset.prefetched = '1';
+        btn.textContent = '🗺️ 전국 재고 바로 보기';
+      }
+    });
   },
 
   _bindPopupEvents: function () {
@@ -1370,6 +2179,7 @@ var UI = {
       '" data-original-label="올리브영에서 구매 →">올리브영에서 구매 →</button></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
+    UI.prefetchAllStockForDetail(detail, goodsNo);
   },
 
   showAllStockPanel: function (detail) {
@@ -1458,9 +2268,16 @@ var UI = {
     document.querySelectorAll('.opt-tab').forEach(function (t, i) {
       t.classList.toggle('active', i === idx);
     });
+    var activePanel = null;
     document.querySelectorAll('.opt-panel').forEach(function (p, i) {
+      if (i === idx) activePanel = p;
       p.classList.toggle('active', i === idx);
     });
+    var old = document.getElementById('all-stock-panel');
+    if (old) old.remove();
+    if (activePanel) {
+      UI.prefetchAllStockButton(activePanel.querySelector('[data-action="loadAllStockOpt"]'));
+    }
   },
 
   showSyncStatus: function (msg, isError, ms) {

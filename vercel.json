@@ -7,11 +7,26 @@
     { "src": "api/oliveyoung/inventory.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/view-ranking.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/hot-ranking-history.js", "use": "@vercel/node" },
+    {
+      "src": "api/oliveyoung/hot-ranking-cron.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 800
+      }
+    },
     { "src": "api/oliveyoung/curator-redirect.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/shorten-proxy.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/landing-proxy.js", "use": "@vercel/node" },
     { "src": "api/favorites/sync.js", "use": "@vercel/node" },
     { "src": "api/kakao/geo.js", "use": "@vercel/node" }
+  ],
+  "crons": [
+    {
+      "path": "/api/oliveyoung/hot-ranking-cron",
+      "schedule": "*/15 * * * *"
+    }
   ],
   "routes": [
     {
@@ -25,6 +40,15 @@
     { "src": "/api/favorites/sync", "dest": "/api/favorites/sync.js" },
     { "src": "/api/kakao/geo", "dest": "/api/kakao/geo.js" },
     { "src": "/api/oliveyoung/stock", "dest": "/api/oliveyoung/stock.js" },
+    { "src": "/api/oliveyoung/view-ranking", "dest": "/api/oliveyoung/view-ranking.js" },
+    {
+      "src": "/api/oliveyoung/hot-ranking-history",
+      "dest": "/api/oliveyoung/hot-ranking-history.js"
+    },
+    {
+      "src": "/api/oliveyoung/hot-ranking-cron",
+      "dest": "/api/oliveyoung/hot-ranking-cron.js"
+    },
     { "src": "/api/oliveyoung/search", "dest": "/api/oliveyoung/search.js" },
     { "src": "/api/oliveyoung/inventory", "dest": "/api/oliveyoung/inventory.js" },
     { "src": "/api/oliveyoung/options", "dest": "/api/oliveyoung/options.js" },

@@ -13,6 +13,7 @@
   - 재고 수집: `node scripts/detail-stock.mjs`
   - 큐레이터 링크 생성: `node scripts/generate-curator-links.mjs`
   - linkageString 갱신: `node scripts/refresh-oy-linkage.mjs`
+ - 쿠키 human-in-the-loop 갱신: `node scripts/refresh-oy-cookie.mjs`
 
 ## 프로젝트 구조
 

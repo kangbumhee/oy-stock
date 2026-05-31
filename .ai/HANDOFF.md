@@ -27,23 +27,22 @@
 ### 마지막 작업
 
 - 날짜: 2026-04-22
-- 내용: AI 인수인계 문서 세트 추가. 직전 배포에서는 올리브영 큐레이터 토큰 후보 자동 선택 및 `utm_content` 없는 링크 생성 차단을 적용했다.
+- 내용: `scripts/refresh-oy-cookie.mjs` 및 `scripts/lib/*` 추가 — Playwright headed 로그인 후 `OY_REFRESH_COOKIE`(gh)·`OLIVEYOUNG_LINKAGE_STRING`(Vercel API) 갱신, `landing-proxy?check=1` 폴링. `linkageString`은 hex(AES)이므로 만료 비교는 복호화 후 JWT `exp` 사용.
 - 브랜치: `main`
 - 최근 배포 커밋: `a7c1078` (`fix: auto-select valid OliveYoung curator token`)
 - 작업한 파일:
+  - `scripts/refresh-oy-cookie.mjs`
+  - `scripts/lib/cookie-extractor.mjs`
+  - `scripts/lib/secret-manager.mjs`
+  - `scripts/lib/health-check.mjs`
+  - `scripts/lib/notify.mjs`
   - `CLAUDE.md`
-  - `.ai/AGENTS.md`
-  - `.ai/API_SPEC.md`
-  - `.ai/DB_SCHEMA.md`
   - `.ai/DEPLOY.md`
-  - `.ai/PROJECT_CONTEXT.md`
-  - `.ai/TROUBLESHOOTING.md`
-  - `.ai/HANDOFF.md`
   - `.env.example`
 
 ### 다음 작업
 
-- 자동 로그인으로 새 쿠키를 발급받는 기능을 설계할 경우, CAPTCHA/2FA/보안 차단 우회 없이 human-in-the-loop 방식으로만 진행한다.
+- `refresh-oy-cookie.mjs`는 로컬/self-hosted 전용으로 유지하고, GitHub-hosted 단독 워크플로에는 넣지 않는다.
 - GitHub Secrets에 최신 `OY_REFRESH_COOKIE`가 유지되는지 주기적으로 확인한다.
 - `public/js/config.js`의 하드코딩된 공개 설정을 장기적으로 환경 기반 설정으로 정리할지 검토한다.
 
@@ -60,6 +59,7 @@
 - [x] `node --check api/oliveyoung/landing-proxy.js`
 - [x] `node --check scripts/generate-curator-links.mjs`
 - [x] `node --check scripts/refresh-oy-linkage.mjs`
+- [x] `node --check scripts/refresh-oy-cookie.mjs`
 - [x] `node --check public/js/ui.js`
 - [x] 운영 점검: `https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1`
 
@@ -69,4 +69,5 @@
 |---|---|---|
 | 2026-04-22 | AI 인수인계 문서 세트 추가 | `CLAUDE.md`, `.ai/*`, `.env.example` |
 | 2026-04-22 | 큐레이터 토큰 후보 자동 선택, 무수익 링크 생성 차단, 배포 완료 | `.github/workflows/*`, `api/oliveyoung/landing-proxy.js`, `public/js/ui.js`, `scripts/*` |
+| 2026-04-22 | `refresh-oy-cookie.mjs` HIL 쿠키 갱신, lib 분리 | `scripts/refresh-oy-cookie.mjs`, `scripts/lib/*`, `CLAUDE.md`, `.ai/DEPLOY.md`, `.env.example` |
 

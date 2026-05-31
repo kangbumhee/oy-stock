@@ -173,14 +173,12 @@ async function main() {
           let options = [];
           let rawAvailableItems = [];
           let optionUploadUrl = '';
-          if (Number(gi.itemCount) > 1) {
-            const optRaw = await oyPost('/stock/stock-goods-info-option', { goodsNo: gn });
-            if (optRaw && optRaw.status === 'SUCCESS') {
-              const optInner = unwrapPayload(optRaw);
-              optionUploadUrl = optInner.optionUploadUrl || '';
-              options = optInner.goodsInfo?.availableItems || [];
-              rawAvailableItems = options.slice();
-            }
+          const optRaw = await oyPost('/stock/stock-goods-info-option', { goodsNo: gn });
+          if (optRaw && optRaw.status === 'SUCCESS') {
+            const optInner = unwrapPayload(optRaw);
+            optionUploadUrl = optInner.optionUploadUrl || '';
+            options = optInner.goodsInfo?.availableItems || [];
+            rawAvailableItems = options.slice();
           }
           if (options.length === 0) {
             options = [

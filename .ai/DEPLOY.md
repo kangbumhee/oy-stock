@@ -43,6 +43,14 @@
   - Vercel `OLIVEYOUNG_LINKAGE_STRING` 갱신
   - Vercel Deploy Hook 호출
 
+### 로컬 - Playwright로 OY_REFRESH_COOKIE 갱신 (Human-in-the-Loop)
+
+- 파일: `scripts/refresh-oy-cookie.mjs`
+- 용도: 모바일 로그인 페이지에서 ID/PW 입력 후, CAPTCHA·2FA 등은 사용자가 브라우저에서 직접 처리. 우회 자동화 없음.
+- 실행: `npx playwright install chromium` 후 `node scripts/refresh-oy-cookie.mjs`
+- 필요 환경변수: `OY_USERNAME`, `OY_PASSWORD`, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `GITHUB_REPO`(또는 `GITHUB_REPOSITORY`, `gh secret set`용), 선택 `VERCEL_TEAM_ID`, `VERCEL_DEPLOY_HOOK`, `OY_REFRESH_COOKIE`(기존 만료 비교)
+- GitHub-hosted Actions에서는 디스플레이·사람 개입이 불가하므로 **로컬 또는 self-hosted**에서만 사용한다.
+
 ### Cloud Run
 
 - 파일: `.github/workflows/deploy-server.yml`
@@ -56,6 +64,8 @@
 
 | 변수명 | 위치 | 설명 | 발급/설정 위치 |
 |---|---|---|---|
+| `OY_USERNAME` | 로컬 `.env` 권장 | `refresh-oy-cookie.mjs` 로그인 ID | 직접 설정 |
+| `OY_PASSWORD` | 로컬 `.env` 권장 | `refresh-oy-cookie.mjs` 로그인 비밀번호 | 직접 설정 |
 | `OY_REFRESH_COOKIE` | GitHub Secrets | 최신 올리브영 쿠키 전체. `linkageString` 포함 권장 | 브라우저 DevTools |
 | `OY_CURATOR_COOKIE` | GitHub Secrets, 선택 | 큐레이터 페이지용 쿠키 후보 | 브라우저 DevTools |
 | `OY_SESSION_ID` | GitHub Secrets, 선택 | `OYSESSIONID` 단독 보관 시 사용 | 브라우저 쿠키 |
