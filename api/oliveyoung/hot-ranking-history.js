@@ -6,6 +6,7 @@ const RANGE_HOURS = {
   '30d': 24 * 30
 };
 const MAX_RANGE_HOURS = 24 * 30;
+const HOT_RANK_CACHE_CONTROL = 'public, s-maxage=45, stale-while-revalidate=120';
 
 function rangeHours(q) {
   const key = String((q && q.range) || '').toLowerCase();
@@ -17,6 +18,67 @@ function rangeHours(q) {
   );
   const match = Object.keys(RANGE_HOURS).find((k) => RANGE_HOURS[k] === hours);
   return { range: match || 'custom', hours };
+}
+
+function chartPointLimit(range) {
+  if (range === '1d') return 36;
+  if (range === '7d') return 48;
+  return 60;
+}
+
+function compactChartPoints(points, mode) {
+  return (Array.isArray(points) ? points : []).map((p) => {
+    const row = {
+      ts: p.ts,
+      rank: p.rank,
+      prevRank: p.prevRank,
+      rankLabel: p.rankLabel
+    };
+    if (mode === 'view') {
+      row.rankDelta = p.rankDelta;
+    } else if (mode === 'sales') {
+      row.sales = p.sales;
+      row.salesDelta = p.salesDelta;
+    } else if (mode === 'revenue') {
+      row.revenue = p.revenue;
+      row.revenueDelta = p.revenueDelta;
+    }
+    return row;
+  });
+}
+
+function compactEstimate(row) {
+  return {
+    goodsNo: row.goodsNo,
+    price: row.price || 0,
+    originalPrice: row.originalPrice || 0,
+    discountRate: row.discountRate || 0,
+    estimatedSales: row.estimatedSales || 0,
+    estimatedRevenue: row.estimatedRevenue || 0,
+    windowEstimatedSales: row.windowEstimatedSales || 0,
+    windowEstimatedRevenue: row.windowEstimatedRevenue || 0,
+    dailyEstimatedSales: row.dailyEstimatedSales || 0,
+    dailyEstimatedRevenue: row.dailyEstimatedRevenue || 0,
+    fromTotal: row.fromTotal || 0,
+    toTotal: row.toTotal || 0,
+    perHour: row.perHour || 0,
+    observationCount: row.observationCount || 0,
+    dropEvents: row.dropEvents || 0,
+    restockUnits: row.restockUnits || 0,
+    restockEvents: row.restockEvents || 0,
+    restockAdjusted: !!row.restockAdjusted,
+    fromTs: row.fromTs || null,
+    toTs: row.toTs || null,
+    optionCount: row.optionCount || 0,
+    hasToday: !!row.hasToday,
+    purchaseLimit: row.purchaseLimit || null,
+    salesRank: row.salesRank,
+    revenueRank: row.revenueRank,
+    rankTrends: row.rankTrends || {},
+    viewChart: compactChartPoints(row.viewChart, 'view'),
+    salesChart: compactChartPoints(row.salesChart, 'sales'),
+    revenueChart: compactChartPoints(row.revenueChart, 'revenue')
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -34,7 +96,7 @@ module.exports = async function handler(req, res) {
   try {
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       const ranking = await fetchViewRanking(size);
-      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Cache-Control', HOT_RANK_CACHE_CONTROL);
       res.status(200).json({
         success: true,
         fallback: true,
@@ -52,10 +114,9 @@ module.exports = async function handler(req, res) {
     }
 
     const store = await readStore();
-    const estimates = computeEstimates(store, { windowMs });
-    const estimateMap = {};
-    estimates.forEach((row) => {
-      estimateMap[row.goodsNo] = row;
+    const estimates = computeEstimates(store, {
+      windowMs,
+      maxChartPoints: chartPointLimit(range.range)
     });
     const products = Object.values((store && store.products) || {})
       .sort((a, b) => (a.latestRank || 9999) - (b.latestRank || 9999))
@@ -77,10 +138,15 @@ module.exports = async function handler(req, res) {
         lastStockedAt: item.lastStockedAt || null,
         source: 'hot-ranking-history'
       }));
+    const productGoods = new Set(products.map((item) => item.goodsNo).filter(Boolean));
+    const estimateMap = {};
+    estimates.forEach((row) => {
+      if (productGoods.has(row.goodsNo)) estimateMap[row.goodsNo] = compactEstimate(row);
+    });
 
     if (!products.length) {
       const ranking = await fetchViewRanking(size);
-      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Cache-Control', HOT_RANK_CACHE_CONTROL);
       res.status(200).json({
         success: true,
         fallback: true,
@@ -97,7 +163,7 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', HOT_RANK_CACHE_CONTROL);
     res.status(200).json({
       success: true,
       data: {

@@ -13,8 +13,11 @@ const DEFAULT_LNG = process.env.HOT_RANK_LNG || '126.7156';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 const COLLECTION_STALE_GRACE_MS = 5 * MINUTE_MS;
-const PRIORITY_SALES_LIMIT = 30;
-const PRIORITY_REVENUE_LIMIT = 30;
+const DEFAULT_BUSY_INTERVAL_MINUTES = 30;
+const DEFAULT_QUIET_INTERVAL_MINUTES = 60;
+const DEFAULT_PRIORITY_SALES_LIMIT = 20;
+const DEFAULT_PRIORITY_REVENUE_LIMIT = 20;
+const DEFAULT_RETRY_PER_RUN_LIMIT = 12;
 
 function parseIntBounded(value, fallback, min, max) {
   const n = Number.parseInt(String(value == null ? fallback : value), 10);
@@ -287,6 +290,18 @@ function markPriority(map, row, type, rank) {
 function buildCollectionPriorityMap(store) {
   const map = {};
   const rows = computeEstimates(store, { windowMs: DAY_MS, maxChartPoints: 12 });
+  const salesLimit = parseIntBounded(
+    process.env.HOT_RANK_PRIORITY_SALES_LIMIT,
+    DEFAULT_PRIORITY_SALES_LIMIT,
+    0,
+    100
+  );
+  const revenueLimit = parseIntBounded(
+    process.env.HOT_RANK_PRIORITY_REVENUE_LIMIT,
+    DEFAULT_PRIORITY_REVENUE_LIMIT,
+    0,
+    100
+  );
 
   rows
     .filter((row) => Number(row.dailyEstimatedSales) > 0)
@@ -297,7 +312,7 @@ function buildCollectionPriorityMap(store) {
       }
       return (a.rank || 9999) - (b.rank || 9999);
     })
-    .slice(0, PRIORITY_SALES_LIMIT)
+    .slice(0, salesLimit)
     .forEach((row, idx) => markPriority(map, row, 'sales', idx + 1));
 
   rows
@@ -312,7 +327,7 @@ function buildCollectionPriorityMap(store) {
       }
       return (a.rank || 9999) - (b.rank || 9999);
     })
-    .slice(0, PRIORITY_REVENUE_LIMIT)
+    .slice(0, revenueLimit)
     .forEach((row, idx) => markPriority(map, row, 'revenue', idx + 1));
 
   return map;
@@ -391,6 +406,14 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
   const storeProducts = (store && store.products) || {};
   const priorityMap = buildCollectionPriorityMap(store);
   const nowMs = (now instanceof Date ? now : new Date()).getTime();
+  const retryLimit = parseIntBounded(
+    opts.retryLimit == null ? process.env.HOT_RANK_RETRY_PER_RUN_LIMIT : opts.retryLimit,
+    DEFAULT_RETRY_PER_RUN_LIMIT,
+    0,
+    50
+  );
+  let retrySelectedCount = 0;
+  let retrySkippedCount = 0;
 
   function add(product, plan) {
     const row = Object.assign({}, product, {
@@ -408,11 +431,26 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
     if (product.goodsNo) currentGoods.add(product.goodsNo);
     const priority = product.goodsNo ? priorityMap[product.goodsNo] : null;
     let plan = rankCollectionPlan(rank, slotIndex, priority);
-    if (!plan.due && isStaleForPlan(storeProducts[product.goodsNo], plan, decision, nowMs)) {
-      plan = staleRetryPlan(plan);
+    const staleRetryDue =
+      !plan.due && isStaleForPlan(storeProducts[product.goodsNo], plan, decision, nowMs);
+    if (staleRetryDue) {
+      if (retrySelectedCount < retryLimit) {
+        plan = staleRetryPlan(plan);
+        retrySelectedCount += 1;
+      } else {
+        retrySkippedCount += 1;
+      }
     }
     if (plan.due) add(product, plan);
-    else skipped.push({ goodsNo: product.goodsNo, rank, tier: plan.tier, everyRuns: plan.everyRuns });
+    else {
+      skipped.push({
+        goodsNo: product.goodsNo,
+        rank,
+        tier: plan.tier,
+        everyRuns: plan.everyRuns,
+        staleRetryCapped: !!staleRetryDue
+      });
+    }
   });
 
   const outOfTopLimit = parseIntBounded(
@@ -447,14 +485,21 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
     selectedCount: selected.length,
     skippedRankingCount: skipped.length,
     outOfTopSelectedCount: outOfTop.length,
+    retrySelectedCount,
+    retrySkippedCount,
+    retryLimit,
     tierCounts,
     rules: [
-      '1-30 every run',
-      'sales/revenue top 30 every run',
+      '1-30 every scheduled run',
+      'sales/revenue top ' +
+        parseIntBounded(process.env.HOT_RANK_PRIORITY_SALES_LIMIT, DEFAULT_PRIORITY_SALES_LIMIT, 0, 100) +
+        '/' +
+        parseIntBounded(process.env.HOT_RANK_PRIORITY_REVENUE_LIMIT, DEFAULT_PRIORITY_REVENUE_LIMIT, 0, 100) +
+        ' every scheduled run',
       '31-60 every 2 runs',
       '61-90 every 3 runs',
       '91-100 every 4 runs',
-      'stale or failed stock snapshots retry on the next run',
+      'stale or failed stock snapshots retry up to ' + retryLimit + ' products per run',
       'out of top 100 once per KST day'
     ]
   };
@@ -1048,6 +1093,8 @@ function mergeRunIntoStore(store, ranking, stocks, meta) {
     tierCounts: meta && meta.tierCounts,
     skippedRankingCount: meta && meta.skippedRankingCount,
     outOfTopSelectedCount: meta && meta.outOfTopSelectedCount,
+    retrySelectedCount: meta && meta.retrySelectedCount,
+    retrySkippedCount: meta && meta.retrySkippedCount,
     durationMs: meta && meta.durationMs
   });
   pruneStore(store, nowMs);
@@ -1205,11 +1252,24 @@ function getScheduleDecision(date) {
   const kst = kstParts(date || new Date());
   const windows = parseBusyWindows(process.env.HOT_RANK_BUSY_WINDOWS_KST);
   const busy = isBusyHour(kst.hour, windows);
-  const shouldRun = busy || kst.minute === 0;
+  const busyInterval = parseIntBounded(
+    process.env.HOT_RANK_BUSY_INTERVAL_MINUTES,
+    DEFAULT_BUSY_INTERVAL_MINUTES,
+    15,
+    60
+  );
+  const quietInterval = parseIntBounded(
+    process.env.HOT_RANK_QUIET_INTERVAL_MINUTES,
+    DEFAULT_QUIET_INTERVAL_MINUTES,
+    30,
+    180
+  );
+  const intervalMinutes = busy ? busyInterval : quietInterval;
+  const shouldRun = kst.minute % intervalMinutes === 0;
   return {
     shouldRun,
-    mode: busy ? 'busy-15m' : 'quiet-1h',
-    intervalMinutes: busy ? 15 : 60,
+    mode: busy ? 'busy-' + busyInterval + 'm' : 'quiet-' + quietInterval + 'm',
+    intervalMinutes,
     kst,
     busyWindows: windows
       .map((w) => String(w.start).padStart(2, '0') + '-' + String(w.end).padStart(2, '0'))
@@ -1229,7 +1289,7 @@ async function runCollector(opts) {
     return {
       success: true,
       skipped: true,
-      reason: 'quiet window: hourly collection only',
+      reason: 'waiting for scheduled collection interval',
       schedule: decision
     };
   }
@@ -1299,10 +1359,11 @@ async function runCollector(opts) {
     tierCounts: {}
   };
   let stocks = [];
+  const busyMode = decision.mode && decision.mode.indexOf('busy-') === 0;
 
   if (!opts.skipStock && legacyOverride) {
     const defaultStockLimit =
-      decision.mode === 'busy-15m'
+      busyMode
         ? parseIntBounded(process.env.HOT_RANK_BUSY_STOCK_LIMIT, size, 1, size)
         : parseIntBounded(process.env.HOT_RANK_QUIET_STOCK_LIMIT, size, 1, size);
     stockLimit =
@@ -1310,8 +1371,8 @@ async function runCollector(opts) {
         ? defaultStockLimit
         : parseIntBounded(opts.stockLimit, defaultStockLimit, 1, size);
     const slot =
-      decision.mode === 'busy-15m'
-        ? Math.floor(decision.kst.minute / 15)
+      busyMode
+        ? Math.floor(decision.kst.minute / Math.max(1, decision.intervalMinutes || 30))
         : decision.kst.hour % Math.max(1, Math.ceil(size / stockLimit));
     stockOffset =
       opts.stockOffset == null
@@ -1389,6 +1450,8 @@ async function runCollector(opts) {
     tierCounts: collectionPlan.tierCounts,
     skippedRankingCount: collectionPlan.skippedRankingCount,
     outOfTopSelectedCount: collectionPlan.outOfTopSelectedCount,
+    retrySelectedCount: collectionPlan.retrySelectedCount,
+    retrySkippedCount: collectionPlan.retrySkippedCount,
     durationMs: Date.now() - started
   });
 
@@ -1409,6 +1472,9 @@ async function runCollector(opts) {
       selectedCount: collectionPlan.selectedCount,
       skippedRankingCount: collectionPlan.skippedRankingCount,
       outOfTopSelectedCount: collectionPlan.outOfTopSelectedCount,
+      retrySelectedCount: collectionPlan.retrySelectedCount,
+      retrySkippedCount: collectionPlan.retrySkippedCount,
+      retryLimit: collectionPlan.retryLimit,
       tierCounts: collectionPlan.tierCounts,
       rules: collectionPlan.rules
     },

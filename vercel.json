@@ -25,7 +25,7 @@
   "crons": [
     {
       "path": "/api/oliveyoung/hot-ranking-cron",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/30 * * * *"
     }
   ],
   "routes": [
