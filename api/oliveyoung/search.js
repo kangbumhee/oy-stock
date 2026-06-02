@@ -8,6 +8,7 @@ const searchCache = new Map();
 const PRODUCTS_TIMEOUT_MS = 4500;
 const LOCAL_DETAIL_CACHE_TTL_MS = 60 * 1000;
 const localDetailCache = { ts: 0, data: null };
+const localVendorCache = { ts: 0, data: null };
 const COMMON_KEYWORD_CORRECTIONS = {
   '여뮤즈': '어뮤즈',
   '케일플러스': '케일',
@@ -54,6 +55,18 @@ function normalizeText(v) {
     .toLowerCase()
     .replace(/\s+/g, '')
     .trim();
+}
+
+function isVendorDeliveryProduct(product) {
+  const goodsNo = String(
+    (product && (product.goodsNo || product.goodsNumber)) || ''
+  ).trim();
+  return (
+    !!(product && product.vendorDelivery) ||
+    product && product.inventoryScope === 'vendor' ||
+    product && product.stockStatus === 'vendor_delivery' ||
+    /^B\d+/i.test(goodsNo)
+  );
 }
 
 function parseSize(size) {
@@ -130,6 +143,131 @@ async function loadLocalDetailData() {
   localDetailCache.ts = now;
   localDetailCache.data = parsed;
   return parsed;
+}
+
+async function loadVendorSupplementData() {
+  const now = Date.now();
+  if (localVendorCache.data && now - localVendorCache.ts < LOCAL_DETAIL_CACHE_TTL_MS) {
+    return localVendorCache.data;
+  }
+
+  const candidatePaths = [
+    path.join(process.cwd(), 'public', 'data', 'vendor-products.json'),
+    path.join(__dirname, '..', '..', 'public', 'data', 'vendor-products.json')
+  ];
+
+  for (const p of candidatePaths) {
+    try {
+      const raw = await fs.readFile(p, 'utf8');
+      const parsed = JSON.parse(raw);
+      localVendorCache.ts = now;
+      localVendorCache.data = parsed;
+      return parsed;
+    } catch (_) {}
+  }
+
+  localVendorCache.ts = now;
+  localVendorCache.data = { products: [] };
+  return localVendorCache.data;
+}
+
+function productMatchesKeyword(product, keyword) {
+  const kw = normalizeText(keyword);
+  if (!kw) return true;
+  const fields = [
+    product && product.goodsNo,
+    product && product.goodsNumber,
+    product && product.goodsName,
+    product && product.brandName,
+    product && product.source
+  ];
+  (Array.isArray(product && product.keywordAliases) ? product.keywordAliases : []).forEach((v) =>
+    fields.push(v)
+  );
+  return fields.some((v) => normalizeText(v).includes(kw));
+}
+
+function normalizeProduct(product) {
+  const goodsNo = String(
+    (product && (product.goodsNo || product.goodsNumber)) || ''
+  ).trim();
+  if (!goodsNo) return null;
+  const price = Number(product.priceToPay || product.price || product.salePrice || 0);
+  const original = Number(product.originalPrice || product.normalPrice || price || 0);
+  return Object.assign({}, product, {
+    goodsNo,
+    goodsNumber: goodsNo,
+    goodsName: String(product.goodsName || product.name || goodsNo),
+    imageUrl: product.imageUrl || product.thumbnail || '',
+    priceToPay: price,
+    originalPrice: original,
+    discountRate:
+      product.discountRate != null
+        ? Number(product.discountRate) || 0
+        : original > price && price > 0
+          ? Math.round((1 - price / original) * 100)
+          : 0
+  });
+}
+
+function buildUnifiedPayload(products, keyword, source, updatedAt, message) {
+  const normalized = products.map(normalizeProduct).filter(Boolean);
+  return {
+    success: true,
+    fallback: source !== 'products-primary',
+    message,
+    data: {
+      keyword: String(keyword || ''),
+      totalCount: normalized.length,
+      nextPage: false,
+      count: normalized.length,
+      products: normalized,
+      inventory: {
+        totalCount: normalized.length,
+        products: normalized
+      },
+      source,
+      updatedAt: updatedAt || null
+    }
+  };
+}
+
+async function getVendorSupplementMatches(keyword) {
+  const supplement = await loadVendorSupplementData();
+  const rows = Array.isArray(supplement && supplement.products) ? supplement.products : [];
+  return rows.filter((p) => productMatchesKeyword(p, keyword)).map((p) =>
+    Object.assign({}, p, {
+      source: p.source || 'oliveyoung-official-search-supplement',
+      vendorDelivery: true,
+      inventoryScope: 'vendor',
+      stockStatus: 'vendor_delivery'
+    })
+  );
+}
+
+function mergeSearchProducts(primaryProducts, supplementProducts, keyword, size) {
+  const limit = parseSize(size);
+  const merged = [];
+  const seen = new Set();
+
+  function push(product) {
+    const normalized = normalizeProduct(product);
+    if (!normalized) return;
+    const key = normalized.goodsNumber || normalized.goodsNo;
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(normalized);
+  }
+
+  supplementProducts.forEach(push);
+  primaryProducts
+    .filter((p) => {
+      if (!supplementProducts.length) return true;
+      return isVendorDeliveryProduct(p) || productMatchesKeyword(p, keyword);
+    })
+    .forEach(push);
+
+  return merged.slice(0, limit);
 }
 
 function buildFallbackPayloadFromDetail(detail, keyword, size) {
@@ -254,23 +392,61 @@ module.exports = async function handler(req, res) {
 
   try {
     const productsResult = await fetchUpstreamProducts(queryKeyword, size);
-    const productCount = getProducts(productsResult && productsResult.parsed).length;
+    const primaryProducts = getProducts(productsResult && productsResult.parsed);
+    const productCount = primaryProducts.length;
+    const supplementProducts = await getVendorSupplementMatches(queryKeyword);
 
     if (
       productsResult &&
       productsResult.status < 500 &&
       productsResult.parsed &&
       productsResult.parsed.success !== false &&
-      productCount > 0
+      (productCount > 0 || supplementProducts.length > 0)
     ) {
-      const body = JSON.stringify(productsResult.parsed);
+      const mergedProducts = mergeSearchProducts(primaryProducts, supplementProducts, queryKeyword, size);
+      const body = supplementProducts.length
+        ? JSON.stringify(
+            buildUnifiedPayload(
+              mergedProducts,
+              queryKeyword,
+              'products-primary+vendor-supplement',
+              productsResult.parsed &&
+                productsResult.parsed.data &&
+                productsResult.parsed.data.updatedAt,
+              '업체배송 상품은 실시간 재고 대상이 아니어서 상품 정보만 표시합니다.'
+            )
+          )
+        : JSON.stringify(productsResult.parsed);
       pruneSearchCache();
       searchCache.set(ck, { body, status: 200, ts: Date.now() });
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('X-Cache', 'MISS');
-      res.setHeader('X-Search-Source', 'products-primary');
+      res.setHeader(
+        'X-Search-Source',
+        supplementProducts.length ? 'products-primary+vendor-supplement' : 'products-primary'
+      );
       res.end(body);
+      return;
+    }
+
+    if (supplementProducts.length > 0) {
+      const supplementBody = JSON.stringify(
+        buildUnifiedPayload(
+          mergeSearchProducts([], supplementProducts, queryKeyword, size),
+          queryKeyword,
+          'vendor-supplement',
+          null,
+          '업체배송 상품은 실시간 재고 대상이 아니어서 상품 정보만 표시합니다.'
+        )
+      );
+      pruneSearchCache();
+      searchCache.set(ck, { body: supplementBody, status: 200, ts: Date.now() });
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('X-Cache', 'MISS');
+      res.setHeader('X-Search-Source', 'vendor-supplement');
+      res.end(supplementBody);
       return;
     }
 
@@ -286,6 +462,7 @@ module.exports = async function handler(req, res) {
       res.end(fallbackBody);
       return;
     }
+
     const emptyBody = JSON.stringify({
       success: true,
       message:

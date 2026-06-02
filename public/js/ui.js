@@ -671,6 +671,17 @@ var UI = {
     );
   },
 
+  isVendorDeliveryProduct: function (item) {
+    var goodsNo = String((item && (item.goodsNo || item.goodsNumber)) || '').trim();
+    return !!(
+      item &&
+      (item.vendorDelivery ||
+        item.inventoryScope === 'vendor' ||
+        item.stockStatus === 'vendor_delivery' ||
+        /^B\d+/i.test(goodsNo))
+    );
+  },
+
   /**
    * 검색 API JSON → 상품 배열.
    * 실제 응답: data.inventory = { totalCount, products: [...], ... } (배열은 .products)
@@ -1104,6 +1115,7 @@ var UI = {
         if (searchListCacheMode && detail && !UI.inventoryOnlineOnly(detail)) {
           detail = null;
         }
+        var vendorDelivery = UI.isVendorDeliveryProduct(p) || UI.isVendorDeliveryProduct(detail);
         var listOnlineOnly = UI.inventoryOnlineOnly(detail);
         if (searchListCacheMode) listOnlineOnly = true;
         var catHint =
@@ -1120,7 +1132,10 @@ var UI = {
         var badges = '';
         var onlineBadge = '';
         var optionBtn = '';
-        if (detail) {
+        if (vendorDelivery) {
+          badges = '<span class="badge bg-purple">업체배송</span>';
+          onlineBadge = '<span class="badge bg-gray">실시간 재고 제외</span>';
+        } else if (detail) {
           if (detail.status === 'discontinued') {
             badges = '<span class="badge bg-red">단종</span>';
           } else if (!listOnlineOnly) {
@@ -1268,7 +1283,10 @@ var UI = {
       var badges = '';
       var onlineBadge = '';
       var optionBtn = '';
-      if (detail.status === 'discontinued') {
+      if (UI.isVendorDeliveryProduct(detail)) {
+        badges = '<span class="badge bg-purple">업체배송</span>';
+        onlineBadge = '<span class="badge bg-gray">실시간 재고 제외</span>';
+      } else if (detail.status === 'discontinued') {
         badges = '<span class="badge bg-red">단종</span>';
       } else if (!listOnlineOnly) {
         if (detail.status === 'soldout') {
@@ -1411,6 +1429,7 @@ var UI = {
         var gid = String(f.goodsNo || f.goodsNumber || '');
         var detail = detailMap[gid];
         var listOnlineOnlyF = UI.inventoryOnlineOnly(detail);
+        var vendorDeliveryF = UI.isVendorDeliveryProduct(f) || UI.isVendorDeliveryProduct(detail);
         var favCat =
           f.categoryNumber != null && String(f.categoryNumber).trim() !== ''
             ? String(f.categoryNumber).trim()
@@ -1418,7 +1437,10 @@ var UI = {
         var badges = '';
         var onlineBadge = '';
         var optionBtn = '';
-        if (detail) {
+        if (vendorDeliveryF) {
+          badges = '<span class="badge bg-purple">업체배송</span>';
+          onlineBadge = '<span class="badge bg-gray">실시간 재고 제외</span>';
+        } else if (detail) {
           if (detail.status === 'discontinued') {
             badges = '<span class="badge bg-red">단종</span>';
           } else if (!listOnlineOnlyF) {
@@ -1993,6 +2015,8 @@ var UI = {
         ? '전국 매장 조회'
         : detail.source === 'live-online'
           ? '온라인만(목록)'
+          : detail.inventoryScope === 'vendor' || detail.source === 'vendor-delivery'
+            ? '업체배송 상품'
           : detail.source === 'live'
             ? '실시간 조회'
             : '수집 데이터';
@@ -2000,7 +2024,10 @@ var UI = {
       ? '<div class="popup-cache-info">📦 ' + UI.esc(timeStr) + ' · ' + cacheSuffix + '</div>'
       : '';
     var statusBadge = '';
-    if (detail.status === 'discontinued')
+    if (detail.inventoryScope === 'vendor' || detail.source === 'vendor-delivery')
+      statusBadge =
+        '<div class="popup-badge bg-purple">업체배송 상품입니다. 매장·올영창고 실시간 재고 조회 대상이 아니며 올리브영 상품 페이지에서 구매 가능 여부를 확인합니다.</div>';
+    else if (detail.status === 'discontinued')
       statusBadge = '<div class="popup-badge bg-red-light">⛔ 단종/삭제된 상품입니다</div>';
     else if (detail.status === 'soldout')
       statusBadge = '<div class="popup-badge bg-orange-light">🔴 주변 매장 전체 품절</div>';
@@ -2133,6 +2160,10 @@ var UI = {
         );
       })
       .join('');
+    if (!optPanels && (detail.inventoryScope === 'vendor' || detail.source === 'vendor-delivery')) {
+      optPanels =
+        '<div class="no-store">업체배송 상품이라 주변 매장/온라인 수량은 표시하지 않습니다.</div>';
+    }
 
     var favBtn =
       '<button type="button" class="popup-fav-btn' +

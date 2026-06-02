@@ -346,6 +346,10 @@ var Storage = {
       price: product.price || product.priceToPay || 0,
       originalPrice: product.originalPrice || 0,
       discountRate: product.discountRate || 0,
+      categoryNumber: product.categoryNumber || '',
+      vendorDelivery: !!product.vendorDelivery,
+      inventoryScope: product.inventoryScope || '',
+      stockStatus: product.stockStatus || '',
       addedAt: new Date().toISOString()
     });
     this.setFavorites(favs);

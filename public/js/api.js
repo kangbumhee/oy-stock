@@ -139,15 +139,19 @@ var API = {
       '&size=' +
       encodeURIComponent(size || CONFIG.SEARCH_SIZE);
 
-    return API._fetchWithTimeout(directUrl, 2500, opts.signal).then(function (r) {
-      if (r.ok)
-        return r.json().then(function (data) {
-          return saveAndReturn(data);
+    return fetchViaProxy().catch(function (proxyErr) {
+      if (opts.signal && opts.signal.aborted) throw proxyErr;
+      return API._fetchWithTimeout(directUrl, 2500, opts.signal)
+        .then(function (r) {
+          if (r.ok)
+            return r.json().then(function (data) {
+              return saveAndReturn(data);
+            });
+          throw new Error('direct search ' + r.status);
+        })
+        .catch(function () {
+          throw proxyErr;
         });
-      throw new Error('direct search ' + r.status);
-    }).catch(function (err) {
-      if (opts.signal && opts.signal.aborted) throw err;
-      return fetchViaProxy();
     });
   },
 

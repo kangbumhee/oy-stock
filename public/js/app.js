@@ -705,6 +705,32 @@ var App = {
     };
   },
 
+  _isVendorDeliveryProduct: function (item) {
+    return UI.isVendorDeliveryProduct(item);
+  },
+
+  _vendorDetailFromProduct: function (product) {
+    var gn = String((product && (product.goodsNumber || product.goodsNo)) || '').trim();
+    if (!gn) return null;
+    return {
+      success: true,
+      goodsNo: gn,
+      goodsNumber: gn,
+      goodsName: product.goodsName || gn,
+      thumbnail: product.imageUrl || product.thumbnail || '',
+      price: product.priceToPay || product.price || 0,
+      originalPrice: product.originalPrice || product.priceToPay || product.price || 0,
+      discountRate: product.discountRate || 0,
+      categoryNumber: product.categoryNumber || '',
+      status: 'vendor_delivery',
+      source: 'vendor-delivery',
+      inventoryScope: 'vendor',
+      vendorDelivery: true,
+      options: [],
+      updatedAt: new Date().toISOString()
+    };
+  },
+
   _rememberOnlineStock: function (goodsNo, detail) {
     var snapshot = this._onlineOnlySnapshot(detail);
     if (!snapshot) return null;
@@ -822,6 +848,9 @@ var App = {
   _runOnlineEnrichBatches: async function (items, batchSignal, opts) {
     opts = opts || {};
     var self = this;
+    items = (items || []).filter(function (item) {
+      return !self._isVendorDeliveryProduct(item);
+    });
     var batchSize = parseInt(String(opts.batchSize || CONFIG.SEARCH_ONLINE_BATCH_SIZE || 4), 10);
     if (!isFinite(batchSize) || batchSize < 1) batchSize = 4;
     var delayMs = Number(opts.delayMs || CONFIG.SEARCH_ONLINE_BATCH_DELAY_MS || 80);
@@ -987,14 +1016,17 @@ var App = {
 
     var limit = parseInt(String(CONFIG.SEARCH_ONLINE_ENRICH_LIMIT || 20), 10);
     if (!isFinite(limit) || limit < 1) limit = 20;
+    var self = this;
     var items = products
       .filter(function (p) {
         return String((p && (p.goodsNumber || p.goodsNo)) || '').trim() !== '';
       })
+      .filter(function (p) {
+        return !self._isVendorDeliveryProduct(p);
+      })
       .slice(0, limit);
     if (!items.length) return;
 
-    var self = this;
     self._applyCachedOnlineBadges(items);
     self.onlineEnrichSource = 'search';
     self.pendingBatch = [];
@@ -1131,7 +1163,11 @@ var App = {
       imageUrl: p.imageUrl || '',
       price: p.priceToPay || 0,
       originalPrice: p.originalPrice || 0,
-      discountRate: p.discountRate || 0
+      discountRate: p.discountRate || 0,
+      categoryNumber: p.categoryNumber || '',
+      vendorDelivery: !!p.vendorDelivery,
+      inventoryScope: p.inventoryScope || '',
+      stockStatus: p.stockStatus || ''
     };
     var result = Storage.toggleFavorite(product);
     this._updateFavCount();
@@ -1218,6 +1254,11 @@ var App = {
     if (!gn) return;
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
+    if (this._isVendorDeliveryProduct(p) || this._isVendorDeliveryProduct(detail)) {
+      var vendorDetail = detail && this._isVendorDeliveryProduct(detail) ? detail : this._vendorDetailFromProduct(p);
+      if (vendorDetail) UI.showDetailPopup(vendorDetail, gn);
+      return;
+    }
     var hasStoreScope =
       detail &&
       detail.options &&
@@ -1290,6 +1331,14 @@ var App = {
     var name = fav ? fav.goodsName : gn;
     var detail =
       this.detailData && this.detailData.products ? this.detailData.products[gn] : null;
+    if (this._isVendorDeliveryProduct(fav) || this._isVendorDeliveryProduct(detail)) {
+      var favVendorDetail =
+        detail && this._isVendorDeliveryProduct(detail)
+          ? detail
+          : this._vendorDetailFromProduct(fav || { goodsNo: gn, goodsName: name });
+      if (favVendorDetail) UI.showDetailPopup(favVendorDetail, gn);
+      return;
+    }
     var hasStoreScopeFav =
       detail &&
       detail.options &&
