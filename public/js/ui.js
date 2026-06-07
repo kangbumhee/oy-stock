@@ -831,6 +831,7 @@ var UI = {
     var category = state.category || (CONFIG.HOT_RANK_DEFAULT_CATEGORY || '');
     var categoryLabel = UI.hotCategoryLabel(category);
     var source = state.source || '';
+    var includedMeasuredCount = Number(state.includedMeasuredCount || 0);
     var refreshState = state.refreshState || 'idle';
     var isRefreshing = refreshState === 'loading';
     var refreshMessage = state.refreshMessage || '';
@@ -863,14 +864,24 @@ var UI = {
     }).length;
     var summaryParts = [];
     if (updatedAt) summaryParts.push(updatedAt + ' 마지막 수집');
-    summaryParts.push(category ? UI.esc(categoryLabel) + ' TOP100' : '전체 TOP100');
+    summaryParts.push(
+      category
+        ? UI.esc(categoryLabel) + ' TOP100'
+        : includedMeasuredCount > 0
+          ? '전체 TOP100+측정상품'
+          : '전체 TOP100'
+    );
     summaryParts.push('목록 하루 1회');
     summaryParts.push('재고 하루 4회 · 250개 이하');
     summaryParts.push('판매/매출 24시간 기준');
     summaryParts.push('판매측정 ' + UI.num(measuredCount) + '개');
     var basisNote = category
       ? '카테고리 목록은 하루 1회 저장, 재고·판매량·매출은 전체 TOP100 또는 카테고리 상위권 선별 상품만 측정'
-      : '카테고리별 TOP100은 하루 1회 저장, 재고 스냅샷은 03·09·15·21시 선별 수집';
+      : includedMeasuredCount > 0
+        ? '판매량·매출순은 전체 조회 TOP100에 카테고리에서 측정된 판매/매출 상품 ' +
+          UI.num(includedMeasuredCount) +
+          '개를 합쳐 계산'
+        : '카테고리별 TOP100은 하루 1회 저장, 재고 스냅샷은 03·09·15·21시 선별 수집';
     if (source === 'oliveyoung-view-rank' || source === 'oliveyoung-view-rank-category') {
       basisNote = category
         ? '저장된 카테고리 랭킹이 없어 임시 조회순을 표시 중입니다. 판매량·매출은 다음 수집 후 반영됩니다'

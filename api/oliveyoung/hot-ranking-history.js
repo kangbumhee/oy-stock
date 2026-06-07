@@ -7,6 +7,7 @@ const RANGE_HOURS = {
 };
 const MAX_RANGE_HOURS = 24 * 30;
 const HOT_RANK_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=21600';
+const DEFAULT_OVERALL_MEASURED_LIMIT = 200;
 
 function parseCategory(value) {
   const raw = String(value || '').trim();
@@ -90,6 +91,83 @@ function compactEstimate(row, dayRow) {
   };
 }
 
+function parseLimit(value, fallback, min, max) {
+  const n = Number.parseInt(String(value == null ? '' : value), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function productFromRanking(product, stored, source, categoryFallback) {
+  const row = product || {};
+  const saved = stored || {};
+  return {
+    rank: row.rank,
+    goodsNo: row.goodsNo,
+    goodsNumber: row.goodsNo,
+    goodsName: saved.goodsName || row.goodsName || row.goodsNo,
+    imageUrl: saved.imageUrl || row.imageUrl || '',
+    categoryNumber: row.categoryNumber || saved.categoryNumber || categoryFallback || '',
+    brandId: row.brandId || saved.brandId || '',
+    itemId: row.itemId || saved.itemId || '',
+    price: saved.price || row.price || 0,
+    originalPrice: saved.originalPrice || 0,
+    discountRate: saved.discountRate || 0,
+    viewCount: row.viewCount || saved.latestViewCount || 0,
+    purchaseLimit: saved.purchaseLimit || null,
+    lastStockedAt: saved.lastStockedAt || null,
+    source
+  };
+}
+
+function productFromEstimate(row, stored, source) {
+  const saved = stored || {};
+  return {
+    rank: row.rank || saved.latestRank || 9999,
+    goodsNo: row.goodsNo,
+    goodsNumber: row.goodsNo,
+    goodsName: saved.goodsName || row.goodsName || row.goodsNo,
+    imageUrl: saved.imageUrl || row.imageUrl || '',
+    categoryNumber: saved.categoryNumber || row.categoryNumber || '',
+    brandId: saved.brandId || row.brandId || '',
+    itemId: saved.itemId || row.itemId || '',
+    price: saved.price || row.price || 0,
+    originalPrice: saved.originalPrice || row.originalPrice || 0,
+    discountRate: saved.discountRate || row.discountRate || 0,
+    viewCount: saved.latestViewCount || row.viewCount || 0,
+    purchaseLimit: saved.purchaseLimit || row.purchaseLimit || null,
+    lastStockedAt: saved.lastStockedAt || null,
+    source
+  };
+}
+
+function mergeMeasuredOverallProducts(products, dayEstimates, storeProducts, limit) {
+  const merged = Array.isArray(products) ? products.slice() : [];
+  const seen = new Set(merged.map((item) => item && item.goodsNo).filter(Boolean));
+  const candidates = (Array.isArray(dayEstimates) ? dayEstimates : [])
+    .filter((row) => {
+      if (!row || !row.goodsNo || seen.has(row.goodsNo)) return false;
+      return Number(row.dailyEstimatedSales || 0) > 0 || Number(row.dailyEstimatedRevenue || 0) > 0;
+    })
+    .sort((a, b) => {
+      const salesDiff = Number(b.dailyEstimatedSales || 0) - Number(a.dailyEstimatedSales || 0);
+      if (salesDiff) return salesDiff;
+      const revenueDiff = Number(b.dailyEstimatedRevenue || 0) - Number(a.dailyEstimatedRevenue || 0);
+      if (revenueDiff) return revenueDiff;
+      return (Number(a.rank) || 9999) - (Number(b.rank) || 9999);
+    });
+  let added = 0;
+  for (const row of candidates) {
+    if (merged.length >= limit) break;
+    merged.push(productFromEstimate(row, storeProducts[row.goodsNo], 'hot-ranking-history-measured'));
+    seen.add(row.goodsNo);
+    added += 1;
+  }
+  return {
+    products: merged,
+    added
+  };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method && req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -99,6 +177,12 @@ module.exports = async function handler(req, res) {
 
   const q = req.query || {};
   const size = Math.max(1, Math.min(200, Number.parseInt(String(q.size || '100'), 10) || 100));
+  const overallMeasuredLimit = parseLimit(
+    q.measuredSize || process.env.HOT_RANK_OVERALL_MEASURED_LIMIT,
+    DEFAULT_OVERALL_MEASURED_LIMIT,
+    size,
+    250
+  );
   const range = rangeHours(q);
   const windowMs = range.hours * 60 * 60 * 1000;
   const categoryId = parseCategory(q.category || q.categoryid || q.categoryId || q.fltDispCatNo);
@@ -144,6 +228,7 @@ module.exports = async function handler(req, res) {
     let products = [];
     let source = 'hot-ranking-history';
     let categoryUpdatedAt = null;
+    let measuredAddedCount = 0;
 
     if (categoryId) {
       const cachedCategory =
@@ -164,23 +249,7 @@ module.exports = async function handler(req, res) {
       categoryUpdatedAt = ranking.updatedAt;
       products = (ranking.products || []).map((product) => {
         const stored = storeProducts[product.goodsNo] || {};
-        return {
-          rank: product.rank,
-          goodsNo: product.goodsNo,
-          goodsNumber: product.goodsNo,
-          goodsName: (stored.goodsName || product.goodsName || product.goodsNo),
-          imageUrl: stored.imageUrl || product.imageUrl || '',
-          categoryNumber: product.categoryNumber || stored.categoryNumber || categoryId,
-          brandId: product.brandId || stored.brandId || '',
-          itemId: product.itemId || stored.itemId || '',
-          price: stored.price || product.price || 0,
-          originalPrice: stored.originalPrice || 0,
-          discountRate: stored.discountRate || 0,
-          viewCount: product.viewCount || stored.latestViewCount || 0,
-          purchaseLimit: stored.purchaseLimit || null,
-          lastStockedAt: stored.lastStockedAt || null,
-          source
-        };
+        return productFromRanking(product, stored, source, categoryId);
       });
     } else {
       source = 'hot-ranking-history';
@@ -188,23 +257,7 @@ module.exports = async function handler(req, res) {
       if (cachedGlobal && Array.isArray(cachedGlobal.products) && cachedGlobal.products.length) {
         products = cachedGlobal.products.slice(0, size).map((product) => {
           const stored = storeProducts[product.goodsNo] || {};
-          return {
-            rank: product.rank,
-            goodsNo: product.goodsNo,
-            goodsNumber: product.goodsNo,
-            goodsName: stored.goodsName || product.goodsName || product.goodsNo,
-            imageUrl: stored.imageUrl || product.imageUrl || '',
-            categoryNumber: product.categoryNumber || stored.categoryNumber || '',
-            brandId: product.brandId || stored.brandId || '',
-            itemId: product.itemId || stored.itemId || '',
-            price: stored.price || product.price || 0,
-            originalPrice: stored.originalPrice || 0,
-            discountRate: stored.discountRate || 0,
-            viewCount: product.viewCount || stored.latestViewCount || 0,
-            purchaseLimit: stored.purchaseLimit || null,
-            lastStockedAt: stored.lastStockedAt || null,
-            source
-          };
+          return productFromRanking(product, stored, source, '');
         });
       } else {
         products = Object.values(storeProducts)
@@ -228,6 +281,17 @@ module.exports = async function handler(req, res) {
             lastStockedAt: item.lastStockedAt || null,
             source
           }));
+      }
+      const merged = mergeMeasuredOverallProducts(
+        products,
+        dayEstimates,
+        storeProducts,
+        overallMeasuredLimit
+      );
+      products = merged.products;
+      measuredAddedCount = merged.added;
+      if (measuredAddedCount > 0 && source === 'hot-ranking-history') {
+        source = 'hot-ranking-history-plus-measured';
       }
     }
     const productGoods = new Set(products.map((item) => item.goodsNo).filter(Boolean));
@@ -271,6 +335,7 @@ module.exports = async function handler(req, res) {
         windowHours: range.hours,
         products,
         estimates: estimateMap,
+        includedMeasuredCount: measuredAddedCount,
         estimateCount: Object.values(estimateMap).filter((r) => r.dailyEstimatedSales > 0).length,
         revenueEstimateCount: Object.values(estimateMap).filter((r) => r.dailyEstimatedRevenue > 0).length,
         rankingCache: store.rankings

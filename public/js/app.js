@@ -10,6 +10,7 @@ var App = {
   hotUpdatedAt: null,
   hotLastStockRunAt: null,
   hotDataSource: '',
+  hotIncludedMeasuredCount: 0,
   hotFetchedAt: 0,
   hotAutoTimer: null,
   hotServerEstimates: {},
@@ -195,6 +196,7 @@ var App = {
         this.hotCategory = el.dataset.category || '';
         this.hotFetchedAt = 0;
         this.hotProducts = [];
+        this.hotIncludedMeasuredCount = 0;
         this.hotServerEstimates = {};
         this.hotPurchaseLimits = {};
         this.hotRefreshState = 'idle';
@@ -482,6 +484,7 @@ var App = {
       updatedAt: this.hotUpdatedAt,
       lastStockRunAt: this.hotLastStockRunAt,
       source: this.hotDataSource,
+      includedMeasuredCount: this.hotIncludedMeasuredCount,
       estimates: this._hotEstimateMap(),
       purchaseLimits: this.hotPurchaseLimits,
       sortMode: this.hotSortMode,
@@ -648,6 +651,7 @@ var App = {
         self.hotUpdatedAt = dd.updatedAt || new Date().toISOString();
         self.hotLastStockRunAt = dd.lastStockRunAt || dd.updatedAt || null;
         self.hotDataSource = dd.source || '';
+        self.hotIncludedMeasuredCount = Number(dd.includedMeasuredCount || 0);
         self.hotFetchedAt = Date.now();
         self.hotFetchedRange = self.hotRange;
         self.hotFetchedCategory = self.hotCategory;
