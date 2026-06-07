@@ -830,7 +830,6 @@ var UI = {
     var range = state.range || (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d');
     var category = state.category || (CONFIG.HOT_RANK_DEFAULT_CATEGORY || '');
     var categoryLabel = UI.hotCategoryLabel(category);
-    var metricLabel = UI.hotRangeMetricLabel(range);
     var source = state.source || '';
     var refreshState = state.refreshState || 'idle';
     var isRefreshing = refreshState === 'loading';
@@ -864,17 +863,18 @@ var UI = {
     }).length;
     var summaryParts = [];
     if (updatedAt) summaryParts.push(updatedAt + ' 마지막 수집');
-    summaryParts.push(category ? UI.esc(categoryLabel) + ' 조회순' : '전체 TOP100');
-    summaryParts.push(category ? '조회순 캐시' : '일 1회 수집');
-    summaryParts.push(UI.esc(UI.hotRangeLabel(range)) + ' 기준');
-    summaryParts.push(UI.esc(metricLabel) + ' 판매측정 ' + UI.num(measuredCount) + '개');
+    summaryParts.push(category ? UI.esc(categoryLabel) + ' TOP100' : '전체 TOP100');
+    summaryParts.push('목록 하루 1회');
+    summaryParts.push('재고 하루 4회 · 250개 이하');
+    summaryParts.push('판매/매출 24시간 기준');
+    summaryParts.push('판매측정 ' + UI.num(measuredCount) + '개');
     var basisNote = category
-      ? '카테고리 목록은 조회순 캐시, 판매량·매출은 전체 TOP100 수집 상품만 계산'
-      : '자동수집 매일 오전 3시, 실패 시 당일 재시도';
+      ? '카테고리 목록은 하루 1회 저장, 재고·판매량·매출은 전체 TOP100 또는 카테고리 상위권 선별 상품만 측정'
+      : '카테고리별 TOP100은 하루 1회 저장, 재고 스냅샷은 03·09·15·21시 선별 수집';
     if (source === 'oliveyoung-view-rank' || source === 'oliveyoung-view-rank-category') {
       basisNote = category
-        ? '카테고리 조회순 캐시 표시 중, 판매량·매출은 전체 TOP100 수집분과 겹친 상품만 계산'
-        : '조회순 캐시 표시 중, 판매량·매출은 다음 일 수집 후 반영';
+        ? '저장된 카테고리 랭킹이 없어 임시 조회순을 표시 중입니다. 판매량·매출은 다음 수집 후 반영됩니다'
+        : '저장된 랭킹이 없어 임시 조회순을 표시 중입니다. 판매량·매출은 다음 수집 후 반영됩니다';
     }
     var rangeButtons = Object.keys(ranges)
       .map(function (key) {
@@ -1017,6 +1017,7 @@ var UI = {
               : 'hot-limit hot-limit-pending';
         var chartMode =
           sortMode === 'revenue' ? 'revenue' : sortMode === 'sales' ? 'sales' : 'view';
+        var salesMetricLabel = '24시간';
         var trend =
           estimate && estimate.rankTrends
             ? estimate.rankTrends[chartMode] || null
@@ -1057,13 +1058,17 @@ var UI = {
                 UI.num(estimate.restockUnits) +
                 '개 보정</span>'
               : '';
+          var confidence =
+            estimate.confidence === 'low'
+              ? '<span class="hot-confidence-low">신뢰도 낮음</span>'
+              : '';
           salesBlock =
             '<div class="hot-sales hot-sales-ok"><strong>' +
-            UI.esc(metricLabel) +
+            UI.esc(salesMetricLabel) +
             '판매 ' +
             UI.num(dailyDrop) +
             '개</strong><span>' +
-            UI.esc(metricLabel) +
+            UI.esc(salesMetricLabel) +
             '매출 ' +
             UI.formatWon(dailyRevenue) +
             '</span><span>' +
@@ -1074,10 +1079,11 @@ var UI = {
             UI.num(Math.round(perHour * 10) / 10) +
             '개</span>' +
             restock +
+            confidence +
             '</div>' +
             UI.renderHotSparkline(chartPoints, { mode: chartMode });
         } else {
-          var waitingText = '재고 스냅샷 누적 대기';
+          var waitingText = '선별 재고 스냅샷 누적 대기';
           if (estimate && Number(estimate.observationCount || 0) === 1) {
             waitingText =
               '첫 수집 ' +

@@ -17,9 +17,34 @@ const DEFAULT_BUSY_INTERVAL_MINUTES = 30;
 const DEFAULT_QUIET_INTERVAL_MINUTES = 60;
 const DEFAULT_DAILY_COLLECTION_TIME_KST = '03:00';
 const DEFAULT_DAILY_COLLECTION_GRACE_MINUTES = 30;
+const DEFAULT_STOCK_COLLECTION_TIMES_KST = '03:00,09:00,15:00,21:00';
+const DEFAULT_STOCK_CANDIDATE_LIMIT = 250;
+const DEFAULT_CATEGORY_STOCK_RANK_LIMIT = 10;
 const DEFAULT_PRIORITY_SALES_LIMIT = 20;
 const DEFAULT_PRIORITY_REVENUE_LIMIT = 20;
 const DEFAULT_RETRY_PER_RUN_LIMIT = 12;
+const DEFAULT_CATEGORY_IDS = [
+  '10000010001',
+  '10000010009',
+  '10000010010',
+  '10000010011',
+  '10000010002',
+  '10000010012',
+  '10000010006',
+  '10000010008',
+  '10000010007',
+  '10000010005',
+  '10000010004',
+  '10000010003',
+  '10000020001',
+  '10000020002',
+  '10000020003',
+  '10000020005',
+  '10000020004',
+  '10000030007',
+  '10000030005',
+  '10000030006'
+];
 
 function parseIntBounded(value, fallback, min, max) {
   const n = Number.parseInt(String(value == null ? fallback : value), 10);
@@ -31,6 +56,15 @@ function parseCategoryId(value) {
   const raw = String(value || '').trim();
   if (!raw || raw === 'all') return '';
   return /^\d{8,}$/.test(raw) ? raw : '';
+}
+
+function configuredCategoryIds() {
+  const raw = String(process.env.HOT_RANK_CATEGORY_IDS || DEFAULT_CATEGORY_IDS.join(','));
+  const ids = raw
+    .split(',')
+    .map((value) => parseCategoryId(value))
+    .filter(Boolean);
+  return Array.from(new Set(ids));
 }
 
 function parseMoney(value) {
@@ -140,6 +174,74 @@ async function fetchViewRanking(size, opts) {
   };
 }
 
+function compactRankingProduct(product) {
+  return {
+    rank: product.rank || 9999,
+    sourceRank: product.sourceRank || product.rank || 9999,
+    goodsNo: product.goodsNo,
+    goodsNumber: product.goodsNumber || product.goodsNo,
+    goodsName: product.goodsName || product.goodsNo,
+    imageUrl: product.imageUrl || '',
+    categoryNumber: product.categoryNumber || '',
+    brandId: product.brandId || '',
+    itemId: product.itemId || '',
+    viewCount: Number(product.viewCount) || 0,
+    source: product.source || 'oliveyoung-view-rank'
+  };
+}
+
+async function fetchCategoryRankings(size, opts) {
+  opts = opts || {};
+  const categoryIds = Array.isArray(opts.categoryIds) && opts.categoryIds.length
+    ? opts.categoryIds.map(parseCategoryId).filter(Boolean)
+    : configuredCategoryIds();
+  const batchSize = parseIntBounded(
+    opts.batchSize == null ? process.env.HOT_RANK_CATEGORY_FETCH_BATCH_SIZE : opts.batchSize,
+    4,
+    1,
+    8
+  );
+  const categories = {};
+  const errors = [];
+
+  for (let i = 0; i < categoryIds.length; i += batchSize) {
+    const batch = categoryIds.slice(i, i + batchSize);
+    const settled = await Promise.all(
+      batch.map((categoryId) =>
+        fetchViewRanking(size, { categoryId })
+          .then((ranking) => ({ ok: true, categoryId, ranking }))
+          .catch((e) => ({
+            ok: false,
+            categoryId,
+            message: e && e.message ? e.message : String(e)
+          }))
+      )
+    );
+    settled.forEach((result) => {
+      if (result.ok) {
+        categories[result.categoryId] = {
+          categoryId: result.categoryId,
+          updatedAt: result.ranking.updatedAt,
+          products: (result.ranking.products || []).map(compactRankingProduct)
+        };
+      } else {
+        errors.push({
+          categoryId: result.categoryId,
+          message: result.message
+        });
+      }
+    });
+  }
+
+  return {
+    updatedAt: new Date().toISOString(),
+    requestedCount: categoryIds.length,
+    okCount: Object.keys(categories).length,
+    categories,
+    errors
+  };
+}
+
 async function fetchStockSnapshot(product, opts) {
   opts = opts || {};
   const url = new URL(STOCK_API);
@@ -223,7 +325,7 @@ function getPurchaseLimitInfo(options) {
 
 async function fetchStockSnapshots(products, opts) {
   opts = opts || {};
-  const limit = parseIntBounded(opts.limit, products.length, 1, 200);
+  const limit = parseIntBounded(opts.limit, products.length, 1, 250);
   const batchSize = parseIntBounded(opts.batchSize, 3, 1, 8);
   const delayMs = Number(opts.delayMs == null ? 120 : opts.delayMs);
   const deadlineMs = Number(opts.deadlineMs || 240000);
@@ -414,6 +516,87 @@ function hasRunForCollectionSlot(store, decision, slotIndex) {
   });
 }
 
+function runDayMatches(run, dailyKey) {
+  const runDay = run && (run.dailyKey || kstDateKey(run.ts));
+  return !!(runDay && dailyKey && runDay === dailyKey);
+}
+
+function runHasType(run, type) {
+  const raw = String(run && run.collectionType || '');
+  if (raw) return raw.split('+').indexOf(type) >= 0;
+  if (type === 'stock' && run && run.stockCount > 0 && run.stockSlotIndex != null) return true;
+  if (type === 'discovery' && run && Number(run.categoryRankingOkCount) > 0) return true;
+  return false;
+}
+
+function successfulStockRun(run) {
+  const minimumOk = parseIntBounded(process.env.HOT_RANK_DAILY_MIN_STOCK_OK, 10, 1, 100);
+  const stockCount = Number(run && run.stockCount) || 0;
+  const stockOkCount = Number(run && run.stockOkCount) || 0;
+  return (
+    runHasType(run, 'stock') &&
+    stockCount > 0 &&
+    stockOkCount >= Math.min(minimumOk, stockCount)
+  );
+}
+
+function successfulDiscoveryRun(run) {
+  const requested = Number(run && run.categoryRankingRequestedCount) || configuredCategoryIds().length;
+  const minimumOk = parseIntBounded(
+    process.env.HOT_RANK_MIN_CATEGORY_OK,
+    requested,
+    1,
+    Math.max(1, requested)
+  );
+  return (
+    runHasType(run, 'discovery') &&
+    Number(run && run.rankingCount) > 0 &&
+    Number(run && run.categoryRankingOkCount) >= Math.min(minimumOk, requested)
+  );
+}
+
+function hasSuccessfulDiscoveryForDay(store, dailyKey) {
+  const runs = Array.isArray(store && store.runs) ? store.runs : [];
+  return runs.some((run) => runDayMatches(run, dailyKey) && successfulDiscoveryRun(run));
+}
+
+function hasSuccessfulStockForSlot(store, dailyKey, stockSlot) {
+  if (!stockSlot) return false;
+  const runs = Array.isArray(store && store.runs) ? store.runs : [];
+  return runs.some(
+    (run) =>
+      runDayMatches(run, dailyKey) &&
+      successfulStockRun(run) &&
+      Number(run.stockSlotIndex) === Number(stockSlot.index)
+  );
+}
+
+function buildCollectorRunPlan(store, decision, now, opts) {
+  opts = opts || {};
+  const force = !!opts.force;
+  const dailyKey = (decision && decision.kst && decision.kst.isoDate) || kstParts(now || new Date()).isoDate;
+  const stockTimes = parseStockCollectionTimes(process.env.HOT_RANK_STOCK_TIMES_KST);
+  const stockSlot = latestDueStockSlot((decision && decision.kst) || kstParts(now || new Date()), stockTimes);
+  const discoveryDone = hasSuccessfulDiscoveryForDay(store, dailyKey);
+  const stockDone = hasSuccessfulStockForSlot(store, dailyKey, stockSlot);
+  const discoveryDue = force || (!!(decision && decision.catchUpEligible) && !discoveryDone);
+  const stockDue = !opts.skipStock && (force || (!!stockSlot && !stockDone));
+  const types = [];
+  if (discoveryDue) types.push('discovery');
+  if (stockDue) types.push('stock');
+  return {
+    shouldRun: force || discoveryDue || stockDue,
+    collectionType: types.join('+') || 'none',
+    discoveryDue,
+    stockDue,
+    dailyKey,
+    stockSlot: stockSlot || null,
+    stockTimesKst: stockTimes.map((time) => time.label),
+    discoveryDone,
+    stockDone
+  };
+}
+
 function storedProductToStockCandidate(item, dailyKey) {
   return {
     rank: 9999,
@@ -436,17 +619,28 @@ function storedProductToStockCandidate(item, dailyKey) {
 
 function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts) {
   opts = opts || {};
-  const products = Array.isArray(rankingProducts) ? rankingProducts : [];
+  const products = (Array.isArray(rankingProducts) ? rankingProducts : []).slice(0, 100);
   const slotIndex = collectionSlotIndex(decision);
   const dailyKey = ((decision && decision.kst && decision.kst.isoDate) || kstParts(now || new Date()).isoDate);
-  const dailyMode = isDailyScheduleMode(decision);
-  const selected = [];
-  const skipped = [];
-  const currentGoods = new Set();
+  const maxCandidates = parseIntBounded(
+    opts.stockCandidateLimit == null ? process.env.HOT_RANK_STOCK_CANDIDATE_LIMIT : opts.stockCandidateLimit,
+    DEFAULT_STOCK_CANDIDATE_LIMIT,
+    1,
+    250
+  );
+  const categoryRankLimit = parseIntBounded(
+    opts.categoryStockRankLimit == null
+      ? process.env.HOT_RANK_CATEGORY_STOCK_RANK_LIMIT
+      : opts.categoryStockRankLimit,
+    DEFAULT_CATEGORY_STOCK_RANK_LIMIT,
+    1,
+    100
+  );
   const tierCounts = {};
-  const storeProducts = (store && store.products) || {};
-  const priorityMap = dailyMode ? {} : buildCollectionPriorityMap(store);
-  const nowMs = (now instanceof Date ? now : new Date()).getTime();
+  const candidateMap = {};
+  const rankingCache = (store && store.rankings) || {};
+  const categoryRankings = rankingCache.categories || {};
+  const priorityMap = buildCollectionPriorityMap(store);
   const retryLimit = parseIntBounded(
     opts.retryLimit == null ? process.env.HOT_RANK_RETRY_PER_RUN_LIMIT : opts.retryLimit,
     DEFAULT_RETRY_PER_RUN_LIMIT,
@@ -456,104 +650,133 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
   let retrySelectedCount = 0;
   let retrySkippedCount = 0;
 
-  function add(product, plan) {
-    const row = Object.assign({}, product, {
-      collectionTier: plan.tier,
-      collectionReason: plan.reason,
-      collectionEveryRuns: plan.everyRuns,
-      collectionDate: dailyKey
-    });
-    selected.push(row);
-    tierCounts[plan.tier] = (tierCounts[plan.tier] || 0) + 1;
+  function addCandidate(product, plan) {
+    if (!product || !product.goodsNo) return;
+    const gn = product.goodsNo;
+    const current = candidateMap[gn];
+    const base = current ? current.product : Object.assign({}, product);
+    if (!current || plan.priority < current.priority) {
+      base.rank = product.rank || base.rank || 9999;
+      base.sourceRank = product.sourceRank || base.sourceRank || base.rank;
+      base.goodsName = product.goodsName || base.goodsName || gn;
+      base.imageUrl = product.imageUrl || base.imageUrl || '';
+      base.categoryNumber = product.categoryNumber || base.categoryNumber || '';
+      base.brandId = product.brandId || base.brandId || '';
+      base.itemId = product.itemId || base.itemId || '';
+      base.viewCount = Number(product.viewCount) || Number(base.viewCount) || 0;
+      base.source = product.source || base.source || 'oliveyoung-view-rank';
+    }
+    base.collectionTier = !current || plan.priority < current.priority ? plan.tier : base.collectionTier;
+    base.collectionReason = !current || plan.priority < current.priority ? plan.reason : base.collectionReason;
+    base.collectionEveryRuns = plan.everyRuns || 1;
+    base.collectionDate = dailyKey;
+    base.collectionSources = Array.from(
+      new Set((base.collectionSources || []).concat(plan.tier))
+    ).slice(0, 8);
+    if (plan.globalRank) base.globalRank = plan.globalRank;
+    if (plan.categoryId) {
+      base.categoryRanks = base.categoryRanks || {};
+      base.categoryRanks[plan.categoryId] = plan.categoryRank || product.rank || 9999;
+      base.bestCategoryRank = Math.min(
+        Number(base.bestCategoryRank) || 9999,
+        Number(plan.categoryRank || product.rank) || 9999
+      );
+    }
+    candidateMap[gn] = {
+      product: base,
+      priority: current ? Math.min(current.priority, plan.priority) : plan.priority,
+      firstPriority: current ? current.firstPriority : plan.priority
+    };
   }
 
   products.forEach((product, idx) => {
     const rank = Number(product.rank) || idx + 1;
-    if (product.goodsNo) currentGoods.add(product.goodsNo);
-    const priority = product.goodsNo ? priorityMap[product.goodsNo] : null;
-    let plan = dailyMode ? dailyRankCollectionPlan(rank) : rankCollectionPlan(rank, slotIndex, priority);
-    const staleRetryDue =
-      !dailyMode && !plan.due && isStaleForPlan(storeProducts[product.goodsNo], plan, decision, nowMs);
-    if (staleRetryDue) {
-      if (retrySelectedCount < retryLimit) {
-        plan = staleRetryPlan(plan);
-        retrySelectedCount += 1;
-      } else {
-        retrySkippedCount += 1;
-      }
-    }
-    if (plan.due) add(product, plan);
-    else {
-      skipped.push({
-        goodsNo: product.goodsNo,
-        rank,
-        tier: plan.tier,
-        everyRuns: plan.everyRuns,
-        staleRetryCapped: !!staleRetryDue
-      });
-    }
+    if (rank > 100) return;
+    addCandidate(product, {
+      tier: 'global-top-100',
+      everyRuns: 1,
+      reason: 'overall top 100: stock snapshot up to 4 times per day',
+      priority: rank,
+      globalRank: rank
+    });
   });
 
-  const outOfTopLimitValue =
-    dailyMode && opts.outOfTopLimit == null
-      ? 0
-      : opts.outOfTopLimit == null
-        ? process.env.HOT_RANK_OUT_OF_TOP_PER_RUN_LIMIT
-        : opts.outOfTopLimit;
-  const outOfTopLimit = parseIntBounded(
-    outOfTopLimitValue,
-    dailyMode ? 0 : 10,
-    0,
-    200
-  );
-  const outOfTop = Object.keys(storeProducts)
-    .map((gn) => storeProducts[gn])
-    .filter((item) => item && item.goodsNo && !currentGoods.has(item.goodsNo))
-    .filter((item) => item.lastOutOfTopStockDate !== dailyKey)
-    .sort((a, b) => {
-      const as = Date.parse(a.lastStockedAt || a.lastSeenAt || 0) || 0;
-      const bs = Date.parse(b.lastStockedAt || b.lastSeenAt || 0) || 0;
-      if (as !== bs) return as - bs;
-      return String(a.goodsNo).localeCompare(String(b.goodsNo));
-    })
-    .slice(0, outOfTopLimit);
+  Object.keys(categoryRankings).forEach((categoryId, categoryIdx) => {
+    const ranking = categoryRankings[categoryId] || {};
+    (Array.isArray(ranking.products) ? ranking.products : [])
+      .slice(0, categoryRankLimit)
+      .forEach((product, idx) => {
+        const rank = Number(product.rank) || idx + 1;
+        addCandidate(product, {
+          tier: 'category-top-' + categoryRankLimit,
+          everyRuns: 1,
+          reason:
+            'category top ' +
+            categoryRankLimit +
+            ': stock snapshot up to 4 times per day; lower category ranks skipped',
+          priority: 1000 + rank * 10 + categoryIdx,
+          categoryId,
+          categoryRank: rank
+        });
+      });
+  });
 
-  outOfTop.forEach((item) => add(storedProductToStockCandidate(item, dailyKey), {
-    tier: 'out-100',
-    everyRuns: 0,
-    reason: 'out of top 100: once per day'
-  }));
+  Object.keys(priorityMap).forEach((goodsNo) => {
+    const current = candidateMap[goodsNo];
+    if (!current) return;
+    const priority = priorityMap[goodsNo] || {};
+    const boostRank = Math.min(
+      Number(priority.salesRank) || 9999,
+      Number(priority.revenueRank) || 9999
+    );
+    const boosted = Math.min(current.priority, 100 + boostRank);
+    current.priority = boosted;
+    current.product.collectionTier = current.product.collectionTier || 'priority-sales-revenue';
+    current.product.collectionReason =
+      (current.product.collectionReason || '') +
+      '; previous 24h sales/revenue winner kept inside eligible top ranks';
+    current.product.collectionSources = Array.from(
+      new Set((current.product.collectionSources || []).concat('priority-sales-revenue'))
+    ).slice(0, 8);
+  });
+
+  const candidates = Object.keys(candidateMap)
+    .map((goodsNo) => candidateMap[goodsNo])
+    .sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return String(a.product.goodsNo).localeCompare(String(b.product.goodsNo));
+    });
+  const selected = candidates.slice(0, maxCandidates).map((entry) => {
+    const row = Object.assign({}, entry.product, {
+      collectionDate: dailyKey
+    });
+    const tier = row.collectionTier || 'selected';
+    tierCounts[tier] = (tierCounts[tier] || 0) + 1;
+    return row;
+  });
 
   return {
-    mode: dailyMode ? 'daily-top-100' : 'adaptive-rank-tier',
+    mode: 'daily-categories-selected-250',
     slotIndex,
     dailyKey,
     products: selected,
     selectedCount: selected.length,
-    skippedRankingCount: skipped.length,
-    outOfTopSelectedCount: outOfTop.length,
+    skippedRankingCount: Math.max(0, candidates.length - selected.length),
+    outOfTopSelectedCount: 0,
     retrySelectedCount,
     retrySkippedCount,
     retryLimit,
+    maxCandidates,
+    categoryRankLimit,
     tierCounts,
-    rules: dailyMode
-      ? [
-          'rank 1-100 once per KST day',
-          'out of top 100 skipped by default to reduce Vercel usage'
-        ]
-      : [
-          '1-30 every scheduled run',
-          'sales/revenue top ' +
-            parseIntBounded(process.env.HOT_RANK_PRIORITY_SALES_LIMIT, DEFAULT_PRIORITY_SALES_LIMIT, 0, 100) +
-            '/' +
-            parseIntBounded(process.env.HOT_RANK_PRIORITY_REVENUE_LIMIT, DEFAULT_PRIORITY_REVENUE_LIMIT, 0, 100) +
-            ' every scheduled run',
-          '31-60 every 2 runs',
-          '61-90 every 3 runs',
-          '91-100 every 4 runs',
-          'stale or failed stock snapshots retry up to ' + retryLimit + ' products per run',
-          'out of top 100 once per KST day'
-        ]
+    rules: [
+      'category top 100 lists collected once per KST day',
+      'stock snapshots run up to 4 times per KST day',
+      'stock snapshot candidates capped at ' + maxCandidates,
+      'overall top 100 is eligible',
+      'category ranks 1-' + categoryRankLimit + ' are eligible',
+      'out of top 100 and lower category ranks are not stock-measured'
+    ]
   };
 }
 
@@ -594,6 +817,56 @@ async function writeStore(store) {
     contentType: 'application/json',
     cacheControlMaxAge: 60
   });
+}
+
+function normalizeRankingCacheEntry(ranking, fallbackCategoryId) {
+  return {
+    categoryId: fallbackCategoryId || (ranking && ranking.categoryId) || '',
+    updatedAt: (ranking && ranking.updatedAt) || new Date().toISOString(),
+    products: (Array.isArray(ranking && ranking.products) ? ranking.products : [])
+      .map(compactRankingProduct)
+      .filter((product) => product.goodsNo)
+      .slice(0, 100)
+  };
+}
+
+function mergeRankingCache(store, ranking, categoryRankings, nowIso) {
+  store.rankings = store.rankings || {};
+  store.rankings.updatedAt = nowIso || new Date().toISOString();
+  store.rankings.global = normalizeRankingCacheEntry(ranking, '');
+  store.rankings.categories = store.rankings.categories || {};
+  const cats = categoryRankings && categoryRankings.categories ? categoryRankings.categories : {};
+  Object.keys(cats).forEach((categoryId) => {
+    store.rankings.categories[categoryId] = normalizeRankingCacheEntry(cats[categoryId], categoryId);
+  });
+  store.rankings.categoryRequestedCount =
+    categoryRankings && categoryRankings.requestedCount != null
+      ? categoryRankings.requestedCount
+      : store.rankings.categoryRequestedCount || configuredCategoryIds().length;
+  store.rankings.categoryOkCount =
+    categoryRankings && categoryRankings.okCount != null
+      ? categoryRankings.okCount
+      : store.rankings.categoryOkCount || Object.keys(store.rankings.categories).length;
+  store.rankings.categoryErrors =
+    categoryRankings && Array.isArray(categoryRankings.errors)
+      ? categoryRankings.errors.slice(0, 20)
+      : store.rankings.categoryErrors || [];
+  return store;
+}
+
+function rankingFromStore(store, size) {
+  const cached = store && store.rankings && store.rankings.global;
+  const products = cached && Array.isArray(cached.products) ? cached.products : [];
+  return {
+    updatedAt: (cached && cached.updatedAt) || (store && (store.updatedAt || store.lastRunAt)) || new Date().toISOString(),
+    categoryId: '',
+    products: products.slice(0, size || 100).map(compactRankingProduct)
+  };
+}
+
+function cloneStoreWithRankingCache(store, ranking, categoryRankings, nowIso) {
+  const cloned = JSON.parse(JSON.stringify(store || emptyStore()));
+  return mergeRankingCache(cloned, ranking, categoryRankings, nowIso);
 }
 
 function pruneStore(store, nowMs) {
@@ -680,6 +953,7 @@ function rankObservationMatchesAdaptiveCadence(observation) {
   const ts = new Date(observation.ts);
   if (Number.isNaN(ts.getTime())) return false;
   const decision = getScheduleDecision(ts);
+  if (isDailyScheduleMode(decision)) return (Number(observation.rank) || 9999) <= 100;
   const slotIndex = collectionSlotIndex(decision);
   const rank = Number(observation.rank) || 9999;
   return rankCollectionPlan(rank, slotIndex).due;
@@ -1058,10 +1332,15 @@ function mergeRunIntoStore(store, ranking, stocks, meta) {
   const nowIso = (meta && meta.ts) || new Date().toISOString();
   const nowMs = Date.parse(nowIso);
   const dailyKey = meta && meta.dailyKey ? meta.dailyKey : kstParts(new Date(nowIso)).isoDate;
+  mergeRankingCache(store, ranking, meta && meta.categoryRankings, nowIso);
   const products = store.products || {};
   const stockByGoodsNo = {};
   (stocks || []).forEach((s) => {
     stockByGoodsNo[s.goodsNo] = s;
+  });
+  const stockProductByGoodsNo = {};
+  (Array.isArray(meta && meta.stockProducts) ? meta.stockProducts : []).forEach((product) => {
+    if (product && product.goodsNo) stockProductByGoodsNo[product.goodsNo] = product;
   });
   const rankingGoods = new Set((ranking.products || []).map((p) => p.goodsNo).filter(Boolean));
   const handledStocks = new Set();
@@ -1111,13 +1390,24 @@ function mergeRunIntoStore(store, ranking, stocks, meta) {
       goodsNo: stock.goodsNo,
       observations: []
     };
-    item.goodsName = stock.goodsName || item.goodsName || stock.goodsNo;
-    item.imageUrl = stock.imageUrl || item.imageUrl || '';
+    const candidate = stockProductByGoodsNo[stock.goodsNo] || storedProductToStockCandidate(item, dailyKey);
+    item.goodsName = stock.goodsName || (candidate && candidate.goodsName) || item.goodsName || stock.goodsNo;
+    item.imageUrl = stock.imageUrl || (candidate && candidate.imageUrl) || item.imageUrl || '';
+    item.categoryNumber = (candidate && candidate.categoryNumber) || item.categoryNumber || '';
+    item.brandId = (candidate && candidate.brandId) || item.brandId || '';
+    item.itemId = (candidate && candidate.itemId) || item.itemId || '';
+    if (candidate && candidate.categoryRanks) {
+      item.categoryRanks = Object.assign({}, item.categoryRanks || {}, candidate.categoryRanks);
+      item.bestCategoryRank = Math.min(
+        Number(item.bestCategoryRank) || 9999,
+        Number(candidate.bestCategoryRank) || 9999
+      );
+    }
     item.latestRank = 9999;
     item.currentlyRanked = false;
     item.outOfTopSince = item.outOfTopSince || nowIso;
     item.lastSeenAt = item.lastSeenAt || nowIso;
-    applyStockSnapshotToItem(item, stock, storedProductToStockCandidate(item, dailyKey), {
+    applyStockSnapshotToItem(item, stock, candidate, {
       nowIso,
       dailyKey
     });
@@ -1134,6 +1424,7 @@ function mergeRunIntoStore(store, ranking, stocks, meta) {
   store.runs = (Array.isArray(store.runs) ? store.runs : []).concat({
     ts: nowIso,
     mode: meta && meta.mode,
+    collectionType: meta && meta.collectionType,
     rankingCount: ranking.products.length,
     stockCount: stocks.length,
     stockOkCount,
@@ -1142,6 +1433,12 @@ function mergeRunIntoStore(store, ranking, stocks, meta) {
     dailyKey,
     collectionMode: meta && meta.collectionMode,
     collectionSlot: meta && meta.collectionSlot,
+    stockSlotIndex: meta && meta.stockSlotIndex,
+    stockSlotLabel: meta && meta.stockSlotLabel,
+    stockTimesKst: meta && meta.stockTimesKst,
+    categoryRankingRequestedCount: meta && meta.categoryRankingRequestedCount,
+    categoryRankingOkCount: meta && meta.categoryRankingOkCount,
+    categoryRankingErrorCount: meta && meta.categoryRankingErrorCount,
     tierCounts: meta && meta.tierCounts,
     skippedRankingCount: meta && meta.skippedRankingCount,
     outOfTopSelectedCount: meta && meta.outOfTopSelectedCount,
@@ -1192,6 +1489,7 @@ function computeEstimates(store, opts) {
     const charts = buildChartSeries(obs, { viewObs, maxPoints: maxChartPoints, price });
     const windowEstimatedSales = stats.sold;
     const windowEstimatedRevenue = estimatedRevenue;
+    const confidence = stats.restockEvents > 0 ? 'low' : obs.length >= 2 ? 'normal' : 'pending';
     rows.push({
       goodsNo: gn,
       goodsName: item.goodsName || gn,
@@ -1218,6 +1516,13 @@ function computeEstimates(store, opts) {
       restockUnits: stats.restocked,
       restockEvents: stats.restockEvents,
       restockAdjusted: stats.restockEvents > 0,
+      confidence,
+      confidenceLabel:
+        confidence === 'low'
+          ? '신뢰도 낮음'
+          : confidence === 'pending'
+            ? '측정 대기'
+            : '신뢰도 보통',
       fromTs: first && first.ts,
       toTs: latest && latest.ts,
       optionCount: item.optionCount || 0,
@@ -1319,6 +1624,37 @@ function parseDailyCollectionTime(value) {
   };
 }
 
+function parseStockCollectionTimes(value) {
+  const rows = String(value || DEFAULT_STOCK_COLLECTION_TIMES_KST)
+    .split(',')
+    .map(parseDailyCollectionTime)
+    .map((time) => ({
+      hour: time.hour,
+      minute: time.minute,
+      label: time.label,
+      minuteOfDay: time.hour * 60 + time.minute
+    }))
+    .sort((a, b) => a.minuteOfDay - b.minuteOfDay);
+  const seen = {};
+  return rows.filter((time) => {
+    if (seen[time.label]) return false;
+    seen[time.label] = true;
+    return true;
+  });
+}
+
+function latestDueStockSlot(kst, stockTimes) {
+  const current = kst.hour * 60 + kst.minute;
+  const due = (Array.isArray(stockTimes) ? stockTimes : [])
+    .filter((time) => time.minuteOfDay <= current)
+    .slice()
+    .pop();
+  if (!due) return null;
+  return Object.assign({}, due, {
+    index: stockTimes.findIndex((time) => time.label === due.label)
+  });
+}
+
 function isInDailyCollectionWindow(kst, dailyTime, graceMinutes) {
   const current = kst.hour * 60 + kst.minute;
   const target = dailyTime.hour * 60 + dailyTime.minute;
@@ -1341,6 +1677,8 @@ function getScheduleDecision(date) {
   const windows = parseBusyWindows(process.env.HOT_RANK_BUSY_WINDOWS_KST);
   if (dailyScheduleEnabled()) {
     const dailyTime = parseDailyCollectionTime(process.env.HOT_RANK_DAILY_TIME_KST);
+    const stockTimes = parseStockCollectionTimes(process.env.HOT_RANK_STOCK_TIMES_KST);
+    const latestStockSlot = latestDueStockSlot(kst, stockTimes);
     const graceMinutes = parseIntBounded(
       process.env.HOT_RANK_DAILY_GRACE_MINUTES,
       DEFAULT_DAILY_COLLECTION_GRACE_MINUTES,
@@ -1358,6 +1696,8 @@ function getScheduleDecision(date) {
       graceMinutes,
       inPreferredWindow,
       catchUpEligible,
+      stockTimesKst: stockTimes.map((time) => time.label),
+      stockSlot: latestStockSlot,
       busyWindows: windows
         .map((w) => String(w.start).padStart(2, '0') + '-' + String(w.end).padStart(2, '0'))
         .join(',')
@@ -1427,18 +1767,18 @@ async function runCollector(opts) {
     store = await readStore();
   }
 
-  const plannedSlot = collectionSlotIndex(decision);
-  const plannedDailyKey = decision && decision.kst && decision.kst.isoDate;
-  if (!force && !dryRun && hasRunForCollectionSlot(store, decision, plannedSlot)) {
+  let runPlan = buildCollectorRunPlan(store, decision, now, opts);
+  if (!force && !runPlan.shouldRun) {
     return {
       success: true,
       skipped: true,
-      reason: 'already collected for this schedule slot',
+      reason: 'category list and stock snapshot slots are already current',
       schedule: decision,
+      runPlan,
       collectionPlan: {
-        mode: 'duplicate-slot-guard',
-        slotIndex: plannedSlot,
-        dailyKey: plannedDailyKey,
+        mode: 'up-to-date',
+        slotIndex: runPlan.stockSlot ? runPlan.stockSlot.index : null,
+        dailyKey: runPlan.dailyKey,
         selectedCount: 0,
         tierCounts: {}
       },
@@ -1449,7 +1789,24 @@ async function runCollector(opts) {
     };
   }
 
-  const ranking = await fetchViewRanking(size);
+  let ranking;
+  let categoryRankings = null;
+  const nowIso = now.toISOString();
+  if (runPlan.discoveryDue) {
+    ranking = await fetchViewRanking(size);
+    categoryRankings = await fetchCategoryRankings(100, {
+      categoryIds: opts.categoryIds,
+      batchSize: opts.categoryBatchSize
+    });
+  } else {
+    ranking = rankingFromStore(store, size);
+    if (!ranking.products.length) {
+      ranking = await fetchViewRanking(size);
+    }
+  }
+  const selectionStore = categoryRankings
+    ? cloneStoreWithRankingCache(store, ranking, categoryRankings, nowIso)
+    : store;
 
   const batchSize = parseIntBounded(
     opts.batchSize == null ? process.env.HOT_RANK_STOCK_BATCH_SIZE : opts.batchSize,
@@ -1467,7 +1824,9 @@ async function runCollector(opts) {
   let stockLimit = 0;
   let stockOffset = 0;
   let collectionPlan = {
-    mode: opts.skipStock ? 'skip-stock' : 'adaptive-rank-tier',
+    mode: opts.skipStock || !runPlan.stockDue ? 'skip-stock' : 'daily-categories-selected-250',
+    dailyKey: runPlan.dailyKey,
+    slotIndex: runPlan.stockSlot ? runPlan.stockSlot.index : null,
     products: [],
     selectedCount: 0,
     tierCounts: {}
@@ -1475,7 +1834,7 @@ async function runCollector(opts) {
   let stocks = [];
   const busyMode = decision.mode && decision.mode.indexOf('busy-') === 0;
 
-  if (!opts.skipStock && legacyOverride) {
+  if (runPlan.stockDue && !opts.skipStock && legacyOverride) {
     const defaultStockLimit =
       busyMode
         ? parseIntBounded(process.env.HOT_RANK_BUSY_STOCK_LIMIT, size, 1, size)
@@ -1498,6 +1857,8 @@ async function runCollector(opts) {
       selectedCount: stockLimit,
       stockLimit,
       stockOffset,
+      dailyKey: runPlan.dailyKey,
+      slotIndex: runPlan.stockSlot ? runPlan.stockSlot.index : null,
       tierCounts: { legacy: Math.min(stockLimit, ranking.products.length) }
     };
     stocks = await fetchStockSnapshots(ranking.products, {
@@ -1510,8 +1871,8 @@ async function runCollector(opts) {
       lat: opts.lat,
       lng: opts.lng
     });
-  } else if (!opts.skipStock) {
-    collectionPlan = selectAdaptiveStockProducts(ranking.products, store, decision, now, opts);
+  } else if (runPlan.stockDue && !opts.skipStock) {
+    collectionPlan = selectAdaptiveStockProducts(ranking.products, selectionStore, decision, now, opts);
     stockLimit = collectionPlan.products.length;
     stocks = stockLimit
       ? await fetchStockSnapshots(collectionPlan.products, {
@@ -1529,16 +1890,18 @@ async function runCollector(opts) {
 
   if (!dryRun) {
     const latestStore = await readStore();
-    if (!force && hasRunForCollectionSlot(latestStore, decision, plannedSlot)) {
+    const latestRunPlan = buildCollectorRunPlan(latestStore, decision, now, opts);
+    if (!force && !latestRunPlan.shouldRun) {
       return {
         success: true,
         skipped: true,
-        reason: 'already collected for this schedule slot after concurrent run',
+        reason: 'already collected after concurrent run',
         schedule: decision,
+        runPlan: latestRunPlan,
         collectionPlan: {
-          mode: 'duplicate-slot-write-guard',
-          slotIndex: plannedSlot,
-          dailyKey: plannedDailyKey,
+          mode: 'duplicate-write-guard',
+          slotIndex: latestRunPlan.stockSlot ? latestRunPlan.stockSlot.index : null,
+          dailyKey: latestRunPlan.dailyKey,
           selectedCount: 0,
           tierCounts: {}
         },
@@ -1550,17 +1913,39 @@ async function runCollector(opts) {
         durationMs: Date.now() - started
       };
     }
+    if (!force && runPlan.stockDue && !latestRunPlan.stockDue) {
+      stocks = [];
+      stockLimit = 0;
+      collectionPlan.products = [];
+      collectionPlan.selectedCount = 0;
+      collectionPlan.mode = 'skip-stock-concurrent';
+      collectionPlan.tierCounts = {};
+    }
+    if (!force && runPlan.discoveryDue && !latestRunPlan.discoveryDue) {
+      categoryRankings = null;
+      ranking = rankingFromStore(latestStore, size);
+    }
+    runPlan = latestRunPlan;
     store = latestStore;
   }
 
   store = mergeRunIntoStore(store, ranking, stocks, {
     ts: now.toISOString(),
     mode: decision.mode,
-    dailyKey: collectionPlan.dailyKey,
+    dailyKey: runPlan.dailyKey || collectionPlan.dailyKey,
+    collectionType: runPlan.collectionType,
     stockLimit,
     stockOffset,
     collectionMode: collectionPlan.mode,
     collectionSlot: collectionPlan.slotIndex,
+    stockSlotIndex: runPlan.stockSlot ? runPlan.stockSlot.index : null,
+    stockSlotLabel: runPlan.stockSlot ? runPlan.stockSlot.label : null,
+    stockTimesKst: runPlan.stockTimesKst,
+    categoryRankings,
+    stockProducts: collectionPlan.products,
+    categoryRankingRequestedCount: categoryRankings ? categoryRankings.requestedCount : 0,
+    categoryRankingOkCount: categoryRankings ? categoryRankings.okCount : 0,
+    categoryRankingErrorCount: categoryRankings ? categoryRankings.errors.length : 0,
     tierCounts: collectionPlan.tierCounts,
     skippedRankingCount: collectionPlan.skippedRankingCount,
     outOfTopSelectedCount: collectionPlan.outOfTopSelectedCount,
@@ -1579,6 +1964,7 @@ async function runCollector(opts) {
     dryRun,
     skipped: false,
     schedule: decision,
+    runPlan,
     collectionPlan: {
       mode: collectionPlan.mode,
       slotIndex: collectionPlan.slotIndex,
@@ -1589,10 +1975,17 @@ async function runCollector(opts) {
       retrySelectedCount: collectionPlan.retrySelectedCount,
       retrySkippedCount: collectionPlan.retrySkippedCount,
       retryLimit: collectionPlan.retryLimit,
+      maxCandidates: collectionPlan.maxCandidates,
+      categoryRankLimit: collectionPlan.categoryRankLimit,
       tierCounts: collectionPlan.tierCounts,
       rules: collectionPlan.rules
     },
     rankingCount: ranking.products.length,
+    categoryRankingRequestedCount: categoryRankings ? categoryRankings.requestedCount : 0,
+    categoryRankingOkCount: categoryRankings ? categoryRankings.okCount : 0,
+    categoryRankingErrorCount: categoryRankings ? categoryRankings.errors.length : 0,
+    stockSlotIndex: runPlan.stockSlot ? runPlan.stockSlot.index : null,
+    stockSlotLabel: runPlan.stockSlot ? runPlan.stockSlot.label : null,
     stockOffset,
     stockCount: stocks.length,
     stockOkCount: stocks.filter((s) => s.ok).length,
@@ -1610,8 +2003,10 @@ async function runCollector(opts) {
 }
 
 module.exports = {
+  buildCollectorRunPlan,
   computeEstimates,
   emptyStore,
+  fetchCategoryRankings,
   fetchViewRanking,
   getSalesStats,
   getPurchaseLimitInfo,

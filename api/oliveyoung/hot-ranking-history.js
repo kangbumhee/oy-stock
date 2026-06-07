@@ -53,34 +53,37 @@ function compactChartPoints(points, mode) {
   });
 }
 
-function compactEstimate(row) {
+function compactEstimate(row, dayRow) {
+  const metric = dayRow || row;
   return {
     goodsNo: row.goodsNo,
-    price: row.price || 0,
-    originalPrice: row.originalPrice || 0,
-    discountRate: row.discountRate || 0,
+    price: metric.price || row.price || 0,
+    originalPrice: metric.originalPrice || row.originalPrice || 0,
+    discountRate: metric.discountRate || row.discountRate || 0,
     estimatedSales: row.estimatedSales || 0,
     estimatedRevenue: row.estimatedRevenue || 0,
     windowEstimatedSales: row.windowEstimatedSales || 0,
     windowEstimatedRevenue: row.windowEstimatedRevenue || 0,
-    dailyEstimatedSales: row.dailyEstimatedSales || 0,
-    dailyEstimatedRevenue: row.dailyEstimatedRevenue || 0,
-    fromTotal: row.fromTotal || 0,
-    toTotal: row.toTotal || 0,
-    perHour: row.perHour || 0,
-    observationCount: row.observationCount || 0,
-    dropEvents: row.dropEvents || 0,
-    restockUnits: row.restockUnits || 0,
-    restockEvents: row.restockEvents || 0,
-    restockAdjusted: !!row.restockAdjusted,
-    fromTs: row.fromTs || null,
-    toTs: row.toTs || null,
-    optionCount: row.optionCount || 0,
-    hasToday: !!row.hasToday,
-    purchaseLimit: row.purchaseLimit || null,
-    salesRank: row.salesRank,
-    revenueRank: row.revenueRank,
-    rankTrends: row.rankTrends || {},
+    dailyEstimatedSales: metric.dailyEstimatedSales || 0,
+    dailyEstimatedRevenue: metric.dailyEstimatedRevenue || 0,
+    fromTotal: metric.fromTotal || row.fromTotal || 0,
+    toTotal: metric.toTotal || row.toTotal || 0,
+    perHour: metric.perHour || 0,
+    observationCount: metric.observationCount || 0,
+    dropEvents: metric.dropEvents || 0,
+    restockUnits: metric.restockUnits || 0,
+    restockEvents: metric.restockEvents || 0,
+    restockAdjusted: !!metric.restockAdjusted,
+    confidence: metric.confidence || 'pending',
+    confidenceLabel: metric.confidenceLabel || '',
+    fromTs: metric.fromTs || row.fromTs || null,
+    toTs: metric.toTs || row.toTs || null,
+    optionCount: metric.optionCount || row.optionCount || 0,
+    hasToday: !!(metric.hasToday || row.hasToday),
+    purchaseLimit: metric.purchaseLimit || row.purchaseLimit || null,
+    salesRank: metric.salesRank,
+    revenueRank: metric.revenueRank,
+    rankTrends: metric.rankTrends || row.rankTrends || {},
     viewChart: compactChartPoints(row.viewChart, 'view'),
     salesChart: compactChartPoints(row.salesChart, 'sales'),
     revenueChart: compactChartPoints(row.revenueChart, 'revenue')
@@ -126,14 +129,38 @@ module.exports = async function handler(req, res) {
       windowMs,
       maxChartPoints: chartPointLimit(range.range)
     });
+    const dayEstimates =
+      range.hours === 24
+        ? estimates
+        : computeEstimates(store, {
+            windowMs: 24 * 60 * 60 * 1000,
+            maxChartPoints: chartPointLimit('1d')
+          });
+    const dayEstimateByGoods = {};
+    dayEstimates.forEach((row) => {
+      if (row && row.goodsNo) dayEstimateByGoods[row.goodsNo] = row;
+    });
     const storeProducts = (store && store.products) || {};
     let products = [];
     let source = 'hot-ranking-history';
     let categoryUpdatedAt = null;
 
     if (categoryId) {
-      const ranking = await fetchViewRanking(size, { categoryId });
-      source = 'oliveyoung-view-rank-category';
+      const cachedCategory =
+        store.rankings &&
+        store.rankings.categories &&
+        store.rankings.categories[categoryId];
+      let ranking;
+      if (cachedCategory && Array.isArray(cachedCategory.products) && cachedCategory.products.length) {
+        ranking = {
+          updatedAt: cachedCategory.updatedAt,
+          products: cachedCategory.products.slice(0, size)
+        };
+        source = 'hot-ranking-history-category';
+      } else {
+        ranking = await fetchViewRanking(size, { categoryId });
+        source = 'oliveyoung-view-rank-category';
+      }
       categoryUpdatedAt = ranking.updatedAt;
       products = (ranking.products || []).map((product) => {
         const stored = storeProducts[product.goodsNo] || {};
@@ -157,32 +184,58 @@ module.exports = async function handler(req, res) {
       });
     } else {
       source = 'hot-ranking-history';
-      products = Object.values(storeProducts)
-        .filter((item) => item && item.currentlyRanked !== false && Number(item.latestRank || 9999) < 9999)
-        .sort((a, b) => (a.latestRank || 9999) - (b.latestRank || 9999))
-        .slice(0, size)
-        .map((item, idx) => ({
-          rank: item.latestRank || idx + 1,
-          goodsNo: item.goodsNo,
-          goodsNumber: item.goodsNo,
-          goodsName: item.goodsName || item.goodsNo,
-          imageUrl: item.imageUrl || '',
-          categoryNumber: item.categoryNumber || '',
-          brandId: item.brandId || '',
-          itemId: item.itemId || '',
-          price: item.price || 0,
-          originalPrice: item.originalPrice || 0,
-          discountRate: item.discountRate || 0,
-          viewCount: item.latestViewCount || 0,
-          purchaseLimit: item.purchaseLimit || null,
-          lastStockedAt: item.lastStockedAt || null,
-          source
-        }));
+      const cachedGlobal = store.rankings && store.rankings.global;
+      if (cachedGlobal && Array.isArray(cachedGlobal.products) && cachedGlobal.products.length) {
+        products = cachedGlobal.products.slice(0, size).map((product) => {
+          const stored = storeProducts[product.goodsNo] || {};
+          return {
+            rank: product.rank,
+            goodsNo: product.goodsNo,
+            goodsNumber: product.goodsNo,
+            goodsName: stored.goodsName || product.goodsName || product.goodsNo,
+            imageUrl: stored.imageUrl || product.imageUrl || '',
+            categoryNumber: product.categoryNumber || stored.categoryNumber || '',
+            brandId: product.brandId || stored.brandId || '',
+            itemId: product.itemId || stored.itemId || '',
+            price: stored.price || product.price || 0,
+            originalPrice: stored.originalPrice || 0,
+            discountRate: stored.discountRate || 0,
+            viewCount: product.viewCount || stored.latestViewCount || 0,
+            purchaseLimit: stored.purchaseLimit || null,
+            lastStockedAt: stored.lastStockedAt || null,
+            source
+          };
+        });
+      } else {
+        products = Object.values(storeProducts)
+          .filter((item) => item && item.currentlyRanked !== false && Number(item.latestRank || 9999) < 9999)
+          .sort((a, b) => (a.latestRank || 9999) - (b.latestRank || 9999))
+          .slice(0, size)
+          .map((item, idx) => ({
+            rank: item.latestRank || idx + 1,
+            goodsNo: item.goodsNo,
+            goodsNumber: item.goodsNo,
+            goodsName: item.goodsName || item.goodsNo,
+            imageUrl: item.imageUrl || '',
+            categoryNumber: item.categoryNumber || '',
+            brandId: item.brandId || '',
+            itemId: item.itemId || '',
+            price: item.price || 0,
+            originalPrice: item.originalPrice || 0,
+            discountRate: item.discountRate || 0,
+            viewCount: item.latestViewCount || 0,
+            purchaseLimit: item.purchaseLimit || null,
+            lastStockedAt: item.lastStockedAt || null,
+            source
+          }));
+      }
     }
     const productGoods = new Set(products.map((item) => item.goodsNo).filter(Boolean));
     const estimateMap = {};
     estimates.forEach((row) => {
-      if (productGoods.has(row.goodsNo)) estimateMap[row.goodsNo] = compactEstimate(row);
+      if (productGoods.has(row.goodsNo)) {
+        estimateMap[row.goodsNo] = compactEstimate(row, dayEstimateByGoods[row.goodsNo]);
+      }
     });
 
     if (!products.length) {
@@ -220,6 +273,13 @@ module.exports = async function handler(req, res) {
         estimates: estimateMap,
         estimateCount: Object.values(estimateMap).filter((r) => r.dailyEstimatedSales > 0).length,
         revenueEstimateCount: Object.values(estimateMap).filter((r) => r.dailyEstimatedRevenue > 0).length,
+        rankingCache: store.rankings
+          ? {
+              updatedAt: store.rankings.updatedAt || null,
+              categoryRequestedCount: store.rankings.categoryRequestedCount || 0,
+              categoryOkCount: store.rankings.categoryOkCount || 0
+            }
+          : null,
         runCount: Array.isArray(store.runs) ? store.runs.length : 0,
         recentRuns: Array.isArray(store.runs) ? store.runs.slice(-8) : []
       }

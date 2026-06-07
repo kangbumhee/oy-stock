@@ -658,7 +658,7 @@ var App = {
           self._renderHotRanking();
         }
         self._startHotAutoRefresh();
-        if (dd.source !== 'hot-ranking-history') {
+        if (dd.source === 'oliveyoung-view-rank' || dd.source === 'oliveyoung-view-rank-category') {
           self._enrichHotRankingStock(self.hotProducts);
         }
       })
