@@ -141,6 +141,8 @@ header h1{font-size:20px;margin-bottom:4px}
 .hot-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-bottom:1px solid #e5e7eb;background:#f0fdf4}
 .hot-head h2{font-size:16px;line-height:1.2;color:#166534}
 .hot-head p{font-size:11px;color:#4b5563;margin-top:2px}
+.hot-summary{font-weight:700}
+.hot-basis-note{color:#15803d!important}
 .hot-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
 .hot-sort,.hot-range{display:flex;border:1px solid #bbf7d0;border-radius:6px;overflow:hidden;background:#fff}
 .hot-sort button,.hot-range button{height:32px;padding:0 9px;border:none;border-right:1px solid #dcfce7;background:#fff;color:#64748b;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap}

@@ -9,6 +9,7 @@ var App = {
   hotProducts: [],
   hotUpdatedAt: null,
   hotLastStockRunAt: null,
+  hotDataSource: '',
   hotFetchedAt: 0,
   hotAutoTimer: null,
   hotServerEstimates: {},
@@ -480,6 +481,7 @@ var App = {
     UI.renderHotRanking(this.hotProducts, {
       updatedAt: this.hotUpdatedAt,
       lastStockRunAt: this.hotLastStockRunAt,
+      source: this.hotDataSource,
       estimates: this._hotEstimateMap(),
       purchaseLimits: this.hotPurchaseLimits,
       sortMode: this.hotSortMode,
@@ -619,7 +621,7 @@ var App = {
 
     if (showRefreshFeedback) {
       this.hotRefreshState = 'loading';
-      this.hotRefreshMessage = '새로고침 중...';
+      this.hotRefreshMessage = '저장 데이터 확인 중...';
       if (this.hotProducts && this.hotProducts.length) this._renderHotRanking();
     }
 
@@ -645,12 +647,13 @@ var App = {
         });
         self.hotUpdatedAt = dd.updatedAt || new Date().toISOString();
         self.hotLastStockRunAt = dd.lastStockRunAt || dd.updatedAt || null;
+        self.hotDataSource = dd.source || '';
         self.hotFetchedAt = Date.now();
         self.hotFetchedRange = self.hotRange;
         self.hotFetchedCategory = self.hotCategory;
         if (showRefreshFeedback) {
-          self._setHotRefreshState('success', '방금 갱신됨', 2400);
-          UI.showSyncStatus('인기템 새로고침 완료', false, 1800);
+          self._setHotRefreshState('success', '저장 데이터 확인됨', 2400);
+          UI.showSyncStatus('인기템 데이터 확인 완료', false, 1800);
         } else {
           self._renderHotRanking();
         }
@@ -664,7 +667,7 @@ var App = {
           self.hotProducts = [];
           self._renderHotRanking();
         }
-        if (showRefreshFeedback) self._setHotRefreshState('error', '새로고침 실패', 3500);
+        if (showRefreshFeedback) self._setHotRefreshState('error', '확인 실패', 3500);
         UI.showSyncStatus(err.message || '조회 인기템 로드 실패', true);
       });
   },

@@ -831,6 +831,7 @@ var UI = {
     var category = state.category || (CONFIG.HOT_RANK_DEFAULT_CATEGORY || '');
     var categoryLabel = UI.hotCategoryLabel(category);
     var metricLabel = UI.hotRangeMetricLabel(range);
+    var source = state.source || '';
     var refreshState = state.refreshState || 'idle';
     var isRefreshing = refreshState === 'loading';
     var refreshMessage = state.refreshMessage || '';
@@ -861,6 +862,20 @@ var UI = {
           : estimates[gn].drop || estimates[gn].estimatedSales || 0;
       return Number(dailySales) > 0;
     }).length;
+    var summaryParts = [];
+    if (updatedAt) summaryParts.push(updatedAt + ' 마지막 수집');
+    summaryParts.push(category ? UI.esc(categoryLabel) + ' 조회순' : '전체 TOP100');
+    summaryParts.push(category ? '조회순 캐시' : '일 1회 수집');
+    summaryParts.push(UI.esc(UI.hotRangeLabel(range)) + ' 기준');
+    summaryParts.push(UI.esc(metricLabel) + ' 판매측정 ' + UI.num(measuredCount) + '개');
+    var basisNote = category
+      ? '카테고리 목록은 조회순 캐시, 판매량·매출은 전체 TOP100 수집 상품만 계산'
+      : '자동수집 매일 오전 3시, 실패 시 당일 재시도';
+    if (source === 'oliveyoung-view-rank' || source === 'oliveyoung-view-rank-category') {
+      basisNote = category
+        ? '카테고리 조회순 캐시 표시 중, 판매량·매출은 전체 TOP100 수집분과 겹친 상품만 계산'
+        : '조회순 캐시 표시 중, 판매량·매출은 다음 일 수집 후 반영';
+    }
     var rangeButtons = Object.keys(ranges)
       .map(function (key) {
         return (
@@ -897,15 +912,11 @@ var UI = {
       '<div class="hot-head">' +
       '<div><h2>🔥 조회 인기템 TOP ' +
       UI.num(products.length) +
-      '</h2><p>' +
-      (updatedAt ? updatedAt + ' 재고수집 · ' : '') +
-      (category ? UI.esc(categoryLabel) + ' · ' : '') +
-      UI.esc(UI.hotRangeLabel(range)) +
-      ' 그래프 · ' +
-      UI.esc(metricLabel) +
-      ' 판매 ' +
-      UI.num(measuredCount) +
-      '개 측정</p></div>' +
+      '</h2><p class="hot-summary">' +
+      summaryParts.join(' · ') +
+      '</p><p class="hot-basis-note">' +
+      UI.esc(basisNote) +
+      '</p></div>' +
       '<div class="hot-actions">' +
       '<div class="hot-range" role="group" aria-label="그래프 기간">' +
       rangeButtons +
@@ -924,8 +935,8 @@ var UI = {
       refreshStatusHtml +
       '<button type="button" class="velocity-refresh hot-refresh' +
       (isRefreshing ? ' is-refreshing' : '') +
-      '" data-action="refreshHotRanking" title="새로고침" aria-label="' +
-      (isRefreshing ? '인기템 새로고침 중' : '인기템 새로고침') +
+      '" data-action="refreshHotRanking" title="저장 데이터 다시 확인" aria-label="' +
+      (isRefreshing ? '인기템 저장 데이터 확인 중' : '인기템 저장 데이터 다시 확인') +
       '"' +
       (isRefreshing ? ' aria-busy="true" disabled' : '') +
       '><span class="refresh-glyph">↻</span></button>' +
@@ -1073,7 +1084,7 @@ var UI = {
               UI.formatRankTime(estimate.toTs || estimate.fromTs) +
               ' · 재고 ' +
               UI.num(estimate.toTotal || estimate.fromTotal || 0) +
-              '개 · 다음 체크 후 계산';
+              '개 · 다음 수집 후 계산';
           }
           salesBlock =
             '<div class="hot-sales"><strong>측정중</strong><span>' +
