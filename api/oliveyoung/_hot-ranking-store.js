@@ -389,12 +389,25 @@ function collectionSlotIndex(decision) {
   return Math.floor(((Number(kst.hour) || 0) * 60 + (Number(kst.minute) || 0)) / interval);
 }
 
+function successfulDailyRun(run) {
+  const minimumOk = parseIntBounded(process.env.HOT_RANK_DAILY_MIN_STOCK_OK, 10, 1, 100);
+  const stockCount = Number(run && run.stockCount) || 0;
+  const stockOkCount = Number(run && run.stockOkCount) || 0;
+  return stockCount > 0 && stockOkCount >= Math.min(minimumOk, stockCount);
+}
+
 function hasRunForCollectionSlot(store, decision, slotIndex) {
   const dailyKey = decision && decision.kst && decision.kst.isoDate;
   const mode = decision && decision.mode;
+  const dailyMode = isDailyScheduleMode(decision);
   const runs = Array.isArray(store && store.runs) ? store.runs : [];
   return runs.some((run) => {
-    if (!run || run.mode !== mode) return false;
+    if (!run) return false;
+    if (dailyMode) {
+      if (!successfulDailyRun(run)) return false;
+      const runDay = run.dailyKey || kstDateKey(run.ts);
+      return runDay && dailyKey && runDay === dailyKey;
+    } else if (run.mode !== mode) return false;
     if (Number(run.collectionSlot) !== Number(slotIndex)) return false;
     const runDay = run.dailyKey || kstDateKey(run.ts);
     return runDay && dailyKey && runDay === dailyKey;
@@ -1313,6 +1326,12 @@ function isInDailyCollectionWindow(kst, dailyTime, graceMinutes) {
   return delta < graceMinutes;
 }
 
+function isAtOrAfterDailyCollectionTime(kst, dailyTime) {
+  const current = kst.hour * 60 + kst.minute;
+  const target = dailyTime.hour * 60 + dailyTime.minute;
+  return current >= target;
+}
+
 function isDailyScheduleMode(decision) {
   return !!(decision && typeof decision.mode === 'string' && decision.mode.indexOf('daily-') === 0);
 }
@@ -1328,13 +1347,17 @@ function getScheduleDecision(date) {
       1,
       60
     );
+    const inPreferredWindow = isInDailyCollectionWindow(kst, dailyTime, graceMinutes);
+    const catchUpEligible = isAtOrAfterDailyCollectionTime(kst, dailyTime);
     return {
-      shouldRun: isInDailyCollectionWindow(kst, dailyTime, graceMinutes),
+      shouldRun: catchUpEligible,
       mode: 'daily-' + dailyTime.label + '-kst',
       intervalMinutes: 24 * 60,
       kst,
       dailyTimeKst: dailyTime.label,
       graceMinutes,
+      inPreferredWindow,
+      catchUpEligible,
       busyWindows: windows
         .map((w) => String(w.start).padStart(2, '0') + '-' + String(w.end).padStart(2, '0'))
         .join(',')
@@ -1379,7 +1402,7 @@ async function runCollector(opts) {
       success: true,
       skipped: true,
       reason: isDailyScheduleMode(decision)
-        ? 'waiting for daily collection window'
+        ? 'waiting for daily collection time'
         : 'waiting for scheduled collection interval',
       schedule: decision
     };
