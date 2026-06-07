@@ -1129,7 +1129,7 @@ var UI = {
           '<div class="hot-meta"><span>' +
           viewCount +
           '명이 보고있어요</span>' +
-          (sortMode !== 'view' ? '<span>조회순 #' + UI.num(p.rank || idx + 1) + '</span>' : '') +
+          (sortMode !== 'view' ? '<span>조회순 ' + UI.hotRankText(p.rank || idx + 1) + '</span>' : '') +
           (estimate && estimate.salesRank ? '<span>판매순 #' + UI.num(estimate.salesRank) + '</span>' : '') +
           (estimate && estimate.revenueRank ? '<span>매출순 #' + UI.num(estimate.revenueRank) + '</span>' : '') +
           '<span class="' +
