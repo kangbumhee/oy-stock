@@ -255,6 +255,16 @@ var UI = {
     return UI.hotRangeLabel(range);
   },
 
+  hotCategoryLabel: function (category) {
+    var raw = String(category || '');
+    if (!raw) return '전체';
+    var cats = (typeof CONFIG !== 'undefined' && CONFIG.HOT_RANK_CATEGORIES) || [];
+    var found = cats.find(function (cat) {
+      return String((cat && cat.id) || '') === raw;
+    });
+    return (found && found.label) || raw;
+  },
+
   formatChartDate: function (ts) {
     if (!ts) return '';
     try {
@@ -818,6 +828,8 @@ var UI = {
     var sortMode =
       state.sortMode === 'revenue' ? 'revenue' : state.sortMode === 'sales' ? 'sales' : 'view';
     var range = state.range || (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d');
+    var category = state.category || (CONFIG.HOT_RANK_DEFAULT_CATEGORY || '');
+    var categoryLabel = UI.hotCategoryLabel(category);
     var metricLabel = UI.hotRangeMetricLabel(range);
     var refreshState = state.refreshState || 'idle';
     var isRefreshing = refreshState === 'loading';
@@ -838,6 +850,7 @@ var UI = {
       '7d': { label: '7일' },
       '30d': { label: '30일' }
     };
+    var categories = CONFIG.HOT_RANK_CATEGORIES || [{ id: '', label: '전체' }];
     var stockUpdatedAt = state.lastStockRunAt || state.updatedAt || '';
     var updatedAt = stockUpdatedAt ? UI.formatRankTime(stockUpdatedAt) : '';
     var measuredCount = Object.keys(estimates).filter(function (gn) {
@@ -861,13 +874,23 @@ var UI = {
         );
       })
       .join('');
-
-    if (!products.length) {
-      root.innerHTML =
-        '<div class="empty-state"><p>조회 인기템을 불러오지 못했습니다</p>' +
-        '<button type="button" class="retry-search-btn btn-oy" data-action="refreshHotRanking">다시 시도</button></div>';
-      return;
-    }
+    var categoryButtons = categories
+      .map(function (cat) {
+        var id = String((cat && cat.id) || '');
+        var active = String(category || '') === id;
+        return (
+          '<button type="button" data-action="setHotCategory" data-category="' +
+          UI.esc(id) +
+          '" class="' +
+          (active ? 'active' : '') +
+          '" aria-pressed="' +
+          (active ? 'true' : 'false') +
+          '">' +
+          UI.esc((cat && cat.label) || id || '전체') +
+          '</button>'
+        );
+      })
+      .join('');
 
     var head =
       '<section class="hot-panel">' +
@@ -876,6 +899,7 @@ var UI = {
       UI.num(products.length) +
       '</h2><p>' +
       (updatedAt ? updatedAt + ' 재고수집 · ' : '') +
+      (category ? UI.esc(categoryLabel) + ' · ' : '') +
       UI.esc(UI.hotRangeLabel(range)) +
       ' 그래프 · ' +
       UI.esc(metricLabel) +
@@ -906,7 +930,20 @@ var UI = {
       (isRefreshing ? ' aria-busy="true" disabled' : '') +
       '><span class="refresh-glyph">↻</span></button>' +
       '</div>' +
+      '</div>' +
+      '<div class="hot-categories" role="group" aria-label="인기템 카테고리">' +
+      categoryButtons +
       '</div>';
+
+    if (!products.length) {
+      root.innerHTML =
+        head +
+        '<div class="empty-state"><p>' +
+        UI.esc(categoryLabel) +
+        ' 인기템을 불러오지 못했습니다</p>' +
+        '<button type="button" class="retry-search-btn btn-oy" data-action="refreshHotRanking">다시 시도</button></div></section>';
+      return;
+    }
 
     var sortedProducts = products.slice();
     if (sortMode === 'sales' || sortMode === 'revenue') {

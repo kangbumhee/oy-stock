@@ -25,6 +25,12 @@ function parseIntBounded(value, fallback, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+function parseCategoryId(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'all') return '';
+  return /^\d{8,}$/.test(raw) ? raw : '';
+}
+
 function parseMoney(value) {
   if (value == null) return 0;
   const n = Number(String(value).replace(/[^\d.-]/g, ''));
@@ -110,18 +116,24 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
   }
 }
 
-async function fetchViewRanking(size) {
+async function fetchViewRanking(size, opts) {
+  opts = opts || {};
   const requested = parseIntBounded(size, 100, 1, 200);
-  const upstreamSize = Math.min(200, Math.max(requested, Math.ceil(requested * 1.6)));
+  const categoryId = parseCategoryId(opts.categoryId || opts.category || opts.categoryid);
+  const upstreamSize = categoryId
+    ? requested
+    : Math.min(200, Math.max(requested, Math.ceil(requested * 1.6)));
   const url = new URL(VIEW_RANK_URL);
   url.searchParams.set('type', 'view');
   url.searchParams.set('size', String(upstreamSize));
+  if (categoryId) url.searchParams.set('categoryid', categoryId);
   const res = await fetchJsonWithTimeout(url.toString(), 5000);
   if (!res.ok || !res.json || !Array.isArray(res.json.items)) {
     throw new Error('view ranking fetch failed: ' + (res.status || 'no-status'));
   }
   return {
     updatedAt: res.json.dateTime || new Date().toISOString(),
+    categoryId,
     products: res.json.items.map(normalizeRankItem).filter((p) => p.goodsNo).slice(0, requested)
   };
 }

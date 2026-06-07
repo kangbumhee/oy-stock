@@ -12,6 +12,12 @@ function parseSize(value) {
   return n;
 }
 
+function parseCategory(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'all') return '';
+  return /^\d{8,}$/.test(raw) ? raw : '';
+}
+
 function goodsNoFromItem(item) {
   const raw = String((item && item.itemUrl) || '').trim();
   const match = raw.match(/goodsNo=([^&]+)/);
@@ -67,8 +73,12 @@ module.exports = async function handler(req, res) {
   }
 
   const size = parseSize(req.query && req.query.size);
+  const categoryId = parseCategory(
+    req.query &&
+      (req.query.category || req.query.categoryid || req.query.categoryId || req.query.fltDispCatNo)
+  );
   const now = Date.now();
-  const cacheKey = String(size);
+  const cacheKey = String(size) + '|' + categoryId;
   if (cache && cache.key === cacheKey && now - cache.ts < 30 * 1000) {
     res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
     res.status(200).json(cache.data);
@@ -76,9 +86,10 @@ module.exports = async function handler(req, res) {
   }
 
   const url = new URL(RTS_URL);
-  const upstreamSize = Math.min(200, Math.max(size, Math.ceil(size * 1.6)));
+  const upstreamSize = categoryId ? size : Math.min(200, Math.max(size, Math.ceil(size * 1.6)));
   url.searchParams.set('type', 'view');
   url.searchParams.set('size', String(upstreamSize));
+  if (categoryId) url.searchParams.set('categoryid', categoryId);
 
   try {
     const upstream = await fetchWithTimeout(url.toString(), 5000);
@@ -108,6 +119,7 @@ module.exports = async function handler(req, res) {
       success: true,
       data: {
         type: 'view',
+        categoryId,
         requestedSize: size,
         totalCount: products.length,
         updatedAt: json.dateTime || new Date().toISOString(),

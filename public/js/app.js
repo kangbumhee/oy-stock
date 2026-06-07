@@ -15,7 +15,9 @@ var App = {
   hotPurchaseLimits: {},
   hotSortMode: 'view',
   hotRange: (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d'),
+  hotCategory: (CONFIG.HOT_RANK_DEFAULT_CATEGORY || ''),
   hotFetchedRange: '',
+  hotFetchedCategory: '',
   hotRefreshState: 'idle',
   hotRefreshMessage: '',
   hotRefreshTimer: null,
@@ -184,6 +186,19 @@ var App = {
         e.preventDefault();
         e.stopPropagation();
         this.hotRange = el.dataset.range || (CONFIG.HOT_RANK_DEFAULT_RANGE || '1d');
+        this._loadHotRanking(true);
+        break;
+      case 'setHotCategory':
+        e.preventDefault();
+        e.stopPropagation();
+        this.hotCategory = el.dataset.category || '';
+        this.hotFetchedAt = 0;
+        this.hotProducts = [];
+        this.hotServerEstimates = {};
+        this.hotPurchaseLimits = {};
+        this.hotRefreshState = 'idle';
+        this.hotRefreshMessage = '';
+        UI.showHotRankingLoading();
         this._loadHotRanking(true);
         break;
       case 'toggleFav':
@@ -469,6 +484,7 @@ var App = {
       purchaseLimits: this.hotPurchaseLimits,
       sortMode: this.hotSortMode,
       range: this.hotRange,
+      category: this.hotCategory,
       refreshState: this.hotRefreshState,
       refreshMessage: this.hotRefreshMessage
     });
@@ -593,6 +609,7 @@ var App = {
       this.hotProducts &&
       this.hotProducts.length &&
       this.hotFetchedRange === this.hotRange &&
+      this.hotFetchedCategory === this.hotCategory &&
       now - this.hotFetchedAt < (CONFIG.HOT_RANK_CACHE_TTL_MS || 45000)
     ) {
       this._renderHotRanking();
@@ -607,8 +624,14 @@ var App = {
     }
 
     if (!this.hotProducts || !this.hotProducts.length) UI.showHotRankingLoading();
-    API.hotRanking(CONFIG.HOT_RANK_SIZE || 100, { range: this.hotRange })
+    var requestRange = this.hotRange;
+    var requestCategory = this.hotCategory;
+    API.hotRanking(CONFIG.HOT_RANK_SIZE || 100, {
+      range: requestRange,
+      category: requestCategory
+    })
       .then(function (data) {
+        if (self.hotRange !== requestRange || self.hotCategory !== requestCategory) return;
         var dd = (data && data.data) || {};
         self.hotProducts = dd.products || [];
         self.hotServerEstimates = dd.estimates || {};
@@ -624,6 +647,7 @@ var App = {
         self.hotLastStockRunAt = dd.lastStockRunAt || dd.updatedAt || null;
         self.hotFetchedAt = Date.now();
         self.hotFetchedRange = self.hotRange;
+        self.hotFetchedCategory = self.hotCategory;
         if (showRefreshFeedback) {
           self._setHotRefreshState('success', '방금 갱신됨', 2400);
           UI.showSyncStatus('인기템 새로고침 완료', false, 1800);
@@ -636,7 +660,10 @@ var App = {
         }
       })
       .catch(function (err) {
-        if (!self.hotProducts || !self.hotProducts.length) UI.renderHotRanking([], {});
+        if (!self.hotProducts || !self.hotProducts.length) {
+          self.hotProducts = [];
+          self._renderHotRanking();
+        }
         if (showRefreshFeedback) self._setHotRefreshState('error', '새로고침 실패', 3500);
         UI.showSyncStatus(err.message || '조회 인기템 로드 실패', true);
       });

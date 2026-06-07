@@ -161,6 +161,9 @@ var API = {
       (CONFIG.HOT_RANK_API || '/api/oliveyoung/view-ranking') +
       '?size=' +
       encodeURIComponent(size || CONFIG.HOT_RANK_SIZE || 100);
+    if (opts.category || opts.categoryId) {
+      url += '&category=' + encodeURIComponent(opts.category || opts.categoryId);
+    }
     var init = {};
     if (opts.signal) init.signal = opts.signal;
     return fetch(url, Object.keys(init).length ? init : undefined).then(function (r) {
@@ -181,6 +184,9 @@ var API = {
       encodeURIComponent(size || CONFIG.HOT_RANK_SIZE || 100);
     if (opts.range) url += '&range=' + encodeURIComponent(opts.range);
     if (opts.hours) url += '&hours=' + encodeURIComponent(opts.hours);
+    if (opts.category || opts.categoryId) {
+      url += '&category=' + encodeURIComponent(opts.category || opts.categoryId);
+    }
     url += '&_=' + encodeURIComponent(Date.now());
     var init = {};
     if (opts.signal) init.signal = opts.signal;
