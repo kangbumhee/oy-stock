@@ -6,7 +6,7 @@ const RANGE_HOURS = {
   '30d': 24 * 30
 };
 const MAX_RANGE_HOURS = 24 * 30;
-const HOT_RANK_CACHE_CONTROL = 'public, s-maxage=45, stale-while-revalidate=120';
+const HOT_RANK_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=21600';
 
 function parseCategory(value) {
   const raw = String(value || '').trim();
@@ -156,57 +156,28 @@ module.exports = async function handler(req, res) {
         };
       });
     } else {
-      try {
-        const ranking = await fetchViewRanking(size);
-        source = 'hot-ranking-history-live-view';
-        categoryUpdatedAt = ranking.updatedAt;
-        products = (ranking.products || []).map((product) => {
-          const stored = storeProducts[product.goodsNo] || {};
-          return {
-            rank: product.rank,
-            goodsNo: product.goodsNo,
-            goodsNumber: product.goodsNo,
-            goodsName: stored.goodsName || product.goodsName || product.goodsNo,
-            imageUrl: stored.imageUrl || product.imageUrl || '',
-            categoryNumber: product.categoryNumber || stored.categoryNumber || '',
-            brandId: product.brandId || stored.brandId || '',
-            itemId: product.itemId || stored.itemId || '',
-            price: stored.price || product.price || 0,
-            originalPrice: stored.originalPrice || 0,
-            discountRate: stored.discountRate || 0,
-            viewCount: product.viewCount || stored.latestViewCount || 0,
-            purchaseLimit: stored.purchaseLimit || null,
-            lastStockedAt: stored.lastStockedAt || null,
-            source
-          };
-        });
-      } catch (_) {
-        products = [];
-      }
-      if (!products.length) {
-        source = 'hot-ranking-history';
-        products = Object.values(storeProducts)
-          .filter((item) => item && item.currentlyRanked !== false && Number(item.latestRank || 9999) < 9999)
-          .sort((a, b) => (a.latestRank || 9999) - (b.latestRank || 9999))
-          .slice(0, size)
-          .map((item, idx) => ({
-            rank: item.latestRank || idx + 1,
-            goodsNo: item.goodsNo,
-            goodsNumber: item.goodsNo,
-            goodsName: item.goodsName || item.goodsNo,
-            imageUrl: item.imageUrl || '',
-            categoryNumber: item.categoryNumber || '',
-            brandId: item.brandId || '',
-            itemId: item.itemId || '',
-            price: item.price || 0,
-            originalPrice: item.originalPrice || 0,
-            discountRate: item.discountRate || 0,
-            viewCount: item.latestViewCount || 0,
-            purchaseLimit: item.purchaseLimit || null,
-            lastStockedAt: item.lastStockedAt || null,
-            source
-          }));
-      }
+      source = 'hot-ranking-history';
+      products = Object.values(storeProducts)
+        .filter((item) => item && item.currentlyRanked !== false && Number(item.latestRank || 9999) < 9999)
+        .sort((a, b) => (a.latestRank || 9999) - (b.latestRank || 9999))
+        .slice(0, size)
+        .map((item, idx) => ({
+          rank: item.latestRank || idx + 1,
+          goodsNo: item.goodsNo,
+          goodsNumber: item.goodsNo,
+          goodsName: item.goodsName || item.goodsNo,
+          imageUrl: item.imageUrl || '',
+          categoryNumber: item.categoryNumber || '',
+          brandId: item.brandId || '',
+          itemId: item.itemId || '',
+          price: item.price || 0,
+          originalPrice: item.originalPrice || 0,
+          discountRate: item.discountRate || 0,
+          viewCount: item.latestViewCount || 0,
+          purchaseLimit: item.purchaseLimit || null,
+          lastStockedAt: item.lastStockedAt || null,
+          source
+        }));
     }
     const productGoods = new Set(products.map((item) => item.goodsNo).filter(Boolean));
     const estimateMap = {};

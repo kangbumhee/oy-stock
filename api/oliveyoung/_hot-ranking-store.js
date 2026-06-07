@@ -15,6 +15,8 @@ const MINUTE_MS = 60 * 1000;
 const COLLECTION_STALE_GRACE_MS = 5 * MINUTE_MS;
 const DEFAULT_BUSY_INTERVAL_MINUTES = 30;
 const DEFAULT_QUIET_INTERVAL_MINUTES = 60;
+const DEFAULT_DAILY_COLLECTION_TIME_KST = '03:00';
+const DEFAULT_DAILY_COLLECTION_GRACE_MINUTES = 30;
 const DEFAULT_PRIORITY_SALES_LIMIT = 20;
 const DEFAULT_PRIORITY_REVENUE_LIMIT = 20;
 const DEFAULT_RETRY_PER_RUN_LIMIT = 12;
@@ -286,6 +288,19 @@ function rankCollectionPlan(rank, slotIndex, priority) {
   return { due: false, tier: 'out-100', everyRuns: 0, reason: 'out of top 100' };
 }
 
+function dailyRankCollectionPlan(rank) {
+  const r = Number(rank) || 9999;
+  if (r <= 100) {
+    return {
+      due: true,
+      tier: 'daily-top-100',
+      everyRuns: 1,
+      reason: 'top 100: once per KST day'
+    };
+  }
+  return { due: false, tier: 'out-100', everyRuns: 0, reason: 'out of top 100' };
+}
+
 function markPriority(map, row, type, rank) {
   if (!row || !row.goodsNo) return;
   const current = map[row.goodsNo] || {
@@ -411,12 +426,13 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
   const products = Array.isArray(rankingProducts) ? rankingProducts : [];
   const slotIndex = collectionSlotIndex(decision);
   const dailyKey = ((decision && decision.kst && decision.kst.isoDate) || kstParts(now || new Date()).isoDate);
+  const dailyMode = isDailyScheduleMode(decision);
   const selected = [];
   const skipped = [];
   const currentGoods = new Set();
   const tierCounts = {};
   const storeProducts = (store && store.products) || {};
-  const priorityMap = buildCollectionPriorityMap(store);
+  const priorityMap = dailyMode ? {} : buildCollectionPriorityMap(store);
   const nowMs = (now instanceof Date ? now : new Date()).getTime();
   const retryLimit = parseIntBounded(
     opts.retryLimit == null ? process.env.HOT_RANK_RETRY_PER_RUN_LIMIT : opts.retryLimit,
@@ -442,9 +458,9 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
     const rank = Number(product.rank) || idx + 1;
     if (product.goodsNo) currentGoods.add(product.goodsNo);
     const priority = product.goodsNo ? priorityMap[product.goodsNo] : null;
-    let plan = rankCollectionPlan(rank, slotIndex, priority);
+    let plan = dailyMode ? dailyRankCollectionPlan(rank) : rankCollectionPlan(rank, slotIndex, priority);
     const staleRetryDue =
-      !plan.due && isStaleForPlan(storeProducts[product.goodsNo], plan, decision, nowMs);
+      !dailyMode && !plan.due && isStaleForPlan(storeProducts[product.goodsNo], plan, decision, nowMs);
     if (staleRetryDue) {
       if (retrySelectedCount < retryLimit) {
         plan = staleRetryPlan(plan);
@@ -465,9 +481,15 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
     }
   });
 
+  const outOfTopLimitValue =
+    dailyMode && opts.outOfTopLimit == null
+      ? 0
+      : opts.outOfTopLimit == null
+        ? process.env.HOT_RANK_OUT_OF_TOP_PER_RUN_LIMIT
+        : opts.outOfTopLimit;
   const outOfTopLimit = parseIntBounded(
-    opts.outOfTopLimit == null ? process.env.HOT_RANK_OUT_OF_TOP_PER_RUN_LIMIT : opts.outOfTopLimit,
-    10,
+    outOfTopLimitValue,
+    dailyMode ? 0 : 10,
     0,
     200
   );
@@ -490,7 +512,7 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
   }));
 
   return {
-    mode: 'adaptive-rank-tier',
+    mode: dailyMode ? 'daily-top-100' : 'adaptive-rank-tier',
     slotIndex,
     dailyKey,
     products: selected,
@@ -501,19 +523,24 @@ function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts
     retrySkippedCount,
     retryLimit,
     tierCounts,
-    rules: [
-      '1-30 every scheduled run',
-      'sales/revenue top ' +
-        parseIntBounded(process.env.HOT_RANK_PRIORITY_SALES_LIMIT, DEFAULT_PRIORITY_SALES_LIMIT, 0, 100) +
-        '/' +
-        parseIntBounded(process.env.HOT_RANK_PRIORITY_REVENUE_LIMIT, DEFAULT_PRIORITY_REVENUE_LIMIT, 0, 100) +
-        ' every scheduled run',
-      '31-60 every 2 runs',
-      '61-90 every 3 runs',
-      '91-100 every 4 runs',
-      'stale or failed stock snapshots retry up to ' + retryLimit + ' products per run',
-      'out of top 100 once per KST day'
-    ]
+    rules: dailyMode
+      ? [
+          'rank 1-100 once per KST day',
+          'out of top 100 skipped by default to reduce Vercel usage'
+        ]
+      : [
+          '1-30 every scheduled run',
+          'sales/revenue top ' +
+            parseIntBounded(process.env.HOT_RANK_PRIORITY_SALES_LIMIT, DEFAULT_PRIORITY_SALES_LIMIT, 0, 100) +
+            '/' +
+            parseIntBounded(process.env.HOT_RANK_PRIORITY_REVENUE_LIMIT, DEFAULT_PRIORITY_REVENUE_LIMIT, 0, 100) +
+            ' every scheduled run',
+          '31-60 every 2 runs',
+          '61-90 every 3 runs',
+          '91-100 every 4 runs',
+          'stale or failed stock snapshots retry up to ' + retryLimit + ' products per run',
+          'out of top 100 once per KST day'
+        ]
   };
 }
 
@@ -1260,9 +1287,59 @@ function isBusyHour(hour, windows) {
   });
 }
 
+function dailyScheduleEnabled() {
+  const raw = String(process.env.HOT_RANK_DAILY_ONLY == null ? '1' : process.env.HOT_RANK_DAILY_ONLY)
+    .trim()
+    .toLowerCase();
+  return !['0', 'false', 'no', 'off'].includes(raw);
+}
+
+function parseDailyCollectionTime(value) {
+  const raw = String(value || DEFAULT_DAILY_COLLECTION_TIME_KST).trim();
+  const match = raw.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  const hour = match ? Math.max(0, Math.min(23, Number(match[1]))) : 3;
+  const minute = match ? Math.max(0, Math.min(59, Number(match[2] || 0))) : 0;
+  return {
+    hour,
+    minute,
+    label: String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0')
+  };
+}
+
+function isInDailyCollectionWindow(kst, dailyTime, graceMinutes) {
+  const current = kst.hour * 60 + kst.minute;
+  const target = dailyTime.hour * 60 + dailyTime.minute;
+  const delta = (current - target + 24 * 60) % (24 * 60);
+  return delta < graceMinutes;
+}
+
+function isDailyScheduleMode(decision) {
+  return !!(decision && typeof decision.mode === 'string' && decision.mode.indexOf('daily-') === 0);
+}
+
 function getScheduleDecision(date) {
   const kst = kstParts(date || new Date());
   const windows = parseBusyWindows(process.env.HOT_RANK_BUSY_WINDOWS_KST);
+  if (dailyScheduleEnabled()) {
+    const dailyTime = parseDailyCollectionTime(process.env.HOT_RANK_DAILY_TIME_KST);
+    const graceMinutes = parseIntBounded(
+      process.env.HOT_RANK_DAILY_GRACE_MINUTES,
+      DEFAULT_DAILY_COLLECTION_GRACE_MINUTES,
+      1,
+      60
+    );
+    return {
+      shouldRun: isInDailyCollectionWindow(kst, dailyTime, graceMinutes),
+      mode: 'daily-' + dailyTime.label + '-kst',
+      intervalMinutes: 24 * 60,
+      kst,
+      dailyTimeKst: dailyTime.label,
+      graceMinutes,
+      busyWindows: windows
+        .map((w) => String(w.start).padStart(2, '0') + '-' + String(w.end).padStart(2, '0'))
+        .join(',')
+    };
+  }
   const busy = isBusyHour(kst.hour, windows);
   const busyInterval = parseIntBounded(
     process.env.HOT_RANK_BUSY_INTERVAL_MINUTES,
@@ -1301,7 +1378,9 @@ async function runCollector(opts) {
     return {
       success: true,
       skipped: true,
-      reason: 'waiting for scheduled collection interval',
+      reason: isDailyScheduleMode(decision)
+        ? 'waiting for daily collection window'
+        : 'waiting for scheduled collection interval',
       schedule: decision
     };
   }

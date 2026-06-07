@@ -3,6 +3,8 @@ const IMAGE_BASE =
   'https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/';
 
 let cache = null;
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=21600';
 
 function parseSize(value) {
   const n = Number.parseInt(String(value || '100'), 10);
@@ -79,8 +81,8 @@ module.exports = async function handler(req, res) {
   );
   const now = Date.now();
   const cacheKey = String(size) + '|' + categoryId;
-  if (cache && cache.key === cacheKey && now - cache.ts < 30 * 1000) {
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
+  if (cache && cache.key === cacheKey && now - cache.ts < CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', CACHE_CONTROL);
     res.status(200).json(cache.data);
     return;
   }
@@ -128,7 +130,7 @@ module.exports = async function handler(req, res) {
     };
 
     cache = { key: cacheKey, ts: now, data };
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
+    res.setHeader('Cache-Control', CACHE_CONTROL);
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({

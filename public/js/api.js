@@ -187,7 +187,6 @@ var API = {
     if (opts.category || opts.categoryId) {
       url += '&category=' + encodeURIComponent(opts.category || opts.categoryId);
     }
-    url += '&_=' + encodeURIComponent(Date.now());
     var init = {};
     if (opts.signal) init.signal = opts.signal;
     return fetch(url, Object.keys(init).length ? init : undefined)

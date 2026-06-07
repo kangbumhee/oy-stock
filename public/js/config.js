@@ -17,7 +17,7 @@ var CONFIG = {
   HOT_RANK_API: '/api/oliveyoung/view-ranking',
   HOT_RANK_HISTORY_API: '/api/oliveyoung/hot-ranking-history',
   HOT_RANK_SIZE: 100,
-  HOT_RANK_CACHE_TTL_MS: 45 * 1000,
+  HOT_RANK_CACHE_TTL_MS: 60 * 60 * 1000,
   HOT_RANK_SALES_WINDOW_MS: 60 * 60 * 1000,
   HOT_RANK_DEFAULT_RANGE: '1d',
   HOT_RANK_RANGES: {
@@ -52,7 +52,7 @@ var CONFIG = {
   HOT_RANK_STOCK_ENRICH_LIMIT: 0,
   HOT_RANK_BATCH_SIZE: 3,
   HOT_RANK_BATCH_DELAY_MS: 120,
-  HOT_RANK_AUTO_REFRESH_MS: 3 * 60 * 1000,
+  HOT_RANK_AUTO_REFRESH_MS: 60 * 60 * 1000,
   DETAIL_JSON_URL: '/data/stock-detail.json',
   HISTORY_JSON_URL: '/data/history.json',
   FAVORITES_SYNC_URL: '/api/favorites/sync',
