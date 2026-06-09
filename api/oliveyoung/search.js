@@ -145,7 +145,23 @@ async function loadLocalDetailData() {
   return parsed;
 }
 
-async function loadVendorSupplementData() {
+function requestOrigin(req) {
+  const host =
+    (req &&
+      req.headers &&
+      (req.headers['x-forwarded-host'] || req.headers.host)) ||
+    process.env.VERCEL_URL ||
+    '';
+  if (!host) return '';
+  const proto =
+    (req && req.headers && req.headers['x-forwarded-proto']) ||
+    (String(host).includes('localhost') ? 'http' : 'https');
+  return String(host).startsWith('http://') || String(host).startsWith('https://')
+    ? String(host)
+    : proto + '://' + String(host);
+}
+
+async function loadVendorSupplementData(origin) {
   const now = Date.now();
   if (localVendorCache.data && now - localVendorCache.ts < LOCAL_DETAIL_CACHE_TTL_MS) {
     return localVendorCache.data;
@@ -163,6 +179,21 @@ async function loadVendorSupplementData() {
       localVendorCache.ts = now;
       localVendorCache.data = parsed;
       return parsed;
+    } catch (_) {}
+  }
+
+  if (origin) {
+    try {
+      const r = await fetch(origin.replace(/\/$/, '') + '/data/vendor-products.json', {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined
+      });
+      if (r.ok) {
+        const parsed = await r.json();
+        localVendorCache.ts = now;
+        localVendorCache.data = parsed;
+        return parsed;
+      }
     } catch (_) {}
   }
 
@@ -232,8 +263,8 @@ function buildUnifiedPayload(products, keyword, source, updatedAt, message) {
   };
 }
 
-async function getVendorSupplementMatches(keyword) {
-  const supplement = await loadVendorSupplementData();
+async function getVendorSupplementMatches(keyword, origin) {
+  const supplement = await loadVendorSupplementData(origin);
   const rows = Array.isArray(supplement && supplement.products) ? supplement.products : [];
   return rows.filter((p) => productMatchesKeyword(p, keyword)).map((p) =>
     Object.assign({}, p, {
@@ -394,7 +425,7 @@ module.exports = async function handler(req, res) {
     const productsResult = await fetchUpstreamProducts(queryKeyword, size);
     const primaryProducts = getProducts(productsResult && productsResult.parsed);
     const productCount = primaryProducts.length;
-    const supplementProducts = await getVendorSupplementMatches(queryKeyword);
+    const supplementProducts = await getVendorSupplementMatches(queryKeyword, requestOrigin(req));
 
     if (
       productsResult &&

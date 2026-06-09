@@ -77,11 +77,26 @@ var App = {
     }
 
     UI.setActiveTab('search');
+    this._runInitialQueryFromUrl();
 
     // GPS 현재 위치 자동 감지 (저장된 위치가 없을 때만)
     if (!loc && navigator.geolocation) {
       this._detectLocation();
     }
+  },
+
+  _runInitialQueryFromUrl: function () {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var kw = (params.get('q') || params.get('keyword') || '').trim();
+      if (!kw) return;
+      var input = document.getElementById('search-input');
+      if (input) input.value = kw;
+      var self = this;
+      window.setTimeout(function () {
+        self.doSearch(kw);
+      }, 120);
+    } catch (e) {}
   },
 
   _detectLocation: function () {

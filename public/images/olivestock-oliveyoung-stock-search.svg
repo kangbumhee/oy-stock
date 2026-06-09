@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="올리브영 재고조회">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4ffe8"/>
+      <stop offset="0.55" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ecf7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#193d22" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1000" cy="120" r="96" fill="#d7ff52" opacity="0.55"/>
+  <circle cx="120" cy="520" r="120" fill="#c7e8ff" opacity="0.42"/>
+  <rect x="90" y="85" width="1020" height="460" rx="36" fill="#fff" filter="url(#shadow)"/>
+  <rect x="130" y="125" width="112" height="112" rx="30" fill="#193d22"/>
+  <text x="186" y="199" text-anchor="middle" font-family="Arial, sans-serif" font-size="64" font-weight="900" fill="#d7ff52">O</text>
+  <text x="275" y="155" font-family="Arial, sans-serif" font-size="30" font-weight="900" fill="#315b11">OLIVE STOCK GUIDE</text>
+  <text x="130" y="315" font-family="Arial, sans-serif" font-size="64" font-weight="900" fill="#15251b">올리브영 재고조회</text>
+  <text x="132" y="370" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#475569">상품명 일부로 검색 시작</text>
+  <rect x="130" y="430" width="255" height="54" rx="27" fill="#193d22"/>
+  <text x="258" y="466" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="900" fill="#fff">올리브재고에서 확인</text>
+  <rect x="760" y="155" width="250" height="270" rx="24" fill="#f7faf5" stroke="#dfead8"/>
+  <rect x="795" y="190" width="180" height="20" rx="10" fill="#8cc63f"/>
+  <rect x="795" y="230" width="130" height="20" rx="10" fill="#d4e7ca"/>
+  <rect x="795" y="292" width="180" height="62" rx="16" fill="#fff" stroke="#dfead8"/>
+  <text x="825" y="332" font-family="Arial, sans-serif" font-size="24" font-weight="900" fill="#193d22">재고 있음</text>
+  <rect x="795" y="374" width="180" height="20" rx="10" fill="#c7e8ff"/>
+</svg>

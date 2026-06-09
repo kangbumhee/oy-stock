@@ -1,0 +1,24 @@
+{
+  "name": "올리브재고",
+  "short_name": "올리브재고",
+  "description": "올리브영 재고확인과 인기상품 랭킹을 빠르게 확인하는 검색 도구",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f4",
+  "theme_color": "#193d22",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
