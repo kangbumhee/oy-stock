@@ -256,11 +256,16 @@ module.exports = async function handler(req, res) {
         store.rankings.categories[categoryId];
       let ranking;
       if (cachedCategory && Array.isArray(cachedCategory.products) && cachedCategory.products.length) {
-        ranking = {
-          updatedAt: cachedCategory.updatedAt,
-          products: cachedCategory.products.slice(0, size)
-        };
-        source = 'hot-ranking-history-category';
+        if (cachedCategory.products.length >= size) {
+          ranking = {
+            updatedAt: cachedCategory.updatedAt,
+            products: cachedCategory.products.slice(0, size)
+          };
+          source = 'hot-ranking-history-category';
+        } else {
+          ranking = await fetchViewRanking(size, { categoryId });
+          source = 'hot-ranking-history-category-plus-live';
+        }
       } else {
         ranking = await fetchViewRanking(size, { categoryId });
         source = 'oliveyoung-view-rank-category';
@@ -274,7 +279,13 @@ module.exports = async function handler(req, res) {
       source = 'hot-ranking-history';
       const cachedGlobal = store.rankings && store.rankings.global;
       if (cachedGlobal && Array.isArray(cachedGlobal.products) && cachedGlobal.products.length) {
-        products = cachedGlobal.products.slice(0, size).map((product) => {
+        let rankingProducts = cachedGlobal.products.slice(0, size);
+        if (rankingProducts.length < size) {
+          const liveRanking = await fetchViewRanking(size);
+          rankingProducts = liveRanking.products || rankingProducts;
+          source = 'hot-ranking-history-plus-live';
+        }
+        products = rankingProducts.map((product) => {
           const stored = storeProducts[product.goodsNo] || {};
           return productFromRanking(product, stored, source, '');
         });
