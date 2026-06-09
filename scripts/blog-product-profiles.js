@@ -24,7 +24,8 @@ const BLOG_PRODUCT_PROFILES = [
   {
     id: 'torriden-dive-in-serum',
     assetPrefix: 'torriden-dive-in-serum',
-    detailFile: 'torriden-dive-in-serum-detail-page-01.png',
+    assetExt: 'jpg',
+    detailFile: 'torriden-dive-in-serum-detail-page-01.jpg',
     match: (post) => textOf(post).includes('토리든') && textOf(post).includes('다이브인') && textOf(post).includes('세럼'),
     title: (shortName) => titleFor(shortName, '다이브인 세럼 올리브영 재고'),
     description: (shortName) => descriptionFor(shortName, '블루 보틀, 스포이드, 촉촉한 수분 세럼'),
@@ -146,7 +147,8 @@ const BLOG_PRODUCT_PROFILES = [
   {
     id: 'mediheal-sun-serum',
     assetPrefix: 'mediheal-sun-serum',
-    detailFile: 'mediheal-sun-serum-detail-page-01.png',
+    assetExt: 'jpg',
+    detailFile: 'mediheal-sun-serum-detail-page-01.jpg',
     match: (post) => textOf(post).includes('메디힐') && textOf(post).includes('선세럼'),
     title: (shortName) => titleFor(shortName, '수분 선세럼 올리브영 재고'),
     description: (shortName) => descriptionFor(shortName, '흰 튜브, 민트 포인트, 촉촉한 선케어'),
@@ -207,7 +209,8 @@ const BLOG_PRODUCT_PROFILES = [
   {
     id: 'mediheal-gel-mask',
     assetPrefix: 'mediheal-gel-mask',
-    detailFile: 'mediheal-gel-mask-detail-page-01.png',
+    assetExt: 'jpg',
+    detailFile: 'mediheal-gel-mask-detail-page-01.jpg',
     match: (post) => textOf(post).includes('메디힐') && textOf(post).includes('겔마스크'),
     title: (shortName) => titleFor(shortName, '하이퍼 겔마스크 올리브영 재고'),
     description: (shortName) => descriptionFor(shortName, '핑크·보라·하늘색 박스, 촉촉한 겔마스크'),

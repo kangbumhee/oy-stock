@@ -14,6 +14,7 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
+const BLOG_ASSET_VERSION = '20260609-review-photo';
 
 const CATEGORY_NAMES = {
   '10000010001': '스킨케어',
@@ -246,16 +247,21 @@ function absoluteUrl(urlPath) {
   return `${SITE_URL}${urlPath}`;
 }
 
+function imageAssetSrc(src) {
+  const separator = src.includes('?') ? '&' : '?';
+  return `${src}${separator}v=${BLOG_ASSET_VERSION}`;
+}
+
 function postImageSrc(post) {
-  return `../../images/blog/${path.basename(post.image)}`;
+  return imageAssetSrc(`../../images/blog/${path.basename(post.image)}`);
 }
 
 function blogIndexImageSrc(post) {
-  return `../images/blog/${postCardImageFile(post)}`;
+  return imageAssetSrc(`../images/blog/${postCardImageFile(post)}`);
 }
 
 function homeImageSrc(post) {
-  return `images/blog/${postCardImageFile(post)}`;
+  return imageAssetSrc(`images/blog/${postCardImageFile(post)}`);
 }
 
 function postCardImageFile(post) {
@@ -277,9 +283,10 @@ function blogReviewAssets(post) {
   const profile = getBlogProductProfile(post);
   if (!profile || !profile.assetPrefix || !profile.captions.length) return null;
   const base = '../../images/blog/';
+  const ext = profile.assetExt || 'png';
 
   const photos = profile.captions.map((caption, index) => ({
-    src: `${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.png`,
+    src: imageAssetSrc(`${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`),
     title: caption[0],
     caption: caption[1],
     alt: `${post.shortName} 후기형 사진 ${index + 1}`
@@ -287,7 +294,7 @@ function blogReviewAssets(post) {
 
   return {
     profile,
-    detail: `${base}${profile.detailFile}`,
+    detail: imageAssetSrc(`${base}${profile.detailFile}`),
     stock: postImageSrc(post),
     photos
   };
