@@ -16,8 +16,8 @@ var CONFIG = {
   VELOCITY_AUTO_REFRESH_MS: 60 * 1000,
   HOT_RANK_API: '/api/oliveyoung/view-ranking',
   HOT_RANK_HISTORY_API: '/api/oliveyoung/hot-ranking-history',
-  HOT_RANK_SIZE: 100,
-  HOT_RANK_CACHE_TTL_MS: 60 * 60 * 1000,
+  HOT_RANK_SIZE: 128,
+  HOT_RANK_CACHE_TTL_MS: 10 * 60 * 1000,
   HOT_RANK_SALES_WINDOW_MS: 60 * 60 * 1000,
   HOT_RANK_DEFAULT_RANGE: '1d',
   HOT_RANK_RANGES: {

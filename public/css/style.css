@@ -369,9 +369,9 @@ button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px
   .velocity-metric{grid-column:3;align-items:flex-start;flex-direction:row;flex-wrap:wrap;margin-top:4px}
   .velocity-proof{white-space:normal}
   .hot-row{grid-template-columns:60px minmax(0,1fr);grid-template-areas:"rank main" "thumb main" ". buy";align-items:start;gap:4px 8px}
-  .hot-head{align-items:flex-start}
-  .hot-actions{flex-direction:column;align-items:flex-end;gap:6px}
-  .hot-range{max-width:210px;overflow-x:auto}
+  .hot-head{align-items:stretch;flex-direction:column}
+  .hot-actions{flex-direction:row;align-items:center;justify-content:flex-start;gap:6px}
+  .hot-range{max-width:100%;overflow-x:auto}
   .hot-categories{padding:7px 10px}
   .hot-categories button{height:28px;padding:0 9px}
   .hot-sort button,.hot-range button{padding:0 7px}

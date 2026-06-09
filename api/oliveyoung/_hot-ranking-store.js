@@ -10,6 +10,9 @@ const BLOB_PATH = process.env.HOT_RANK_BLOB_PATH || 'oliveyoung/hot-ranking-hist
 const DEFAULT_BUSY_WINDOWS = '10-14,18-24';
 const DEFAULT_LAT = process.env.HOT_RANK_LAT || '37.6152';
 const DEFAULT_LNG = process.env.HOT_RANK_LNG || '126.7156';
+const DEFAULT_TOP_TRACK_LIMIT = 128;
+const DEFAULT_HOURLY_ACTIVE_WINDOW_KST = '08-01';
+const DEFAULT_HOURLY_COLLECTION_GRACE_MINUTES = 12;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 const COLLECTION_STALE_GRACE_MS = 5 * MINUTE_MS;
@@ -50,6 +53,15 @@ function parseIntBounded(value, fallback, min, max) {
   const n = Number.parseInt(String(value == null ? fallback : value), 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(min, Math.min(max, n));
+}
+
+function configuredTopTrackLimit(value) {
+  return parseIntBounded(
+    value == null ? process.env.HOT_RANK_TOP_TRACK_LIMIT : value,
+    DEFAULT_TOP_TRACK_LIMIT,
+    1,
+    200
+  );
 }
 
 function parseCategoryId(value) {
@@ -154,7 +166,7 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
 
 async function fetchViewRanking(size, opts) {
   opts = opts || {};
-  const requested = parseIntBounded(size, 100, 1, 200);
+  const requested = parseIntBounded(size, configuredTopTrackLimit(), 1, 200);
   const categoryId = parseCategoryId(opts.categoryId || opts.category || opts.categoryid);
   const upstreamSize = categoryId
     ? requested
@@ -391,16 +403,17 @@ function rankCollectionPlan(rank, slotIndex, priority) {
 }
 
 function dailyRankCollectionPlan(rank) {
+  const limit = configuredTopTrackLimit();
   const r = Number(rank) || 9999;
-  if (r <= 100) {
+  if (r <= limit) {
     return {
       due: true,
-      tier: 'daily-top-100',
+      tier: 'daily-top-' + limit,
       everyRuns: 1,
-      reason: 'top 100: once per KST day'
+      reason: 'top ' + limit + ': once per KST day'
     };
   }
-  return { due: false, tier: 'out-100', everyRuns: 0, reason: 'out of top 100' };
+  return { due: false, tier: 'out-' + limit, everyRuns: 0, reason: 'out of top ' + limit };
 }
 
 function markPriority(map, row, type, rank) {
@@ -571,10 +584,50 @@ function hasSuccessfulStockForSlot(store, dailyKey, stockSlot) {
   );
 }
 
+function hasSuccessfulHourlyCollectionForSlot(store, decision, stockSlot) {
+  if (!stockSlot) return false;
+  const dailyKey = decision && decision.kst && decision.kst.isoDate;
+  const mode = decision && decision.mode;
+  const runs = Array.isArray(store && store.runs) ? store.runs : [];
+  return runs.some((run) => {
+    if (!run || run.mode !== mode) return false;
+    if (!runDayMatches(run, dailyKey)) return false;
+    const runSlot =
+      run.collectionSlot != null ? Number(run.collectionSlot) : Number(run.stockSlotIndex);
+    if (runSlot !== Number(stockSlot.index)) return false;
+    return runHasType(run, 'discovery') && Number(run.rankingCount) > 0 && successfulStockRun(run);
+  });
+}
+
 function buildCollectorRunPlan(store, decision, now, opts) {
   opts = opts || {};
   const force = !!opts.force;
   const dailyKey = (decision && decision.kst && decision.kst.isoDate) || kstParts(now || new Date()).isoDate;
+  if (isHourlyTopOnlyMode(decision)) {
+    const stockSlot =
+      (decision && decision.stockSlot) ||
+      hourlyCollectionSlot((decision && decision.kst) || kstParts(now || new Date()));
+    const slotDone = hasSuccessfulHourlyCollectionForSlot(store, decision, stockSlot);
+    const discoveryDue = force || (!!(decision && decision.shouldRun) && !slotDone);
+    const stockDue = !opts.skipStock && discoveryDue;
+    const types = [];
+    if (discoveryDue) types.push('discovery');
+    if (stockDue) types.push('stock');
+    return {
+      shouldRun: force || discoveryDue || stockDue,
+      collectionType: types.join('+') || 'none',
+      discoveryDue,
+      stockDue,
+      dailyKey,
+      stockSlot,
+      stockTimesKst: (decision && decision.stockTimesKst) || [],
+      discoveryDone: slotDone,
+      stockDone: slotDone,
+      hourlyDone: slotDone,
+      topRankLimit: configuredTopTrackLimit(decision && decision.topRankLimit),
+      activeWindowKst: decision && decision.activeWindowKst
+    };
+  }
   const stockTimes = parseStockCollectionTimes(process.env.HOT_RANK_STOCK_TIMES_KST);
   const stockSlot = latestDueStockSlot((decision && decision.kst) || kstParts(now || new Date()), stockTimes);
   const discoveryDone = hasSuccessfulDiscoveryForDay(store, dailyKey);
@@ -598,6 +651,7 @@ function buildCollectorRunPlan(store, decision, now, opts) {
 }
 
 function storedProductToStockCandidate(item, dailyKey) {
+  const limit = configuredTopTrackLimit();
   return {
     rank: 9999,
     sourceRank: item.previousRank || item.latestRank || 9999,
@@ -610,8 +664,8 @@ function storedProductToStockCandidate(item, dailyKey) {
     itemId: item.itemId || '',
     viewCount: item.latestViewCount || 0,
     source: 'hot-ranking-history',
-    collectionTier: 'out-100',
-    collectionReason: 'out of top 100: once per day',
+    collectionTier: 'out-' + limit,
+    collectionReason: 'out of top ' + limit + ': not tracked by hourly top mode',
     collectionEveryRuns: 0,
     collectionDate: dailyKey
   };
@@ -619,9 +673,57 @@ function storedProductToStockCandidate(item, dailyKey) {
 
 function selectAdaptiveStockProducts(rankingProducts, store, decision, now, opts) {
   opts = opts || {};
-  const products = (Array.isArray(rankingProducts) ? rankingProducts : []).slice(0, 100);
+  const rawProducts = Array.isArray(rankingProducts) ? rankingProducts : [];
+  const topRankLimit = configuredTopTrackLimit(decision && decision.topRankLimit);
   const slotIndex = collectionSlotIndex(decision);
   const dailyKey = ((decision && decision.kst && decision.kst.isoDate) || kstParts(now || new Date()).isoDate);
+  if (isHourlyTopOnlyMode(decision)) {
+    const tier = 'global-top-' + topRankLimit;
+    const selected = rawProducts
+      .slice(0, topRankLimit)
+      .map((product, idx) => {
+        const rank = Number(product && product.rank) || idx + 1;
+        if (!product || !product.goodsNo || rank > topRankLimit) return null;
+        return Object.assign({}, product, {
+          rank,
+          sourceRank: product.sourceRank || rank,
+          collectionTier: tier,
+          collectionReason:
+            'overall top ' +
+            topRankLimit +
+            ': hourly stock snapshot during ' +
+            ((decision && decision.activeWindowKst) || DEFAULT_HOURLY_ACTIVE_WINDOW_KST) +
+            ' KST',
+          collectionEveryRuns: 1,
+          collectionDate: dailyKey,
+          collectionSources: [tier],
+          globalRank: rank
+        });
+      })
+      .filter(Boolean);
+    return {
+      mode: 'hourly-top-' + topRankLimit + '-only',
+      slotIndex,
+      dailyKey,
+      products: selected,
+      selectedCount: selected.length,
+      skippedRankingCount: Math.max(0, rawProducts.length - selected.length),
+      outOfTopSelectedCount: 0,
+      retrySelectedCount: 0,
+      retrySkippedCount: 0,
+      retryLimit: 0,
+      maxCandidates: topRankLimit,
+      topRankLimit,
+      tierCounts: selected.length ? { [tier]: selected.length } : {},
+      rules: [
+        'overall view ranking top ' + topRankLimit + ' collected once per hour',
+        'collection runs only during ' + ((decision && decision.activeWindowKst) || '08:00-01:00') + ' KST',
+        'products outside top ' + topRankLimit + ' are not stock-tracked',
+        'category and previous sales/revenue boosts are disabled in hourly top mode'
+      ]
+    };
+  }
+  const products = rawProducts.slice(0, 100);
   const maxCandidates = parseIntBounded(
     opts.stockCandidateLimit == null ? process.env.HOT_RANK_STOCK_CANDIDATE_LIMIT : opts.stockCandidateLimit,
     DEFAULT_STOCK_CANDIDATE_LIMIT,
@@ -820,13 +922,14 @@ async function writeStore(store) {
 }
 
 function normalizeRankingCacheEntry(ranking, fallbackCategoryId) {
+  const limit = configuredTopTrackLimit();
   return {
     categoryId: fallbackCategoryId || (ranking && ranking.categoryId) || '',
     updatedAt: (ranking && ranking.updatedAt) || new Date().toISOString(),
     products: (Array.isArray(ranking && ranking.products) ? ranking.products : [])
       .map(compactRankingProduct)
       .filter((product) => product.goodsNo)
-      .slice(0, 100)
+      .slice(0, limit)
   };
 }
 
@@ -860,7 +963,7 @@ function rankingFromStore(store, size) {
   return {
     updatedAt: (cached && cached.updatedAt) || (store && (store.updatedAt || store.lastRunAt)) || new Date().toISOString(),
     categoryId: '',
-    products: products.slice(0, size || 100).map(compactRankingProduct)
+    products: products.slice(0, size || configuredTopTrackLimit()).map(compactRankingProduct)
   };
 }
 
@@ -953,7 +1056,9 @@ function rankObservationMatchesAdaptiveCadence(observation) {
   const ts = new Date(observation.ts);
   if (Number.isNaN(ts.getTime())) return false;
   const decision = getScheduleDecision(ts);
-  if (isDailyScheduleMode(decision)) return (Number(observation.rank) || 9999) <= 100;
+  if (isHourlyTopOnlyMode(decision) || isDailyScheduleMode(decision)) {
+    return (Number(observation.rank) || 9999) <= configuredTopTrackLimit(decision.topRankLimit);
+  }
   const slotIndex = collectionSlotIndex(decision);
   const rank = Number(observation.rank) || 9999;
   return rankCollectionPlan(rank, slotIndex).due;
@@ -1253,6 +1358,11 @@ function enrichChartRanks(rows) {
 }
 
 function shouldRecordRankObservation(product, idx, meta) {
+  if (meta && /^hourly-top-\d+-only$/.test(String(meta.collectionMode || ''))) {
+    const limit = configuredTopTrackLimit();
+    const rank = Number(product && product.rank) || idx + 1;
+    return rank <= limit;
+  }
   if (!meta || meta.collectionMode !== 'adaptive-rank-tier') return true;
   const slotIndex = Number(meta.collectionSlot);
   if (!Number.isFinite(slotIndex)) return true;
@@ -1286,7 +1396,7 @@ function applyStockSnapshotToItem(item, stock, product, meta) {
   item.lastStockAttemptAt = nowIso;
   item.lastCollectionTier = stock.collectionTier || (product && product.collectionTier) || '';
   item.lastCollectionReason = stock.collectionReason || (product && product.collectionReason) || '';
-  if (stock.collectionTier === 'out-100') {
+  if (String(stock.collectionTier || '').indexOf('out-') === 0) {
     item.lastOutOfTopStockDate = stock.collectionDate || meta.dailyKey || '';
   }
 
@@ -1605,11 +1715,54 @@ function isBusyHour(hour, windows) {
   });
 }
 
+function hourlyTopOnlyEnabled() {
+  const raw = String(process.env.HOT_RANK_HOURLY_TOP_ONLY == null ? '1' : process.env.HOT_RANK_HOURLY_TOP_ONLY)
+    .trim()
+    .toLowerCase();
+  return !['0', 'false', 'no', 'off'].includes(raw);
+}
+
 function dailyScheduleEnabled() {
   const raw = String(process.env.HOT_RANK_DAILY_ONLY == null ? '1' : process.env.HOT_RANK_DAILY_ONLY)
     .trim()
     .toLowerCase();
   return !['0', 'false', 'no', 'off'].includes(raw);
+}
+
+function hourLabel(hour) {
+  return String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, '0') + ':00';
+}
+
+function parseHourlyActiveWindow(value) {
+  const raw = String(value || DEFAULT_HOURLY_ACTIVE_WINDOW_KST).trim();
+  const match = raw.match(/^(\d{1,2})(?::\d{1,2})?\s*-\s*(\d{1,2})(?::\d{1,2})?$/);
+  const startHour = match ? Math.max(0, Math.min(23, Number(match[1]))) : 8;
+  const endHour = match ? Math.max(0, Math.min(23, Number(match[2]))) : 1;
+  return {
+    startHour,
+    endHour,
+    label: hourLabel(startHour) + '-' + hourLabel(endHour)
+  };
+}
+
+function isInHourlyActiveWindow(kst, activeWindow) {
+  const hour = Number(kst && kst.hour) || 0;
+  const start = Number(activeWindow && activeWindow.startHour) || 0;
+  const end = Number(activeWindow && activeWindow.endHour) || 0;
+  if (start === end) return true;
+  if (start < end) return hour >= start && hour <= end;
+  return hour >= start || hour <= end;
+}
+
+function hourlyCollectionSlot(kst) {
+  const hour = Number(kst && kst.hour) || 0;
+  return {
+    hour,
+    minute: 0,
+    label: hourLabel(hour),
+    minuteOfDay: hour * 60,
+    index: hour
+  };
 }
 
 function parseDailyCollectionTime(value) {
@@ -1672,9 +1825,60 @@ function isDailyScheduleMode(decision) {
   return !!(decision && typeof decision.mode === 'string' && decision.mode.indexOf('daily-') === 0);
 }
 
+function isHourlyTopOnlyMode(decision) {
+  return !!(decision && typeof decision.mode === 'string' && decision.mode.indexOf('hourly-top-') === 0);
+}
+
+function scheduleSkipReason(decision) {
+  if (isHourlyTopOnlyMode(decision)) {
+    if (!decision.inActiveWindow) {
+      return 'outside hourly TOP collection window';
+    }
+    return 'waiting for hourly collection minute';
+  }
+  return isDailyScheduleMode(decision)
+    ? 'waiting for daily collection time'
+    : 'waiting for scheduled collection interval';
+}
+
 function getScheduleDecision(date) {
   const kst = kstParts(date || new Date());
   const windows = parseBusyWindows(process.env.HOT_RANK_BUSY_WINDOWS_KST);
+  if (hourlyTopOnlyEnabled()) {
+    const topRankLimit = configuredTopTrackLimit();
+    const activeWindow = parseHourlyActiveWindow(process.env.HOT_RANK_ACTIVE_WINDOW_KST);
+    const graceMinutes = parseIntBounded(
+      process.env.HOT_RANK_HOURLY_GRACE_MINUTES,
+      DEFAULT_HOURLY_COLLECTION_GRACE_MINUTES,
+      1,
+      30
+    );
+    const inActiveWindow = isInHourlyActiveWindow(kst, activeWindow);
+    const inCollectionMinute = kst.minute < graceMinutes;
+    const stockSlot = hourlyCollectionSlot(kst);
+    return {
+      shouldRun: inActiveWindow && inCollectionMinute,
+      mode:
+        'hourly-top-' +
+        topRankLimit +
+        '-' +
+        activeWindow.label.replace(/:/g, '').replace('-', '-') +
+        '-kst',
+      intervalMinutes: 60,
+      kst,
+      topRankLimit,
+      activeWindowKst: activeWindow.label,
+      graceMinutes,
+      inActiveWindow,
+      inCollectionMinute,
+      catchUpEligible: inActiveWindow && inCollectionMinute,
+      stockSlot,
+      stockTimesKst: [activeWindow.label + ' 매시'],
+      busyWindows: windows
+        .map((w) => String(w.start).padStart(2, '0') + '-' + String(w.end).padStart(2, '0'))
+        .join(',')
+    };
+  }
   if (dailyScheduleEnabled()) {
     const dailyTime = parseDailyCollectionTime(process.env.HOT_RANK_DAILY_TIME_KST);
     const stockTimes = parseStockCollectionTimes(process.env.HOT_RANK_STOCK_TIMES_KST);
@@ -1741,9 +1945,7 @@ async function runCollector(opts) {
     return {
       success: true,
       skipped: true,
-      reason: isDailyScheduleMode(decision)
-        ? 'waiting for daily collection time'
-        : 'waiting for scheduled collection interval',
+      reason: scheduleSkipReason(decision),
       schedule: decision
     };
   }
@@ -1757,7 +1959,7 @@ async function runCollector(opts) {
     };
   }
 
-  const size = parseIntBounded(opts.size, 100, 1, 200);
+  const size = parseIntBounded(opts.size, configuredTopTrackLimit(), 1, 200);
   let store = emptyStore();
   let blob = null;
   if (!dryRun) {
@@ -1794,10 +1996,12 @@ async function runCollector(opts) {
   const nowIso = now.toISOString();
   if (runPlan.discoveryDue) {
     ranking = await fetchViewRanking(size);
-    categoryRankings = await fetchCategoryRankings(100, {
-      categoryIds: opts.categoryIds,
-      batchSize: opts.categoryBatchSize
-    });
+    if (!isHourlyTopOnlyMode(decision)) {
+      categoryRankings = await fetchCategoryRankings(100, {
+        categoryIds: opts.categoryIds,
+        batchSize: opts.categoryBatchSize
+      });
+    }
   } else {
     ranking = rankingFromStore(store, size);
     if (!ranking.products.length) {
@@ -1824,7 +2028,11 @@ async function runCollector(opts) {
   let stockLimit = 0;
   let stockOffset = 0;
   let collectionPlan = {
-    mode: opts.skipStock || !runPlan.stockDue ? 'skip-stock' : 'daily-categories-selected-250',
+    mode: opts.skipStock || !runPlan.stockDue
+      ? 'skip-stock'
+      : isHourlyTopOnlyMode(decision)
+        ? 'hourly-top-' + configuredTopTrackLimit(decision.topRankLimit) + '-only'
+        : 'daily-categories-selected-250',
     dailyKey: runPlan.dailyKey,
     slotIndex: runPlan.stockSlot ? runPlan.stockSlot.index : null,
     products: [],

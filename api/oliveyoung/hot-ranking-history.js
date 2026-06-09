@@ -6,8 +6,14 @@ const RANGE_HOURS = {
   '30d': 24 * 30
 };
 const MAX_RANGE_HOURS = 24 * 30;
-const HOT_RANK_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=21600';
-const DEFAULT_OVERALL_MEASURED_LIMIT = 200;
+const HOT_RANK_CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=3600';
+const DEFAULT_HOT_RANK_SIZE = 128;
+const DEFAULT_OVERALL_MEASURED_LIMIT = 128;
+
+function defaultHotRankSize() {
+  const n = Number.parseInt(String(process.env.HOT_RANK_TOP_TRACK_LIMIT || DEFAULT_HOT_RANK_SIZE), 10);
+  return Number.isFinite(n) ? Math.max(1, Math.min(200, n)) : DEFAULT_HOT_RANK_SIZE;
+}
 
 function parseCategory(value) {
   const raw = String(value || '').trim();
@@ -97,6 +103,17 @@ function parseLimit(value, fallback, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+function includeMeasuredOutsideTop(q) {
+  const raw = String(
+    (q && (q.includeMeasured || q.includeMeasuredOutsideTop)) ||
+      process.env.HOT_RANK_INCLUDE_MEASURED_OUTSIDE_TOP ||
+      ''
+  )
+    .trim()
+    .toLowerCase();
+  return ['1', 'true', 'yes', 'on'].includes(raw);
+}
+
 function productFromRanking(product, stored, source, categoryFallback) {
   const row = product || {};
   const saved = stored || {};
@@ -176,7 +193,9 @@ module.exports = async function handler(req, res) {
   }
 
   const q = req.query || {};
-  const size = Math.max(1, Math.min(200, Number.parseInt(String(q.size || '100'), 10) || 100));
+  const defaultSize = defaultHotRankSize();
+  const size = Math.max(1, Math.min(200, Number.parseInt(String(q.size || defaultSize), 10) || defaultSize));
+  const mergeMeasuredOutsideTop = includeMeasuredOutsideTop(q);
   const overallMeasuredLimit = parseLimit(
     q.measuredSize || process.env.HOT_RANK_OVERALL_MEASURED_LIMIT,
     DEFAULT_OVERALL_MEASURED_LIMIT,
@@ -282,16 +301,18 @@ module.exports = async function handler(req, res) {
             source
           }));
       }
-      const merged = mergeMeasuredOverallProducts(
-        products,
-        dayEstimates,
-        storeProducts,
-        overallMeasuredLimit
-      );
-      products = merged.products;
-      measuredAddedCount = merged.added;
-      if (measuredAddedCount > 0 && source === 'hot-ranking-history') {
-        source = 'hot-ranking-history-plus-measured';
+      if (mergeMeasuredOutsideTop) {
+        const merged = mergeMeasuredOverallProducts(
+          products,
+          dayEstimates,
+          storeProducts,
+          overallMeasuredLimit
+        );
+        products = merged.products;
+        measuredAddedCount = merged.added;
+        if (measuredAddedCount > 0 && source === 'hot-ranking-history') {
+          source = 'hot-ranking-history-plus-measured';
+        }
       }
     }
     const productGoods = new Set(products.map((item) => item.goodsNo).filter(Boolean));
