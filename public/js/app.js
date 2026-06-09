@@ -154,6 +154,11 @@ var App = {
   },
 
   _onClick: function (e) {
+    if (e.target.closest && e.target.closest('.hot-chart')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var action = el.dataset.action;

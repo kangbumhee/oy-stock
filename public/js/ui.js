@@ -473,9 +473,14 @@ var UI = {
   bindHotCharts: function (root) {
     if (!root || root.dataset.hotChartBound === '1') return;
     root.dataset.hotChartBound = '1';
-    root.addEventListener('mousemove', function (e) {
-      var chart = e.target.closest && e.target.closest('.hot-chart[data-points]');
-      if (!chart || !root.contains(chart)) return;
+
+    function nearestChart(target) {
+      var chart = target && target.closest && target.closest('.hot-chart');
+      return chart && root.contains(chart) ? chart : null;
+    }
+
+    function showChartTip(chart, clientX) {
+      if (!chart || !chart.dataset.points) return;
       var points;
       try {
         points = chart._points || JSON.parse(chart.dataset.points || '[]');
@@ -485,7 +490,7 @@ var UI = {
       }
       if (!points.length) return;
       var rect = chart.getBoundingClientRect();
-      var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+      var ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
       var nearest = points[0];
       var best = Math.abs((nearest.xNorm || 0) - ratio);
       points.forEach(function (p) {
@@ -520,7 +525,48 @@ var UI = {
         '</em>' +
         (nearest.rankText ? '<span class="rank">' + UI.esc(nearest.rankText) + '</span>' : '');
       chart.classList.add('active');
+    }
+
+    root.addEventListener('mousemove', function (e) {
+      var chart = nearestChart(e.target);
+      if (!chart || !chart.dataset.points) return;
+      showChartTip(chart, e.clientX);
     });
+    root.addEventListener(
+      'touchstart',
+      function (e) {
+        var chart = nearestChart(e.target);
+        if (!chart) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var touch = e.touches && e.touches[0];
+        if (touch) showChartTip(chart, touch.clientX);
+      },
+      { capture: true, passive: false }
+    );
+    root.addEventListener(
+      'touchmove',
+      function (e) {
+        var chart = nearestChart(e.target);
+        if (!chart) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var touch = e.touches && e.touches[0];
+        if (touch) showChartTip(chart, touch.clientX);
+      },
+      { capture: true, passive: false }
+    );
+    root.addEventListener(
+      'click',
+      function (e) {
+        var chart = nearestChart(e.target);
+        if (!chart) return;
+        e.preventDefault();
+        e.stopPropagation();
+        showChartTip(chart, e.clientX);
+      },
+      true
+    );
     root.addEventListener('mouseleave', function (e) {
       var chart = e.target.closest && e.target.closest('.hot-chart[data-points]');
       if (chart) chart.classList.remove('active');

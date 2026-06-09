@@ -190,7 +190,7 @@ header h1{font-size:21px;line-height:1.1;margin-bottom:3px;color:#16251a;letter-
 .hot-sales-ok span{color:#334155}
 .hot-restock{color:#2563eb!important;font-weight:800}
 .hot-confidence-low{color:#ea580c!important;font-weight:800}
-.hot-chart{position:relative;width:min(150px,100%);height:38px;margin-top:5px;border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;overflow:visible}
+.hot-chart{position:relative;width:min(150px,100%);height:38px;margin-top:5px;border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;overflow:visible;touch-action:none;cursor:crosshair}
 .hot-chart svg{display:block;width:100%;height:100%}
 .hot-chart polyline{fill:none;stroke:#16a34a;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .hot-chart circle{fill:#2563eb;stroke:#fff;stroke-width:1}
