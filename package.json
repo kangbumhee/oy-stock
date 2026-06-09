@@ -6,7 +6,10 @@
     "start": "node server/server.mjs",
     "gcp-build": "PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium",
     "setup:oy-cookie-profile": "node scripts/refresh-oy-cookie-from-profile.mjs --setup",
-    "refresh:oy-cookie:chrome": "node scripts/refresh-oy-cookie-from-profile.mjs"
+    "refresh:oy-cookie:chrome": "node scripts/refresh-oy-cookie-from-profile.mjs",
+    "build:blog": "node scripts/build-blog-pages.js",
+    "build:blog:assets": "node scripts/render-blog-product-assets.js",
+    "submit:indexnow": "node scripts/submit-indexnow.mjs"
   },
   "engines": {
     "node": ">=18"

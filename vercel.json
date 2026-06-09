@@ -31,6 +31,8 @@
   "routes": [
     { "src": "/guide/?", "dest": "/public/guide/index.html" },
     { "src": "/guide/([^/]+)/?", "dest": "/public/guide/$1/index.html" },
+    { "src": "/blog/?", "dest": "/public/blog/index.html" },
+    { "src": "/blog/([^/]+)/?", "dest": "/public/blog/$1/index.html" },
     { "src": "/site-map/?", "dest": "/public/site-map.html" },
     {
       "src": "/data/(.*)",

@@ -11,7 +11,11 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/watchlist.jso
 /** GitHub Actions 수집 대상(공개 캐시). 사용자 즐겨찾기는 앱에서 실시간 API로 조회 */
 const POPULAR_PRODUCTS = [
   'A000000207822', // 망곰 딥클린마스터
-  'A000000154189' // 어노브 볼륨업 컬링에센스
+  'A000000154189', // 어노브 볼륨업 컬링에센스
+  'A000000256047', // 토리든 다이브인 저분자 히알루론산 세럼
+  'A000000255385', // 메디힐 더마 토너패드 200매
+  'A000000255391', // 메디힐 마데카소사이드 수분 선세럼
+  'A000000239102' // 메디힐 하이퍼 겔마스크 4종
 ];
 
 const DATA_DIR = path.join(ROOT, 'public/data');

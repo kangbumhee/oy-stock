@@ -32,6 +32,8 @@ var App = {
 
   _searchSeq: 0,
   _searchAbortCtrl: null,
+  autoBuyGoodsNo: '',
+  autoBuyTriggered: false,
 
   init: function () {
     var self = this;
@@ -89,6 +91,14 @@ var App = {
     try {
       var params = new URLSearchParams(window.location.search || '');
       var kw = (params.get('q') || params.get('keyword') || '').trim();
+      var autoBuy = (params.get('autoBuy') || params.get('autobuy') || '').trim();
+      if (autoBuy) {
+        this.autoBuyGoodsNo = autoBuy;
+        this.autoBuyTriggered = false;
+        try {
+          sessionStorage.setItem('olivestockAutoBuyGoodsNo', autoBuy);
+        } catch (e) {}
+      }
       if (!kw) return;
       var input = document.getElementById('search-input');
       if (input) input.value = kw;
@@ -858,9 +868,40 @@ var App = {
     UI.renderProducts(this.products, this._detailDataForSearchList(this.products), {
       searchListCacheMode: true
     });
+    this._tryAutoBuyFromUrl();
     this._renderVelocityRanking();
     if (this.products && this.products.length) this._startVelocityAutoRefresh();
     return this.products;
+  },
+
+  _tryAutoBuyFromUrl: function () {
+    var gn = String(this.autoBuyGoodsNo || '').trim();
+    if (!gn) {
+      try {
+        gn = String(sessionStorage.getItem('olivestockAutoBuyGoodsNo') || '').trim();
+      } catch (e) {}
+    }
+    if (!gn || this.autoBuyTriggered) return;
+    var exists = (this.products || []).some(function (p) {
+      return String((p && (p.goodsNumber || p.goodsNo)) || '').trim() === gn;
+    });
+    if (!exists) return;
+
+    this.autoBuyTriggered = true;
+    this.autoBuyGoodsNo = '';
+    try {
+      sessionStorage.removeItem('olivestockAutoBuyGoodsNo');
+    } catch (e) {}
+
+    window.setTimeout(function () {
+      var buttons = Array.prototype.slice.call(
+        document.querySelectorAll('[data-action="buyNow"][data-goodsno]')
+      );
+      var btn = buttons.find(function (item) {
+        return String(item.dataset.goodsno || '').trim() === gn;
+      });
+      if (btn) UI.openOliveYoungProduct(btn);
+    }, 350);
   },
 
   _pauseOnlineBatchForPopup: function () {
@@ -1156,6 +1197,7 @@ var App = {
         UI.renderProducts(self.products, self._detailDataForSearchList(self.products), {
           searchListCacheMode: true
         });
+        self._tryAutoBuyFromUrl();
       }
     });
 

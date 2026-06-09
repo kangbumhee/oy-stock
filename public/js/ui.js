@@ -30,11 +30,26 @@ var UI = {
     return UI._curatorLinksPromise;
   },
 
+  curatorRedirectUrl: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return CONFIG.OY_PRODUCT_URL;
+    var base = CONFIG.CURATOR_REDIRECT_PATH || '/api/oliveyoung/curator-redirect';
+    if (base.charAt(0) === '/') {
+      var origin =
+        window.location.protocol === 'file:' ? 'https://olivestock.co.kr' : window.location.origin;
+      base = origin + base;
+    }
+    var url =
+      base +
+      (base.indexOf('?') >= 0 ? '&' : '?') +
+      'goodsNo=' +
+      encodeURIComponent(gn);
+    return url;
+  },
+
   /**
-   * 1) curator-links.json 의 shortenedUrl
-   * 2) 없으면 landing-proxy → shorten-proxy (성공 시 utm_content)
-   * 3) landing 실패 시에도 shorten(utm 없음) → oy.run
-   * 4) shorten 실패 시 www 일반 상세
+   * 블로그 구매 버튼과 같은 서버 리다이렉트 API로 통일한다.
+   * 서버에서 curator-links.json → 모바일 앱 브릿지 → 웹 fallback 순서로 처리한다.
    */
   openOliveYoungProduct: function (el) {
     var goodsNo = el.dataset.goodsno;
@@ -47,6 +62,42 @@ var UI = {
     console.log('[oy] openOliveYoung 실행', goodsNo);
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 구매 →';
+    var redirectUrl = UI.curatorRedirectUrl(goodsNo);
+
+    function tryOpenCuratorRedirect(url) {
+      var newTab = window.open(url, '_blank', 'noopener,noreferrer');
+      if (newTab != null) return false;
+      var a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      el.removeAttribute('data-action');
+      el.disabled = false;
+      el.textContent = '여기를 클릭해서 열기 →';
+      el.onclick = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        window.open(url, '_blank', 'noopener,noreferrer');
+      };
+      return true;
+    }
+
+    el.disabled = true;
+    el.textContent = '사이트여는중';
+    var manualRedirectFallback = tryOpenCuratorRedirect(redirectUrl);
+    el.removeAttribute('data-oy-opening');
+    if (!manualRedirectFallback) {
+      window.setTimeout(function () {
+        el.disabled = false;
+        el.textContent = origLabel;
+      }, 500);
+    }
+    return;
+
     var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
     var longUrlBase =
       'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +

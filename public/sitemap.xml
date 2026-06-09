@@ -90,4 +90,36 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <!-- BLOG_URLS_START -->
+  <url>
+    <loc>https://olivestock.co.kr/blog/</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://olivestock.co.kr/blog/mediheal-toner-pad-200-stock-a000000255385/</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://olivestock.co.kr/blog/mediheal-sun-serum-stock-a000000255391/</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://olivestock.co.kr/blog/mediheal-gel-mask-stock-a000000239102/</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://olivestock.co.kr/blog/torriden-serum-stock-a000000256047/</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- BLOG_URLS_END -->
 </urlset>
