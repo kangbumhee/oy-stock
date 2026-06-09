@@ -354,57 +354,6 @@ var UI = {
     return prefix + ' ' + UI.hotRankText(prev) + ' → ' + UI.hotRankText(current);
   },
 
-  renderRankTrendBadge: function (trend, mode) {
-    var metric =
-      mode === 'revenue' ? '매출순' : mode === 'sales' ? '판매량순' : '조회순';
-    if (!trend) {
-      return (
-        '<div class="hot-trend hot-trend-empty" title="' +
-        UI.escAttr(metric + ' 1시간 변동 데이터 대기') +
-        '"><span>1H</span><strong>-</strong></div>'
-      );
-    }
-
-    var status = trend.status || trend.direction || 'flat';
-    var big = trend.isBig ? ' big' : '';
-    var label = trend.label || '보합';
-    var caption = '1H';
-    if (status === 'entry') caption = 'NEW';
-    else if (trend.isBig && status === 'up') caption = '급등';
-    else if (trend.isBig && status === 'down') caption = '급락';
-
-    var title;
-    if (status === 'entry') {
-      title = metric + ' 1시간 전 없음 → 현재 #' + UI.num(trend.currentRank) + ' 진입';
-    } else if (status === 'flat') {
-      title = metric + ' 1시간 변동 없음 · 현재 #' + UI.num(trend.currentRank);
-    } else {
-      title =
-        metric +
-        ' 1시간 변동: #' +
-        UI.num(trend.previousRank) +
-        ' → #' +
-        UI.num(trend.currentRank) +
-        ' (' +
-        (status === 'up' ? '상승 ' : '하락 ') +
-        UI.num(trend.absDelta || 0) +
-        '계단)';
-    }
-
-    return (
-      '<div class="hot-trend ' +
-      UI.esc(status) +
-      big +
-      '" title="' +
-      UI.escAttr(title) +
-      '"><span>' +
-      UI.esc(caption) +
-      '</span><strong>' +
-      UI.esc(label) +
-      '</strong></div>'
-    );
-  },
-
   renderHotSparkline: function (points, opts) {
     opts = opts || {};
     var meta = UI.hotChartMeta(opts.mode || 'stock');
@@ -1029,11 +978,6 @@ var UI = {
         var chartMode =
           sortMode === 'revenue' ? 'revenue' : sortMode === 'sales' ? 'sales' : 'view';
         var salesMetricLabel = '24시간';
-        var trend =
-          estimate && estimate.rankTrends
-            ? estimate.rankTrends[chartMode] || null
-            : null;
-        var trendHtml = UI.renderRankTrendBadge(trend, chartMode);
         var chartPoints = [];
         if (estimate) {
           chartPoints =
@@ -1113,9 +1057,6 @@ var UI = {
           '<article class="hot-row" data-action="showHotDetail" data-goodsno="' +
           UI.esc(gn) +
           '">' +
-          '<div class="hot-trend-slot">' +
-          trendHtml +
-          '</div>' +
           '<div class="hot-rank">#' +
           UI.num(rank) +
           '</div>' +

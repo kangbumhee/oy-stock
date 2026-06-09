@@ -159,24 +159,10 @@ header h1{font-size:20px;margin-bottom:4px}
 .hot-refresh{border-color:#bbf7d0;color:#15803d}
 .hot-refresh:hover{background:#dcfce7}
 .hot-list{display:flex;flex-direction:column}
-.hot-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;grid-template-areas:"trend main buy" "rank main buy" "thumb main buy";gap:4px 12px;align-items:center;padding:10px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer}
+.hot-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;grid-template-areas:"rank main buy" "thumb main buy";gap:4px 12px;align-items:center;padding:10px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer}
 .hot-row:last-child{border-bottom:none}
 .hot-row:hover{background:#fafafa}
 .hot-rank{grid-area:rank;font-size:13px;font-weight:800;color:#16a34a;text-align:center}
-.hot-trend-slot{grid-area:trend;display:flex;align-items:center;justify-content:center;min-width:0}
-.hot-trend{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:54px;height:34px;padding:2px 5px;border:1px solid #e5e7eb;border-radius:7px;background:#f8fafc;color:#64748b;font-weight:900;line-height:1;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-.hot-trend span{font-size:9px;letter-spacing:0;color:currentColor;opacity:.82}
-.hot-trend strong{margin-top:3px;font-size:12px;letter-spacing:0;color:currentColor;white-space:nowrap}
-.hot-trend.up{border-color:#fecaca;background:#fef2f2;color:#dc2626}
-.hot-trend.down{border-color:#bfdbfe;background:#eff6ff;color:#2563eb}
-.hot-trend.entry{border-color:#fde68a;background:#fffbeb;color:#b45309}
-.hot-trend.flat{border-color:#e5e7eb;background:#f8fafc;color:#64748b}
-.hot-trend-empty{opacity:.55}
-.hot-trend.big{height:40px;border-width:2px;box-shadow:0 0 0 2px rgba(220,38,38,.08),0 6px 14px rgba(15,23,42,.14);transform:translateY(-1px)}
-.hot-trend.big.down{box-shadow:0 0 0 2px rgba(37,99,235,.1),0 6px 14px rgba(15,23,42,.14)}
-.hot-trend.big.entry{box-shadow:0 0 0 2px rgba(180,83,9,.12),0 6px 14px rgba(15,23,42,.14)}
-.hot-trend.big span{font-size:10px}
-.hot-trend.big strong{font-size:14px}
 .hot-thumb{grid-area:thumb;justify-self:center;width:58px;height:58px;border-radius:6px;overflow:hidden;background:#f3f4f6}
 .hot-thumb img{width:100%;height:100%;object-fit:cover}
 .hot-main{grid-area:main;min-width:0}
@@ -335,11 +321,7 @@ button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px
   .velocity-thumb{width:48px;height:48px}
   .velocity-metric{grid-column:3;align-items:flex-start;flex-direction:row;flex-wrap:wrap;margin-top:4px}
   .velocity-proof{white-space:normal}
-  .hot-row{grid-template-columns:60px minmax(0,1fr);grid-template-areas:"trend main" "rank main" "thumb main" ". buy";align-items:start;gap:4px 8px}
-  .hot-trend{min-width:48px;height:32px;padding:2px 4px}
-  .hot-trend.big{height:36px}
-  .hot-trend strong{font-size:11px}
-  .hot-trend.big strong{font-size:13px}
+  .hot-row{grid-template-columns:60px minmax(0,1fr);grid-template-areas:"rank main" "thumb main" ". buy";align-items:start;gap:4px 8px}
   .hot-head{align-items:flex-start}
   .hot-actions{flex-direction:column;align-items:flex-end;gap:6px}
   .hot-range{max-width:210px;overflow-x:auto}
