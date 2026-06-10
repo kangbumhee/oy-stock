@@ -1,0 +1,48 @@
+name: Daily OliveYoung Blog
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 10:30 KST
+    - cron: '30 1 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-oliveyoung-blog
+  cancel-in-progress: false
+
+jobs:
+  build-blog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install chromium --with-deps
+
+      - name: Generate daily blog posts
+        run: npm run build:blog:daily
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/blog/ public/data/blog-posts.json public/images/blog/ public/index.html public/rss.xml public/site-map.html public/sitemap.xml
+          git diff --staged --quiet && {
+            echo "No new blog posts to commit."
+            exit 0
+          }
+          git commit -m "📝 daily blog $(TZ=Asia/Seoul date +%Y-%m-%d)"
+          git push

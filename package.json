@@ -8,6 +8,7 @@
     "setup:oy-cookie-profile": "node scripts/refresh-oy-cookie-from-profile.mjs --setup",
     "refresh:oy-cookie:chrome": "node scripts/refresh-oy-cookie-from-profile.mjs",
     "build:blog": "node scripts/build-blog-pages.js",
+    "build:blog:daily": "node scripts/build-blog-pages.js --daily --limit 3 --scan-limit 80",
     "build:blog:assets": "node scripts/render-blog-product-assets.js",
     "submit:indexnow": "node scripts/submit-indexnow.mjs"
   },

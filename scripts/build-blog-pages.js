@@ -928,22 +928,78 @@ ${posts.map((post) => `      <li><a href="${post.url}">${htmlEscape(post.shortNa
   await fs.writeFile(file, html, 'utf8');
 }
 
-function parseLimit() {
-  const index = process.argv.indexOf('--limit');
+function readNumberArg(name, fallback, max) {
+  const index = process.argv.indexOf(name);
   if (index >= 0 && process.argv[index + 1]) {
     const parsed = Number.parseInt(process.argv[index + 1], 10);
-    if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, 20);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, max);
   }
-  return 1;
+  return fallback;
+}
+
+function hasFlag(name) {
+  return process.argv.includes(name);
+}
+
+function parseArgs() {
+  const daily = hasFlag('--daily');
+  const limit = readNumberArg('--limit', daily ? 3 : 1, 20);
+  const scanLimit = readNumberArg('--scan-limit', Math.max(limit, daily ? 80 : 20), 100);
+
+  return {
+    daily,
+    limit,
+    scanLimit: Math.max(scanLimit, limit),
+    newOnly: daily || hasFlag('--new-only'),
+    skipIfNoNew: daily || hasFlag('--skip-if-no-new')
+  };
+}
+
+function existingPostKeys(posts) {
+  const goodsNos = new Set();
+  const slugs = new Set();
+  const canonicalKeys = new Set();
+
+  for (const post of posts) {
+    if (post.goodsNo) goodsNos.add(String(post.goodsNo).toLowerCase());
+    if (post.slug) slugs.add(String(post.slug).toLowerCase());
+    canonicalKeys.add(canonicalPostKey(post));
+  }
+
+  return { goodsNos, slugs, canonicalKeys };
+}
+
+function isAlreadyWrittenPost(post, keys) {
+  const goodsNo = String(post.goodsNo || '').toLowerCase();
+  const slug = String(post.slug || '').toLowerCase();
+  return (
+    (goodsNo && keys.goodsNos.has(goodsNo)) ||
+    (slug && keys.slugs.has(slug)) ||
+    keys.canonicalKeys.has(canonicalPostKey(post))
+  );
+}
+
+function pickGeneratedPosts(rankingPosts, existingPosts, args) {
+  const existingKeys = existingPostKeys(existingPosts);
+  const supportedPosts = rankingPosts.filter(isSupportedBlogPost);
+  const freshPosts = args.newOnly
+    ? supportedPosts.filter((post) => !isAlreadyWrittenPost(post, existingKeys))
+    : supportedPosts;
+
+  return freshPosts.slice(0, args.limit).map(refreshPostCopy);
 }
 
 async function main() {
-  const limit = parseLimit();
-  const generatedPosts = (await fetchViewRanking(Math.max(limit, 20)))
-    .filter(isSupportedBlogPost)
-    .slice(0, limit)
-    .map(refreshPostCopy);
+  const args = parseArgs();
   const existingPosts = await readManifest();
+  const rankingPosts = await fetchViewRanking(args.scanLimit);
+  const generatedPosts = pickGeneratedPosts(rankingPosts, existingPosts, args);
+
+  if (args.skipIfNoNew && generatedPosts.length === 0) {
+    console.log('generated 0 blog post(s): no new supported popular products found.');
+    return;
+  }
+
   const posts = mergePosts(existingPosts, generatedPosts);
 
   await fs.mkdir(blogDir, { recursive: true });
