@@ -7,74 +7,38 @@ const { BLOG_PRODUCT_PROFILES, REVIEW_PHOTO_COUNT } = require('./blog-product-pr
 const root = path.resolve(__dirname, '..');
 const imageDir = path.join(root, 'public', 'images', 'blog');
 
-const TARGET_IDS = ['torriden-dive-in-serum', 'mediheal-sun-serum', 'mediheal-gel-mask'];
-
-const VISUALS = {
-  'torriden-dive-in-serum': {
-    kind: 'dropper',
-    brand: 'Torriden',
-    title: 'DIVE IN\nSerum',
-    sub: 'HYDRATE & GLOW',
-    accent: '#21aeea',
-    accentDark: '#0962a6',
-    second: '#83e8ff',
-    soft: '#e8f8ff',
-    warm: '#f1ff57',
-    pageBg: 'linear-gradient(180deg,#0878c9 0%,#41c8ff 48%,#effcff 100%)',
-    detailTitle: '+ 다이브인 세럼 더블 기획',
-    detailSub: '투명한 블루 보틀이 청량한 수분 세럼',
-    features: [
-      ['블루 수분 보틀', '맑은 파란 용기가 한눈에 보이는 세럼'],
-      ['스포이드 타입', '아침 루틴에 어울리는 촉촉한 분위기'],
-      ['50ml 더블 기획', '증정 구성은 구매 화면에서 한 번 더 확인']
-    ]
-  },
-  'mediheal-sun-serum': {
-    kind: 'tube',
-    brand: 'MEDIHEAL',
-    title: 'MADECASSOSIDE\nMOISTURE\nSUN SERUM',
-    sub: 'SPF 50+ PA++++',
-    accent: '#31d8ce',
-    accentDark: '#038c93',
-    second: '#2475ff',
-    soft: '#e8fbff',
-    warm: '#ffe95c',
-    pageBg: 'linear-gradient(180deg,#0c69ff 0%,#4fcfff 42%,#efffff 100%)',
-    detailTitle: '+ 수분 선세럼 50+50g 기획',
-    detailSub: '흰 튜브와 민트 포인트가 산뜻한 데일리 선케어',
-    features: [
-      ['민트 포인트 튜브', '파우치에 넣기 좋은 깔끔한 튜브형'],
-      ['촉촉한 선케어 무드', '아침 루틴에 어울리는 산뜻한 느낌'],
-      ['50+50g 기획', '구성은 구매 화면에서 한 번 더 확인']
-    ]
-  },
-  'mediheal-gel-mask': {
-    kind: 'mask',
-    brand: 'MEDIHEAL',
-    title: 'HYPER\nGEL MASK',
-    sub: '4 TYPES',
-    accent: '#ff7db5',
-    accentDark: '#18248a',
-    second: '#7ad8ff',
-    soft: '#eef9ff',
-    warm: '#bda2ff',
-    pageBg: 'linear-gradient(180deg,#061789 0%,#184cff 48%,#d9fbff 100%)',
-    detailTitle: '+ 8+1 하이퍼 겔마스크',
-    detailSub: '핑크·보라·하늘색 옵션이 한눈에 보이는 촉촉한 겔마스크',
-    features: [
-      ['4가지 컬러 옵션', '콜라겐, PDRN, 마데카소사이드, 히알루론산 무드'],
-      ['말랑한 겔 시트 느낌', '투명하고 촉촉한 홈케어팩 분위기'],
-      ['8+1 기획', '옵션별 구성은 구매 전 다시 확인']
-    ]
-  }
-};
-
 function htmlEscape(value) {
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function fallbackVisual(profile) {
+  return {
+    kind: 'bottle',
+    brand: 'OliveYoung Pick',
+    title: 'HOT\nITEM',
+    sub: 'POPULAR',
+    accent: '#4fcfff',
+    accentDark: '#0b7bc1',
+    second: '#aee9ff',
+    soft: '#effcff',
+    warm: '#ffe774',
+    pageBg: 'linear-gradient(180deg,#0e5bb6 0%,#4fcfff 48%,#effcff 100%)',
+    detailTitle: '올리브영 인기상품',
+    detailSub: '상세 페이지 방향을 참고해 재구성한 후기형 디테일 컷',
+    features: [
+      ['패키지', '브랜드와 제품 타입이 보이게 재구성했습니다.'],
+      ['색감', '상세 썸네일의 톤을 참고해 분위기를 맞췄습니다.'],
+      ['확인 포인트', '최종 옵션과 가격은 연결된 구매 화면에서 확인해 주세요.']
+    ]
+  };
+}
+
+function resolveVisual(profile) {
+  return { ...fallbackVisual(profile), ...(profile && profile.visual ? profile.visual : {}) };
 }
 
 function productHtml(visual, variant = 0) {
@@ -92,14 +56,14 @@ function productHtml(visual, variant = 0) {
     return `<div class="bottle-set variant-${variant % 4}">
       ${bottle('bottle-back')}
       ${bottle('bottle-front')}
-      <div class="mini-tube"><b>Balanceful</b><span>20ml</span></div>
+      <div class="mini-item"><b>${htmlEscape(visual.brand)}</b><span>${htmlEscape(visual.sub)}</span></div>
     </div>`;
   }
 
-  if (visual.kind === 'mask') {
-    const colors = ['#ff8fbd', '#a78cff', '#79dfff', '#5de1c7'];
+  if (visual.kind === 'pack') {
+    const packColors = [visual.accent, visual.second, visual.warm, '#ffffff'];
     return `<div class="mask-stack variant-${variant % 4}">
-      ${colors
+      ${packColors
         .map(
           (color, index) => `<div class="mask-pack pack-${index}" style="--pack:${color}">
           <b>${htmlEscape(visual.brand)}</b>
@@ -109,6 +73,63 @@ function productHtml(visual, variant = 0) {
         </div>`
         )
         .join('')}
+    </div>`;
+  }
+
+  if (visual.kind === 'jar' || visual.kind === 'padJar') {
+    return `<div class="jar-wrap variant-${variant % 4}">
+      <div class="jar-lid"></div>
+      <div class="jar-body">
+        <b>${htmlEscape(visual.brand)}</b>
+        <strong>${htmlEscape(visual.title).replace(/\n/g, '<br>')}</strong>
+        <span>${htmlEscape(visual.sub)}</span>
+        <i></i>
+      </div>
+      ${
+        visual.kind === 'padJar'
+          ? '<div class="pad-stack"><span></span><span></span><span></span></div>'
+          : '<div class="cream-swirl"></div>'
+      }
+    </div>`;
+  }
+
+  if (visual.kind === 'tint') {
+    const tint = (className) => `<div class="tint ${className}">
+      <div class="tint-cap"></div>
+      <div class="tint-body">
+        <b>${htmlEscape(visual.brand)}</b>
+        <strong>${htmlEscape(visual.title).replace(/\n/g, '<br>')}</strong>
+        <span>${htmlEscape(visual.sub)}</span>
+      </div>
+    </div>`;
+    return `<div class="tint-set variant-${variant % 4}">
+      ${tint('tint-back')}
+      ${tint('tint-front')}
+      <div class="swatch"></div>
+    </div>`;
+  }
+
+  if (visual.kind === 'palette') {
+    return `<div class="palette-wrap variant-${variant % 4}">
+      <div class="palette-lid">
+        <b>${htmlEscape(visual.brand)}</b>
+        <strong>${htmlEscape(visual.title).replace(/\n/g, '<br>')}</strong>
+      </div>
+      <div class="palette-pan pan-a"></div>
+      <div class="palette-pan pan-b"></div>
+      <div class="palette-pan pan-c"></div>
+      <div class="palette-pan pan-d"></div>
+    </div>`;
+  }
+
+  if (visual.kind === 'pouch') {
+    return `<div class="pouch-wrap variant-${variant % 4}">
+      <div class="pouch-top"></div>
+      <div class="pouch-body">
+        <b>${htmlEscape(visual.brand)}</b>
+        <strong>${htmlEscape(visual.title).replace(/\n/g, '<br>')}</strong>
+        <span>${htmlEscape(visual.sub)}</span>
+      </div>
     </div>`;
   }
 
@@ -126,12 +147,91 @@ function productHtml(visual, variant = 0) {
   return `<div class="tube-set variant-${variant % 4}">
     ${tube('tube-back')}
     ${tube('tube-front')}
-    <div class="mini-serum"><b>20612</b><span>10ml</span></div>
+    <div class="mini-item"><b>${htmlEscape(visual.brand)}</b><span>${htmlEscape(visual.sub)}</span></div>
   </div>`;
 }
 
+function visualCss(visual, mode) {
+  const scale = mode === 'detail' ? 1.45 : 0.72;
+  return `
+    .bottle-set{position:absolute;left:50%;top:50%;width:${Math.round(390 * scale)}px;height:${Math.round(500 * scale)}px;transform:translate(-50%,-50%)}
+    .serum-bottle{position:absolute;bottom:${Math.round(56 * scale)}px;width:${Math.round(142 * scale)}px;height:${Math.round(330 * scale)}px}
+    .bottle-front{left:${Math.round(150 * scale)}px;z-index:3;transform:rotate(8deg)}
+    .bottle-back{left:${Math.round(58 * scale)}px;z-index:2;transform:rotate(-8deg)}
+    .pipette{position:absolute;left:50%;top:${Math.round(-74 * scale)}px;width:${Math.round(46 * scale)}px;height:${Math.round(100 * scale)}px;transform:translateX(-50%);border-radius:${Math.round(24 * scale)}px ${Math.round(24 * scale)}px ${Math.round(12 * scale)}px ${Math.round(12 * scale)}px;background:linear-gradient(180deg,#fff,#eef6f7);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(195,215,220,.9);box-shadow:0 12px 22px rgba(0,70,120,.12)}
+    .pipette:before{content:'';position:absolute;left:50%;bottom:${Math.round(-64 * scale)}px;width:${Math.round(12 * scale)}px;height:${Math.round(72 * scale)}px;transform:translateX(-50%);border-radius:999px;background:rgba(255,255,255,.78)}
+    .serum-glass{position:absolute;left:0;right:0;bottom:0;height:${Math.round(300 * scale)}px;border-radius:${Math.round(48 * scale)}px ${Math.round(48 * scale)}px ${Math.round(30 * scale)}px ${Math.round(30 * scale)}px;background:linear-gradient(135deg,rgba(255,255,255,.9),${visual.second} 20%,${visual.accent} 74%,rgba(255,255,255,.58));border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.94);box-shadow:inset 18px 0 32px rgba(255,255,255,.32),inset -18px 0 32px rgba(0,80,150,.16),0 22px 36px rgba(0,70,120,.18);overflow:hidden}
+    .serum-glass:before{content:'';position:absolute;left:${Math.round(18 * scale)}px;right:${Math.round(18 * scale)}px;top:${Math.round(22 * scale)}px;height:${Math.round(32 * scale)}px;border-radius:999px;background:rgba(255,255,255,.55)}
+    .serum-glass b,.jar-body b,.tube-body b,.tint-body b,.palette-lid b,.pouch-body b{position:absolute;left:0;right:0;text-align:center;font-size:${Math.round(18 * scale)}px;color:#1a2430;letter-spacing:.5px}
+    .serum-glass b{top:${Math.round(72 * scale)}px}
+    .serum-glass strong,.jar-body strong,.tube-body strong,.tint-body strong,.palette-lid strong,.pouch-body strong{position:absolute;left:${Math.round(18 * scale)}px;right:${Math.round(18 * scale)}px;font-size:${Math.round(17 * scale)}px;line-height:1.1;color:#1f3446}
+    .serum-glass strong{top:${Math.round(118 * scale)}px}
+    .serum-glass i{position:absolute;left:${Math.round(24 * scale)}px;right:${Math.round(24 * scale)}px;bottom:${Math.round(98 * scale)}px;height:${Math.max(1, Math.round(2 * scale))}px;background:rgba(0,75,130,.42)}
+    .serum-glass span,.jar-body span,.tube-body span,.tint-body span,.pouch-body span{position:absolute;left:${Math.round(20 * scale)}px;right:${Math.round(20 * scale)}px;bottom:${Math.round(44 * scale)}px;font-size:${Math.round(12 * scale)}px;color:#17344a;font-weight:900;text-align:center}
+    .mini-item{position:absolute;right:${Math.round(10 * scale)}px;bottom:${Math.round(52 * scale)}px;width:${Math.round(98 * scale)}px;height:${Math.round(140 * scale)}px;border-radius:${Math.round(20 * scale)}px;background:linear-gradient(180deg,#ffffff,${visual.soft});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.9);box-shadow:0 14px 28px rgba(0,80,120,.16);z-index:4;text-align:center}
+    .mini-item b{display:block;margin-top:${Math.round(48 * scale)}px;font-size:${Math.round(11 * scale)}px;color:#173f4c}
+    .mini-item span{display:block;margin-top:${Math.round(10 * scale)}px;padding:0 ${Math.round(6 * scale)}px;font-size:${Math.round(11 * scale)}px;color:${visual.accentDark};font-weight:900;line-height:1.2}
+    .tube-set{position:absolute;left:50%;top:50%;width:${Math.round(350 * scale)}px;height:${Math.round(500 * scale)}px;transform:translate(-50%,-50%)}
+    .tube{position:absolute;bottom:${Math.round(72 * scale)}px;width:${Math.round(126 * scale)}px;height:${Math.round(330 * scale)}px}
+    .tube-front{left:${Math.round(126 * scale)}px;z-index:3;transform:rotate(3deg)}
+    .tube-back{left:${Math.round(42 * scale)}px;z-index:2;transform:rotate(-5deg)}
+    .tube-body{position:absolute;left:0;right:0;top:0;height:${Math.round(288 * scale)}px;border-radius:${Math.round(42 * scale)}px ${Math.round(42 * scale)}px ${Math.round(20 * scale)}px ${Math.round(20 * scale)}px;background:linear-gradient(90deg,#f9fbfa 0%,#fff 48%,#edf4f2 100%);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(170,190,195,.8);box-shadow:inset -16px 0 28px rgba(20,80,90,.08)}
+    .tube-body b{top:${Math.round(38 * scale)}px}
+    .tube-body strong{top:${Math.round(72 * scale)}px}
+    .tube-body i{position:absolute;left:50%;top:${Math.round(144 * scale)}px;width:${Math.round(22 * scale)}px;height:${Math.round(92 * scale)}px;transform:translateX(-50%);background:${visual.accent};border-radius:${Math.round(12 * scale)}px}
+    .tube-top{position:absolute;left:${Math.round(8 * scale)}px;right:${Math.round(8 * scale)}px;top:${Math.round(-20 * scale)}px;height:${Math.round(34 * scale)}px;border-radius:${Math.round(12 * scale)}px;background:repeating-linear-gradient(90deg,#fff,#fff ${Math.max(2, Math.round(4 * scale))}px,#dce7e7 ${Math.max(3, Math.round(5 * scale))}px,#dce7e7 ${Math.max(4, Math.round(7 * scale))}px);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(190,205,205,.8)}
+    .tube-cap{position:absolute;left:${Math.round(24 * scale)}px;right:${Math.round(24 * scale)}px;bottom:0;height:${Math.round(82 * scale)}px;border-radius:${Math.round(12 * scale)}px ${Math.round(12 * scale)}px ${Math.round(32 * scale)}px ${Math.round(32 * scale)}px;background:linear-gradient(180deg,rgba(255,255,255,.72),${visual.accent});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(0,140,150,.36)}
+    .jar-wrap{position:absolute;left:50%;top:50%;width:${Math.round(320 * scale)}px;height:${Math.round(410 * scale)}px;transform:translate(-50%,-50%)}
+    .jar-lid{position:absolute;left:${Math.round(32 * scale)}px;right:${Math.round(32 * scale)}px;top:${Math.round(46 * scale)}px;height:${Math.round(86 * scale)}px;border-radius:${Math.round(42 * scale)}px ${Math.round(42 * scale)}px ${Math.round(18 * scale)}px ${Math.round(18 * scale)}px;background:linear-gradient(180deg,#fff,${visual.second});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.94);box-shadow:0 16px 30px rgba(40,70,90,.14)}
+    .jar-body{position:absolute;left:0;right:0;bottom:${Math.round(36 * scale)}px;height:${Math.round(240 * scale)}px;border-radius:${Math.round(38 * scale)}px;background:linear-gradient(180deg,rgba(255,255,255,.92),${visual.soft});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(214,225,231,.92);box-shadow:0 20px 34px rgba(30,60,80,.16)}
+    .jar-body b{top:${Math.round(44 * scale)}px}
+    .jar-body strong{top:${Math.round(78 * scale)}px}
+    .jar-body span{bottom:${Math.round(24 * scale)}px}
+    .jar-body i{position:absolute;left:${Math.round(26 * scale)}px;right:${Math.round(26 * scale)}px;bottom:${Math.round(62 * scale)}px;height:${Math.round(48 * scale)}px;border-radius:999px;background:linear-gradient(90deg,${visual.accent},${visual.second})}
+    .pad-stack{position:absolute;right:${Math.round(18 * scale)}px;top:${Math.round(6 * scale)}px;width:${Math.round(126 * scale)}px;height:${Math.round(126 * scale)}px}
+    .pad-stack span{position:absolute;display:block;width:${Math.round(86 * scale)}px;height:${Math.round(86 * scale)}px;border-radius:${Math.round(22 * scale)}px;background:rgba(255,255,255,.94);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(215,235,240,.9);box-shadow:0 14px 24px rgba(30,60,80,.12)}
+    .pad-stack span:nth-child(1){right:0;top:0;transform:rotate(10deg)}
+    .pad-stack span:nth-child(2){left:${Math.round(10 * scale)}px;top:${Math.round(18 * scale)}px;transform:rotate(-9deg)}
+    .pad-stack span:nth-child(3){right:${Math.round(24 * scale)}px;top:${Math.round(32 * scale)}px;transform:rotate(2deg)}
+    .cream-swirl{position:absolute;right:${Math.round(18 * scale)}px;top:${Math.round(16 * scale)}px;width:${Math.round(138 * scale)}px;height:${Math.round(92 * scale)}px;border-radius:50%;background:radial-gradient(circle at 50% 32%,rgba(255,255,255,.94),${visual.warm});box-shadow:0 16px 24px rgba(30,60,80,.14)}
+    .mask-stack{position:absolute;left:50%;top:50%;width:${Math.round(430 * scale)}px;height:${Math.round(430 * scale)}px;transform:translate(-50%,-50%)}
+    .mask-pack{position:absolute;width:${Math.round(190 * scale)}px;height:${Math.round(272 * scale)}px;border-radius:${Math.round(14 * scale)}px;background:linear-gradient(180deg,#fff 0%,#fff 42%,var(--pack) 43%,#fff 100%);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(180,185,205,.9);box-shadow:0 22px 36px rgba(12,20,80,.18);overflow:hidden}
+    .mask-pack b{position:absolute;left:${Math.round(20 * scale)}px;top:${Math.round(22 * scale)}px;font-size:${Math.round(17 * scale)}px;color:#111;letter-spacing:.6px}
+    .mask-pack strong{position:absolute;left:${Math.round(20 * scale)}px;right:${Math.round(16 * scale)}px;top:${Math.round(62 * scale)}px;font-size:${Math.round(18 * scale)}px;line-height:1.12;color:#283040}
+    .mask-pack span{position:absolute;right:${Math.round(14 * scale)}px;top:${Math.round(14 * scale)}px;width:${Math.round(48 * scale)}px;height:${Math.round(48 * scale)}px;border-radius:999px;background:${visual.accentDark};color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:${Math.round(13 * scale)}px;font-weight:900}
+    .mask-pack i{position:absolute;left:${Math.round(28 * scale)}px;right:${Math.round(28 * scale)}px;bottom:${Math.round(28 * scale)}px;height:${Math.round(110 * scale)}px;border-radius:50%;background:radial-gradient(circle at 45% 38%,rgba(255,255,255,.95),rgba(255,255,255,.42) 42%,var(--pack) 72%);box-shadow:inset 0 0 25px rgba(255,255,255,.65)}
+    .pack-0{left:${Math.round(18 * scale)}px;top:${Math.round(70 * scale)}px;z-index:4;transform:rotate(-4deg)}
+    .pack-1{left:${Math.round(112 * scale)}px;top:${Math.round(50 * scale)}px;z-index:3;transform:rotate(3deg)}
+    .pack-2{left:${Math.round(205 * scale)}px;top:${Math.round(74 * scale)}px;z-index:2;transform:rotate(7deg)}
+    .pack-3{left:${Math.round(280 * scale)}px;top:${Math.round(95 * scale)}px;z-index:1;transform:rotate(10deg)}
+    .tint-set{position:absolute;left:50%;top:50%;width:${Math.round(300 * scale)}px;height:${Math.round(420 * scale)}px;transform:translate(-50%,-50%)}
+    .tint{position:absolute;bottom:${Math.round(58 * scale)}px;width:${Math.round(82 * scale)}px;height:${Math.round(260 * scale)}px}
+    .tint-front{left:${Math.round(130 * scale)}px;z-index:3;transform:rotate(6deg)}
+    .tint-back{left:${Math.round(70 * scale)}px;z-index:2;transform:rotate(-7deg)}
+    .tint-cap{position:absolute;left:${Math.round(8 * scale)}px;right:${Math.round(8 * scale)}px;top:0;height:${Math.round(78 * scale)}px;border-radius:${Math.round(18 * scale)}px;background:linear-gradient(180deg,${visual.accentDark},#1b1c24)}
+    .tint-body{position:absolute;left:0;right:0;bottom:0;height:${Math.round(196 * scale)}px;border-radius:${Math.round(18 * scale)}px;background:linear-gradient(180deg,rgba(255,255,255,.88),${visual.accent});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.9);box-shadow:0 18px 30px rgba(40,60,80,.18)}
+    .tint-body b{top:${Math.round(24 * scale)}px}
+    .tint-body strong{top:${Math.round(58 * scale)}px}
+    .swatch{position:absolute;right:${Math.round(10 * scale)}px;bottom:${Math.round(24 * scale)}px;width:${Math.round(104 * scale)}px;height:${Math.round(74 * scale)}px;border-radius:${Math.round(26 * scale)}px;background:linear-gradient(90deg,${visual.accent},${visual.warm});box-shadow:0 18px 28px rgba(40,60,80,.18)}
+    .palette-wrap{position:absolute;left:50%;top:50%;width:${Math.round(330 * scale)}px;height:${Math.round(320 * scale)}px;transform:translate(-50%,-50%)}
+    .palette-lid{position:absolute;left:0;right:0;top:0;height:${Math.round(136 * scale)}px;border-radius:${Math.round(28 * scale)}px;background:linear-gradient(180deg,#fff,${visual.soft});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(240,235,225,.96);box-shadow:0 20px 34px rgba(30,60,80,.16)}
+    .palette-lid b{top:${Math.round(22 * scale)}px}
+    .palette-lid strong{top:${Math.round(56 * scale)}px;text-align:center}
+    .palette-pan{position:absolute;bottom:0;width:${Math.round(138 * scale)}px;height:${Math.round(120 * scale)}px;border-radius:${Math.round(28 * scale)}px;border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.94);box-shadow:0 16px 30px rgba(30,60,80,.16)}
+    .pan-a{left:0;background:linear-gradient(180deg,${visual.warm},#f6d8ae)}
+    .pan-b{right:0;background:linear-gradient(180deg,${visual.accent},${visual.second})}
+    .pan-c{left:${Math.round(26 * scale)}px;bottom:${Math.round(86 * scale)}px;width:${Math.round(110 * scale)}px;height:${Math.round(86 * scale)}px;background:#ffffff}
+    .pan-d{right:${Math.round(26 * scale)}px;bottom:${Math.round(86 * scale)}px;width:${Math.round(110 * scale)}px;height:${Math.round(86 * scale)}px;background:linear-gradient(180deg,${visual.second},#ffffff)}
+    .pouch-wrap{position:absolute;left:50%;top:50%;width:${Math.round(300 * scale)}px;height:${Math.round(380 * scale)}px;transform:translate(-50%,-50%)}
+    .pouch-top{position:absolute;left:${Math.round(24 * scale)}px;right:${Math.round(24 * scale)}px;top:0;height:${Math.round(48 * scale)}px;border-radius:${Math.round(20 * scale)}px;background:linear-gradient(180deg,#fff,${visual.second});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.94)}
+    .pouch-body{position:absolute;left:0;right:0;top:${Math.round(24 * scale)}px;bottom:0;border-radius:${Math.round(30 * scale)}px;background:linear-gradient(180deg,#fff,${visual.soft});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(240,235,225,.94);box-shadow:0 20px 34px rgba(30,60,80,.16)}
+    .pouch-body b{top:${Math.round(62 * scale)}px}
+    .pouch-body strong{top:${Math.round(96 * scale)}px;text-align:center}
+  `;
+}
+
 function detailHtml(profile, visual) {
-  const featureHtml = visual.features
+  const featureHtml = (visual.features || [])
     .map(
       (item) => `<div class="feature">
         <b>${htmlEscape(item[0])}</b>
@@ -167,7 +267,7 @@ function detailHtml(profile, visual) {
   <div class="page">
     <div class="shine"></div>
     <div class="brand">${htmlEscape(visual.brand)}</div>
-    <div class="badge">올영<br>PICK</div>
+    <div class="badge">리뷰형<br>컷</div>
     <div class="copy">
       <h1>${htmlEscape(visual.detailTitle)}</h1>
       <p>${htmlEscape(visual.detailSub)}</p>
@@ -235,52 +335,6 @@ function sceneHtml(profile, visual, index) {
 </html>`;
 }
 
-function visualCss(visual, mode) {
-  const scale = mode === 'detail' ? 1.45 : 0.72;
-  return `
-    .bottle-set{position:absolute;left:50%;top:50%;width:${Math.round(390 * scale)}px;height:${Math.round(500 * scale)}px;transform:translate(-50%,-50%)}
-    .serum-bottle{position:absolute;bottom:${Math.round(56 * scale)}px;width:${Math.round(142 * scale)}px;height:${Math.round(330 * scale)}px}
-    .bottle-front{left:${Math.round(150 * scale)}px;z-index:3;transform:rotate(8deg)}
-    .bottle-back{left:${Math.round(58 * scale)}px;z-index:2;transform:rotate(-8deg)}
-    .pipette{position:absolute;left:50%;top:${Math.round(-74 * scale)}px;width:${Math.round(46 * scale)}px;height:${Math.round(100 * scale)}px;transform:translateX(-50%);border-radius:${Math.round(24 * scale)}px ${Math.round(24 * scale)}px ${Math.round(12 * scale)}px ${Math.round(12 * scale)}px;background:linear-gradient(180deg,#fff,#eef6f7);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(195,215,220,.9);box-shadow:0 12px 22px rgba(0,70,120,.12)}
-    .pipette:before{content:'';position:absolute;left:50%;bottom:${Math.round(-64 * scale)}px;width:${Math.round(12 * scale)}px;height:${Math.round(72 * scale)}px;transform:translateX(-50%);border-radius:999px;background:rgba(255,255,255,.78)}
-    .serum-glass{position:absolute;left:0;right:0;bottom:0;height:${Math.round(300 * scale)}px;border-radius:${Math.round(48 * scale)}px ${Math.round(48 * scale)}px ${Math.round(30 * scale)}px ${Math.round(30 * scale)}px;background:linear-gradient(135deg,rgba(255,255,255,.88),${visual.second} 22%,${visual.accent} 74%,rgba(255,255,255,.55));border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.92);box-shadow:inset 18px 0 32px rgba(255,255,255,.32),inset -18px 0 32px rgba(0,80,150,.16),0 22px 36px rgba(0,70,120,.18);overflow:hidden}
-    .serum-glass:before{content:'';position:absolute;left:${Math.round(18 * scale)}px;right:${Math.round(18 * scale)}px;top:${Math.round(22 * scale)}px;height:${Math.round(32 * scale)}px;border-radius:999px;background:rgba(255,255,255,.55)}
-    .serum-glass b{position:absolute;left:0;right:0;top:${Math.round(72 * scale)}px;text-align:center;font-size:${Math.round(24 * scale)}px;color:#111;letter-spacing:.4px}
-    .serum-glass strong{position:absolute;left:${Math.round(22 * scale)}px;right:${Math.round(18 * scale)}px;top:${Math.round(122 * scale)}px;font-size:${Math.round(18 * scale)}px;line-height:1.1;color:#183040}
-    .serum-glass i{position:absolute;left:${Math.round(24 * scale)}px;right:${Math.round(24 * scale)}px;bottom:${Math.round(98 * scale)}px;height:${Math.max(1, Math.round(2 * scale))}px;background:rgba(0,75,130,.42)}
-    .serum-glass span{position:absolute;left:${Math.round(20 * scale)}px;right:${Math.round(20 * scale)}px;bottom:${Math.round(52 * scale)}px;font-size:${Math.round(13 * scale)}px;color:#16344b;font-weight:900}
-    .mini-tube{position:absolute;right:${Math.round(14 * scale)}px;bottom:${Math.round(52 * scale)}px;width:${Math.round(82 * scale)}px;height:${Math.round(166 * scale)}px;border-radius:${Math.round(22 * scale)}px ${Math.round(22 * scale)}px ${Math.round(14 * scale)}px ${Math.round(14 * scale)}px;background:linear-gradient(180deg,#eef9ea 0%,#c9f6e3 58%,#fff 100%);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.9);box-shadow:0 14px 28px rgba(0,80,120,.16);z-index:4;text-align:center;color:#173f4c;font-weight:900}
-    .mini-tube b{display:block;margin:${Math.round(54 * scale)}px ${Math.round(8 * scale)}px 0;font-size:${Math.round(11 * scale)}px}
-    .mini-tube span{display:block;font-size:${Math.round(12 * scale)}px;color:${visual.accentDark}}
-    .tube-set{position:absolute;left:50%;top:50%;width:${Math.round(350 * scale)}px;height:${Math.round(500 * scale)}px;transform:translate(-50%,-50%)}
-    .tube{position:absolute;bottom:${Math.round(72 * scale)}px;width:${Math.round(126 * scale)}px;height:${Math.round(330 * scale)}px}
-    .tube-front{left:${Math.round(126 * scale)}px;z-index:3;transform:rotate(3deg)}
-    .tube-back{left:${Math.round(42 * scale)}px;z-index:2;transform:rotate(-5deg)}
-    .tube-body{position:absolute;left:0;right:0;top:0;height:${Math.round(288 * scale)}px;border-radius:${Math.round(42 * scale)}px ${Math.round(42 * scale)}px ${Math.round(20 * scale)}px ${Math.round(20 * scale)}px;background:linear-gradient(90deg,#f9fbfa 0%,#fff 48%,#edf4f2 100%);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(170,190,195,.8);box-shadow:inset -16px 0 28px rgba(20,80,90,.08)}
-    .tube-body b{position:absolute;left:0;right:0;top:${Math.round(38 * scale)}px;text-align:center;font-size:${Math.round(16 * scale)}px;color:#222;letter-spacing:.6px}
-    .tube-body strong{position:absolute;left:${Math.round(16 * scale)}px;right:${Math.round(16 * scale)}px;top:${Math.round(74 * scale)}px;text-align:left;font-size:${Math.round(16 * scale)}px;line-height:1.12;color:#25313a}
-    .tube-body i{position:absolute;left:50%;top:${Math.round(142 * scale)}px;width:${Math.round(22 * scale)}px;height:${Math.round(92 * scale)}px;transform:translateX(-50%);background:${visual.accent};border-radius:${Math.round(12 * scale)}px}
-    .tube-body span{position:absolute;left:0;right:0;bottom:${Math.round(34 * scale)}px;text-align:center;font-size:${Math.round(15 * scale)}px;color:#2d3840;font-weight:800}
-    .tube-top{position:absolute;left:${Math.round(8 * scale)}px;right:${Math.round(8 * scale)}px;top:${Math.round(-20 * scale)}px;height:${Math.round(34 * scale)}px;border-radius:${Math.round(12 * scale)}px;background:repeating-linear-gradient(90deg,#fff,#fff ${Math.max(2, Math.round(4 * scale))}px,#dce7e7 ${Math.max(3, Math.round(5 * scale))}px,#dce7e7 ${Math.max(4, Math.round(7 * scale))}px);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(190,205,205,.8)}
-    .tube-cap{position:absolute;left:${Math.round(24 * scale)}px;right:${Math.round(24 * scale)}px;bottom:0;height:${Math.round(82 * scale)}px;border-radius:${Math.round(12 * scale)}px ${Math.round(12 * scale)}px ${Math.round(32 * scale)}px ${Math.round(32 * scale)}px;background:linear-gradient(180deg,rgba(255,255,255,.72),${visual.accent});border:${Math.max(1, Math.round(2 * scale))}px solid rgba(0,140,150,.36)}
-    .mini-serum{position:absolute;right:${Math.round(12 * scale)}px;bottom:${Math.round(58 * scale)}px;width:${Math.round(104 * scale)}px;height:${Math.round(150 * scale)}px;border-radius:${Math.round(18 * scale)}px;background:linear-gradient(180deg,#1a1f22 ${Math.round(28 * scale)}px,${visual.accent} ${Math.round(28 * scale)}px,${visual.accent} 100%);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(255,255,255,.9);box-shadow:0 18px 30px rgba(0,0,0,.18);z-index:4;color:#08363b;text-align:center;font-weight:900}
-    .mini-serum:before{content:'';position:absolute;left:50%;top:${Math.round(-44 * scale)}px;width:${Math.round(30 * scale)}px;height:${Math.round(48 * scale)}px;transform:translateX(-50%);border-radius:${Math.round(18 * scale)}px ${Math.round(18 * scale)}px 0 0;background:#111}
-    .mini-serum b{display:block;margin-top:${Math.round(58 * scale)}px;font-size:${Math.round(20 * scale)}px;color:#07333b}
-    .mini-serum span{display:block;font-size:${Math.round(12 * scale)}px;color:#fff}
-    .mask-stack{position:absolute;left:50%;top:50%;width:${Math.round(430 * scale)}px;height:${Math.round(430 * scale)}px;transform:translate(-50%,-50%)}
-    .mask-pack{position:absolute;width:${Math.round(190 * scale)}px;height:${Math.round(272 * scale)}px;border-radius:${Math.round(14 * scale)}px;background:linear-gradient(180deg,#fff 0%,#fff 42%,var(--pack) 43%,#fff 100%);border:${Math.max(1, Math.round(2 * scale))}px solid rgba(180,185,205,.9);box-shadow:0 22px 36px rgba(12,20,80,.18);overflow:hidden}
-    .mask-pack b{position:absolute;left:${Math.round(20 * scale)}px;top:${Math.round(22 * scale)}px;font-size:${Math.round(17 * scale)}px;color:#111;letter-spacing:.6px}
-    .mask-pack strong{position:absolute;left:${Math.round(20 * scale)}px;right:${Math.round(16 * scale)}px;top:${Math.round(62 * scale)}px;font-size:${Math.round(18 * scale)}px;line-height:1.12;color:#283040}
-    .mask-pack span{position:absolute;right:${Math.round(14 * scale)}px;top:${Math.round(14 * scale)}px;width:${Math.round(48 * scale)}px;height:${Math.round(48 * scale)}px;border-radius:999px;background:${visual.accentDark};color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:${Math.round(13 * scale)}px;font-weight:900}
-    .mask-pack i{position:absolute;left:${Math.round(28 * scale)}px;right:${Math.round(28 * scale)}px;bottom:${Math.round(28 * scale)}px;height:${Math.round(110 * scale)}px;border-radius:50%;background:radial-gradient(circle at 45% 38%,rgba(255,255,255,.95),rgba(255,255,255,.42) 42%,var(--pack) 72%);box-shadow:inset 0 0 25px rgba(255,255,255,.65)}
-    .pack-0{left:${Math.round(18 * scale)}px;top:${Math.round(70 * scale)}px;z-index:4;transform:rotate(-4deg)}
-    .pack-1{left:${Math.round(112 * scale)}px;top:${Math.round(50 * scale)}px;z-index:3;transform:rotate(3deg)}
-    .pack-2{left:${Math.round(205 * scale)}px;top:${Math.round(74 * scale)}px;z-index:2;transform:rotate(7deg)}
-    .pack-3{left:${Math.round(280 * scale)}px;top:${Math.round(95 * scale)}px;z-index:1;transform:rotate(10deg)}
-  `;
-}
-
 async function renderHtmlToPng(browser, html, outputPath, width, height) {
   const tempPath = path.join(imageDir, `${path.basename(outputPath, '.png')}.html`);
   await fs.writeFile(tempPath, html, 'utf8');
@@ -294,38 +348,46 @@ async function renderHtmlToPng(browser, html, outputPath, width, height) {
   }
 }
 
-async function main() {
+async function renderProfileAssets(browser, profile) {
+  const visual = resolveVisual(profile);
+  await renderHtmlToPng(browser, detailHtml(profile, visual), path.join(imageDir, profile.detailFile), 1024, 1536);
+  for (let index = 1; index <= REVIEW_PHOTO_COUNT; index += 1) {
+    await renderHtmlToPng(
+      browser,
+      sceneHtml(profile, visual, index),
+      path.join(imageDir, `${profile.assetPrefix}-review-${String(index).padStart(2, '0')}.png`),
+      512,
+      512
+    );
+  }
+}
+
+async function renderAssetsForProfiles(profiles) {
   await fs.mkdir(imageDir, { recursive: true });
-  const targets = BLOG_PRODUCT_PROFILES.filter((profile) => TARGET_IDS.includes(profile.id));
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const profile of targets) {
-      const visual = VISUALS[profile.id];
-      if (!visual) continue;
-      await renderHtmlToPng(
-        browser,
-        detailHtml(profile, visual),
-        path.join(imageDir, profile.detailFile),
-        1024,
-        1536
-      );
-      for (let index = 1; index <= REVIEW_PHOTO_COUNT; index += 1) {
-        await renderHtmlToPng(
-          browser,
-          sceneHtml(profile, visual, index),
-          path.join(imageDir, `${profile.assetPrefix}-review-${String(index).padStart(2, '0')}.png`),
-          512,
-          512
-        );
-      }
-      console.log(`rendered ${profile.id} assets`);
+    for (const profile of profiles) {
+      await renderProfileAssets(browser, profile);
     }
   } finally {
     await browser.close();
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+async function main() {
+  const targets = BLOG_PRODUCT_PROFILES.filter((profile) => profile.assetPrefix && profile.detailFile);
+  await renderAssetsForProfiles(targets);
+  targets.forEach((profile) => console.log(`rendered ${profile.id} assets`));
+}
+
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  renderAssetsForProfiles,
+  renderProfileAssets
+};

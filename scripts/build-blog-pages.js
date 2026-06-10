@@ -1,7 +1,8 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { pathToFileURL } = require('url');
-const { buildBlogCopy, getBlogProductProfile } = require('./blog-product-profiles');
+const { buildAutoProductProfile, buildBlogCopy, getBlogProductProfile } = require('./blog-product-profiles');
+const { renderAssetsForProfiles } = require('./render-blog-product-assets');
 
 const root = path.resolve(__dirname, '..');
 const publicDir = path.join(root, 'public');
@@ -135,6 +136,13 @@ function goodsNoFromItem(item) {
   return match ? decodeURIComponent(match[1]) : raw;
 }
 
+function imageUrlFromItem(item) {
+  const raw = String((item && item.imageUrl) || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/${raw.replace(/^\/+/, '')}`;
+}
+
 function deriveBrand(name) {
   const text = String(name || '');
   const found = BRAND_SLUGS.find(([brand]) => text.includes(brand));
@@ -192,8 +200,8 @@ function normalizeRankItem(item, index, rankingUpdatedAt) {
   const rankingTime = rankingUpdatedAt || new Date().toISOString();
   const rankingDate = kstDate(rankingTime);
   const rankingDateText = kstDateTime(rankingTime);
-  const title = `${shortName} 후기처럼 보기｜민트 네모패드 올리브영 재고`;
-  const description = `${shortName}의 민트 용기 색감, 네모패드 크기, 촉촉한 사진 느낌을 자연스럽게 보고 올리브영 재고와 구매 링크까지 바로 이어볼 수 있게 정리했습니다.`;
+  const title = `${shortName} 후기처럼 보기｜올리브영 재고`;
+  const description = `${shortName}의 패키지 분위기와 구매 전 확인 포인트를 자연스럽게 보고 올리브영 재고와 구매 링크까지 바로 이어볼 수 있게 정리했습니다.`;
 
   return {
     slug,
@@ -217,6 +225,7 @@ function normalizeRankItem(item, index, rankingUpdatedAt) {
     query: shortName,
     image: `/images/blog/${slug}.png`,
     url: `/blog/${slug}/`,
+    sourceImageUrl: imageUrlFromItem(item),
     source: 'oliveyoung-view-ranking'
   };
 }
@@ -778,7 +787,7 @@ function mergePosts(existingPosts, generatedPosts) {
 }
 
 function isSupportedBlogPost(post) {
-  return Boolean(getBlogProductProfile(post));
+  return Boolean(getBlogProductProfile(post) || buildAutoProductProfile(post));
 }
 
 function canonicalPostKey(post) {
@@ -979,21 +988,36 @@ function isAlreadyWrittenPost(post, keys) {
   );
 }
 
-function pickGeneratedPosts(rankingPosts, existingPosts, args) {
+async function prepareGeneratedPosts(rankingPosts, existingPosts, args) {
   const existingKeys = existingPostKeys(existingPosts);
-  const supportedPosts = rankingPosts.filter(isSupportedBlogPost);
   const freshPosts = args.newOnly
-    ? supportedPosts.filter((post) => !isAlreadyWrittenPost(post, existingKeys))
-    : supportedPosts;
+    ? rankingPosts.filter((post) => !isAlreadyWrittenPost(post, existingKeys))
+    : rankingPosts.slice();
 
-  return freshPosts.slice(0, args.limit).map(refreshPostCopy);
+  const selected = [];
+  for (const post of freshPosts) {
+    const manualProfile = getBlogProductProfile(post);
+    const autoProfile = manualProfile ? null : buildAutoProductProfile(post);
+    const profile = manualProfile || autoProfile;
+    if (!profile) continue;
+    selected.push(
+      refreshPostCopy({
+        ...post,
+        profile,
+        publishedAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString()
+      })
+    );
+    if (selected.length >= args.limit) break;
+  }
+  return selected;
 }
 
 async function main() {
   const args = parseArgs();
   const existingPosts = await readManifest();
   const rankingPosts = await fetchViewRanking(args.scanLimit);
-  const generatedPosts = pickGeneratedPosts(rankingPosts, existingPosts, args);
+  const generatedPosts = await prepareGeneratedPosts(rankingPosts, existingPosts, args);
 
   if (args.skipIfNoNew && generatedPosts.length === 0) {
     console.log('generated 0 blog post(s): no new supported popular products found.');
@@ -1005,9 +1029,13 @@ async function main() {
   await fs.mkdir(blogDir, { recursive: true });
   await fs.mkdir(imageDir, { recursive: true });
 
-  for (const post of generatedPosts) {
-    await renderOgImage(post);
-  }
+  await renderAssetsForProfiles(
+    generatedPosts
+      .map((post) => getBlogProductProfile(post))
+      .filter((profile) => profile && profile.assetPrefix && profile.detailFile)
+  );
+
+  for (const post of generatedPosts) await renderOgImage(post);
 
   for (const post of posts) {
     const dir = path.join(blogDir, post.slug);

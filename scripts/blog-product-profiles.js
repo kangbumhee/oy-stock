@@ -20,6 +20,32 @@ function descriptionFor(shortName, detail) {
   return `${shortName}의 ${detail} 사진 느낌을 자연스럽게 보고 올리브영 재고와 구매 링크까지 바로 이어볼 수 있게 정리했습니다.`;
 }
 
+function deriveType(text) {
+  const value = String(text || '');
+  const pairs = [
+    ['토너패드', '토너패드'],
+    ['선세럼', '선세럼'],
+    ['세럼', '세럼'],
+    ['앰플', '앰플'],
+    ['선크림', '선크림'],
+    ['마스크팩', '마스크팩'],
+    ['겔마스크', '겔마스크'],
+    ['틴트', '틴트'],
+    ['립밤', '립밤'],
+    ['글로스', '글로스'],
+    ['클렌징밤', '클렌징밤'],
+    ['스크럽', '스크럽'],
+    ['팔레트', '팔레트'],
+    ['아이섀도우', '아이섀도우'],
+    ['네일', '네일'],
+    ['생리대', '생리대'],
+    ['젤리', '젤리'],
+    ['크림', '크림']
+  ];
+  const found = pairs.find(([token]) => value.includes(token));
+  return found ? found[1] : '인기상품';
+}
+
 const BLOG_PRODUCT_PROFILES = [
   {
     id: 'torriden-dive-in-serum',
@@ -457,7 +483,333 @@ const BLOG_PRODUCT_PROFILES = [
 ];
 
 function getBlogProductProfile(post) {
+  if (post && post.profile && post.profile.id) return post.profile;
   return BLOG_PRODUCT_PROFILES.find((profile) => profile.match(post)) || null;
+}
+
+const COLOR_WORDS = [
+  ['민트', '#4fd7cb', '#0a8f8e', '#dffcf8', '#0c6d74'],
+  ['아쿠아', '#53d4ef', '#157fb7', '#e5fbff', '#0f5f85'],
+  ['블루', '#3d8cff', '#1551b7', '#e9f4ff', '#113f8d'],
+  ['하늘', '#7ad8ff', '#1676c2', '#effbff', '#115387'],
+  ['핑크', '#ff9cbc', '#c24f7f', '#fff0f6', '#973960'],
+  ['코랄', '#ff9b7a', '#db6b4c', '#fff2ec', '#a84d37'],
+  ['레드', '#f16a6a', '#b83245', '#fff0f1', '#87263a'],
+  ['버건디', '#9e4a61', '#6f2137', '#f9eef2', '#561c2d'],
+  ['보라', '#af8fff', '#6e4bc7', '#f5f1ff', '#53378f'],
+  ['라벤더', '#b7a6ff', '#7763d2', '#f5f1ff', '#5c4aa9'],
+  ['옐로', '#ffd45f', '#c69b18', '#fff9e2', '#8d6b0c'],
+  ['골드', '#e4bb68', '#9f7322', '#fbf4de', '#7d5912'],
+  ['오렌지', '#ffb067', '#d87922', '#fff3e4', '#9a5318'],
+  ['그린', '#82ce8c', '#2f8e53', '#effcf1', '#256f41'],
+  ['화이트', '#f8f7f1', '#d9d5cc', '#ffffff', '#80776b'],
+  ['블랙', '#3b4654', '#1f2631', '#edf1f4', '#161c25'],
+  ['베이지', '#dbc6aa', '#a38359', '#f9f4ea', '#765636'],
+  ['브라운', '#b28762', '#744f36', '#f7efe7', '#5a3c29']
+];
+
+const BRAND_ROMAN = {
+  메디힐: 'MEDIHEAL',
+  토리든: 'TORRIDEN',
+  토니모리: 'TONYMOLY',
+  포들: 'PO:DL',
+  도브: 'Dove',
+  롬앤: 'rom&nd',
+  퓌: 'fwee',
+  비오레: 'Biore',
+  클리오: 'CLIO',
+  이브네: '이브네',
+  에스네이처: 'S.NATURE',
+  홀리카홀리카: 'HOLIKA HOLIKA',
+  오호라: 'ohora',
+  웰라쥬: 'WELLAGE'
+};
+
+function normalizeHex(value, fallback) {
+  const raw = String(value || '').trim();
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+}
+
+function clampChannel(value) {
+  return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
+}
+
+function hexToRgb(hex) {
+  const raw = String(hex || '').replace('#', '');
+  return {
+    r: Number.parseInt(raw.slice(0, 2), 16),
+    g: Number.parseInt(raw.slice(2, 4), 16),
+    b: Number.parseInt(raw.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex(rgb) {
+  return `#${[rgb.r, rgb.g, rgb.b]
+    .map((value) => clampChannel(value).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+function mixHex(hexA, hexB, ratio) {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  const blend = (from, to) => from + (to - from) * ratio;
+  return rgbToHex({
+    r: blend(a.r, b.r),
+    g: blend(a.g, b.g),
+    b: blend(a.b, b.b)
+  });
+}
+
+function colorNameFor(text) {
+  const found = COLOR_WORDS.find(([label]) => String(text || '').includes(label));
+  return found ? found[0] : '';
+}
+
+function colorPaletteFor(post) {
+  const profile = post && post.visualProfile;
+  if (profile && profile.palette) {
+    return {
+      accent: normalizeHex(profile.palette.accent, '#47c8d6'),
+      accentDark: normalizeHex(profile.palette.accentDark, '#0e7b96'),
+      second: normalizeHex(profile.palette.second, '#8de4ee'),
+      soft: normalizeHex(profile.palette.soft, '#eefbff'),
+      warm: normalizeHex(profile.palette.warm, '#ffe889'),
+      colorName: profile.palette.colorName || colorNameFor(post.rawName || post.cleanName || post.shortName)
+    };
+  }
+
+  const found = COLOR_WORDS.find(([label]) => textOf(post).includes(label));
+  if (found) {
+    return {
+      colorName: found[0],
+      accent: found[1],
+      accentDark: found[2],
+      soft: found[3],
+      second: mixHex(found[1], '#ffffff', 0.42),
+      warm: mixHex(found[1], '#ffd86b', 0.36)
+    };
+  }
+
+  const kind = detectProductKind(post);
+  const fallbackByKind = {
+    tint: ['코랄', '#ff8d7b', '#bf4a4c', '#fff3ef', '#ffc6b8'],
+    palette: ['베이지', '#c9a56f', '#825f33', '#fbf6ee', '#e6b08d'],
+    jar: ['화이트', '#f3efe9', '#b69f7f', '#fffdfa', '#f1d6b5'],
+    pack: ['하늘', '#79dfff', '#1360b7', '#eefbff', '#b198ff'],
+    padJar: ['민트', '#49d9d0', '#0b8f8e', '#e8fffc', '#d5f2ff'],
+    stick: ['핑크', '#ef95b4', '#9c4c6c', '#fff2f8', '#ffd7a4'],
+    tube: ['아쿠아', '#4fcfff', '#0b7bc1', '#effcff', '#ffe870'],
+    pouch: ['베이지', '#d7be99', '#8d6f4a', '#faf4ec', '#ffd6b3'],
+    bottle: ['블루', '#4f90ff', '#214fa0', '#eef4ff', '#8fd8ff']
+  };
+  const base = fallbackByKind[kind] || fallbackByKind.bottle;
+  return {
+    colorName: base[0],
+    accent: base[1],
+    accentDark: base[2],
+    soft: base[3],
+    second: mixHex(base[1], '#ffffff', 0.36),
+    warm: base[4]
+  };
+}
+
+function detectProductKind(post) {
+  const text = textOf(post);
+  if (/토너패드/.test(text)) return 'padJar';
+  if (/마스크팩|겔마스크/.test(text)) return 'pack';
+  if (/틴트|글로스|립 포션|립밤/.test(text)) return 'tint';
+  if (/팔레트|아이섀도우|토퍼|네일강화제/.test(text)) return 'palette';
+  if (/스크럽|클렌징밤|밤투폼|밤\b|크림/.test(text)) return 'jar';
+  if (/젤리|생리대|벨리곰/.test(text)) return 'pouch';
+  if (/세럼|앰플/.test(text)) return 'dropper';
+  if (/선세럼|선크림|에센스|폼|클렌저/.test(text)) return 'tube';
+  if (/네일/.test(text)) return 'bottle';
+  return 'bottle';
+}
+
+function brandTextFor(post) {
+  if (post && post.visualProfile && post.visualProfile.brandText) return post.visualProfile.brandText;
+  return BRAND_ROMAN[post.brand] || post.brand || 'OliveYoung Pick';
+}
+
+function optionSummaryFor(post) {
+  const text = String(post.rawName || post.cleanName || '');
+  const match =
+    text.match(/(\d+\s?종\s?(?:택\s?\d|골라담기)?)/) ||
+    text.match(/(\d+\+\d+\w*)/) ||
+    text.match(/(더블 기획)/) ||
+    text.match(/(단품\/기획)/) ||
+    text.match(/(\([^)]+\))/);
+  return match ? match[1].replace(/\s+/g, ' ').trim() : '';
+}
+
+function labelTextFor(post) {
+  const base = String(post.cleanName || post.shortName || '').replace(/\([^)]*\)/g, '').trim();
+  const type = deriveType(base);
+  const brand = post.brand || '';
+  const trimmed = base.replace(new RegExp(`^${brand}\\s*`), '').trim();
+  const candidate = trimmed || base;
+  const words = candidate
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 4);
+  if (words.length === 0) return type || 'HOT ITEM';
+  return words.join('\n').toUpperCase();
+}
+
+function packageCueFor(post, kind) {
+  const colorName = colorPaletteFor(post).colorName || '은은한';
+  const map = {
+    dropper: `${colorName} 보틀과 스포이드`,
+    tube: `${colorName} 포인트 튜브`,
+    jar: `${colorName} 단지와 크림 제형`,
+    padJar: `${colorName} 용기와 네모 패드`,
+    pack: `${colorName} 패키지와 시트팩 무드`,
+    tint: `${colorName} 발색과 슬림 패키지`,
+    palette: `${colorName} 팔레트와 반짝 포인트`,
+    pouch: `${colorName} 패키지와 말랑한 실루엣`,
+    bottle: `${colorName} 패키지와 깔끔한 라벨`
+  };
+  return map[kind] || `${colorName} 패키지 분위기`;
+}
+
+function moodCueFor(post) {
+  const colorName = colorPaletteFor(post).colorName || '산뜻한';
+  const type = deriveType(post.cleanName || post.shortName || '');
+  return `${colorName} 톤 ${type === '인기상품' ? '제품' : `${type} 무드`}라 사진에서 분위기가 먼저 들어옵니다.`;
+}
+
+function kindNoun(kind) {
+  return (
+    {
+      dropper: '세럼',
+      tube: '튜브',
+      jar: '단지',
+      padJar: '패드',
+      pack: '팩',
+      tint: '립',
+      palette: '팔레트',
+      pouch: '파우치',
+      bottle: '보틀'
+    }[kind] || '제품'
+  );
+}
+
+function buildDynamicCaptions(post, kind) {
+  const colorName = colorPaletteFor(post).colorName || '산뜻한';
+  const noun = kindNoun(kind);
+  const optionSummary = optionSummaryFor(post);
+  const lines = [
+    ['첫 느낌', `${colorName} 톤 ${noun}이 먼저 보여서 검색 화면에서도 제품 인상이 또렷하게 남아요.`],
+    ['손에 들면', `손에 들었을 때 크기감이 보여서 ${post.shortName} 무드가 훨씬 자연스럽게 느껴집니다.`],
+    ['라벨 컷', `${brandTextFor(post)} 표기와 핵심 제품명이 보이면 상품 찾기가 훨씬 쉬워져요.`],
+    ['화장대 컷', `화장대나 욕실 선반에 두면 데일리 루틴템 같은 분위기가 잘 살아나요.`],
+    ['가까이 보기', `${packageCueFor(post, kind)}이 가까이서 더 또렷하게 보여서 사진 맛이 있어요.`],
+    ['구성 느낌', `${optionSummary || '행사 구성'}이 있는 상품은 본품을 여러 개 두는 컷이 한눈에 들어옵니다.`],
+    ['생활감', `수건이나 파우치 옆에 두면 너무 광고컷 같지 않고 블로그 후기 무드로 보여요.`],
+    ['위에서 보기', `위에서 내려다본 컷은 패키지 모양과 색 조합이 정리돼 보여서 보기 편합니다.`],
+    ['책상 위', `하얀 배경 위에 두면 ${colorName} 포인트가 더 맑게 살아납니다.`],
+    ['루틴 컷', `아침이나 저녁 루틴에 끼워 넣은 듯한 장면이 실제 사용 상상을 돕는 편이에요.`],
+    ['보관 컷', `서랍이나 선반에 넣어둔 컷은 자주 꺼내 쓰는 제품 느낌이 자연스럽습니다.`],
+    ['단독 컷', `제품 하나만 세워도 브랜드 라인 인상이 남아 썸네일용으로도 잘 맞아요.`],
+    ['질감 무드', `${kind === 'tint' ? '발색' : kind === 'pack' ? '시트' : '제형'} 느낌을 과하게 쓰지 않고 살짝만 보여주면 더 자연스럽습니다.`],
+    ['소품 옆', `톤이 맞는 작은 소품 옆에 두면 상세 페이지에서 봤던 색감 방향이 더 또렷해 보여요.`],
+    ['패키지 포인트', `${post.shortName}에서 눈에 띄는 포인트를 한 컷에 모아두면 구매 전 확인용으로 좋아요.`],
+    ['행사 무드', `${optionSummary || '기획 구성'}이 붙은 상품은 여러 개를 같이 두는 컷이 특히 잘 어울려요.`],
+    ['정리 컷', `브랜드명과 제품 타입이 한 번에 보이게 정리하면 검색 유입 글에 잘 맞습니다.`],
+    ['마지막 컷', `${colorName} 톤으로 마무리하면 ${post.shortName} 무드가 끝까지 깔끔하게 남아요.`]
+  ];
+  return lines.slice(0, REVIEW_PHOTO_COUNT);
+}
+
+function buildAutoProductProfile(post) {
+  if (!post) return null;
+  const kind = detectProductKind(post);
+  const palette = colorPaletteFor(post);
+  const optionSummary = optionSummaryFor(post);
+  const noun = kindNoun(kind);
+  const suffixByKind = {
+    dropper: `${deriveType(post.cleanName) === '앰플' ? '앰플' : '세럼'} 올리브영 재고`,
+    tube: `${deriveType(post.cleanName) || '튜브템'} 올리브영 재고`,
+    jar: `${deriveType(post.cleanName) || '단지템'} 올리브영 재고`,
+    padJar: '토너패드 올리브영 재고',
+    pack: `${deriveType(post.cleanName) || '마스크팩'} 올리브영 재고`,
+    tint: `${deriveType(post.cleanName) || '립템'} 올리브영 재고`,
+    palette: `${deriveType(post.cleanName) || '메이크업'} 올리브영 재고`,
+    pouch: `${deriveType(post.cleanName) || '기획템'} 올리브영 재고`,
+    bottle: `${deriveType(post.cleanName) || '인기상품'} 올리브영 재고`
+  };
+  const titleSuffix = suffixByKind[kind] || '올리브영 재고';
+  const packageCue = packageCueFor(post, kind);
+  const photoLead =
+    `이 제품은 <span class="highlight">${htmlEscape(packageCue)}</span>이 먼저 보여야 예뻐요. ` +
+    `그래서 사진도 실제 후기글에서 많이 보는 화장대, 손에 든 컷, 보관 컷 흐름으로 맞췄습니다.`;
+  const shoppingParagraphs = [
+    `${htmlEscape(post.rawName || post.shortName)}처럼 상품명이 길거나 기획 문구가 붙은 상품은 같은 라인 안에서도 구성 표현이 달라질 수 있어요.`,
+    `사진으로 분위기를 본 뒤에는 <span class="highlight">옵션명</span>, <span class="highlight">온라인 재고</span>, <span class="highlight">근처 매장 재고</span>를 같이 보는 쪽이 실수가 적습니다.`
+  ];
+
+  return {
+    id: `auto-${post.slug}`,
+    assetPrefix: post.slug,
+    assetExt: 'png',
+    detailFile: `${post.slug}-detail-page-01.png`,
+    title: titleFor(post.shortName, titleSuffix),
+    description: descriptionFor(post.shortName, `${packageCue}, ${moodCueFor(post).replace(/\.$/, '')}`),
+    heroLead: `${moodCueFor(post)} ${optionSummary ? `${optionSummary} 구성이라 옵션명을 같이 보는 흐름이 편합니다.` : '마음에 들면 재고부터 같이 확인하는 흐름이 편합니다.'}`,
+    introBig: `${htmlEscape(post.shortName)}, 일단 <span class="soft-word">${htmlEscape(packageCue)}</span> 쪽이 먼저 눈에 들어와요.`,
+    introBody: `${post.rankingDateText || ''} 기준 조회 인기 ${post.rank || ''}위로 올라온 상품이에요. ${optionSummary ? `${htmlEscape(optionSummary)} 구성이라` : '행사 문구가 붙어 있으면'} 화면에서 같은 상품인지 한 번 더 맞춰보는 편이 좋습니다.`,
+    moodNotes: [
+      ['색감', `${palette.colorName || '산뜻한'} 톤 패키지라 상세 썸네일에서 존재감이 또렷합니다.`],
+      ['패키지', `${packageCue}이 보여서 제품 타입을 바로 떠올리기 쉬워요.`],
+      ['구성', optionSummary ? `${optionSummary} 문구가 붙어 있으면 옵션 확인이 특히 중요합니다.` : '행사/증정 문구는 연결된 구매 화면에서 마지막으로 확인하면 됩니다.']
+    ],
+    photoTitle: `${post.shortName}, 사진으로 보면 이런 느낌`,
+    photoLead,
+    shoppingTitle: '예뻐 보여도 옵션명은 한 번만 더 봐요',
+    shoppingParagraphs,
+    checklist: [
+      `${post.shortName} 상품명 먼저 맞춰보기`,
+      optionSummary ? `${optionSummary} 같은 기획/옵션 문구 확인하기` : '같은 라인 다른 옵션이 섞이지 않았는지 보기',
+      '온라인 재고와 가까운 매장 재고 같이 보기',
+      '오늘드림이나 픽업 가능 여부까지 한 번에 열어두기'
+    ],
+    tipTitle: '조회가 붙은 상품은 옵션별 재고가 빨리 움직여요',
+    tipParagraph:
+      `특히 ${deriveType(post.cleanName) === '인기상품' ? '기획 상품' : deriveType(post.cleanName)}은 행사 문구와 옵션 차이로 체감 구성이 달라질 수 있어요. 마음에 든 구성이 보이면 재고부터 먼저 확인하는 게 덜 번거롭습니다.`,
+    tips: [
+      ['1. 상품명 길게 검색', '브랜드명과 제품 타입까지 같이 넣으면 비슷한 상품이 덜 섞여요.'],
+      ['2. 옵션/기획 문구 확인', optionSummary ? `${optionSummary}처럼 행사 구성이 다르면 원하는 상품이 달라질 수 있어요.` : '증정이나 기획 문구가 붙었는지 먼저 보면 실수가 줄어듭니다.'],
+      ['3. 받을 방식 고르기', '온라인, 오늘드림, 매장 픽업 중 지금 제일 편한 쪽을 먼저 확인하면 됩니다.']
+    ],
+    captions: buildDynamicCaptions(post, kind),
+    visual: {
+      kind,
+      brand: brandTextFor(post),
+      title: labelTextFor(post),
+      sub: optionSummary || deriveType(post.cleanName || post.shortName || ''),
+      accent: palette.accent,
+      accentDark: palette.accentDark,
+      second: palette.second,
+      soft: palette.soft,
+      warm: palette.warm,
+      pageBg: `linear-gradient(180deg,${mixHex(palette.accentDark, '#0f172a', 0.18)} 0%,${palette.accent} 48%,${palette.soft} 100%)`,
+      detailTitle: `${post.shortName}${optionSummary ? ` · ${optionSummary}` : ''}`,
+      detailSub: `${packageCue}이 보이도록 재구성한 후기형 디테일 컷`,
+      features: [
+        ['패키지 포인트', packageCue],
+        ['브랜드 표기', `${brandTextFor(post)} 텍스트 방향을 살려 재구성했습니다.`],
+        ['구매 전 확인', optionSummary ? `${optionSummary} 같은 구성 문구는 구매 화면에서 다시 확인해 주세요.` : '최종 옵션과 가격은 연결된 구매 화면에서 다시 확인해 주세요.']
+      ],
+      palette: {
+        accent: palette.accent,
+        accentDark: palette.accentDark,
+        second: palette.second,
+        soft: palette.soft,
+        warm: palette.warm
+      }
+    }
+  };
 }
 
 function genericCopy(post) {
@@ -500,6 +852,13 @@ function genericCopy(post) {
 function buildBlogCopy(post, profile = getBlogProductProfile(post)) {
   const shortName = post.shortName || '올리브영 인기상품';
   if (!profile) return genericCopy(post);
+  if (post && post.profile && post.profile.id && post.profile.heroLead) {
+    return {
+      ...post.profile,
+      title: post.profile.title || titleFor(shortName, '올리브영 재고'),
+      description: post.profile.description || genericCopy(post).description
+    };
+  }
   return {
     ...profile,
     title: profile.title(shortName),
@@ -513,6 +872,7 @@ function buildBlogCopy(post, profile = getBlogProductProfile(post)) {
 module.exports = {
   BLOG_PRODUCT_PROFILES,
   REVIEW_PHOTO_COUNT,
+  buildAutoProductProfile,
   buildBlogCopy,
   getBlogProductProfile
 };
