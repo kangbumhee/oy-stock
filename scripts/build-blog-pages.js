@@ -14,7 +14,7 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260609-review-photo';
+const BLOG_ASSET_VERSION = '20260610-popular-review';
 
 const CATEGORY_NAMES = {
   '10000010001': '스킨케어',
@@ -31,6 +31,8 @@ const CATEGORY_NAMES = {
 const BRAND_SLUGS = [
   ['메디힐', 'mediheal'],
   ['토리든', 'torriden'],
+  ['토니모리', 'tonymoly'],
+  ['포들', 'foddle'],
   ['비오레', 'biore'],
   ['구달', 'goodal'],
   ['롬앤', 'romand'],
@@ -93,6 +95,25 @@ function xmlEscape(value) {
 function truncate(value, max) {
   const text = String(value || '').trim();
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString('ko-KR');
+}
+
+function formatPostDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).replace(/-/g, '.');
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+    .format(date)
+    .replace(/\.\s?/g, '.')
+    .replace(/\.$/, '');
 }
 
 function stripPromoTags(name) {
@@ -582,7 +603,11 @@ function blogIndexTemplate(posts) {
     .map(
       (post) => `<a class="post-card" href="${post.url}">
         <img src="${blogIndexImageSrc(post)}" alt="${htmlEscape(post.shortName)} 제품 이미지" width="360" height="270" loading="lazy">
-        <span>${htmlEscape(post.categoryName || '올리브영 인기상품')}</span>
+        <span class="category">${htmlEscape(post.categoryName || '올리브영 인기상품')}</span>
+        <div class="card-meta">
+          <span>업로드 ${htmlEscape(formatPostDate(post.publishedAt || post.rankingDate))}</span>
+          <span>조회 ${formatNumber(post.viewCount)}회</span>
+        </div>
         <strong>${htmlEscape(post.title)}</strong>
         <small>${htmlEscape(post.description)}</small>
       </a>`
@@ -621,7 +646,9 @@ ${analyticsTag()}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:26px}
     .post-card{display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #dfead8;border-radius:8px;background:#fff;text-decoration:none;color:#172018}
     .post-card img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;object-position:center top;border-radius:6px;background:#fbfdf8}
-    .post-card span{font-size:12px;color:#315b11;font-weight:900}
+    .post-card .category{font-size:12px;color:#315b11;font-weight:900}
+    .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}
+    .card-meta span{display:inline-flex;align-items:center;border-radius:999px;background:#f0f8e9;color:#426031;padding:2px 8px;font-size:11px;font-weight:900;line-height:1.5}
     .post-card strong{font-size:16px;line-height:1.35;color:#193d22}
     .post-card small{font-size:13px;color:#64748b;font-weight:700}
     @media(max-width:860px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -813,9 +840,9 @@ async function updateHomeBlogBlock(posts) {
     .map(
       (post) => `<a class="blog-link-card" href="${post.url}">
           <img src="${homeImageSrc(post)}" alt="${htmlEscape(post.shortName)} 제품 이미지" width="360" height="270" loading="lazy">
-          <span>${htmlEscape(post.categoryName || '올리브영 인기상품')}</span>
+          <span class="blog-link-category">${htmlEscape(post.categoryName || '올리브영 인기상품')}</span>
           <strong>${htmlEscape(post.shortName || post.title)}</strong>
-          <small>${htmlEscape(post.rankingDate || '')} 조회 인기 ${post.rank || ''}위</small>
+          <small>업로드 ${htmlEscape(formatPostDate(post.publishedAt || post.rankingDate))} · 조회 ${formatNumber(post.viewCount)}회 · 인기 ${post.rank || ''}위</small>
         </a>`
     )
     .join('\n        ');
@@ -905,14 +932,14 @@ function parseLimit() {
   const index = process.argv.indexOf('--limit');
   if (index >= 0 && process.argv[index + 1]) {
     const parsed = Number.parseInt(process.argv[index + 1], 10);
-    if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, 10);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, 20);
   }
   return 1;
 }
 
 async function main() {
   const limit = parseLimit();
-  const generatedPosts = (await fetchViewRanking(Math.max(limit, 10)))
+  const generatedPosts = (await fetchViewRanking(Math.max(limit, 20)))
     .filter(isSupportedBlogPost)
     .slice(0, limit)
     .map(refreshPostCopy);
