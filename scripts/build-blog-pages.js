@@ -943,8 +943,8 @@ function hasFlag(name) {
 
 function parseArgs() {
   const daily = hasFlag('--daily');
-  const limit = readNumberArg('--limit', daily ? 3 : 1, 20);
-  const scanLimit = readNumberArg('--scan-limit', Math.max(limit, daily ? 80 : 20), 100);
+  const limit = readNumberArg('--limit', daily ? 50 : 1, 50);
+  const scanLimit = readNumberArg('--scan-limit', Math.max(limit, daily ? 100 : 20), 100);
 
   return {
     daily,
