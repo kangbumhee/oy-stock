@@ -483,8 +483,13 @@ const BLOG_PRODUCT_PROFILES = [
 ];
 
 function getBlogProductProfile(post) {
+  const manualProfile = BLOG_PRODUCT_PROFILES.find((profile) => profile.match(post));
+  if (manualProfile) return manualProfile;
+  if (post && post.profile && post.profile.id && String(post.profile.id).startsWith('auto-')) {
+    return buildAutoProductProfile(post);
+  }
   if (post && post.profile && post.profile.id) return post.profile;
-  return BLOG_PRODUCT_PROFILES.find((profile) => profile.match(post)) || null;
+  return null;
 }
 
 const COLOR_WORDS = [
@@ -629,7 +634,7 @@ function detectProductKind(post) {
 
 function brandTextFor(post) {
   if (post && post.visualProfile && post.visualProfile.brandText) return post.visualProfile.brandText;
-  return BRAND_ROMAN[post.brand] || post.brand || 'OliveYoung Pick';
+  return BRAND_ROMAN[post.brand] || post.brand || '상품 패키지';
 }
 
 function optionSummaryFor(post) {
@@ -702,7 +707,7 @@ function buildDynamicCaptions(post, kind) {
   const lines = [
     ['첫 느낌', `${colorName} 톤 ${noun}이 먼저 보여서 검색 화면에서도 제품 인상이 또렷하게 남아요.`],
     ['손에 들면', `손에 들었을 때 크기감이 보여서 ${post.shortName} 무드가 훨씬 자연스럽게 느껴집니다.`],
-    ['라벨 컷', `${brandTextFor(post)} 표기와 핵심 제품명이 보이면 상품 찾기가 훨씬 쉬워져요.`],
+    ['라벨 컷', '상품명과 패키지 컬러가 보이면 같은 상품인지 맞춰보기 훨씬 쉬워요.'],
     ['화장대 컷', `화장대나 욕실 선반에 두면 데일리 루틴템 같은 분위기가 잘 살아나요.`],
     ['가까이 보기', `${packageCueFor(post, kind)}이 가까이서 더 또렷하게 보여서 사진 맛이 있어요.`],
     ['구성 느낌', `${optionSummary || '행사 구성'}이 있는 상품은 본품을 여러 개 두는 컷이 한눈에 들어옵니다.`],
@@ -795,10 +800,10 @@ function buildAutoProductProfile(post) {
       warm: palette.warm,
       pageBg: `linear-gradient(180deg,${mixHex(palette.accentDark, '#0f172a', 0.18)} 0%,${palette.accent} 48%,${palette.soft} 100%)`,
       detailTitle: `${post.shortName}${optionSummary ? ` · ${optionSummary}` : ''}`,
-      detailSub: `${packageCue}이 보이도록 재구성한 후기형 디테일 컷`,
+      detailSub: `${packageCue}이 보이는 올리브영 상품 이미지 컷`,
       features: [
         ['패키지 포인트', packageCue],
-        ['브랜드 표기', `${brandTextFor(post)} 텍스트 방향을 살려 재구성했습니다.`],
+        ['상품명 확인', '상품명과 패키지 컬러를 먼저 맞춰보면 비슷한 옵션이 덜 헷갈려요.'],
         ['구매 전 확인', optionSummary ? `${optionSummary} 같은 구성 문구는 구매 화면에서 다시 확인해 주세요.` : '최종 옵션과 가격은 연결된 구매 화면에서 다시 확인해 주세요.']
       ],
       palette: {
@@ -852,11 +857,11 @@ function genericCopy(post) {
 function buildBlogCopy(post, profile = getBlogProductProfile(post)) {
   const shortName = post.shortName || '올리브영 인기상품';
   if (!profile) return genericCopy(post);
-  if (post && post.profile && post.profile.id && post.profile.heroLead) {
+  if (profile && profile.id && profile.heroLead && typeof profile.title !== 'function') {
     return {
-      ...post.profile,
-      title: post.profile.title || titleFor(shortName, '올리브영 재고'),
-      description: post.profile.description || genericCopy(post).description
+      ...profile,
+      title: profile.title || titleFor(shortName, '올리브영 재고'),
+      description: profile.description || genericCopy(post).description
     };
   }
   return {

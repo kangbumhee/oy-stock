@@ -2,7 +2,6 @@ const fs = require('fs/promises');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { buildAutoProductProfile, buildBlogCopy, getBlogProductProfile } = require('./blog-product-profiles');
-const { renderAssetsForProfiles } = require('./render-blog-product-assets');
 
 const root = path.resolve(__dirname, '..');
 const publicDir = path.join(root, 'public');
@@ -15,7 +14,9 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260610-popular-review';
+const BLOG_ASSET_VERSION = '20260610-source-images';
+const MAX_SOURCE_GALLERY_IMAGES = 8;
+const SOURCE_GALLERY_WINDOW = 5;
 
 const CATEGORY_NAMES = {
   '10000010001': '스킨케어',
@@ -140,7 +141,7 @@ function imageUrlFromItem(item) {
   const raw = String((item && item.imageUrl) || '').trim();
   if (!raw) return '';
   if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/${raw.replace(/^\/+/, '')}`;
+  return `https://image.oliveyoung.co.kr/uploads/images/goods/550/${raw.replace(/^\/+/, '')}`;
 }
 
 function deriveBrand(name) {
@@ -278,20 +279,38 @@ function absoluteUrl(urlPath) {
 }
 
 function imageAssetSrc(src) {
+  if (/^https?:\/\//i.test(src)) return src;
   const separator = src.includes('?') ? '&' : '?';
   return `${src}${separator}v=${BLOG_ASSET_VERSION}`;
 }
 
+function sourceImageFileForPost(post) {
+  return post && post.sourceImageFile ? post.sourceImageFile : '';
+}
+
+function sourceImageSrc(post, base) {
+  const sourceFile = sourceImageFileForPost(post);
+  if (sourceFile) return imageAssetSrc(`${base}${sourceFile}`);
+  return post && post.sourceImageUrl ? post.sourceImageUrl : '';
+}
+
+function sourceGallerySrcs(post, base) {
+  const files = Array.isArray(post && post.sourceGalleryFiles) ? post.sourceGalleryFiles : [];
+  const sourceFile = sourceImageFileForPost(post);
+  const uniqueFiles = Array.from(new Set([sourceFile, ...files].filter(Boolean)));
+  return uniqueFiles.map((file) => imageAssetSrc(`${base}${file}`));
+}
+
 function postImageSrc(post) {
-  return imageAssetSrc(`../../images/blog/${path.basename(post.image)}`);
+  return sourceImageSrc(post, '../../images/blog/') || imageAssetSrc(`../../images/blog/${path.basename(post.image)}`);
 }
 
 function blogIndexImageSrc(post) {
-  return imageAssetSrc(`../images/blog/${postCardImageFile(post)}`);
+  return sourceImageSrc(post, '../images/blog/') || imageAssetSrc(`../images/blog/${postCardImageFile(post)}`);
 }
 
 function homeImageSrc(post) {
-  return imageAssetSrc(`images/blog/${postCardImageFile(post)}`);
+  return sourceImageSrc(post, 'images/blog/') || imageAssetSrc(`images/blog/${postCardImageFile(post)}`);
 }
 
 function postCardImageFile(post) {
@@ -301,9 +320,11 @@ function postCardImageFile(post) {
 
 function refreshPostCopy(post) {
   if (!post) return post;
-  const copy = buildBlogCopy(post);
+  const profile = getBlogProductProfile(post) || buildAutoProductProfile(post);
+  const postWithProfile = profile ? { ...post, profile } : post;
+  const copy = buildBlogCopy(postWithProfile, profile);
   return {
-    ...post,
+    ...postWithProfile,
     title: copy.title,
     description: copy.description
   };
@@ -314,9 +335,18 @@ function blogReviewAssets(post) {
   if (!profile || !profile.assetPrefix || !profile.captions.length) return null;
   const base = '../../images/blog/';
   const ext = profile.assetExt || 'png';
+  const realProductImage = sourceImageSrc(post, base);
+  const realProductImages = sourceGallerySrcs(post, base);
+  const captions = realProductImages.length
+    ? profile.captions.slice(0, Math.max(1, Math.min(profile.captions.length, realProductImages.length)))
+    : profile.captions;
 
-  const photos = profile.captions.map((caption, index) => ({
-    src: imageAssetSrc(`${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`),
+  const photos = captions.map((caption, index) => ({
+    src:
+      realProductImages[index] ||
+      realProductImage ||
+      imageAssetSrc(`${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`),
+    source: Boolean(realProductImages[index] || realProductImage),
     title: caption[0],
     caption: caption[1],
     alt: `${post.shortName} 후기형 사진 ${index + 1}`
@@ -324,7 +354,7 @@ function blogReviewAssets(post) {
 
   return {
     profile,
-    detail: imageAssetSrc(`${base}${profile.detailFile}`),
+    detail: realProductImage || imageAssetSrc(`${base}${profile.detailFile}`),
     stock: postImageSrc(post),
     photos
   };
@@ -357,7 +387,7 @@ function blogPostTemplate(post, relatedPosts) {
             ${reviewAssets.photos
               .map(
                 (photo, index) => `<figure class="review-photo">
-              <div class="photo-frame">
+              <div class="photo-frame${photo.source ? ' source-frame' : ''}">
                 <img src="${photo.src}" alt="${htmlEscape(photo.alt)}" loading="lazy">
               </div>
               <figcaption><b>${String(index + 1).padStart(2, '0')}</b><strong>${htmlEscape(photo.title)}</strong><span>${htmlEscape(photo.caption)}</span></figcaption>
@@ -452,7 +482,7 @@ ${analyticsTag()}
     .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;color:#006c75;font-size:13px;font-weight:900}
     .meta span{border:1px solid #bdebf0;border-radius:999px;padding:4px 10px;background:#fff}
     main{padding:24px 24px 36px}
-    .cover{display:block;width:100%;max-width:760px;height:auto;margin:0 auto 30px;border:1px solid #c9edf1;border-radius:8px;background:#eefbfc}
+    .cover{display:block;width:100%;max-width:760px;height:auto;margin:0 auto 30px;border:1px solid #c9edf1;border-radius:8px;background:#fff}
     article{max-width:760px;margin:0 auto}
     article h2{font-size:25px;line-height:1.35;margin:34px 0 10px;color:#152536;word-break:keep-all}
     article p{font-size:16px;color:#334657;margin-bottom:13px}
@@ -477,6 +507,8 @@ ${analyticsTag()}
     .review-photo{min-width:0}
     .photo-frame{aspect-ratio:1/1;overflow:hidden;border-radius:8px;border:1px solid #c9edf1;background:#eefbfc}
     .photo-frame img{display:block;width:100%;height:100%;object-fit:cover}
+    .photo-frame.source-frame{background:#fff}
+    .photo-frame.source-frame img{object-fit:contain;padding:14px}
     .review-photo figcaption b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-right:8px;border-radius:999px;background:#15c6d1;color:#fff;font-size:12px;vertical-align:top}
     .review-photo figcaption strong{display:inline;color:#008892;font-size:15px;margin-right:6px}
     .review-photo figcaption span{display:block;margin-top:5px;color:#4a6472}
@@ -571,7 +603,7 @@ ${analyticsTag()}
           </div>
         </section>
 
-        <p class="notice">본문 이미지는 제품 상세페이지 색감과 구조를 참고해 만든 후기형 연출 이미지입니다. ${SITE_NAME}은 올리브영 공식 서비스가 아니며, 최종 가격·쿠폰·구매 가능 여부는 연결된 구매 화면에서 다시 확인해야 합니다.</p>
+        <p class="notice">본문 이미지는 올리브영 상품페이지의 실제 상품 이미지를 기준으로 배치했습니다. ${SITE_NAME}은 올리브영 공식 서비스가 아니며, 최종 가격·쿠폰·구매 가능 여부는 연결된 구매 화면에서 다시 확인해야 합니다.</p>
       </article>
       <section class="related" aria-labelledby="related-title">
         <h2 id="related-title">최근 재고 블로그</h2>
@@ -654,7 +686,7 @@ ${analyticsTag()}
     .lead{max-width:760px;color:#475569;font-weight:700}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:26px}
     .post-card{display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #dfead8;border-radius:8px;background:#fff;text-decoration:none;color:#172018}
-    .post-card img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;object-position:center top;border-radius:6px;background:#fbfdf8}
+    .post-card img{width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;object-position:center;border-radius:6px;background:#fff;padding:8px}
     .post-card .category{font-size:12px;color:#315b11;font-weight:900}
     .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}
     .card-meta span{display:inline-flex;align-items:center;border-radius:999px;background:#f0f8e9;color:#426031;padding:2px 8px;font-size:11px;font-weight:900;line-height:1.5}
@@ -763,6 +795,215 @@ async function writeManifest(posts) {
     `${JSON.stringify({ updatedAt: new Date().toISOString(), posts }, null, 2)}\n`,
     'utf8'
   );
+}
+
+function imageExtensionFromSource(url, contentType = '') {
+  const type = String(contentType || '').toLowerCase();
+  if (type.includes('png')) return '.png';
+  if (type.includes('webp')) return '.webp';
+  if (type.includes('jpeg') || type.includes('jpg')) return '.jpg';
+
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    const match = pathname.match(/\.(jpe?g|png|webp)$/);
+    if (match) return match[1] === 'jpeg' ? '.jpg' : `.${match[1]}`;
+  } catch {
+    // Keep a stable jpg fallback when the CDN URL cannot be parsed.
+  }
+
+  return '.jpg';
+}
+
+function sourceImageFileName(post, sourceImageUrl, contentType) {
+  return `${post.slug}-source${imageExtensionFromSource(sourceImageUrl, contentType)}`;
+}
+
+function withSourceImageFile(post, sourceImageFile) {
+  return {
+    ...post,
+    sourceImageFile,
+    sourceGalleryFiles: Array.isArray(post.sourceGalleryFiles) && post.sourceGalleryFiles.length
+      ? Array.from(new Set([sourceImageFile, ...post.sourceGalleryFiles].filter(Boolean)))
+      : [sourceImageFile],
+    sourceGalleryCheckedAt: post.sourceGalleryCheckedAt || kstDate(),
+    image: `/images/blog/${sourceImageFile}`
+  };
+}
+
+function sourceImageVariantCandidates(sourceImageUrl) {
+  const cleanUrl = String(sourceImageUrl || '').trim();
+  const match = cleanUrl.match(/^(.*A\d{12})(\d+)(ko\.[a-z0-9]+(?:\?[^#]*)?)$/i);
+  if (!match) return [cleanUrl].filter(Boolean);
+
+  const [, prefix, rawNumber, suffix] = match;
+  const current = Number(rawNumber);
+  if (!Number.isFinite(current)) return [cleanUrl];
+
+  const start = Math.max(1, current - SOURCE_GALLERY_WINDOW);
+  const end = current + SOURCE_GALLERY_WINDOW;
+  const variants = [cleanUrl];
+  for (let value = start; value <= end; value += 1) {
+    variants.push(`${prefix}${value}${suffix}`);
+  }
+  return Array.from(new Set(variants));
+}
+
+async function localFileExists(fileName) {
+  try {
+    await fs.access(path.join(imageDir, fileName));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function localSourceGalleryFiles(post, sourceImageFile) {
+  try {
+    const names = await fs.readdir(imageDir);
+    const prefix = `${post.slug}-source-`;
+    const localFiles = names
+      .filter((name) => name.startsWith(prefix) && /\.(jpe?g|png|webp)$/i.test(name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return Array.from(new Set([sourceImageFile, ...localFiles].filter(Boolean))).slice(0, MAX_SOURCE_GALLERY_IMAGES);
+  } catch {
+    return [sourceImageFile];
+  }
+}
+
+async function downloadSourceGalleryFiles(post, sourceImageUrl, sourceImageFile, options = {}) {
+  const localFiles = await localSourceGalleryFiles(post, sourceImageFile);
+  const existing = Array.isArray(post.sourceGalleryFiles)
+    ? Array.from(new Set([sourceImageFile, ...post.sourceGalleryFiles, ...localFiles].filter(Boolean))).slice(
+        0,
+        MAX_SOURCE_GALLERY_IMAGES
+      )
+    : localFiles;
+  if (options.probeGallery === false) return existing;
+  if (post.sourceGalleryCheckedAt) {
+    const checks = await Promise.all(existing.map(localFileExists));
+    if (checks.every(Boolean)) return existing;
+  }
+
+  const files = [sourceImageFile];
+  const candidates = sourceImageVariantCandidates(sourceImageUrl).filter((url) => url !== sourceImageUrl);
+  for (const candidateUrl of candidates) {
+    if (files.length >= MAX_SOURCE_GALLERY_IMAGES) break;
+    try {
+      const response = await fetch(candidateUrl, {
+        headers: {
+          Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          Referer: 'https://www.oliveyoung.co.kr/',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
+        }
+      });
+      if (!response.ok) continue;
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.toLowerCase().startsWith('image/')) continue;
+
+      const variant = candidateUrl.match(/A\d{12}(\d+)ko\./i);
+      const variantId = variant ? variant[1] : String(files.length + 1).padStart(2, '0');
+      const fileName = `${post.slug}-source-${variantId}${imageExtensionFromSource(candidateUrl, contentType)}`;
+      const target = path.join(imageDir, fileName);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      if (buffer.length < 1024) continue;
+      await fs.writeFile(target, buffer);
+      files.push(fileName);
+    } catch {
+      // Some OliveYoung CDN numbers simply do not exist for a product.
+    }
+  }
+
+  return files;
+}
+
+async function downloadSourceImage(post, options = {}) {
+  if (!post.sourceImageUrl) {
+    return post.sourceImageFile ? withSourceImageFile(post, post.sourceImageFile) : post;
+  }
+
+  try {
+    const response = await fetch(post.sourceImageUrl, {
+      headers: {
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        Referer: 'https://www.oliveyoung.co.kr/',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      console.warn(`source image failed ${response.status}: ${post.sourceImageUrl}`);
+      return post;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const sourceImageFile = sourceImageFileName(post, post.sourceImageUrl, contentType);
+    const target = path.join(imageDir, sourceImageFile);
+
+    try {
+      await fs.access(target);
+    } catch {
+      const buffer = Buffer.from(await response.arrayBuffer());
+      await fs.writeFile(target, buffer);
+    }
+
+    const sourceGalleryFiles = await downloadSourceGalleryFiles(post, post.sourceImageUrl, sourceImageFile, options);
+    return withSourceImageFile({ ...post, sourceGalleryFiles, sourceGalleryCheckedAt: post.sourceGalleryCheckedAt || kstDate() }, sourceImageFile);
+  } catch (error) {
+    console.warn(`source image failed: ${post.sourceImageUrl} ${error.message}`);
+    return post;
+  }
+}
+
+async function fetchSearchSourceImage(post) {
+  const keyword = post.cleanName || post.query || post.shortName || post.rawName || '';
+  if (!keyword) return '';
+
+  try {
+    const url = new URL('https://mcp.aka.page/api/oliveyoung/products');
+    url.searchParams.set('keyword', keyword);
+    url.searchParams.set('size', '10');
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
+      }
+    });
+    if (!response.ok) return '';
+
+    const json = await response.json();
+    const products = (json && json.data && Array.isArray(json.data.products) && json.data.products) || [];
+    const goodsNo = String(post.goodsNo || '').toLowerCase();
+    const found =
+      products.find((item) => String(item.goodsNo || item.goodsNumber || '').toLowerCase() === goodsNo) ||
+      products.find((item) => goodsNo && String(item.imageUrl || item.thumbnail || '').toLowerCase().includes(goodsNo)) ||
+      products[0];
+
+    return found ? String(found.imageUrl || found.thumbnail || '').trim() : '';
+  } catch (error) {
+    console.warn(`source image search failed: ${post.slug} ${error.message}`);
+    return '';
+  }
+}
+
+async function hydrateSourceImages(posts, rankingPosts, options = {}) {
+  const byGoodsNo = new Map();
+  for (const post of rankingPosts) {
+    if (post.goodsNo && post.sourceImageUrl) byGoodsNo.set(String(post.goodsNo).toLowerCase(), post.sourceImageUrl);
+  }
+
+  const hydrated = [];
+  for (const post of posts) {
+    const goodsNo = String(post.goodsNo || '').toLowerCase();
+    const sourceImageUrl = byGoodsNo.get(goodsNo) || post.sourceImageUrl || (await fetchSearchSourceImage(post));
+    hydrated.push(await downloadSourceImage({ ...post, sourceImageUrl }, options));
+  }
+
+  return hydrated;
 }
 
 function mergePosts(existingPosts, generatedPosts) {
@@ -960,7 +1201,11 @@ function parseArgs() {
     limit,
     scanLimit: Math.max(scanLimit, limit),
     newOnly: daily || hasFlag('--new-only'),
-    skipIfNoNew: daily || hasFlag('--skip-if-no-new')
+    refreshExistingOnly: hasFlag('--refresh-existing-only'),
+    skipIfNoNew:
+      (daily || hasFlag('--skip-if-no-new')) &&
+      !hasFlag('--refresh-existing') &&
+      !hasFlag('--refresh-existing-only')
   };
 }
 
@@ -1017,25 +1262,22 @@ async function main() {
   const args = parseArgs();
   const existingPosts = await readManifest();
   const rankingPosts = await fetchViewRanking(args.scanLimit);
-  const generatedPosts = await prepareGeneratedPosts(rankingPosts, existingPosts, args);
+  const generatedPosts = args.refreshExistingOnly
+    ? []
+    : await prepareGeneratedPosts(rankingPosts, existingPosts, args);
 
   if (args.skipIfNoNew && generatedPosts.length === 0) {
     console.log('generated 0 blog post(s): no new supported popular products found.');
     return;
   }
 
-  const posts = mergePosts(existingPosts, generatedPosts);
-
   await fs.mkdir(blogDir, { recursive: true });
   await fs.mkdir(imageDir, { recursive: true });
-
-  await renderAssetsForProfiles(
-    generatedPosts
-      .map((post) => getBlogProductProfile(post))
-      .filter((profile) => profile && profile.assetPrefix && profile.detailFile)
-  );
-
-  for (const post of generatedPosts) await renderOgImage(post);
+  const posts = (
+    await hydrateSourceImages(mergePosts(existingPosts, generatedPosts), rankingPosts, {
+      probeGallery: !args.refreshExistingOnly
+    })
+  ).filter((post) => post.sourceImageFile);
 
   for (const post of posts) {
     const dir = path.join(blogDir, post.slug);
