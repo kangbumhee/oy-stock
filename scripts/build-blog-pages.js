@@ -350,7 +350,7 @@ function postCardImageFile(post) {
 }
 
 function isManualReviewProfile(profile) {
-  return Boolean(profile && profile.id === 'torriden-dive-in-serum');
+  return Boolean(profile && ['torriden-dive-in-serum', 'mediheal-toner-pad'].includes(profile.id));
 }
 
 function manualReviewAssetFilesForProfile(profile) {

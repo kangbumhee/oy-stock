@@ -113,6 +113,7 @@ const BLOG_PRODUCT_PROFILES = [
   {
     id: 'mediheal-toner-pad',
     assetPrefix: 'mediheal-toner-pad',
+    assetExt: 'jpg',
     detailFile: 'mediheal-toner-pad-detail-page-01.png',
     match: (post) => textOf(post).includes('메디힐') && textOf(post).includes('토너패드'),
     title: (shortName) => titleFor(shortName, '민트 네모패드 올리브영 재고'),
@@ -167,8 +168,8 @@ const BLOG_PRODUCT_PROFILES = [
       ['라벨 컷', '전면 라벨이 보이면 상품 찾기가 훨씬 쉬워요. 메디힐, 마데카소사이드, 더마패드 키워드가 눈에 들어옵니다.'],
       ['집게 컷', '뚜껑 열고 집게가 같이 보이는 컷은 사용 전 위생감까지 느껴져요. 이런 디테일 좋아하는 분들 많죠.'],
       ['사이즈 비교', '손바닥 옆에 두면 패드 크기가 더 잘 보여요. 82mm급 네모패드 느낌을 보고 싶다면 이 컷이 제일 직관적입니다.'],
-      ['보관 느낌', '서랍 안에 넣어둔 컷은 생활감이 있어서 좋아요. 매일 꺼내 쓰는 제품은 보관감도 꽤 중요하니까요.'],
-      ['마지막 한 컷', '거울 옆에 살짝 놓아두면 마무리 루틴템 느낌. 사진으로만 봐도 산뜻한 민트 무드가 잘 남아요.']
+      ['화장대 보관', '거울 옆에 열어두면 매일 꺼내 쓰는 패드 루틴템 느낌이 자연스럽게 나요.'],
+      ['마지막 한 컷', '열린 통과 패드를 같이 두니 산뜻한 민트 무드가 마지막까지 잘 남아요.']
     ]
   },
   {
