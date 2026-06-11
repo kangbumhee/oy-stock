@@ -14,7 +14,7 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260611-review-aligned';
+const BLOG_ASSET_VERSION = '20260611-review-diary';
 const MANUAL_REVIEW_ASSET_VERSION = '20260611-manual-review';
 const MAX_SOURCE_GALLERY_IMAGES = 8;
 const SOURCE_GALLERY_WINDOW = 5;
@@ -452,7 +452,9 @@ function buildAlignedBlogCopy(post, profile) {
 }
 
 function buildReviewBlogCopy(post, profile) {
-  return isManualReviewProfile(profile) ? buildBlogCopy(post, profile) : buildAlignedBlogCopy(post, profile);
+  const base = buildBlogCopy(post, profile);
+  if (base && Array.isArray(base.captions) && base.captions.length) return base;
+  return buildAlignedBlogCopy(post, profile);
 }
 
 function refreshPostCopy(post) {
@@ -480,10 +482,13 @@ function blogReviewAssets(post) {
     ? manualFiles.photos.map((file) => imageAssetSrc(`${base}${file}`))
     : reviewGallerySrcs(post, base);
   const generatedDetail = useManualAssets ? imageAssetSrc(`${base}${manualFiles.detail}`) : reviewDetailSrc(post, base);
+  const copy = buildReviewBlogCopy(post, profile);
   const alignedCaptions =
     useManualAssets && Array.isArray(profile.captions) && profile.captions.length
       ? profile.captions
-      : buildAlignedCaptions(post);
+      : Array.isArray(copy.captions) && copy.captions.length
+        ? copy.captions
+        : buildAlignedCaptions(post);
   const captions = generatedReviewImages.length
     ? alignedCaptions.slice(0, Math.max(1, Math.min(alignedCaptions.length, generatedReviewImages.length)))
     : alignedCaptions;
@@ -1212,7 +1217,7 @@ function withManualReviewAssetFiles(post, profile, files) {
 
 async function sourceEntriesForReview(post) {
   const files = Array.from(
-    new Set([post.sourceImageFile, ...(Array.isArray(post.sourceGalleryFiles) ? post.sourceGalleryFiles : [])].filter(Boolean))
+    new Set([...(Array.isArray(post.sourceGalleryFiles) ? post.sourceGalleryFiles : []), post.sourceImageFile].filter(Boolean))
   );
   const entries = [];
   for (const file of files) {
@@ -1236,7 +1241,9 @@ function pickSource(entries, index) {
 }
 
 function reviewCaptionFor(post, index) {
-  const captions = buildAlignedCaptions(post);
+  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post);
+  const copy = buildReviewBlogCopy(post, profile);
+  const captions = Array.isArray(copy.captions) && copy.captions.length ? copy.captions : buildAlignedCaptions(post);
   return captions[index % captions.length] || ['상품 이미지', '상품페이지 대표 이미지를 보기 좋게 정리했어요.'];
 }
 
@@ -1357,6 +1364,128 @@ function reviewSceneHtml(post, entries, mode, index = 0) {
 </html>`;
 }
 
+function reviewSceneHtmlV2(post, entries, mode, index = 0) {
+  const palette = reviewPalette(post);
+  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post);
+  const copy = buildReviewBlogCopy(post, profile);
+  const caption = reviewCaptionFor(post, index);
+  const visual = (copy && copy.visual) || (profile && profile.visual) || {};
+  const rawKind = String(visual.kind || '').toLowerCase();
+  const kind = rawKind.replace(/[^a-z0-9-]/g, '') || 'bottle';
+  const main = pickSource(entries, mode === 'cover' ? 0 : index + 1) || entries[0];
+  const sideA = pickSource(entries, index + 2) || main;
+  const sideB = pickSource(entries, index + 3) || main;
+  const scene = index % 8;
+  const title = truncate(post.shortName || post.title, mode === 'cover' ? 36 : 28);
+  const dimensions = {
+    cover: [1200, 630],
+    detail: [900, 1200],
+    photo: [720, 720]
+  }[mode];
+  const [width, height] = dimensions;
+  const rankText = post.rank ? `인기 ${post.rank}위` : '인기상품';
+  const viewsText = post.viewCount ? `조회 ${formatNumber(post.viewCount)}회` : '조회 체크';
+  const dateText = formatPostDate(post.publishedAt || post.rankingDate);
+  const mainUrl = htmlEscape(main.url);
+  const sideAUrl = htmlEscape(sideA.url);
+  const sideBUrl = htmlEscape(sideB.url);
+  const noteText = truncate(caption[1] || copy.heroLead || '사진으로 먼저 분위기를 보고 재고를 확인해요.', mode === 'photo' ? 82 : 96);
+  const featureItems = (
+    (copy.visual && Array.isArray(copy.visual.features) && copy.visual.features.length ? copy.visual.features : null) ||
+    (Array.isArray(copy.moodNotes) && copy.moodNotes.length ? copy.moodNotes : null) ||
+    [
+      ['색감', '패키지 톤을 먼저 봐요.'],
+      ['구성', '기획 문구는 다시 확인해요.'],
+      ['재고', '온라인과 매장을 같이 봐요.']
+    ]
+  ).slice(0, 3);
+  const featuresHtml = featureItems
+    .map((item) => `<div><b>${htmlEscape(item[0])}</b><span>${htmlEscape(item[1])}</span></div>`)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;width:${width}px;height:${height}px;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;color:#182a34;background:#f7fbf8}
+    .scene{position:relative;width:${width}px;height:${height}px;overflow:hidden;background:
+      radial-gradient(circle at 18% 12%,rgba(255,255,255,.92),rgba(255,255,255,0) 26%),
+      linear-gradient(140deg,${palette.soft} 0%,#fff 45%,${palette.second} 100%)}
+    .scene:before{content:'';position:absolute;inset:0;opacity:.12;background-image:radial-gradient(circle,rgba(20,70,78,.22) 1px,transparent 1.4px);background-size:20px 20px}
+    .wall-line{position:absolute;left:-6%;right:-6%;top:34%;height:2px;background:rgba(84,116,124,.12);transform:rotate(${scene % 2 ? '-1deg' : '1deg'})}
+    .counter{position:absolute;left:-10%;right:-10%;bottom:-8%;height:${mode === 'detail' ? '39%' : '35%'};background:linear-gradient(180deg,#fff 0%,#eff6f3 100%);box-shadow:0 -20px 68px rgba(31,72,78,.1);transform:rotate(${scene % 2 ? '.8deg' : '-1deg'})}
+    .mirror{position:absolute;right:${mode === 'photo' ? '38px' : '74px'};top:${mode === 'photo' ? '44px' : '62px'};width:${mode === 'photo' ? '164px' : '232px'};height:${mode === 'photo' ? '220px' : '292px'};border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.16));border:1px solid rgba(255,255,255,.9);box-shadow:inset 0 0 0 14px rgba(255,255,255,.22)}
+    .soft-shadow{position:absolute;left:${mode === 'cover' ? '126px' : mode === 'detail' ? '126px' : '88px'};bottom:${mode === 'cover' ? '66px' : mode === 'detail' ? '150px' : '58px'};width:${mode === 'cover' ? '540px' : mode === 'detail' ? '570px' : '430px'};height:70px;border-radius:999px;background:rgba(26,70,78,.16);filter:blur(18px);transform:rotate(${scene % 2 ? '2deg' : '-2deg'})}
+    .main-product{position:absolute;z-index:4;left:${mode === 'cover' ? '86px' : mode === 'detail' ? '110px' : '82px'};top:${mode === 'cover' ? '86px' : mode === 'detail' ? '160px' : '94px'};width:${mode === 'cover' ? '510px' : mode === 'detail' ? '560px' : '410px'};height:${mode === 'cover' ? '380px' : mode === 'detail' ? '590px' : '380px'};display:flex;align-items:center;justify-content:center;padding:${mode === 'photo' ? '22px' : '30px'};border-radius:${mode === 'photo' ? '34px' : '42px'};background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.9);box-shadow:0 34px 90px rgba(23,64,72,.18);backdrop-filter:blur(8px);transform:rotate(${scene % 2 ? '-1.4deg' : '1.4deg'})}
+    .main-product img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply;filter:drop-shadow(0 24px 28px rgba(18,54,62,.16))}
+    .side-product{position:absolute;z-index:3;width:${mode === 'cover' ? '250px' : mode === 'detail' ? '240px' : '182px'};height:${mode === 'cover' ? '230px' : mode === 'detail' ? '246px' : '178px'};display:flex;align-items:center;justify-content:center;padding:16px;border-radius:26px;background:rgba(255,255,255,.82);border:1px solid rgba(224,238,237,.92);box-shadow:0 22px 58px rgba(22,60,70,.13)}
+    .side-product img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
+    .side-a{right:${mode === 'cover' ? '360px' : mode === 'detail' ? '76px' : '38px'};top:${mode === 'cover' ? '58px' : mode === 'detail' ? '646px' : '54px'};transform:rotate(${scene % 2 ? '5deg' : '-5deg'})}
+    .side-b{left:${mode === 'cover' ? '502px' : mode === 'detail' ? '570px' : '54px'};bottom:${mode === 'cover' ? '58px' : mode === 'detail' ? '122px' : '48px'};transform:rotate(${scene % 2 ? '-6deg' : '6deg'})}
+    .badge-row{position:absolute;left:${mode === 'photo' ? '58px' : '82px'};top:${mode === 'photo' ? '44px' : '42px'};display:flex;gap:10px;z-index:8}
+    .badge-row span{height:${mode === 'photo' ? '34px' : '42px'};display:inline-flex;align-items:center;padding:0 15px;border-radius:999px;background:rgba(255,255,255,.88);border:1px solid rgba(255,255,255,.96);box-shadow:0 10px 28px rgba(16,60,68,.1);font-size:${mode === 'photo' ? '14px' : '18px'};font-weight:900;color:${palette.accentDark};white-space:nowrap}
+    .note{position:absolute;z-index:7;right:${mode === 'cover' ? '70px' : mode === 'detail' ? '62px' : '44px'};bottom:${mode === 'cover' ? '76px' : mode === 'detail' ? '54px' : '38px'};width:${mode === 'cover' ? '480px' : mode === 'detail' ? '770px' : '500px'};padding:${mode === 'photo' ? '20px 24px' : '26px 30px'};border-radius:28px;background:rgba(255,255,255,.9);box-shadow:0 26px 72px rgba(20,60,70,.16);backdrop-filter:blur(10px)}
+    .note h1{margin:0 0 10px;font-size:${mode === 'cover' ? '41px' : mode === 'detail' ? '42px' : '27px'};line-height:1.18;letter-spacing:0;color:#142832;word-break:keep-all}
+    .note strong{color:${palette.accentDark}}
+    .note p{margin:0;font-size:${mode === 'cover' ? '21px' : mode === 'detail' ? '22px' : '18px'};line-height:1.44;color:#526775;font-weight:800;word-break:keep-all}
+    .caption-pin{position:absolute;z-index:8;left:${mode === 'photo' ? '92px' : '122px'};bottom:${mode === 'photo' ? '94px' : mode === 'detail' ? '388px' : '82px'};min-width:${mode === 'photo' ? '178px' : '220px'};padding:16px 20px;border-radius:22px;background:${palette.warm};color:#172c36;font-size:${mode === 'photo' ? '22px' : '28px'};font-weight:900;box-shadow:0 18px 42px rgba(30,70,78,.15);transform:rotate(${scene % 2 ? '-4deg' : '4deg'})}
+    .prop{position:absolute;z-index:2;box-shadow:0 20px 44px rgba(31,72,78,.1)}
+    .towel{right:${mode === 'photo' ? '72px' : '120px'};bottom:${mode === 'photo' ? '116px' : '122px'};width:${mode === 'photo' ? '170px' : '230px'};height:${mode === 'photo' ? '76px' : '92px'};border-radius:46px;background:repeating-linear-gradient(90deg,#fff 0 8px,#edf5f2 8px 16px)}
+    .pouch{left:${mode === 'photo' ? '42px' : '560px'};top:${mode === 'photo' ? '452px' : '366px'};width:${mode === 'photo' ? '184px' : '250px'};height:${mode === 'photo' ? '126px' : '156px'};border-radius:34px;background:linear-gradient(145deg,#f4d6bd,#f8efe2);transform:rotate(${scene % 2 ? '9deg' : '-7deg'})}
+    .dropper{right:${mode === 'photo' ? '56px' : '154px'};top:${mode === 'photo' ? '308px' : '282px'};width:28px;height:${mode === 'photo' ? '180px' : '230px'};border-radius:18px;background:linear-gradient(180deg,#1f2b34 0 18%,rgba(255,255,255,.86) 18% 100%);transform:rotate(${scene % 2 ? '-10deg' : '8deg'})}
+    .pad{right:${mode === 'photo' ? '132px' : '234px'};top:${mode === 'photo' ? '298px' : '292px'};width:${mode === 'photo' ? '142px' : '190px'};height:${mode === 'photo' ? '142px' : '190px'};border-radius:24px;background:repeating-linear-gradient(45deg,#fff 0 5px,#edf6f5 5px 9px);transform:rotate(${scene % 2 ? '12deg' : '-10deg'})}
+    .swatch{left:${mode === 'photo' ? '422px' : '730px'};top:${mode === 'photo' ? '300px' : '350px'};width:${mode === 'photo' ? '170px' : '220px'};height:34px;border-radius:999px;background:linear-gradient(90deg,${palette.warm},${palette.accent},${palette.accentDark});opacity:.72;transform:rotate(-8deg)}
+    .dropper,.pad,.swatch{display:none}
+    .features{position:absolute;z-index:7;left:70px;right:70px;bottom:54px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .features div{min-height:120px;padding:20px 22px;border-radius:24px;background:rgba(255,255,255,.9);box-shadow:0 18px 46px rgba(20,60,70,.12)}
+    .features b{display:block;margin-bottom:7px;color:${palette.accentDark};font-size:23px}
+    .features span{display:block;color:#526775;font-size:18px;line-height:1.38;font-weight:800;word-break:keep-all}
+    .photo .features,.cover .features{display:none}
+    .detail .note{top:56px;bottom:auto}
+    .detail .caption-pin{display:none}
+    .detail .main-product{top:210px}
+    .detail .side-b{display:none}
+    .photo .note{display:${scene === 0 || scene === 3 || scene === 6 ? 'block' : 'none'}}
+    .photo .badge-row span:nth-child(2),.photo .badge-row span:nth-child(3){display:none}
+    .photo .side-a{display:${scene === 1 || scene === 4 ? 'flex' : 'none'}}
+    .photo .side-b{display:${scene === 2 || scene === 5 ? 'flex' : 'none'}}
+    .photo .main-product{left:${scene % 3 === 0 ? '64px' : '96px'};top:${scene % 2 ? '108px' : '86px'}}
+    .scene-1 .main-product,.scene-5 .main-product{transform:rotate(-2deg)}
+    .scene-2 .main-product,.scene-6 .main-product{transform:rotate(2.6deg)}
+    .kind-tint .swatch,.kind-palette .swatch{display:block}
+    .kind-padjar .pad,.kind-jar .pad,.kind-pack .pad{display:block}
+    .kind-pack .pad{border-radius:18px;width:${mode === 'photo' ? '150px' : '205px'};height:${mode === 'photo' ? '200px' : '260px'}}
+    .kind-dropper .dropper,.kind-tube .dropper{display:block}
+  </style>
+</head>
+<body>
+  <div class="scene ${mode} kind-${kind} scene-${scene}">
+    <div class="wall-line"></div>
+    <div class="counter"></div>
+    <div class="mirror"></div>
+    <div class="soft-shadow"></div>
+    <div class="prop towel"></div>
+    <div class="prop pouch"></div>
+    <div class="prop dropper"></div>
+    <div class="prop pad"></div>
+    <div class="prop swatch"></div>
+    <div class="badge-row"><span>${htmlEscape(rankText)}</span><span>${htmlEscape(viewsText)}</span><span>${htmlEscape(dateText)}</span></div>
+    <div class="main-product"><img src="${mainUrl}" alt=""></div>
+    <div class="side-product side-a"><img src="${sideAUrl}" alt=""></div>
+    <div class="side-product side-b"><img src="${sideBUrl}" alt=""></div>
+    <div class="caption-pin">${htmlEscape(caption[0])}</div>
+    <div class="note">
+      <h1>${htmlEscape(title)} <strong>후기처럼 보기</strong></h1>
+      <p>${htmlEscape(noteText)}</p>
+    </div>
+    <div class="features">${featuresHtml}</div>
+  </div>
+</body>
+</html>`;
+}
+
 async function renderReviewHtml(browser, html, outputPath, width, height) {
   const tempPath = path.join(imageDir, `${path.basename(outputPath, path.extname(outputPath))}.html`);
   await fs.writeFile(tempPath, html, 'utf8');
@@ -1393,14 +1522,14 @@ async function renderReviewAssetsForPost(browser, post) {
 
   await renderReviewHtml(
     browser,
-    reviewSceneHtml(post, entries, 'cover', 0),
+    reviewSceneHtmlV2(post, entries, 'cover', 0),
     path.join(imageDir, files.cover),
     1200,
     630
   );
   await renderReviewHtml(
     browser,
-    reviewSceneHtml(post, entries, 'detail', 1),
+    reviewSceneHtmlV2(post, entries, 'detail', 1),
     path.join(imageDir, files.detail),
     900,
     1200
@@ -1409,7 +1538,7 @@ async function renderReviewAssetsForPost(browser, post) {
   for (let index = 0; index < REVIEW_PHOTO_COUNT; index += 1) {
     await renderReviewHtml(
       browser,
-      reviewSceneHtml(post, entries, 'photo', index),
+      reviewSceneHtmlV2(post, entries, 'photo', index),
       path.join(imageDir, files.photos[index]),
       720,
       720
