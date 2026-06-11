@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-11T01:20:36.449Z",
+  "updatedAt": "2026-06-11T05:59:08.964Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,17 +19,17 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 53,
       "to": 53,
-      "fromQty": 181,
-      "toQty": 182,
-      "date": "2026-06-11T01:20:36.449Z"
+      "fromQty": 182,
+      "toQty": 180,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 406,
-      "to": 374,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 374,
+      "to": 365,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "stock_changed",
@@ -37,79 +37,71 @@
       "goodsName": "[6월 올영픽] 어노브 볼륨 업 컬링 에센스 147ml 기획/단품 (수분 컬크림) (+워터에센스미스트 30ml)",
       "from": 76,
       "to": 76,
-      "fromQty": 459,
-      "toQty": 457,
-      "date": "2026-06-11T01:20:36.449Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "[6월 올영픽] 어노브 볼륨 업 컬링 에센스 147ml 기획/단품 (수분 컬크림) (+워터에센스미스트 30ml)",
-      "from": 1967,
-      "to": 1950,
-      "date": "2026-06-11T01:20:36.449Z"
+      "fromQty": 457,
+      "toQty": 454,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000256047",
       "goodsName": "[NEW/6월올영픽]토리든 다이브인 저분자 히알루론산 세럼 50ml 더블 기획 (밸풀 세럼 20ml+선크림 20ml) ",
-      "from": 22,
-      "to": 31,
-      "fromQty": 288,
-      "toQty": 366,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 31,
+      "to": 30,
+      "fromQty": 366,
+      "toQty": 355,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000256047",
       "goodsName": "[NEW/6월올영픽]토리든 다이브인 저분자 히알루론산 세럼 50ml 더블 기획 (밸풀 세럼 20ml+선크림 20ml) ",
-      "from": 2719,
-      "to": 2407,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 2407,
+      "to": 2451,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000255385",
       "goodsName": "[6월 올영픽/한정기획] 메디힐 더마 토너패드 200매 대용량 7종 기획 골라담기 (+휴대용 케이스)",
-      "from": 145,
-      "to": 155,
-      "fromQty": 1577,
-      "toQty": 1756,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 155,
+      "to": 156,
+      "fromQty": 1756,
+      "toQty": 1751,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000255385",
       "goodsName": "[6월 올영픽/한정기획] 메디힐 더마 토너패드 200매 대용량 7종 기획 골라담기 (+휴대용 케이스)",
-      "from": 10730,
-      "to": 11419,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 11419,
+      "to": 11608,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000255391",
       "goodsName": "[6월 올영픽/한정기획] 메디힐 마데카소사이드 수분 선세럼 흔적 리페어 50+50g",
-      "from": 47,
+      "from": 60,
       "to": 60,
-      "fromQty": 152,
-      "toQty": 178,
-      "date": "2026-06-11T01:20:36.449Z"
+      "fromQty": 178,
+      "toQty": 172,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000255391",
       "goodsName": "[6월 올영픽/한정기획] 메디힐 마데카소사이드 수분 선세럼 흔적 리페어 50+50g",
-      "from": 7646,
-      "to": 7515,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 7515,
+      "to": 7597,
+      "date": "2026-06-11T05:59:08.964Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[단독기획 8+1매] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 4210,
-      "to": 4163,
-      "date": "2026-06-11T01:20:36.449Z"
+      "from": 4163,
+      "to": 4225,
+      "date": "2026-06-11T05:59:08.964Z"
     }
   ],
   "products": {
@@ -130,8 +122,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/5527419672874344827.png",
           "totalStores": 49,
           "inStock": 42,
-          "totalQty": 300,
-          "onlineQty": 1762,
+          "totalQty": 297,
+          "onlineQty": 1773,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -170,8 +162,8 @@
               "name": "김포운양점",
               "code": "D573",
               "dist": 1.57,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -280,7 +272,7 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -311,7 +303,7 @@
               "code": "BAC0",
               "dist": 6.89,
               "qty": 4,
-              "o2o": 1,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -340,7 +332,7 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -433,7 +425,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -445,7 +437,7 @@
           "totalStores": 49,
           "inStock": 34,
           "totalQty": 157,
-          "onlineQty": 188,
+          "onlineQty": 177,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -747,13 +739,13 @@
               "qty": 9,
               "o2o": 7,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-11T01:20:36.449Z"
+      "updatedAt": "2026-06-11T05:59:08.964Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -772,8 +764,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 49,
           "inStock": 40,
-          "totalQty": 112,
-          "onlineQty": 374,
+          "totalQty": 111,
+          "onlineQty": 365,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -842,8 +834,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 17,
-              "o2o": 13,
+              "qty": 16,
+              "o2o": 12,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -1075,7 +1067,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -1086,7 +1078,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782269ko.jpg?l=ko",
           "totalStores": 49,
           "inStock": 10,
-          "totalQty": 56,
+          "totalQty": 55,
           "onlineQty": 0,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -1206,8 +1198,8 @@
               "name": "김포풍무점",
               "code": "DB7C",
               "dist": 5.2,
-              "qty": 9,
-              "o2o": 7,
+              "qty": 8,
+              "o2o": 6,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
@@ -1389,7 +1381,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -1703,13 +1695,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-11T01:20:36.449Z"
+      "updatedAt": "2026-06-11T05:59:08.964Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1727,9 +1719,9 @@
           "productId": "8809784607779",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/6/1864266166800082548.jpg",
           "totalStores": 49,
-          "inStock": 7,
-          "totalQty": 131,
-          "onlineQty": 498,
+          "inStock": 6,
+          "totalQty": 129,
+          "onlineQty": 569,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2031,7 +2023,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -2042,8 +2034,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/6/3235586673857400831.jpg",
           "totalStores": 49,
           "inStock": 24,
-          "totalQty": 235,
-          "onlineQty": 1909,
+          "totalQty": 226,
+          "onlineQty": 1882,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2132,8 +2124,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -2162,8 +2154,8 @@
               "name": "김포풍무점",
               "code": "DB7C",
               "dist": 5.2,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
@@ -2172,8 +2164,8 @@
               "name": "김포풍무역점",
               "code": "DD02",
               "dist": 5.33,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
@@ -2223,7 +2215,7 @@
               "code": "BAC0",
               "dist": 6.89,
               "qty": 4,
-              "o2o": 0,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -2232,8 +2224,8 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 43,
-              "o2o": 34,
+              "qty": 41,
+              "o2o": 32,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
@@ -2345,13 +2337,13 @@
               "qty": 12,
               "o2o": 9,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-11T01:20:36.449Z"
+      "updatedAt": "2026-06-11T05:59:08.964Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -2370,8 +2362,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/9064576633040968173.jpg",
           "totalStores": 49,
           "inStock": 49,
-          "totalQty": 689,
-          "onlineQty": 3006,
+          "totalQty": 686,
+          "onlineQty": 3122,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2460,8 +2452,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 72,
-              "o2o": 57,
+              "qty": 71,
+              "o2o": 56,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -2550,8 +2542,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 3,
-              "o2o": 0,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -2560,8 +2552,8 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 28,
-              "o2o": 22,
+              "qty": 27,
+              "o2o": 21,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
@@ -2600,8 +2592,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 15,
-              "o2o": 12,
+              "qty": 14,
+              "o2o": 11,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -2673,7 +2665,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -2683,9 +2675,9 @@
           "productId": "8800364101274",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/8468128577526638795.jpg",
           "totalStores": 49,
-          "inStock": 48,
-          "totalQty": 525,
-          "onlineQty": 1757,
+          "inStock": 49,
+          "totalQty": 528,
+          "onlineQty": 1790,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2865,7 +2857,7 @@
               "code": "BAC0",
               "dist": 6.89,
               "qty": 3,
-              "o2o": 0,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -2914,8 +2906,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -2987,7 +2979,7 @@
               "qty": 4,
               "o2o": 3,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -2998,8 +2990,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4174673844722495465.jpg",
           "totalStores": 49,
           "inStock": 48,
-          "totalQty": 525,
-          "onlineQty": 2680,
+          "totalQty": 520,
+          "onlineQty": 2721,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -3128,8 +3120,8 @@
               "name": "김포풍무역점",
               "code": "DD02",
               "dist": 5.33,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
@@ -3179,7 +3171,7 @@
               "code": "BAC0",
               "dist": 6.89,
               "qty": 3,
-              "o2o": 0,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -3208,7 +3200,7 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 11,
+              "qty": 10,
               "o2o": 8,
               "pickup": true,
               "open": true,
@@ -3248,8 +3240,8 @@
               "name": "웨스턴돔중앙점",
               "code": "DCE8",
               "dist": 8.06,
-              "qty": 26,
-              "o2o": 20,
+              "qty": 24,
+              "o2o": 19,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 24"
@@ -3301,7 +3293,7 @@
               "qty": 6,
               "o2o": 4,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -3313,7 +3305,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 749,
+          "onlineQty": 740,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -3615,7 +3607,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -3627,7 +3619,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 459,
+          "onlineQty": 462,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -3929,7 +3921,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -3941,7 +3933,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 675,
+          "onlineQty": 677,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -4243,7 +4235,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -4255,7 +4247,7 @@
           "totalStores": 49,
           "inStock": 10,
           "totalQty": 17,
-          "onlineQty": 2093,
+          "onlineQty": 2096,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -4557,7 +4549,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -4871,13 +4863,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-11T01:20:36.449Z"
+      "updatedAt": "2026-06-11T05:59:08.964Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -4896,8 +4888,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4731625332496103068.jpg",
           "totalStores": 49,
           "inStock": 16,
-          "totalQty": 58,
-          "onlineQty": 300,
+          "totalQty": 56,
+          "onlineQty": 348,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -4996,8 +4988,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -5199,7 +5191,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -5211,7 +5203,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 161,
+          "onlineQty": 182,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -5513,7 +5505,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -5525,7 +5517,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1096,
+          "onlineQty": 1104,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -5827,7 +5819,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -5839,7 +5831,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1100,
+          "onlineQty": 1099,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -6141,7 +6133,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -6153,7 +6145,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1764,
+          "onlineQty": 1769,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -6455,7 +6447,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -6467,7 +6459,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 286,
+          "onlineQty": 292,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -6769,7 +6761,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -6781,7 +6773,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1287,
+          "onlineQty": 1288,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -7083,7 +7075,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -7095,7 +7087,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 199,
+          "onlineQty": 203,
           "maxOrderQty": 999,
           "deliveredToday": false,
           "presentable": false,
@@ -7397,7 +7389,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -7408,8 +7400,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/6/5038405823275780896.png",
           "totalStores": 49,
           "inStock": 44,
-          "totalQty": 120,
-          "onlineQty": 1322,
+          "totalQty": 116,
+          "onlineQty": 1312,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -7558,8 +7550,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -7589,7 +7581,7 @@
               "code": "BAC0",
               "dist": 6.89,
               "qty": 2,
-              "o2o": 0,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -7618,8 +7610,8 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
@@ -7711,7 +7703,7 @@
               "qty": 2,
               "o2o": 1,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -8025,7 +8017,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -8339,13 +8331,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-11T01:20:36.449Z"
+      "updatedAt": "2026-06-11T05:59:08.964Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -8365,7 +8357,7 @@
           "totalStores": 49,
           "inStock": 1,
           "totalQty": 2,
-          "onlineQty": 3190,
+          "onlineQty": 3217,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -8667,7 +8659,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -8679,7 +8671,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 134,
+          "onlineQty": 150,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -8981,7 +8973,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -8993,7 +8985,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 497,
+          "onlineQty": 505,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -9295,7 +9287,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
@@ -9307,7 +9299,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 342,
+          "onlineQty": 353,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -9609,13 +9601,13 @@
               "qty": 0,
               "o2o": 0,
               "pickup": true,
-              "open": false,
+              "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-11T01:20:36.449Z"
+      "updatedAt": "2026-06-11T05:59:08.964Z"
     }
   }
 }
