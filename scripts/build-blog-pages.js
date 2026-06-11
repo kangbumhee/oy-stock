@@ -15,6 +15,7 @@ const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
 const BLOG_ASSET_VERSION = '20260611-review-aligned';
+const MANUAL_REVIEW_ASSET_VERSION = '20260611-manual-review';
 const MAX_SOURCE_GALLERY_IMAGES = 8;
 const SOURCE_GALLERY_WINDOW = 5;
 const REVIEW_PHOTO_COUNT = 18;
@@ -347,6 +348,23 @@ function postCardImageFile(post) {
   return profile && profile.detailFile ? profile.detailFile : path.basename(post.image);
 }
 
+function isManualReviewProfile(profile) {
+  return Boolean(profile && profile.id === 'torriden-dive-in-serum');
+}
+
+function manualReviewAssetFilesForProfile(profile) {
+  if (!isManualReviewProfile(profile) || !profile.assetPrefix) return null;
+  const ext = profile.assetExt || 'png';
+  const detail = profile.detailFile || `${profile.assetPrefix}-review-01.${ext}`;
+  return {
+    cover: detail,
+    detail,
+    photos: Array.from({ length: REVIEW_PHOTO_COUNT }, (_, index) =>
+      `${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`
+    )
+  };
+}
+
 function buildAlignedCaptions(post) {
   const shortName = post.shortName || post.cleanName || '올리브영 인기상품';
   return [
@@ -433,11 +451,15 @@ function buildAlignedBlogCopy(post, profile) {
   };
 }
 
+function buildReviewBlogCopy(post, profile) {
+  return isManualReviewProfile(profile) ? buildBlogCopy(post, profile) : buildAlignedBlogCopy(post, profile);
+}
+
 function refreshPostCopy(post) {
   if (!post) return post;
   const profile = getBlogProductProfile(post) || buildAutoProductProfile(post);
   const postWithProfile = profile ? { ...post, profile } : post;
-  const copy = buildAlignedBlogCopy(postWithProfile, profile);
+  const copy = buildReviewBlogCopy(postWithProfile, profile);
   const alignedProfile = profile ? { ...profile, ...copy, title: copy.title, description: copy.description } : null;
   return {
     ...postWithProfile,
@@ -452,9 +474,16 @@ function blogReviewAssets(post) {
   if (!profile || !profile.assetPrefix) return null;
   const base = '../../images/blog/';
   const ext = profile.assetExt || 'png';
-  const generatedReviewImages = reviewGallerySrcs(post, base);
-  const generatedDetail = reviewDetailSrc(post, base);
-  const alignedCaptions = buildAlignedCaptions(post);
+  const manualFiles = manualReviewAssetFilesForProfile(profile);
+  const useManualAssets = Boolean(manualFiles && post.reviewAssetVersion === MANUAL_REVIEW_ASSET_VERSION);
+  const generatedReviewImages = useManualAssets
+    ? manualFiles.photos.map((file) => imageAssetSrc(`${base}${file}`))
+    : reviewGallerySrcs(post, base);
+  const generatedDetail = useManualAssets ? imageAssetSrc(`${base}${manualFiles.detail}`) : reviewDetailSrc(post, base);
+  const alignedCaptions =
+    useManualAssets && Array.isArray(profile.captions) && profile.captions.length
+      ? profile.captions
+      : buildAlignedCaptions(post);
   const captions = generatedReviewImages.length
     ? alignedCaptions.slice(0, Math.max(1, Math.min(alignedCaptions.length, generatedReviewImages.length)))
     : alignedCaptions;
@@ -483,7 +512,7 @@ function blogPostTemplate(post, relatedPosts) {
   const imageUrl = absoluteUrl(post.image);
   const visibleImage = postImageSrc(post);
   const reviewAssets = blogReviewAssets(post);
-  const copy = buildAlignedBlogCopy(post, reviewAssets && reviewAssets.profile);
+  const copy = buildReviewBlogCopy(post, reviewAssets && reviewAssets.profile);
   const coverImage = reviewAssets ? reviewAssets.detail : visibleImage;
   const searchHref = `${SITE_URL}/?q=${encodeURIComponent(post.query)}&autoBuy=${encodeURIComponent(post.goodsNo)}`;
   const curatorHref = `${SITE_URL}/api/oliveyoung/curator-redirect?goodsNo=${encodeURIComponent(post.goodsNo)}`;
@@ -1153,7 +1182,7 @@ function reviewAssetFilesForPost(post) {
 }
 
 async function reviewAssetFilesExist(files) {
-  const names = [files.cover, files.detail, ...files.photos];
+  const names = Array.from(new Set([files.cover, files.detail, ...files.photos].filter(Boolean)));
   const checks = await Promise.all(names.map((name) => localFileExists(name)));
   return checks.every(Boolean);
 }
@@ -1165,6 +1194,18 @@ function withReviewAssetFiles(post, files) {
     reviewDetailFile: files.detail,
     reviewGalleryFiles: files.photos,
     reviewAssetVersion: BLOG_ASSET_VERSION,
+    image: `/images/blog/${files.cover}`
+  };
+}
+
+function withManualReviewAssetFiles(post, profile, files) {
+  return {
+    ...post,
+    profile,
+    reviewImageFile: files.cover,
+    reviewDetailFile: files.detail,
+    reviewGalleryFiles: files.photos,
+    reviewAssetVersion: MANUAL_REVIEW_ASSET_VERSION,
     image: `/images/blog/${files.cover}`
   };
 }
@@ -1202,7 +1243,7 @@ function reviewCaptionFor(post, index) {
 function reviewSceneHtml(post, entries, mode, index = 0) {
   const palette = reviewPalette(post);
   const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post);
-  const copy = buildAlignedBlogCopy(post, profile);
+  const copy = buildReviewBlogCopy(post, profile);
   const caption = reviewCaptionFor(post, index);
   const main = pickSource(entries, index) || entries[0];
   const sideA = pickSource(entries, index + 1) || main;
@@ -1336,6 +1377,12 @@ async function renderReviewHtml(browser, html, outputPath, width, height) {
 }
 
 async function renderReviewAssetsForPost(browser, post) {
+  const manualProfile = getBlogProductProfile(post);
+  const manualFiles = manualReviewAssetFilesForProfile(manualProfile);
+  if (manualFiles && (await reviewAssetFilesExist(manualFiles))) {
+    return withManualReviewAssetFiles(post, manualProfile, manualFiles);
+  }
+
   const files = reviewAssetFilesForPost(post);
   if (post.reviewAssetVersion === BLOG_ASSET_VERSION && (await reviewAssetFilesExist(files))) {
     return withReviewAssetFiles(post, files);
