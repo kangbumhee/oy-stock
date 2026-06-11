@@ -357,7 +357,8 @@ function isManualReviewProfile(profile) {
         'mediheal-toner-pad',
         'mediheal-sun-serum',
         'mediheal-gel-mask',
-        'tonymoly-shocking-lip-tint'
+        'tonymoly-shocking-lip-tint',
+        'mediheal-repair-serum'
       ].includes(profile.id)
   );
 }
