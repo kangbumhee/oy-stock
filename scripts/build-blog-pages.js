@@ -14,10 +14,11 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260611-review-diary';
+const BLOG_ASSET_VERSION = '20260611-review-photo-v6';
 const MANUAL_REVIEW_ASSET_VERSION = '20260611-manual-review';
 const MAX_SOURCE_GALLERY_IMAGES = 8;
-const SOURCE_GALLERY_WINDOW = 5;
+const MIN_SOURCE_GALLERY_IMAGES = 3;
+const SOURCE_GALLERY_WINDOW = 8;
 const REVIEW_PHOTO_COUNT = 18;
 
 const CATEGORY_NAMES = {
@@ -349,7 +350,7 @@ function postCardImageFile(post) {
 }
 
 function isManualReviewProfile(profile) {
-  return Boolean(profile && profile.id === 'torriden-dive-in-serum');
+  return false;
 }
 
 function manualReviewAssetFilesForProfile(profile) {
@@ -540,7 +541,7 @@ function blogPostTemplate(post, relatedPosts) {
               .map(
                 (photo, index) => `<figure class="review-photo">
               <div class="photo-frame${photo.source ? ' source-frame' : ''}">
-                <img src="${photo.src}" alt="${htmlEscape(photo.alt)}" loading="lazy">
+                <img src="${photo.src}" alt="${htmlEscape(photo.alt)}" loading="${index < 6 ? 'eager' : 'lazy'}">
               </div>
               <figcaption><b>${String(index + 1).padStart(2, '0')}</b><strong>${htmlEscape(photo.title)}</strong><span>${htmlEscape(photo.caption)}</span></figcaption>
             </figure>`
@@ -982,7 +983,21 @@ function withSourceImageFile(post, sourceImageFile) {
   };
 }
 
-function sourceImageVariantCandidates(sourceImageUrl) {
+function sourceImageBaseCandidates(sourceImageUrl) {
+  const cleanUrl = String(sourceImageUrl || '').trim();
+  if (!cleanUrl) return [];
+  return Array.from(
+    new Set(
+      [
+        cleanUrl,
+        cleanUrl.replace('/uploads/images/goods/550/', '/cfimages/cf-goods/uploads/images/thumbnails/'),
+        cleanUrl.replace('/cfimages/cf-goods/uploads/images/thumbnails/', '/uploads/images/goods/550/')
+      ].filter(Boolean)
+    )
+  );
+}
+
+function variantsForSourceUrl(sourceImageUrl) {
   const cleanUrl = String(sourceImageUrl || '').trim();
   const match = cleanUrl.match(/^(.*A\d{12})(\d+)(ko\.[a-z0-9]+(?:\?[^#]*)?)$/i);
   if (!match) return [cleanUrl].filter(Boolean);
@@ -998,6 +1013,24 @@ function sourceImageVariantCandidates(sourceImageUrl) {
     variants.push(`${prefix}${value}${suffix}`);
   }
   return Array.from(new Set(variants));
+}
+
+function sourceExtensionCandidates(sourceImageUrl) {
+  const cleanUrl = String(sourceImageUrl || '').trim();
+  const match = cleanUrl.match(/\.(jpe?g|png|webp)(\?[^#]*)?$/i);
+  if (!match) return [cleanUrl].filter(Boolean);
+
+  const currentExt = match[1].toLowerCase();
+  const query = match[2] || '';
+  const base = cleanUrl.slice(0, cleanUrl.length - match[0].length);
+  const extensions = Array.from(new Set([currentExt, 'jpg', 'png', 'jpeg', 'webp']));
+  return extensions.map((ext) => `${base}.${ext === 'jpeg' ? 'jpg' : ext}${query}`);
+}
+
+function sourceImageVariantCandidates(sourceImageUrl) {
+  return Array.from(
+    new Set(sourceImageBaseCandidates(sourceImageUrl).flatMap(variantsForSourceUrl).flatMap(sourceExtensionCandidates))
+  );
 }
 
 async function localFileExists(fileName) {
@@ -1031,7 +1064,7 @@ async function downloadSourceGalleryFiles(post, sourceImageUrl, sourceImageFile,
       )
     : localFiles;
   if (options.probeGallery === false) return existing;
-  if (post.sourceGalleryCheckedAt) {
+  if (post.sourceGalleryCheckedAt && existing.length >= MIN_SOURCE_GALLERY_IMAGES) {
     const checks = await Promise.all(existing.map(localFileExists));
     if (checks.every(Boolean)) return existing;
   }
@@ -1163,8 +1196,9 @@ function safeHex(value, fallback) {
 }
 
 function reviewPalette(post) {
-  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post) || {};
-  const visual = profile.visual || {};
+  const autoProfile = buildAutoProductProfile(post) || {};
+  const profile = getBlogProductProfile(post) || post.profile || autoProfile || {};
+  const visual = profile.visual || autoProfile.visual || {};
   const visualProfile = profile.visualProfile || {};
   const palette = visualProfile.palette || {};
   return {
@@ -1486,6 +1520,317 @@ function reviewSceneHtmlV2(post, entries, mode, index = 0) {
 </html>`;
 }
 
+function labelLinesHtml(value, max = 4) {
+  const clean = String(value || '')
+    .replace(/[()[\]{}+|/·,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const words = clean ? clean.split(/\s+/).filter(Boolean) : [];
+  const lines = words.length > 1 ? words.slice(0, max) : [clean || 'HOT ITEM'];
+  return lines.map((line) => `<span>${htmlEscape(truncate(line, 13))}</span>`).join('');
+}
+
+function reviewVisualFor(post, profile, copy) {
+  const autoProfile = buildAutoProductProfile(post) || {};
+  const visual = (copy && copy.visual) || (profile && profile.visual) || autoProfile.visual || {};
+  const rawKind = String(visual.kind || '').toLowerCase();
+  const kind = rawKind.replace(/[^a-z0-9-]/g, '') || 'bottle';
+  return {
+    kind,
+    brand: truncate(visual.brand || (autoProfile.visual && autoProfile.visual.brand) || post.brand || 'OLIVE YOUNG', 18),
+    title: truncate(visual.title || (autoProfile.visual && autoProfile.visual.title) || post.shortName || post.title, 44),
+    sub: truncate(visual.sub || (autoProfile.visual && autoProfile.visual.sub) || deriveType(post.cleanName || post.shortName), 22)
+  };
+}
+
+function reviewProductMockupHtml(kind, visual) {
+  const brand = htmlEscape(visual.brand);
+  const sub = htmlEscape(visual.sub);
+  const label = labelLinesHtml(visual.title);
+  const commonLabel = `<b class="brand">${brand}</b><em>${sub}</em><i class="label-lines">${label}</i>`;
+
+  if (kind === 'padjar') {
+    return `<div class="mock mock-padjar">
+      <div class="padjar-lid"><b>${brand}</b></div>
+      <div class="padjar-body">${commonLabel}<span class="pad-stack"></span></div>
+      <span class="loose-pad"></span>
+      <span class="tweezer"></span>
+    </div>`;
+  }
+
+  if (kind === 'dropper') {
+    return `<div class="mock mock-dropper">
+      <div class="dropper-cap"></div>
+      <div class="dropper-neck"></div>
+      <div class="dropper-bottle">${commonLabel}<span class="liquid"></span></div>
+      <span class="drop"></span>
+    </div>`;
+  }
+
+  if (kind === 'tube') {
+    return `<div class="mock mock-tube">
+      <div class="tube tube-a">${commonLabel}</div>
+      <div class="tube tube-b"><b class="brand">${brand}</b><em>${sub}</em></div>
+      <span class="tube-cap"></span>
+    </div>`;
+  }
+
+  if (kind === 'jar') {
+    return `<div class="mock mock-jar">
+      <div class="jar-lid"><b>${brand}</b></div>
+      <div class="jar-body">${commonLabel}</div>
+      <span class="cream-smear"></span>
+    </div>`;
+  }
+
+  if (kind === 'pack') {
+    return `<div class="mock mock-pack">
+      <div class="pack pack-a"><b>${brand}</b><em>${sub}</em><span></span></div>
+      <div class="pack pack-b"><b>${brand}</b><em>${sub}</em><span></span></div>
+      <div class="pack pack-c"><b>${brand}</b><em>${sub}</em><span></span></div>
+      <span class="sheet-mask"></span>
+    </div>`;
+  }
+
+  if (kind === 'tint') {
+    return `<div class="mock mock-tint">
+      <div class="tint tint-a"><b>${brand}</b><em>${sub}</em></div>
+      <div class="tint tint-b"><b>${brand}</b><em>${sub}</em></div>
+      <span class="swatch-line"></span>
+    </div>`;
+  }
+
+  if (kind === 'palette') {
+    return `<div class="mock mock-palette">
+      <div class="palette-case"><b>${brand}</b><i>${label}</i><span class="pan p1"></span><span class="pan p2"></span><span class="pan p3"></span><span class="pan p4"></span><span class="pan p5"></span><span class="pan p6"></span></div>
+      <span class="brush"></span>
+    </div>`;
+  }
+
+  if (kind === 'pouch') {
+    return `<div class="mock mock-pouch">
+      <div class="pouch-pack">${commonLabel}</div>
+      <span class="soft-piece"></span>
+    </div>`;
+  }
+
+  return `<div class="mock mock-bottle">
+    <div class="bottle-cap"></div>
+    <div class="bottle-body">${commonLabel}<span class="liquid"></span></div>
+  </div>`;
+}
+
+function reviewSceneHtmlPhoto(post, entries, mode, index = 0) {
+  const palette = reviewPalette(post);
+  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post);
+  const copy = buildReviewBlogCopy(post, profile);
+  const caption = reviewCaptionFor(post, index);
+  const visual = reviewVisualFor(post, profile, copy);
+  const kind = visual.kind;
+  const scene = index % 9;
+  const variant = Math.floor(index / 9) % 2;
+  const main = pickSource(entries, mode === 'cover' ? 0 : index + 1) || entries[0];
+  const altA = pickSource(entries, index + 3) || main;
+  const dimensions = {
+    cover: [1200, 630],
+    detail: [900, 1200],
+    photo: [720, 720]
+  }[mode];
+  const [width, height] = dimensions;
+  const mainUrl = htmlEscape(main.url);
+  const altAUrl = htmlEscape(altA.url);
+  const rankText = post.rank ? `인기 ${post.rank}위` : '인기상품';
+  const viewsText = post.viewCount ? `조회 ${formatNumber(post.viewCount)}회` : '조회 체크';
+  const dateText = formatPostDate(post.publishedAt || post.rankingDate);
+  const title = truncate(post.shortName || post.title, mode === 'cover' ? 30 : 22);
+  const smallLabel = mode === 'photo' ? caption[0] : '오늘 체크';
+  const bodyText = truncate(caption[1] || copy.heroLead || '사진으로 먼저 분위기를 보고 재고를 확인해요.', mode === 'photo' ? 68 : 96);
+  const featureItems = (
+    (copy.visual && Array.isArray(copy.visual.features) && copy.visual.features.length ? copy.visual.features : null) ||
+    (Array.isArray(copy.moodNotes) && copy.moodNotes.length ? copy.moodNotes : null) ||
+    [
+      ['색감', '패키지 톤을 먼저 봐요.'],
+      ['구성', '옵션 문구를 확인해요.'],
+      ['재고', '온라인과 매장을 같이 봐요.']
+    ]
+  ).slice(0, 3);
+  const featureHtml = featureItems
+    .map((item) => `<div><b>${htmlEscape(item[0])}</b><span>${htmlEscape(item[1])}</span></div>`)
+    .join('');
+  const mockupHtml = reviewProductMockupHtml(kind, visual);
+  const productLeft = mode === 'photo' ? (scene % 3 === 0 ? '98px' : scene % 3 === 1 ? '134px' : '84px') : mode === 'cover' ? '116px' : '132px';
+  const productTop = mode === 'photo' ? (scene % 2 === 0 ? '92px' : '132px') : mode === 'cover' ? '92px' : '244px';
+  const productSize = mode === 'photo' ? '470px' : mode === 'cover' ? '470px' : '560px';
+  const productRotate = mode === 'photo' ? (scene % 2 ? '-3deg' : '2.5deg') : scene % 2 ? '-2deg' : '2deg';
+  const productScale = mode === 'detail' ? '1.08' : mode === 'cover' ? '1.02' : scene === 2 || scene === 4 ? '1.12' : '1';
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;width:${width}px;height:${height}px;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;background:#f7faf8;color:#1d2c34}
+    .scene{position:relative;width:${width}px;height:${height}px;overflow:hidden;background:
+      radial-gradient(circle at 18% 12%,rgba(255,255,255,.94),rgba(255,255,255,0) 25%),
+      radial-gradient(circle at 84% 16%,${palette.second} 0%,rgba(255,255,255,0) 28%),
+      linear-gradient(140deg,${palette.soft} 0%,#fff 46%,${variant ? '#fff6f2' : palette.second} 100%)}
+    .source-tint{position:absolute;inset:-38px;width:calc(100% + 76px);height:calc(100% + 76px);object-fit:cover;opacity:.08;filter:blur(20px) saturate(1.1);transform:scale(1.08);z-index:0}
+    .scene:before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(35,80,90,.12) 1px,transparent 1.4px);background-size:22px 22px;opacity:${mode === 'photo' ? '.2' : '.16'};z-index:1}
+    .counter{position:absolute;left:-9%;right:-9%;bottom:-8%;height:${mode === 'detail' ? '42%' : '36%'};background:linear-gradient(180deg,#fff 0%,#edf4ef 72%,#e4eee9 100%);box-shadow:0 -24px 80px rgba(31,73,78,.1);transform:rotate(${scene % 2 ? '.8deg' : '-.9deg'});z-index:1}
+    .back-wall{position:absolute;left:-5%;right:-5%;top:35%;height:2px;background:rgba(80,110,115,.13);transform:rotate(${scene % 2 ? '-.7deg' : '.7deg'});z-index:1}
+    .mirror{position:absolute;right:${mode === 'photo' ? '42px' : '78px'};top:${mode === 'photo' ? '42px' : '62px'};width:${mode === 'photo' ? '160px' : '230px'};height:${mode === 'photo' ? '224px' : '310px'};border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.68),rgba(255,255,255,.15));border:1px solid rgba(255,255,255,.88);box-shadow:inset 0 0 0 16px rgba(255,255,255,.16);z-index:2}
+    .plant{position:absolute;left:${mode === 'detail' ? '48px' : '34px'};top:${mode === 'cover' ? '42px' : '70px'};width:136px;height:176px;opacity:${scene === 4 ? '.9' : '.58'};z-index:2}
+    .plant i{position:absolute;left:64px;bottom:0;width:12px;height:136px;border-radius:99px;background:#77aa82}
+    .plant b{position:absolute;display:block;width:62px;height:28px;border-radius:60px 8px;background:#86bd92;transform-origin:left center}
+    .plant b:nth-child(2){left:65px;top:24px;transform:rotate(-28deg)}
+    .plant b:nth-child(3){left:48px;top:62px;transform:rotate(32deg)}
+    .plant b:nth-child(4){left:66px;top:100px;transform:rotate(-15deg)}
+    .product-zone{position:absolute;left:${productLeft};top:${productTop};width:${productSize};height:${productSize};z-index:5;transform:rotate(${productRotate}) scale(${productScale});filter:drop-shadow(0 30px 34px rgba(20,55,60,.18))}
+    .mock{position:absolute;inset:0;color:#17323c}
+    .mock b,.mock em,.mock i{font-style:normal}
+    .brand{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:22px;font-weight:900;letter-spacing:0;color:rgba(255,255,255,.9);text-align:center;white-space:nowrap}
+    .mock em{position:absolute;left:50%;top:30%;transform:translateX(-50%);font-size:13px;font-weight:900;color:rgba(255,255,255,.9);white-space:nowrap}
+    .label-lines{position:absolute;left:50%;top:42%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;line-height:1;font-weight:900;color:rgba(255,255,255,.9);text-align:center}
+    .label-lines span{display:block}
+    .mock-padjar .padjar-body{position:absolute;left:90px;top:156px;width:250px;height:230px;border-radius:42px;background:linear-gradient(145deg,${palette.accent},${palette.second});box-shadow:inset 0 0 22px rgba(255,255,255,.45)}
+    .mock-padjar .padjar-lid{position:absolute;left:80px;top:66px;width:250px;height:128px;border-radius:46px;background:linear-gradient(145deg,${palette.second},${palette.accent});opacity:.72;transform:rotate(-9deg)}
+    .mock-padjar .padjar-lid b{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-size:22px;color:rgba(255,255,255,.82)}
+    .mock-padjar .pad-stack{position:absolute;left:54px;top:-24px;width:152px;height:104px;border-radius:24px;background:linear-gradient(180deg,#fff,#f3fbfb);box-shadow:0 10px 18px rgba(23,70,78,.16)}
+    .mock-padjar .loose-pad{position:absolute;right:52px;top:78px;width:164px;height:164px;border-radius:26px;background:repeating-linear-gradient(45deg,#fff 0 5px,#edf6f5 5px 9px);transform:rotate(10deg);box-shadow:0 18px 32px rgba(23,70,78,.16)}
+    .mock-padjar .tweezer{position:absolute;right:66px;top:48px;width:150px;height:22px;border-radius:999px;background:linear-gradient(90deg,#fdfefe,#d8e4e6);transform:rotate(-24deg);box-shadow:0 10px 18px rgba(23,70,78,.12)}
+    .mock-dropper .dropper-bottle,.mock-bottle .bottle-body{position:absolute;left:138px;top:128px;width:190px;height:292px;border-radius:42px 42px 58px 58px;background:linear-gradient(160deg,rgba(255,255,255,.85),${palette.accent} 58%,${palette.accentDark});box-shadow:inset 0 0 22px rgba(255,255,255,.55)}
+    .mock-dropper .dropper-cap,.mock-bottle .bottle-cap{position:absolute;left:182px;top:54px;width:102px;height:108px;border-radius:32px;background:#eef5f5;box-shadow:inset 0 0 16px rgba(20,50,60,.12)}
+    .mock-dropper .dropper-neck{position:absolute;left:208px;top:30px;width:48px;height:68px;border-radius:24px;background:#1f2931}
+    .mock-dropper .drop,.mock-bottle .liquid{position:absolute;right:76px;top:154px;width:70px;height:70px;border-radius:50% 50% 54% 46%;background:rgba(255,255,255,.62)}
+    .mock-tube .tube{position:absolute;width:178px;height:332px;border-radius:40px 40px 28px 28px;background:linear-gradient(180deg,#fff 0%,${palette.soft} 45%,${palette.accent} 100%);box-shadow:inset 0 0 20px rgba(255,255,255,.72)}
+    .mock-tube .tube-a{left:128px;top:78px;transform:rotate(-7deg)}
+    .mock-tube .tube-b{left:238px;top:112px;transform:rotate(8deg);opacity:.92}
+    .mock-tube .tube-cap{position:absolute;left:182px;bottom:42px;width:240px;height:42px;border-radius:999px;background:linear-gradient(90deg,#fff,${palette.second});transform:rotate(1deg)}
+    .mock-jar .jar-lid{position:absolute;left:108px;top:88px;width:280px;height:98px;border-radius:52px;background:linear-gradient(180deg,#fff,${palette.soft});box-shadow:0 18px 28px rgba(20,55,60,.14)}
+    .mock-jar .jar-lid b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:${palette.accentDark}}
+    .mock-jar .jar-body{position:absolute;left:100px;top:172px;width:296px;height:188px;border-radius:54px;background:linear-gradient(145deg,${palette.soft},${palette.accent});box-shadow:inset 0 0 22px rgba(255,255,255,.55)}
+    .mock-jar .cream-smear{position:absolute;right:42px;bottom:86px;width:170px;height:46px;border-radius:999px;background:linear-gradient(90deg,#fff,${palette.soft});transform:rotate(-12deg)}
+    .mock-pack .pack{position:absolute;width:152px;height:248px;border-radius:16px;background:linear-gradient(180deg,#fff,${palette.soft});box-shadow:0 18px 30px rgba(20,55,60,.14);border:1px solid rgba(255,255,255,.8)}
+    .mock-pack .pack b{position:absolute;left:16px;top:16px;font-size:16px;color:${palette.accentDark};font-weight:900}
+    .mock-pack .pack em{position:absolute;left:16px;top:42px;font-size:11px;color:#51636d;font-weight:900}
+    .mock-pack .pack span{position:absolute;left:38px;top:92px;width:78px;height:78px;border-radius:999px;background:radial-gradient(circle,#fff 0 36%,${palette.accent} 38% 100%);opacity:.72}
+    .mock-pack .pack-a{left:72px;top:118px;transform:rotate(-7deg)}
+    .mock-pack .pack-b{left:198px;top:86px;background:linear-gradient(180deg,#fff,${palette.second});transform:rotate(3deg)}
+    .mock-pack .pack-c{left:312px;top:120px;background:linear-gradient(180deg,#fff,${palette.warm});transform:rotate(8deg)}
+    .mock-pack .sheet-mask{position:absolute;left:112px;top:42px;width:232px;height:136px;border-radius:50% 50% 42% 42%;background:rgba(255,255,255,.72);box-shadow:inset 0 0 0 10px rgba(255,255,255,.38)}
+    .mock-tint .tint{position:absolute;width:80px;height:318px;border-radius:38px;background:linear-gradient(180deg,#202b32 0 16%,${palette.accent} 16% 100%);box-shadow:inset 0 0 18px rgba(255,255,255,.35)}
+    .mock-tint .tint b{position:absolute;left:50%;top:34%;transform:translateX(-50%) rotate(90deg);font-size:16px;color:#fff}
+    .mock-tint .tint em{position:absolute;left:50%;top:58%;transform:translateX(-50%) rotate(90deg);font-size:11px;color:#fff}
+    .mock-tint .tint-a{left:174px;top:88px;transform:rotate(-10deg)}
+    .mock-tint .tint-b{left:266px;top:112px;transform:rotate(8deg)}
+    .mock-tint .swatch-line{position:absolute;left:82px;bottom:94px;width:318px;height:38px;border-radius:999px;background:linear-gradient(90deg,${palette.warm},${palette.accent},${palette.accentDark});opacity:.76;transform:rotate(-8deg)}
+    .mock-palette .palette-case{position:absolute;left:62px;top:122px;width:352px;height:238px;border-radius:32px;background:linear-gradient(145deg,#fff,${palette.soft});box-shadow:inset 0 0 20px rgba(255,255,255,.72)}
+    .mock-palette .palette-case b{position:absolute;left:28px;top:24px;font-size:22px;color:${palette.accentDark};font-weight:900}
+    .mock-palette .palette-case i{position:absolute;left:28px;top:56px;display:flex;gap:4px;font-size:11px;color:#63717a;font-weight:900}
+    .mock-palette .pan{position:absolute;width:70px;height:70px;border-radius:18px;box-shadow:inset 0 0 14px rgba(70,40,20,.14)}
+    .mock-palette .p1{left:34px;top:108px;background:${palette.warm}}.mock-palette .p2{left:124px;top:108px;background:${palette.soft}}.mock-palette .p3{left:214px;top:108px;background:${palette.accent}}.mock-palette .p4{left:34px;top:188px;background:${palette.second}}.mock-palette .p5{left:124px;top:188px;background:#fff}.mock-palette .p6{left:214px;top:188px;background:${palette.accentDark}}
+    .mock-palette .brush{position:absolute;right:70px;top:74px;width:230px;height:22px;border-radius:999px;background:linear-gradient(90deg,#222,#f7d0aa);transform:rotate(24deg)}
+    .mock-pouch .pouch-pack{position:absolute;left:92px;top:116px;width:300px;height:256px;border-radius:48px;background:linear-gradient(145deg,${palette.warm},${palette.accent});box-shadow:inset 0 0 26px rgba(255,255,255,.5)}
+    .mock-pouch .soft-piece{position:absolute;right:70px;top:64px;width:170px;height:170px;border-radius:48% 52% 46% 54%;background:rgba(255,255,255,.72);transform:rotate(15deg)}
+    .meta{position:absolute;left:${mode === 'photo' ? '44px' : '74px'};top:${mode === 'photo' ? '34px' : '36px'};z-index:9;display:flex;gap:8px}
+    .meta span{height:${mode === 'photo' ? '30px' : '38px'};display:inline-flex;align-items:center;padding:0 13px;border-radius:999px;background:rgba(255,255,255,.76);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 22px rgba(20,60,66,.08);font-size:${mode === 'photo' ? '12px' : '16px'};font-weight:900;color:${palette.accentDark};white-space:nowrap}
+    .label{position:absolute;z-index:8;left:${mode === 'cover' ? '96px' : mode === 'detail' ? '86px' : '58px'};bottom:${mode === 'cover' ? '64px' : mode === 'detail' ? '348px' : '56px'};max-width:${mode === 'photo' ? '260px' : '360px'};padding:${mode === 'photo' ? '11px 16px' : '14px 20px'};border-radius:18px;background:${palette.warm};color:#1b3038;font-size:${mode === 'photo' ? '16px' : '22px'};line-height:1.15;font-weight:900;box-shadow:0 16px 34px rgba(30,70,76,.15);transform:rotate(${scene % 2 ? '-4deg' : '3deg'})}
+    .title{position:absolute;z-index:8;right:${mode === 'cover' ? '68px' : '56px'};bottom:${mode === 'cover' ? '72px' : '54px'};width:${mode === 'cover' ? '420px' : '720px'};display:${mode === 'photo' ? 'none' : 'block'};font-size:${mode === 'cover' ? '34px' : '36px'};line-height:1.22;font-weight:900;color:#152934;text-shadow:0 2px 0 rgba(255,255,255,.68);word-break:keep-all}
+    .title small{display:block;margin-top:8px;font-size:${mode === 'cover' ? '17px' : '19px'};line-height:1.35;color:#5c707a;font-weight:800}
+    .prop{position:absolute;z-index:3;box-shadow:0 18px 42px rgba(30,68,74,.11)}
+    .towel{right:${mode === 'photo' ? '70px' : '108px'};bottom:${mode === 'photo' ? '108px' : '104px'};width:${mode === 'photo' ? '178px' : '240px'};height:${mode === 'photo' ? '78px' : '96px'};border-radius:52px;background:repeating-linear-gradient(90deg,#fff 0 9px,#eef6f3 9px 18px)}
+    .pouch{left:${mode === 'photo' ? '34px' : '520px'};top:${mode === 'photo' ? '452px' : '356px'};width:${mode === 'photo' ? '180px' : '246px'};height:${mode === 'photo' ? '118px' : '148px'};border-radius:34px;background:linear-gradient(145deg,#efd2bb,#fbf0e4);transform:rotate(${scene % 2 ? '9deg' : '-7deg'})}
+    .hand{position:absolute;z-index:6;left:${mode === 'cover' ? '530px' : mode === 'detail' ? '486px' : '384px'};bottom:${mode === 'cover' ? '-62px' : mode === 'detail' ? '184px' : '-44px'};width:${mode === 'photo' ? '250px' : '300px'};height:${mode === 'photo' ? '185px' : '220px'};border-radius:86px 86px 26px 26px;background:linear-gradient(135deg,#f2c5a6,#dfa084);opacity:${scene === 1 || scene === 5 ? '.72' : '.28'};transform:rotate(${scene % 2 ? '11deg' : '-9deg'})}
+    .features{position:absolute;left:64px;right:64px;bottom:46px;z-index:8;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .features div{min-height:104px;padding:18px;border-radius:20px;background:rgba(255,255,255,.7);box-shadow:0 14px 34px rgba(20,60,66,.1);backdrop-filter:blur(6px)}
+    .features b{display:block;color:${palette.accentDark};font-size:21px;margin-bottom:6px}
+    .features span{display:block;color:#566b75;font-size:16px;line-height:1.4;font-weight:800;word-break:keep-all}
+    .cover .features,.photo .features{display:none}
+    .photo .title,.photo .meta,.photo .label{display:none}
+    .detail .title{top:58px;bottom:auto;right:62px;width:720px}
+    .detail .product-zone{top:252px}
+    .detail .label{display:none}
+    .scene-2 .product-zone{transform:rotate(-1deg) scale(${mode === 'photo' ? '1.22' : productScale})}
+    .scene-3 .mirror{opacity:.94}
+    .scene-4 .product-zone{left:${mode === 'photo' ? '150px' : productLeft};top:${mode === 'photo' ? '116px' : productTop}}
+    .scene-5 .product-zone{transform:rotate(${productRotate}) scale(${mode === 'photo' ? '1.08' : productScale})}
+    .scene-6 .pouch{display:block}
+    .scene-7 .product-zone{top:${mode === 'photo' ? '76px' : productTop};transform:rotate(0deg) scale(${mode === 'photo' ? '1.04' : productScale})}
+    .variant-1 .counter{background:linear-gradient(180deg,#fff 0%,#f4efe8 100%)}
+    .scene.variant-1:before{opacity:.11}
+    .photo.scene-0 .product-zone{left:98px;top:92px;transform:rotate(-3deg) scale(1)}
+    .photo.scene-1 .product-zone{left:38px;top:168px;transform:rotate(8deg) scale(.92)}
+    .photo.scene-1 .hand{left:330px;bottom:-28px;width:330px;height:236px;opacity:.78}
+    .photo.scene-1 .mirror{right:34px;top:34px}
+    .photo.scene-2 .product-zone{left:-70px;top:28px;transform:rotate(0deg) scale(1.72)}
+    .photo.scene-2 .plant,.photo.scene-2 .pouch,.photo.scene-2 .mirror{display:none}
+    .photo.scene-2 .counter{height:24%;opacity:.55}
+    .photo.scene-3 .product-zone{left:222px;top:82px;transform:rotate(-12deg) scale(.9)}
+    .photo.scene-3 .towel{left:34px;right:auto;bottom:82px;width:430px;height:112px;transform:rotate(8deg)}
+    .photo.scene-3 .hand{left:32px;bottom:-54px;opacity:.34}
+    .photo.scene-4 .product-zone{left:246px;top:108px;transform:rotate(4deg) scale(.96)}
+    .photo.scene-4.kind-padjar .mock-padjar .loose-pad{right:150px;top:-6px;width:210px;height:210px;transform:rotate(-8deg)}
+    .photo.scene-4.kind-padjar .mock-padjar .tweezer{right:118px;top:-22px;width:190px}
+    .photo.scene-4.kind-dropper .mock-dropper .drop{right:18px;top:118px;transform:scale(1.8)}
+    .photo.scene-4.kind-tint .mock-tint .swatch-line{left:-34px;bottom:150px;width:360px;height:54px}
+    .photo.scene-5 .product-zone{left:70px;top:70px;transform:rotate(-7deg) scale(1.08)}
+    .photo.scene-5 .product-zone:after{content:'';position:absolute;left:250px;top:42px;width:180px;height:250px;border-radius:34px;background:linear-gradient(145deg,rgba(255,255,255,.7),${palette.second});box-shadow:0 22px 34px rgba(20,55,60,.13);z-index:-1}
+    .photo.scene-5 .hand{left:388px;bottom:-48px;opacity:.58}
+    .photo.scene-6 .product-zone{left:120px;top:136px;transform:rotate(3deg) scale(.84)}
+    .photo.scene-6 .pouch{left:38px;top:68px;width:254px;height:174px;opacity:.94}
+    .photo.scene-6 .towel{right:26px;bottom:68px;width:280px;height:116px}
+    .photo.scene-7 .product-zone{left:116px;top:62px;transform:rotate(0deg) scale(.98)}
+    .photo.scene-7 .counter{height:52%;background:linear-gradient(180deg,#fff 0%,#f7faf6 100%)}
+    .photo.scene-7 .mirror{display:none}
+    .photo.scene-8 .product-zone{left:34px;top:146px;transform:rotate(-9deg) scale(.88)}
+    .photo.scene-8 .plant{left:510px;top:56px;opacity:.8}
+    .photo.scene-8 .towel{right:34px;bottom:90px;width:300px}
+    .photo.variant-1.scene-0 .product-zone{left:142px;top:124px;transform:rotate(6deg) scale(.92)}
+    .photo.variant-1.scene-1 .product-zone{left:206px;top:134px;transform:rotate(-9deg) scale(.88)}
+    .photo.variant-1.scene-3 .product-zone{left:58px;top:94px;transform:rotate(11deg) scale(.94)}
+    .photo.variant-1.scene-6 .product-zone{left:226px;top:92px;transform:rotate(-4deg) scale(.86)}
+    .photo.variant-1.scene-8 .product-zone{left:154px;top:86px;transform:rotate(2deg) scale(1.02)}
+    .photo.scene-1{background:linear-gradient(145deg,#fff 0%,${palette.soft} 42%,#f7e6dc 100%)}
+    .photo.scene-1:after{content:'';position:absolute;left:310px;bottom:-78px;width:380px;height:310px;border-radius:120px 120px 34px 34px;background:linear-gradient(135deg,#f0c0a2,#d9977b);opacity:.8;transform:rotate(12deg);z-index:4}
+    .photo.scene-2{background:linear-gradient(140deg,${palette.second} 0%,#fff 58%,${palette.soft} 100%)}
+    .photo.scene-2:after{content:'';position:absolute;right:-46px;bottom:28px;width:310px;height:92px;border-radius:999px;background:rgba(255,255,255,.7);filter:blur(3px);z-index:3}
+    .photo.scene-3{background:linear-gradient(180deg,#eef7f8 0%,#fff 54%,#f3f0ea 100%)}
+    .photo.scene-3:after{content:'';position:absolute;left:18px;right:18px;bottom:44px;height:178px;border-radius:72px;background:repeating-linear-gradient(90deg,#fff 0 13px,#e8f3f0 13px 26px);transform:rotate(5deg);box-shadow:0 18px 34px rgba(20,55,60,.1);z-index:2}
+    .photo.scene-4{background:radial-gradient(circle at 70% 28%,rgba(255,255,255,.9),rgba(255,255,255,0) 20%),linear-gradient(135deg,#fff 0%,${palette.soft} 50%,${palette.second} 100%)}
+    .photo.scene-4:after{content:'';position:absolute;left:36px;bottom:78px;width:250px;height:172px;border-radius:40px;background:rgba(255,255,255,.66);box-shadow:0 22px 42px rgba(20,55,60,.12);transform:rotate(-8deg);z-index:3}
+    .photo.scene-5{background:linear-gradient(145deg,#fff 0%,${palette.soft} 46%,#eef8f5 100%)}
+    .photo.scene-5:before{opacity:.08}
+    .photo.scene-5:after{content:'SET';position:absolute;right:44px;top:64px;width:122px;height:122px;border-radius:999px;background:${palette.warm};display:flex;align-items:center;justify-content:center;color:${palette.accentDark};font-weight:900;font-size:34px;box-shadow:0 18px 34px rgba(20,55,60,.14);transform:rotate(8deg);z-index:6}
+    .photo.scene-6{background:linear-gradient(150deg,#fff8f0 0%,#fff 48%,${palette.soft} 100%)}
+    .photo.scene-6:after{content:'';position:absolute;left:42px;top:76px;width:260px;height:182px;border-radius:36px;background:linear-gradient(145deg,#efd3bd,#fff4e8);box-shadow:0 24px 44px rgba(20,55,60,.13);transform:rotate(-10deg);z-index:2}
+    .photo.scene-7{background:linear-gradient(180deg,#fff 0%,${palette.soft} 100%)}
+    .photo.scene-7:after{content:'';position:absolute;left:64px;top:64px;width:590px;height:590px;border-radius:42px;border:2px solid rgba(255,255,255,.86);box-shadow:inset 0 0 0 18px rgba(255,255,255,.28);transform:rotate(0deg);z-index:1}
+    .photo.scene-8{background:linear-gradient(145deg,${palette.soft} 0%,#fff 50%,#eef1f5 100%)}
+    .photo.scene-8:after{content:'';position:absolute;right:44px;top:142px;width:200px;height:340px;border-radius:28px;background:#17212a;box-shadow:0 24px 46px rgba(20,55,60,.2);z-index:2}
+  </style>
+</head>
+<body>
+  <div class="scene ${mode} kind-${kind} scene-${scene} variant-${variant}">
+    <img class="source-tint" src="${mainUrl}" alt="">
+    <div class="back-wall"></div>
+    <div class="counter"></div>
+    <div class="mirror"></div>
+    <div class="plant"><i></i><b></b><b></b><b></b></div>
+    <div class="meta"><span>${htmlEscape(rankText)}</span><span>${htmlEscape(viewsText)}</span><span>${htmlEscape(dateText)}</span></div>
+    <img class="source-tint" src="${altAUrl}" alt="">
+    <div class="product-zone">${mockupHtml}</div>
+    <div class="prop towel"></div>
+    <div class="prop pouch"></div>
+    <div class="hand"></div>
+    <div class="label">${htmlEscape(smallLabel)}</div>
+    <div class="title">${htmlEscape(title)}<small>${htmlEscape(bodyText)}</small></div>
+    <div class="features">${featureHtml}</div>
+  </div>
+</body>
+</html>`;
+}
+
 async function renderReviewHtml(browser, html, outputPath, width, height) {
   const tempPath = path.join(imageDir, `${path.basename(outputPath, path.extname(outputPath))}.html`);
   await fs.writeFile(tempPath, html, 'utf8');
@@ -1522,14 +1867,14 @@ async function renderReviewAssetsForPost(browser, post) {
 
   await renderReviewHtml(
     browser,
-    reviewSceneHtmlV2(post, entries, 'cover', 0),
+    reviewSceneHtmlPhoto(post, entries, 'cover', 0),
     path.join(imageDir, files.cover),
     1200,
     630
   );
   await renderReviewHtml(
     browser,
-    reviewSceneHtmlV2(post, entries, 'detail', 1),
+    reviewSceneHtmlPhoto(post, entries, 'detail', 1),
     path.join(imageDir, files.detail),
     900,
     1200
@@ -1538,7 +1883,7 @@ async function renderReviewAssetsForPost(browser, post) {
   for (let index = 0; index < REVIEW_PHOTO_COUNT; index += 1) {
     await renderReviewHtml(
       browser,
-      reviewSceneHtmlV2(post, entries, 'photo', index),
+      reviewSceneHtmlPhoto(post, entries, 'photo', index),
       path.join(imageDir, files.photos[index]),
       720,
       720
@@ -1834,7 +2179,7 @@ async function main() {
   await fs.mkdir(imageDir, { recursive: true });
   let posts = (
     await hydrateSourceImages(mergePosts(existingPosts, generatedPosts), rankingPosts, {
-      probeGallery: !args.refreshExistingOnly
+      probeGallery: true
     })
   ).filter((post) => post.sourceImageFile);
   posts = posts.map(refreshPostCopy);
