@@ -39,6 +39,13 @@ const CURATOR_ENTRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 const AFFILIATE_REFERER =
   'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search';
+const LIVE_RANKING_URL =
+  process.env.CURATOR_LIVE_RANKING_URL ||
+  'https://olivestock.co.kr/api/oliveyoung/hot-ranking-history?size=128&period=24h&sort=view';
+const CURATOR_MAX_GOODS = Math.max(
+  1,
+  Number.parseInt(process.env.CURATOR_MAX_GOODS || '260', 10) || 260
+);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -219,15 +226,72 @@ function parseCookieHeader(header, domainHost) {
   return out;
 }
 
-function collectGoodsNos() {
+function addGoodsNo(out, value) {
+  const gn = String(value || '').trim();
+  if (/^[AB]\d+$/i.test(gn)) out.add(gn.toUpperCase());
+}
+
+function collectGoodsNosFromStockDetail(out) {
   try {
     const raw = fs.readFileSync(DETAIL_FILE, 'utf8');
     const j = JSON.parse(raw);
     const products = j.products || {};
-    return Object.keys(products).filter((k) => /^A\d+$/i.test(String(k)));
+    Object.keys(products).forEach((goodsNo) => addGoodsNo(out, goodsNo));
   } catch {
-    return [];
+    /* optional */
   }
+}
+
+function collectGoodsNosFromJsonFile(out, relativePath, reader) {
+  try {
+    const raw = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+    const parsed = JSON.parse(raw);
+    reader(parsed).forEach((goodsNo) => addGoodsNo(out, goodsNo));
+  } catch {
+    /* optional */
+  }
+}
+
+async function collectGoodsNosFromLiveRanking(out) {
+  if (process.env.CURATOR_INCLUDE_LIVE_RANKING === '0') return;
+  try {
+    const r = await fetch(LIVE_RANKING_URL, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!r.ok) {
+      console.warn(`실시간 인기템 링크 대상 조회 실패: HTTP ${r.status}`);
+      return;
+    }
+    const json = await r.json();
+    const products =
+      (json && json.data && Array.isArray(json.data.products) && json.data.products) ||
+      (Array.isArray(json.products) && json.products) ||
+      [];
+    products.forEach((item) => addGoodsNo(out, item && (item.goodsNo || item.goodsNumber)));
+  } catch (e) {
+    console.warn('실시간 인기템 링크 대상 조회 실패:', e.message || e);
+  }
+}
+
+async function collectGoodsNos() {
+  const out = new Set();
+  collectGoodsNosFromStockDetail(out);
+  collectGoodsNosFromJsonFile(out, 'public/data/blog-posts.json', (j) =>
+    Array.isArray(j.posts) ? j.posts.map((post) => post && post.goodsNo) : []
+  );
+  collectGoodsNosFromJsonFile(out, 'public/data/vendor-products.json', (j) =>
+    Array.isArray(j.products) ? j.products.map((product) => product && product.goodsNo) : []
+  );
+  collectGoodsNosFromJsonFile(out, 'scripts/watchlist.json', (j) =>
+    Array.isArray(j.favorites) ? j.favorites.map((product) => product && product.goodsNo) : []
+  );
+  await collectGoodsNosFromLiveRanking(out);
+  return Array.from(out).slice(0, CURATOR_MAX_GOODS);
 }
 
 function isFreshCuratorEntry(entry) {
@@ -257,9 +321,9 @@ async function main() {
     process.exit(0);
   }
 
-  const goodsList = collectGoodsNos();
+  const goodsList = await collectGoodsNos();
   if (goodsList.length === 0) {
-    console.log('stock-detail.json 에서 goodsNo 없음');
+    console.log('큐레이터 링크 생성 대상 goodsNo 없음');
     process.exit(0);
   }
 

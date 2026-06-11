@@ -8,6 +8,9 @@
 
 const FALLBACK_WWW =
   'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=';
+const CURATOR_CACHE_TTL_MS = 60 * 1000;
+
+let curatorLinksCache = null;
 
 function mobileUrlBasicAffiliate(goodsNo) {
   return (
@@ -145,24 +148,92 @@ function curatorDataUrl(req) {
   return `${proto}://${host}/data/curator-links.json`;
 }
 
-async function loadCuratorLinks(req) {
-  const url = curatorDataUrl(req);
-  if (!url) {
-    return { url: null, data: null, error: 'no Host header' };
+function parseGithubRepo() {
+  const rawRepo = String(process.env.GITHUB_REPO || 'kangbumhee/oy-stock').trim();
+  const rawOwner = String(process.env.GITHUB_OWNER || '').trim();
+  if (rawRepo.includes('/')) {
+    const parts = rawRepo.split('/');
+    return { owner: parts[0], repo: parts[1] };
   }
+  return { owner: rawOwner || 'kangbumhee', repo: rawRepo || 'oy-stock' };
+}
+
+function githubCuratorDataUrl() {
+  const explicit = String(process.env.CURATOR_LINKS_SOURCE_URL || '').trim();
+  if (explicit) return explicit;
+  const { owner, repo } = parseGithubRepo();
+  const branch = String(process.env.GITHUB_BRANCH || 'main').trim() || 'main';
+  const filePath =
+    String(process.env.CURATOR_LINKS_FILE || 'public/data/curator-links.json')
+      .trim()
+      .replace(/^\/+/, '') || 'public/data/curator-links.json';
+  return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(branch)}/${filePath}`;
+}
+
+async function fetchCuratorLinksFrom(url, source) {
+  if (!url) return { url, source, data: null, error: 'empty url' };
   try {
     const r = await fetch(url, {
       headers: { Accept: 'application/json' },
       cache: 'no-store'
     });
     if (!r.ok) {
-      return { url, data: null, error: 'HTTP ' + r.status };
+      return { url, source, data: null, error: 'HTTP ' + r.status };
     }
     const data = await r.json();
-    return { url, data, error: null };
+    return { url, source, data, error: null };
   } catch (e) {
-    return { url, data: null, error: String(e.message || e) };
+    return { url, source, data: null, error: String(e.message || e) };
   }
+}
+
+async function loadCuratorLinks(req) {
+  const now = Date.now();
+  if (
+    curatorLinksCache &&
+    now - curatorLinksCache.ts < CURATOR_CACHE_TTL_MS &&
+    curatorLinksCache.data
+  ) {
+    return { ...curatorLinksCache.result, cacheHit: true };
+  }
+
+  const urls = [
+    { url: githubCuratorDataUrl(), source: 'github_raw' },
+    { url: curatorDataUrl(req), source: 'host_static' }
+  ];
+  const errors = [];
+
+  for (const item of urls) {
+    if (!item.url) {
+      errors.push({ source: item.source, url: item.url, error: 'no Host header' });
+      continue;
+    }
+    const result = await fetchCuratorLinksFrom(item.url, item.source);
+    if (result.data && result.data.links) {
+      const saved = {
+        url: result.url,
+        source: result.source,
+        data: result.data,
+        error: null,
+        errors
+      };
+      curatorLinksCache = { ts: now, data: result.data, result: saved };
+      return saved;
+    }
+    errors.push({
+      source: result.source,
+      url: result.url,
+      error: result.error || 'invalid data'
+    });
+  }
+
+  return {
+    url: urls[0].url || urls[1].url || null,
+    source: 'none',
+    data: null,
+    error: errors.map((e) => `${e.source}: ${e.error}`).join(' | ') || 'load failed',
+    errors
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -195,7 +266,14 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { url: cacheUrl, data, error: loadError } = await loadCuratorLinks(req);
+  const {
+    url: cacheUrl,
+    source: cacheSource,
+    data,
+    error: loadError,
+    errors: loadErrors,
+    cacheHit
+  } = await loadCuratorLinks(req);
   const links = (data && data.links) || {};
   const entry = links[goodsNo];
   const shortenedUrl = entry && entry.shortenedUrl;
@@ -222,7 +300,10 @@ module.exports = async function handler(req, res) {
         format: 'debug',
         goodsNo,
         curatorLinksUrl: cacheUrl,
+        curatorLinksSource: cacheSource,
         loadError,
+        loadErrors,
+        cacheHit: !!cacheHit,
         cacheUpdatedAt: data && data.updatedAt,
         entry: entry || null,
         resolvedRedirect: redirectTarget,
@@ -246,6 +327,7 @@ module.exports = async function handler(req, res) {
         appUrl,
         androidIntentUrl,
         source,
+        curatorLinksSource: cacheSource,
         cacheUpdatedAt: data && data.updatedAt,
         loadError: loadError || undefined,
         affiliateActivityId: entry && entry.affiliateActivityId,

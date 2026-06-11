@@ -255,7 +255,7 @@ function getAuthJwt() {
 }
 
 function isValidGoodsNo(g) {
-  return /^A\d+$/i.test(String(g || '').trim());
+  return /^[AB]\d+$/i.test(String(g || '').trim());
 }
 
 module.exports = async function handler(req, res) {
