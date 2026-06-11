@@ -351,18 +351,22 @@ function githubCuratorDataUrl() {
 
 async function fetchCuratorLinksFrom(url, source) {
   if (!url) return { url, source, data: null, error: 'empty url' };
+  const requestUrl =
+    source === 'github_raw'
+      ? url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now()
+      : url;
   try {
-    const r = await fetch(url, {
+    const r = await fetch(requestUrl, {
       headers: { Accept: 'application/json' },
       cache: 'no-store'
     });
     if (!r.ok) {
-      return { url, source, data: null, error: 'HTTP ' + r.status };
+      return { url: requestUrl, source, data: null, error: 'HTTP ' + r.status };
     }
     const data = await r.json();
-    return { url, source, data, error: null };
+    return { url: requestUrl, source, data, error: null };
   } catch (e) {
-    return { url, source, data: null, error: String(e.message || e) };
+    return { url: requestUrl, source, data: null, error: String(e.message || e) };
   }
 }
 
