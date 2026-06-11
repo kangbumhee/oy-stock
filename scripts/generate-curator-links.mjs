@@ -231,6 +231,16 @@ function addGoodsNo(out, value) {
   if (/^[AB]\d+$/i.test(gn)) out.add(gn.toUpperCase());
 }
 
+function collectGoodsNosFromEnv(out) {
+  const raw = String(process.env.CURATOR_GOODS_NOS || '').trim();
+  if (!raw) return;
+  raw
+    .split(/[\s,;]+/)
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .forEach((goodsNo) => addGoodsNo(out, goodsNo));
+}
+
 function collectGoodsNosFromStockDetail(out) {
   try {
     const raw = fs.readFileSync(DETAIL_FILE, 'utf8');
@@ -279,6 +289,10 @@ async function collectGoodsNosFromLiveRanking(out) {
 }
 
 async function collectGoodsNos() {
+  const explicit = new Set();
+  collectGoodsNosFromEnv(explicit);
+  if (explicit.size > 0) return Array.from(explicit).slice(0, CURATOR_MAX_GOODS);
+
   const out = new Set();
   collectGoodsNosFromStockDetail(out);
   collectGoodsNosFromJsonFile(out, 'public/data/blog-posts.json', (j) =>

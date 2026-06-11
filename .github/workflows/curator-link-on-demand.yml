@@ -1,0 +1,58 @@
+name: Generate Curator Link On Demand
+
+on:
+  workflow_dispatch:
+    inputs:
+      goodsNos:
+        description: 'Comma or whitespace separated OliveYoung goods numbers'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: curator-link-on-demand-main
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install chromium --with-deps
+
+      - name: Generate requested curator links
+        env:
+          CURATOR_GOODS_NOS: ${{ inputs.goodsNos }}
+          CURATOR_MAX_GOODS: 25
+          CURATOR_INCLUDE_LIVE_RANKING: 0
+          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
+          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
+          OY_LINKAGE_JWT: ${{ secrets.OY_LINKAGE_JWT }}
+          OLIVEYOUNG_LINKAGE_STRING: ${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}
+          OLIVEYOUNG_LINKAGE_JWT: ${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
+        run: node scripts/generate-curator-links.mjs
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/curator-links.json
+          git diff --staged --quiet || git commit -m "🔗 curator link $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
+          git pull --rebase
+          git push

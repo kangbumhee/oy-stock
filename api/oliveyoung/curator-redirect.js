@@ -9,8 +9,11 @@
 const FALLBACK_WWW =
   'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=';
 const CURATOR_CACHE_TTL_MS = 60 * 1000;
+const GENERATION_REQUEST_TTL_MS = 10 * 60 * 1000;
+const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
 
 let curatorLinksCache = null;
+const generationRequestCache = new Map();
 
 function mobileUrlBasicAffiliate(goodsNo) {
   return (
@@ -139,6 +142,87 @@ function mobileBridgeHtml({ goodsNo, appUrl, webUrl, androidIntentUrl }) {
 </html>`;
 }
 
+function pendingCuratorHtml({ goodsNo, pollUrl, fallbackUrl, queueStatus }) {
+  const title = '사이트 여는 중';
+  const fallback = htmlEscape(fallbackUrl);
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>${title}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:#f6fbf8;color:#12251a}
+    main{width:100%;max-width:420px;padding:24px;border:1px solid #b9ead0;border-radius:12px;background:#fff;text-align:center;box-shadow:0 18px 50px rgba(20,80,45,.12)}
+    .spinner{width:44px;height:44px;margin:0 auto 16px;border:4px solid #dff6e8;border-top-color:#16a34a;border-radius:999px;animation:spin 1s linear infinite}
+    h1{font-size:22px;line-height:1.35;margin-bottom:8px}
+    p{font-size:14px;line-height:1.7;color:#496154;margin-bottom:14px}
+    a{min-height:44px;border-radius:8px;border:1px solid #17a34a;text-decoration:none;font:inherit;font-weight:900;display:flex;align-items:center;justify-content:center;color:#12833b;background:#f0fdf4}
+    small{display:block;margin-top:14px;color:#7a8c82;font-size:12px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="spinner" aria-hidden="true"></div>
+    <h1>사이트여는중</h1>
+    <p>큐레이터 링크를 확인하고 있습니다. 처음 보는 상품이면 자동 생성 후 열립니다.</p>
+    <a href="${fallback}" id="fallback">올리브영 상품 보기</a>
+    <small id="status">${htmlEscape(queueStatus || '링크 확인 중')}</small>
+  </main>
+  <script>
+    (function () {
+      var pollUrl = ${JSON.stringify(pollUrl)};
+      var fallbackUrl = ${JSON.stringify(fallbackUrl)};
+      var goodsNo = ${JSON.stringify(goodsNo)};
+      var status = document.getElementById('status');
+      var started = Date.now();
+      var timeoutMs = 95000;
+      var intervalMs = 4500;
+
+      function setStatus(text) {
+        if (status) status.textContent = text;
+      }
+
+      async function poll() {
+        try {
+          var res = await fetch(pollUrl, { cache: 'no-store' });
+          var data = await res.json();
+          if (
+            data &&
+            data.redirectUrl &&
+            data.source &&
+            data.source !== 'fallback_basic_utm'
+          ) {
+            setStatus('큐레이터 링크 확인 완료');
+            window.location.replace(data.redirectUrl);
+            return;
+          }
+          if (data && data.queueStatus) setStatus(data.queueStatus);
+        } catch (e) {
+          setStatus('링크 확인 재시도 중');
+        }
+
+        if (Date.now() - started > timeoutMs) {
+          setStatus('생성이 늦어져 일반 상품 페이지로 이동합니다. 잠시 후 다시 누르면 큐레이터 링크로 열릴 수 있습니다.');
+          window.setTimeout(function () {
+            window.location.replace(fallbackUrl);
+          }, 1200);
+          return;
+        }
+        window.setTimeout(poll, intervalMs);
+      }
+
+      setStatus('링크 생성 작업 확인 중: ' + goodsNo);
+      window.setTimeout(poll, 1800);
+    })();
+  </script>
+</body>
+</html>`;
+}
+
 function curatorDataUrl(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https')
     .split(',')[0]
@@ -164,6 +248,93 @@ function parseGithubRepo() {
     return { owner: parts[0], repo: parts[1] };
   }
   return { owner: rawOwner || 'kangbumhee', repo: rawRepo || 'oy-stock' };
+}
+
+function normalizeGoodsNo(goodsNo) {
+  const gn = String(goodsNo || '').trim().toUpperCase();
+  return /^[AB]\d+$/.test(gn) ? gn : '';
+}
+
+function githubToken() {
+  return (
+    String(process.env.CURATOR_GITHUB_TOKEN || '').trim() ||
+    String(process.env.GITHUB_TOKEN || '').trim()
+  );
+}
+
+function pruneGenerationRequestCache() {
+  const now = Date.now();
+  for (const [goodsNo, item] of generationRequestCache) {
+    if (!item || now - item.ts > GENERATION_REQUEST_TTL_MS) {
+      generationRequestCache.delete(goodsNo);
+    }
+  }
+}
+
+async function triggerCuratorGeneration(goodsNo) {
+  const normalized = normalizeGoodsNo(goodsNo);
+  if (!normalized) return { ok: false, status: '상품번호 확인 실패' };
+
+  pruneGenerationRequestCache();
+  const cached = generationRequestCache.get(normalized);
+  if (cached && Date.now() - cached.ts < GENERATION_REQUEST_TTL_MS) {
+    return {
+      ...cached.result,
+      throttled: true,
+      status: cached.result.status || '링크 생성 작업이 이미 요청됨'
+    };
+  }
+
+  const token = githubToken();
+  if (!token) {
+    const result = { ok: false, status: 'GitHub 토큰 미설정으로 자동 생성 요청 실패' };
+    generationRequestCache.set(normalized, { ts: Date.now(), result });
+    return result;
+  }
+
+  const { owner, repo } = parseGithubRepo();
+  const workflow = String(process.env.CURATOR_ON_DEMAND_WORKFLOW || ON_DEMAND_WORKFLOW_FILE).trim();
+  const branch = String(process.env.GITHUB_BRANCH || 'main').trim() || 'main';
+  const url =
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}` +
+    `/actions/workflows/${encodeURIComponent(workflow)}/dispatches`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'oy-stock-curator-redirect',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify({
+        ref: branch,
+        inputs: { goodsNos: normalized }
+      })
+    });
+
+    const text = await response.text();
+    const ok = response.status === 204 || response.ok;
+    const result = ok
+      ? { ok: true, status: '큐레이터 링크 생성 작업 요청됨' }
+      : {
+          ok: false,
+          status: `GitHub Action 요청 실패: HTTP ${response.status}`,
+          detail: text.slice(0, 200)
+        };
+    generationRequestCache.set(normalized, { ts: Date.now(), result });
+    return result;
+  } catch (e) {
+    const result = {
+      ok: false,
+      status: 'GitHub Action 요청 실패',
+      detail: String(e.message || e)
+    };
+    generationRequestCache.set(normalized, { ts: Date.now(), result });
+    return result;
+  }
 }
 
 function githubCuratorDataUrl() {
@@ -195,9 +366,10 @@ async function fetchCuratorLinksFrom(url, source) {
   }
 }
 
-async function loadCuratorLinks(req) {
+async function loadCuratorLinks(req, options = {}) {
   const now = Date.now();
   if (
+    !options.forceRefresh &&
     curatorLinksCache &&
     now - curatorLinksCache.ts < CURATOR_CACHE_TTL_MS &&
     curatorLinksCache.data
@@ -350,6 +522,8 @@ module.exports = async function handler(req, res) {
   const categoryNumber = String(q.categoryNumber || q.category || '').trim();
   const jsonMode = q.format === 'json';
   const debugMode = q.format === 'debug';
+  const noTrigger = q.noTrigger === '1' || q.noTrigger === 'true';
+  const forceRefresh = q.refresh === '1' || q.refresh === 'true';
 
   if (!goodsNo) {
     res.statusCode = 400;
@@ -365,7 +539,7 @@ module.exports = async function handler(req, res) {
     error: loadError,
     errors: loadErrors,
     cacheHit
-  } = await loadCuratorLinks(req);
+  } = await loadCuratorLinks(req, { forceRefresh });
   const links = (data && data.links) || {};
   const entry = links[goodsNo];
   const shortenedUrl = entry && entry.shortenedUrl;
@@ -375,8 +549,9 @@ module.exports = async function handler(req, res) {
       : null;
   const basicLong = mobileUrlBasicAffiliate(goodsNo);
 
+  const allowLiveLink = process.env.ENABLE_LIVE_CURATOR_LINKS === '1';
   const liveLink =
-    !shortenedUrl && !cachedLong
+    allowLiveLink && !shortenedUrl && !cachedLong
       ? await createLiveCuratorLink(req, goodsNo, categoryNumber)
       : null;
 
@@ -394,6 +569,16 @@ module.exports = async function handler(req, res) {
         : liveLink && liveLink.ok && liveLink.originalUrl
           ? 'live_original'
           : 'fallback_basic_utm';
+  const queueRequest =
+    source === 'fallback_basic_utm' && !noTrigger
+      ? await triggerCuratorGeneration(goodsNo)
+      : null;
+  const queueStatus =
+    queueRequest && queueRequest.status
+      ? queueRequest.status
+      : source === 'fallback_basic_utm'
+        ? '큐레이터 링크 생성 대기 중'
+        : null;
   const appUrl =
     cachedLong ||
     (liveLink && liveLink.ok && liveLink.originalUrl) ||
@@ -415,10 +600,11 @@ module.exports = async function handler(req, res) {
         cacheUpdatedAt: data && data.updatedAt,
         entry: entry || null,
         liveLink,
+        queueRequest,
         resolvedRedirect: redirectTarget,
         source,
         note:
-          'curator-links.json 은 stock.yml → generate-curator-links.mjs 로 갱신. OY_CURATOR_COOKIE 필요.'
+          'curator-links.json 은 stock.yml 또는 curator-link-on-demand.yml → generate-curator-links.mjs 로 갱신. OY_REFRESH_COOKIE 필요.'
       })
     );
     return;
@@ -447,10 +633,41 @@ module.exports = async function handler(req, res) {
           liveLink && !liveLink.ok
             ? liveLink.error || liveLink.landingBody || 'live link failed'
             : undefined,
+        queueStatus,
+        queueRequest:
+          queueRequest && {
+            ok: queueRequest.ok,
+            throttled: !!queueRequest.throttled,
+            status: queueRequest.status,
+            detail: queueRequest.detail
+          },
         affiliateActivityId:
           (entry && entry.affiliateActivityId) ||
           (liveLink && liveLink.ok ? liveLink.affiliateActivityId : undefined),
         generatedAt: entry && entry.generatedAt
+      })
+    );
+    return;
+  }
+
+  if (source === 'fallback_basic_utm' && queueRequest && queueRequest.ok) {
+    const base = publicBaseUrl(req);
+    const poll = new URL('/api/oliveyoung/curator-redirect', base);
+    poll.searchParams.set('goodsNo', goodsNo);
+    poll.searchParams.set('format', 'json');
+    poll.searchParams.set('refresh', '1');
+    poll.searchParams.set('noTrigger', '1');
+    if (categoryNumber) poll.searchParams.set('categoryNumber', categoryNumber);
+
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(
+      pendingCuratorHtml({
+        goodsNo,
+        pollUrl: poll.toString(),
+        fallbackUrl: basicLong,
+        queueStatus
       })
     );
     return;
