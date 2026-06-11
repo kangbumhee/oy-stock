@@ -200,6 +200,11 @@ function pendingCuratorHtml({ goodsNo, pollUrl, fallbackUrl, queueStatus }) {
             window.location.replace(data.redirectUrl);
             return;
           }
+          if (data && data.generationError) {
+            setStatus('상품 페이지로 이동합니다.');
+            window.location.replace(fallbackUrl);
+            return;
+          }
           if (data && data.queueStatus) setStatus('사이트 연결 준비 중');
         } catch (e) {
           setStatus('다시 연결 중');
@@ -585,6 +590,16 @@ module.exports = async function handler(req, res) {
     entry && entry.originalUrl && String(entry.originalUrl).trim()
       ? entry.originalUrl
       : null;
+  const cachedGenerationError =
+    entry && !shortenedUrl && !cachedLong && entry.error
+      ? String(entry.error)
+      : '';
+  const cachedGenerationErrorAt =
+    cachedGenerationError && entry.generatedAt ? Date.parse(entry.generatedAt) : NaN;
+  const suppressQueueForCachedError =
+    cachedGenerationError &&
+    !Number.isNaN(cachedGenerationErrorAt) &&
+    Date.now() - cachedGenerationErrorAt < 6 * 60 * 60 * 1000;
   const basicLong = mobileUrlBasicAffiliate(goodsNo);
 
   const allowLiveLink = process.env.ENABLE_LIVE_CURATOR_LINKS === '1';
@@ -608,7 +623,7 @@ module.exports = async function handler(req, res) {
           ? 'live_original'
           : 'fallback_basic_utm';
   const queueRequest =
-    source === 'fallback_basic_utm' && !noTrigger
+    source === 'fallback_basic_utm' && !noTrigger && !suppressQueueForCachedError
       ? await triggerCuratorGeneration(goodsNo)
       : null;
   const queueStatus =
@@ -671,6 +686,7 @@ module.exports = async function handler(req, res) {
           liveLink && !liveLink.ok
             ? liveLink.error || liveLink.landingBody || 'live link failed'
             : undefined,
+        generationError: cachedGenerationError || undefined,
         queueStatus,
         queueRequest:
           queueRequest && {
