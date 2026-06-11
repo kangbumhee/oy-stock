@@ -148,6 +148,14 @@ function curatorDataUrl(req) {
   return `${proto}://${host}/data/curator-links.json`;
 }
 
+function publicBaseUrl(req) {
+  const proto = (req.headers['x-forwarded-proto'] || 'https')
+    .split(',')[0]
+    .trim();
+  const host = req.headers.host;
+  return host ? `${proto}://${host}` : '';
+}
+
 function parseGithubRepo() {
   const rawRepo = String(process.env.GITHUB_REPO || 'kangbumhee/oy-stock').trim();
   const rawOwner = String(process.env.GITHUB_OWNER || '').trim();
@@ -236,6 +244,89 @@ async function loadCuratorLinks(req) {
   };
 }
 
+async function fetchJson(url, init) {
+  const r = await fetch(url, init);
+  const text = await r.text();
+  let json = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return { ok: false, status: r.status, json: null, text };
+  }
+  return { ok: r.ok, status: r.status, json, text };
+}
+
+async function createLiveCuratorLink(req, goodsNo, categoryNumber) {
+  const base = publicBaseUrl(req);
+  if (!base) return { ok: false, error: 'missing host' };
+
+  try {
+    const landingPayload = { goodsNo };
+    if (categoryNumber) landingPayload.categoryNumber = categoryNumber;
+
+    const landing = await fetchJson(`${base}/api/oliveyoung/landing-proxy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(landingPayload)
+    });
+    const affiliateActivityId =
+      landing.json && landing.json.affiliateActivityId
+        ? String(landing.json.affiliateActivityId)
+        : '';
+    const affiliatePartnerId =
+      landing.json && landing.json.affiliatePartnerId
+        ? String(landing.json.affiliatePartnerId)
+        : '';
+
+    if (!affiliateActivityId) {
+      return {
+        ok: false,
+        error: 'landing_failed',
+        landingStatus: landing.status,
+        landingBody: landing.json || landing.text.slice(0, 200)
+      };
+    }
+
+    const originalUrl =
+      mobileUrlBasicAffiliate(goodsNo) +
+      '&utm_content=OY_' +
+      encodeURIComponent(affiliateActivityId);
+
+    const shorten = await fetchJson(`${base}/api/oliveyoung/shorten-proxy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({
+        originalUrl,
+        registerId: affiliatePartnerId || undefined
+      })
+    });
+    const row =
+      shorten.json &&
+      shorten.json.data &&
+      Array.isArray(shorten.json.data) &&
+      shorten.json.data[0];
+    const shortenedUrl = row && row.shortenedUrl ? String(row.shortenedUrl) : '';
+
+    return {
+      ok: true,
+      shortenedUrl: shortenedUrl || null,
+      originalUrl,
+      affiliateActivityId,
+      affiliatePartnerId: affiliatePartnerId || null,
+      shortenStatus: shorten.status,
+      shortenBody: shortenedUrl ? undefined : shorten.json || shorten.text.slice(0, 200)
+    };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -256,6 +347,7 @@ module.exports = async function handler(req, res) {
 
   const q = req.query || {};
   const goodsNo = String(q.goodsNo || '').trim();
+  const categoryNumber = String(q.categoryNumber || q.category || '').trim();
   const jsonMode = q.format === 'json';
   const debugMode = q.format === 'debug';
 
@@ -283,13 +375,29 @@ module.exports = async function handler(req, res) {
       : null;
   const basicLong = mobileUrlBasicAffiliate(goodsNo);
 
-  let redirectTarget = shortenedUrl || cachedLong || basicLong;
+  const liveLink =
+    !shortenedUrl && !cachedLong
+      ? await createLiveCuratorLink(req, goodsNo, categoryNumber)
+      : null;
+
+  let redirectTarget =
+    shortenedUrl ||
+    cachedLong ||
+    (liveLink && liveLink.ok && (liveLink.shortenedUrl || liveLink.originalUrl)) ||
+    basicLong;
   let source = shortenedUrl
     ? 'cache_shortened'
     : cachedLong
       ? 'cache_original'
-      : 'fallback_basic_utm';
-  const appUrl = cachedLong || basicLong;
+      : liveLink && liveLink.ok && liveLink.shortenedUrl
+        ? 'live_shortened'
+        : liveLink && liveLink.ok && liveLink.originalUrl
+          ? 'live_original'
+          : 'fallback_basic_utm';
+  const appUrl =
+    cachedLong ||
+    (liveLink && liveLink.ok && liveLink.originalUrl) ||
+    basicLong;
   const androidIntentUrl = oliveYoungAndroidIntentUrl(appUrl, redirectTarget);
 
   if (debugMode) {
@@ -306,6 +414,7 @@ module.exports = async function handler(req, res) {
         cacheHit: !!cacheHit,
         cacheUpdatedAt: data && data.updatedAt,
         entry: entry || null,
+        liveLink,
         resolvedRedirect: redirectTarget,
         source,
         note:
@@ -321,8 +430,12 @@ module.exports = async function handler(req, res) {
     res.end(
       JSON.stringify({
         success: true,
-        shortenedUrl: shortenedUrl || null,
-        longUrl: cachedLong || basicLong,
+        shortenedUrl:
+          shortenedUrl || (liveLink && liveLink.ok && liveLink.shortenedUrl) || null,
+        longUrl:
+          cachedLong ||
+          (liveLink && liveLink.ok && liveLink.originalUrl) ||
+          basicLong,
         redirectUrl: redirectTarget,
         appUrl,
         androidIntentUrl,
@@ -330,7 +443,13 @@ module.exports = async function handler(req, res) {
         curatorLinksSource: cacheSource,
         cacheUpdatedAt: data && data.updatedAt,
         loadError: loadError || undefined,
-        affiliateActivityId: entry && entry.affiliateActivityId,
+        liveError:
+          liveLink && !liveLink.ok
+            ? liveLink.error || liveLink.landingBody || 'live link failed'
+            : undefined,
+        affiliateActivityId:
+          (entry && entry.affiliateActivityId) ||
+          (liveLink && liveLink.ok ? liveLink.affiliateActivityId : undefined),
         generatedAt: entry && entry.generatedAt
       })
     );

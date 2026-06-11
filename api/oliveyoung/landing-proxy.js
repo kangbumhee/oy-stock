@@ -254,6 +254,14 @@ function getAuthJwt() {
   return jwt;
 }
 
+function getCookieHeaderForRequest() {
+  return (
+    (process.env.OY_REFRESH_COOKIE || '').trim() ||
+    (process.env.OY_CURATOR_COOKIE || '').trim() ||
+    buildSessionCookie()
+  );
+}
+
 function isValidGoodsNo(g) {
   return /^[AB]\d+$/i.test(String(g || '').trim());
 }
@@ -342,19 +350,23 @@ module.exports = async function handler(req, res) {
     let lastData = null;
 
     for (const bodyObj of attempts) {
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Origin: 'https://m.oliveyoung.co.kr',
+        Referer:
+          'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search',
+        'x-api-key': generateApiKey(),
+        authorization: jwt,
+        'User-Agent':
+          'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36'
+      };
+      const cookieHeader = getCookieHeaderForRequest();
+      if (cookieHeader) headers.Cookie = cookieHeader;
+
       const response = await fetch(LANDING_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Origin: 'https://m.oliveyoung.co.kr',
-          Referer:
-            'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search',
-          'x-api-key': generateApiKey(),
-          authorization: jwt,
-          'User-Agent':
-            'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36'
-        },
+        headers,
         body: JSON.stringify(bodyObj)
       });
 

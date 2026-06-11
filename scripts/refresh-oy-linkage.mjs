@@ -27,6 +27,7 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 
 const ENV_KEY = 'OLIVEYOUNG_LINKAGE_STRING';
+const COOKIE_ENV_KEY = 'OY_REFRESH_COOKIE';
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 const MS_PER_DAY = 86400000;
 
@@ -296,6 +297,61 @@ async function vercelPatchEnv(projectId, envRecordId, value, token, teamId) {
   }
 }
 
+async function vercelCreateEnv(projectId, key, value, targets, token, teamId) {
+  const url = `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/env${teamQs(teamId)}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify([
+      {
+        key,
+        value,
+        type: 'encrypted',
+        target: targets
+      }
+    ])
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(`Vercel create env ${key} failed ${r.status}: ${t}`);
+  }
+}
+
+function envTargets(record) {
+  if (!record) return [];
+  if (Array.isArray(record.target)) return record.target.map(String);
+  return record.target ? [String(record.target)] : [];
+}
+
+function matchesTarget(record, targetFilter) {
+  if (!targetFilter.length) return true;
+  const targets = envTargets(record);
+  return targets.some((target) => targetFilter.includes(target));
+}
+
+async function upsertVercelEnv(projectId, envs, key, value, targetFilter, token, teamId) {
+  let toPatch = (Array.isArray(envs) ? envs : []).filter(
+    (e) => e && e.key === key && matchesTarget(e, targetFilter)
+  );
+
+  if (toPatch.length === 0) {
+    const targets = targetFilter.length ? targetFilter : ['production'];
+    console.log('   CREATE', key, targets.join(','), '…');
+    await vercelCreateEnv(projectId, key, value, targets, token, teamId);
+    console.log('   [성공]', key, '생성 완료');
+    return;
+  }
+
+  for (const e of toPatch) {
+    console.log('   PATCH', key, e.target, e.id, '…');
+    await vercelPatchEnv(projectId, e.id, value, token, teamId);
+    console.log('   [성공]', key, e.target, e.id);
+  }
+}
+
 async function main() {
   const token = (process.env.VERCEL_TOKEN || '').trim();
   const projectId = (process.env.VERCEL_PROJECT_ID || '').trim();
@@ -379,16 +435,17 @@ async function main() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  let toPatch = (Array.isArray(envs) ? envs : []).filter(
-    (e) => e && e.key === ENV_KEY
-  );
-  if (targetFilter.length > 0) {
-    toPatch = toPatch.filter((e) => targetFilter.includes(e.target));
-  }
-
-  if (toPatch.length === 0) {
-    const em = `일치하는 env 없음. Vercel Project에 ${ENV_KEY} 추가 후 재실행`;
-    console.error('[실패]', em);
+  try {
+    await upsertVercelEnv(projectId, envs, ENV_KEY, linkageHex, targetFilter, token, teamId);
+    const fullCookie = buildCookie();
+    if (fullCookie) {
+      await upsertVercelEnv(projectId, envs, COOKIE_ENV_KEY, fullCookie, targetFilter, token, teamId);
+    } else {
+      console.warn(`[경고] ${COOKIE_ENV_KEY} 반영 생략 — 쿠키 원본 없음`);
+    }
+  } catch (err) {
+    const em = err.message || String(err);
+    console.error('   [실패]', em);
     await sendLinkageExpiryAlert({
       vercelError: em,
       ...(jwtAlertCtx || {})
@@ -396,23 +453,7 @@ async function main() {
     process.exit(1);
   }
 
-  for (const e of toPatch) {
-    try {
-      console.log('   PATCH', e.target, e.id, '…');
-      await vercelPatchEnv(projectId, e.id, linkageHex, token, teamId);
-      console.log('   [성공]', e.target, e.id);
-    } catch (err) {
-      const em = err.message || String(err);
-      console.error('   [실패]', e.target, e.id, em);
-      await sendLinkageExpiryAlert({
-        vercelError: `${e.target} / ${e.id}: ${em}`,
-        ...(jwtAlertCtx || {})
-      });
-      process.exit(1);
-    }
-  }
-
-  console.log('[완료] OLIVEYOUNG_LINKAGE_STRING Vercel 환경변수 반영 완료.');
+  console.log('[완료] Vercel 큐레이터 인증 환경변수 반영 완료.');
 
   const redeployed = await triggerVercelRedeploy();
   if (!redeployed) {
