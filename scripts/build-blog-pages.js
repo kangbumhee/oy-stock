@@ -350,7 +350,7 @@ function postCardImageFile(post) {
 }
 
 function isManualReviewProfile(profile) {
-  return false;
+  return Boolean(profile && profile.id === 'torriden-dive-in-serum');
 }
 
 function manualReviewAssetFilesForProfile(profile) {
@@ -454,6 +454,18 @@ function buildAlignedBlogCopy(post, profile) {
 
 function buildReviewBlogCopy(post, profile) {
   const aligned = buildAlignedBlogCopy(post, profile);
+  if (isManualReviewProfile(profile)) {
+    const profileCopy = buildBlogCopy(post, profile);
+    return {
+      ...aligned,
+      photoTitle: profileCopy.photoTitle || aligned.photoTitle,
+      photoLead: profileCopy.photoLead || aligned.photoLead,
+      captions: Array.isArray(profileCopy.captions) && profileCopy.captions.length
+        ? profileCopy.captions
+        : aligned.captions
+    };
+  }
+
   return {
     ...aligned,
     captions: buildAlignedCaptions(post)
@@ -2130,6 +2142,12 @@ function hasFlag(name) {
   return process.argv.includes(name);
 }
 
+function readStringArg(name) {
+  const index = process.argv.indexOf(name);
+  if (index >= 0 && process.argv[index + 1]) return process.argv[index + 1];
+  return '';
+}
+
 function parseArgs() {
   const daily = hasFlag('--daily');
   const limit = readNumberArg('--limit', daily ? 50 : 1, 50);
@@ -2141,6 +2159,7 @@ function parseArgs() {
     scanLimit: Math.max(scanLimit, limit),
     newOnly: daily || hasFlag('--new-only'),
     refreshExistingOnly: hasFlag('--refresh-existing-only'),
+    onlySlug: readStringArg('--only-slug'),
     skipIfNoNew:
       (daily || hasFlag('--skip-if-no-new')) &&
       !hasFlag('--refresh-existing') &&
@@ -2200,6 +2219,43 @@ async function prepareGeneratedPosts(rankingPosts, existingPosts, args) {
 async function main() {
   const args = parseArgs();
   const existingPosts = await readManifest();
+  if (args.onlySlug && args.refreshExistingOnly) {
+    const targetIndex = existingPosts.findIndex((post) => post.slug === args.onlySlug);
+    if (targetIndex < 0) {
+      throw new Error(`blog post not found for --only-slug ${args.onlySlug}`);
+    }
+
+    await fs.mkdir(blogDir, { recursive: true });
+    await fs.mkdir(imageDir, { recursive: true });
+
+    const refreshedTarget = await renderReviewAssetsForPost(
+      null,
+      refreshPostCopy({
+        ...existingPosts[targetIndex],
+        modifiedAt: new Date().toISOString()
+      })
+    );
+    if (!refreshedTarget.reviewImageFile) {
+      throw new Error(`review assets not ready for --only-slug ${args.onlySlug}`);
+    }
+
+    const posts = existingPosts
+      .map((post, index) => (index === targetIndex ? refreshedTarget : post))
+      .filter(isSupportedBlogPost)
+      .sort(sortBlogPosts);
+    const dir = path.join(blogDir, refreshedTarget.slug);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'index.html'), blogPostTemplate(refreshedTarget, posts), 'utf8');
+    await fs.writeFile(path.join(blogDir, 'index.html'), blogIndexTemplate(posts), 'utf8');
+    await writeManifest(posts);
+    await updateHomeBlogBlock(posts);
+    await updateSitemapXml(posts);
+    await updateRssXml(posts);
+    await updateSiteMapHtml(posts);
+    console.log(`refreshed 1 blog post: ${refreshedTarget.slug}`);
+    return;
+  }
+
   const rankingPosts = await fetchViewRanking(args.scanLimit);
   const generatedPosts = args.refreshExistingOnly
     ? []
