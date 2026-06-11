@@ -453,9 +453,11 @@ function buildAlignedBlogCopy(post, profile) {
 }
 
 function buildReviewBlogCopy(post, profile) {
-  const base = buildBlogCopy(post, profile);
-  if (base && Array.isArray(base.captions) && base.captions.length) return base;
-  return buildAlignedBlogCopy(post, profile);
+  const aligned = buildAlignedBlogCopy(post, profile);
+  return {
+    ...aligned,
+    captions: buildAlignedCaptions(post)
+  };
 }
 
 function refreshPostCopy(post) {
