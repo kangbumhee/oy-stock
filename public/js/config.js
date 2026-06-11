@@ -63,6 +63,11 @@ var CONFIG = {
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
+  /** 검색/인기템 목록 상품을 백그라운드로 큐레이터 링크 생성 큐에 넣음 */
+  CURATOR_QUEUE_PATH: '/api/oliveyoung/curator-queue',
+  CURATOR_QUEUE_SEARCH_LIMIT: 50,
+  CURATOR_QUEUE_HOT_LIMIT: 80,
+  CURATOR_QUEUE_FAVORITES_LIMIT: 50,
   LANDING_PROXY_PATH: '/api/oliveyoung/landing-proxy',
   SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',
   AFFILIATE_REGISTER_ID: '4ee076cc92da4447a1b4b42c590e4495',

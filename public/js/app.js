@@ -32,6 +32,7 @@ var App = {
 
   _searchSeq: 0,
   _searchAbortCtrl: null,
+  _curatorQueueCache: {},
   autoBuyGoodsNo: '',
   autoBuyTriggered: false,
 
@@ -340,6 +341,64 @@ var App = {
       .filter(function (gn) {
         return gn !== '';
       });
+  },
+
+  _queueCuratorLinks: function (products, source, limit) {
+    try {
+      if (!CONFIG.CURATOR_QUEUE_PATH || !products || !products.length) return;
+      var now = Date.now();
+      var max = parseInt(String(limit || CONFIG.CURATOR_QUEUE_SEARCH_LIMIT || 50), 10);
+      if (!isFinite(max) || max < 1) max = 50;
+      var seen = {};
+      var goodsNos = this._goodsNosFromProducts(products)
+        .filter(function (gn) {
+          return /^[AB]\d+$/i.test(gn);
+        })
+        .filter(function (gn) {
+          var key = String(gn).toUpperCase();
+          if (seen[key]) return false;
+          seen[key] = true;
+          return true;
+        })
+        .filter(function (gn) {
+          var last = Number(App._curatorQueueCache[gn] || 0);
+          return !last || now - last > 30 * 60 * 1000;
+        })
+        .slice(0, max);
+      if (!goodsNos.length) return;
+      goodsNos.forEach(function (gn) {
+        App._curatorQueueCache[gn] = now;
+      });
+      window.setTimeout(function () {
+        fetch(CONFIG.CURATOR_QUEUE_PATH, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            source: source || 'list',
+            goodsNos: goodsNos
+          }),
+          keepalive: goodsNos.length <= 20
+        })
+          .then(function (r) {
+            return r.json().catch(function () {
+              return null;
+            });
+          })
+          .then(function (data) {
+            if (data && data.queuedCount) {
+              console.log('[oy-stock] 큐레이터 링크 준비 요청:', data.queuedCount, source || 'list');
+            }
+          })
+          .catch(function (e) {
+            console.warn('curator queue skipped', e && e.message ? e.message : e);
+          });
+      }, 250);
+    } catch (e) {
+      console.warn('queueCuratorLinks', e);
+    }
   },
 
   _productMetaForGoodsNo: function (goodsNo) {
@@ -685,6 +744,7 @@ var App = {
         self.hotFetchedAt = Date.now();
         self.hotFetchedRange = self.hotRange;
         self.hotFetchedCategory = self.hotCategory;
+        self._queueCuratorLinks(self.hotProducts, 'hot', CONFIG.CURATOR_QUEUE_HOT_LIMIT || 80);
         if (showRefreshFeedback) {
           self._setHotRefreshState('success', '저장 데이터 확인됨', 2400);
           UI.showSyncStatus('인기템 데이터 확인 완료', false, 1800);
@@ -868,6 +928,7 @@ var App = {
     UI.renderProducts(this.products, this._detailDataForSearchList(this.products), {
       searchListCacheMode: true
     });
+    this._queueCuratorLinks(this.products, 'search', CONFIG.CURATOR_QUEUE_SEARCH_LIMIT || 50);
     this._tryAutoBuyFromUrl();
     this._renderVelocityRanking();
     if (this.products && this.products.length) this._startVelocityAutoRefresh();
@@ -1247,6 +1308,7 @@ var App = {
   _renderFavorites: function () {
     var favs = Storage.getFavorites();
     UI.renderFavorites(favs, this.detailData);
+    this._queueCuratorLinks(favs, 'favorites', CONFIG.CURATOR_QUEUE_FAVORITES_LIMIT || 50);
     void this._enrichFavorites(favs);
   },
 
