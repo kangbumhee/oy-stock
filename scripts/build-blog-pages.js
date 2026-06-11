@@ -358,7 +358,8 @@ function isManualReviewProfile(profile) {
         'mediheal-sun-serum',
         'mediheal-gel-mask',
         'tonymoly-shocking-lip-tint',
-        'mediheal-repair-serum'
+        'mediheal-repair-serum',
+        'foddle-cleansing-balm'
       ].includes(profile.id)
   );
 }
