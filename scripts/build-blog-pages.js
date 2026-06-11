@@ -14,7 +14,7 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260611-review-photo-v6';
+const BLOG_ASSET_VERSION = '20260611-review-photo-v10';
 const MANUAL_REVIEW_ASSET_VERSION = '20260611-manual-review';
 const MAX_SOURCE_GALLERY_IMAGES = 8;
 const MIN_SOURCE_GALLERY_IMAGES = 3;
@@ -839,7 +839,7 @@ ${analyticsTag()}
     .lead{max-width:760px;color:#475569;font-weight:700}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:26px}
     .post-card{display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #dfead8;border-radius:8px;background:#fff;text-decoration:none;color:#172018}
-    .post-card img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;object-position:center;border-radius:6px;background:#fff}
+    .post-card img{width:100%;height:auto;aspect-ratio:40/21;object-fit:cover;object-position:center;border-radius:6px;background:#fff}
     .post-card .category{font-size:12px;color:#315b11;font-weight:900}
     .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}
     .card-meta span{display:inline-flex;align-items:center;border-radius:999px;background:#f0f8e9;color:#426031;padding:2px 8px;font-size:11px;font-weight:900;line-height:1.5}
@@ -1406,7 +1406,7 @@ function reviewSceneHtmlV2(post, entries, mode, index = 0) {
   const visual = (copy && copy.visual) || (profile && profile.visual) || {};
   const rawKind = String(visual.kind || '').toLowerCase();
   const kind = rawKind.replace(/[^a-z0-9-]/g, '') || 'bottle';
-  const main = pickSource(entries, mode === 'cover' ? 0 : index + 1) || entries[0];
+  const main = pickSource(entries, mode === 'cover' ? 1 : index + 1) || entries[0];
   const sideA = pickSource(entries, index + 2) || main;
   const sideB = pickSource(entries, index + 3) || main;
   const scene = index % 8;
@@ -1629,7 +1629,7 @@ function reviewSceneHtmlPhoto(post, entries, mode, index = 0) {
   const kind = visual.kind;
   const scene = index % 9;
   const variant = Math.floor(index / 9) % 2;
-  const main = pickSource(entries, mode === 'cover' ? 0 : index + 1) || entries[0];
+  const main = pickSource(entries, mode === 'cover' ? 1 : index + 1) || entries[0];
   const altA = pickSource(entries, index + 3) || main;
   const dimensions = {
     cover: [1200, 630],
@@ -1686,7 +1686,15 @@ function reviewSceneHtmlPhoto(post, entries, mode, index = 0) {
     .plant b:nth-child(2){left:65px;top:24px;transform:rotate(-28deg)}
     .plant b:nth-child(3){left:48px;top:62px;transform:rotate(32deg)}
     .plant b:nth-child(4){left:66px;top:100px;transform:rotate(-15deg)}
-    .product-zone{position:absolute;left:${productLeft};top:${productTop};width:${productSize};height:${productSize};z-index:5;transform:rotate(${productRotate}) scale(${productScale});filter:drop-shadow(0 30px 34px rgba(20,55,60,.18))}
+    .product-zone{position:absolute;left:${productLeft};top:${productTop};width:${productSize};height:${productSize};z-index:5;transform:rotate(${productRotate}) scale(${productScale});filter:drop-shadow(0 30px 34px rgba(20,55,60,.18));display:none}
+    .real-product{position:absolute;z-index:6;left:${mode === 'cover' ? '68px' : mode === 'detail' ? '76px' : productLeft};top:${mode === 'cover' ? '58px' : mode === 'detail' ? '176px' : productTop};width:${mode === 'cover' ? '560px' : mode === 'detail' ? '610px' : '470px'};height:${mode === 'cover' ? '488px' : mode === 'detail' ? '660px' : '470px'};display:flex;align-items:center;justify-content:center;padding:${mode === 'cover' ? '26px' : '22px'};border-radius:${mode === 'photo' ? '34px' : '42px'};background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(255,255,255,.76));border:1px solid rgba(255,255,255,.96);box-shadow:0 34px 90px rgba(23,64,72,.18);backdrop-filter:blur(8px);transform:rotate(${productRotate});overflow:hidden}
+    .real-product img{width:100%;height:100%;object-fit:contain;border-radius:${mode === 'photo' ? '24px' : '28px'};background:linear-gradient(145deg,#fff,${palette.soft});filter:contrast(1.04) saturate(1.05)}
+    .real-product:before{content:'';position:absolute;left:46px;top:20px;width:118px;height:34px;border-radius:12px;background:rgba(255,255,255,.78);box-shadow:0 10px 22px rgba(20,55,60,.09);transform:rotate(-5deg);z-index:2}
+    .real-product:after{content:'';position:absolute;right:34px;bottom:26px;width:120px;height:34px;border-radius:999px;background:${palette.warm};opacity:.72;filter:blur(.2px);transform:rotate(-8deg)}
+    .real-alt{position:absolute;z-index:4;right:${mode === 'photo' ? '44px' : '86px'};top:${mode === 'photo' ? '44px' : '86px'};width:${mode === 'photo' ? '178px' : '250px'};height:${mode === 'photo' ? '178px' : '250px'};padding:14px;border-radius:28px;background:rgba(255,255,255,.88);box-shadow:0 24px 54px rgba(20,55,60,.14);transform:rotate(${scene % 2 ? '7deg' : '-6deg'});overflow:hidden}
+    .real-alt img{width:100%;height:100%;object-fit:contain;border-radius:18px;background:#fff}
+    .cover .real-alt{display:none}
+    .cover .real-product img{object-fit:cover;object-position:38% 46%;transform:scale(1.12)}
     .mock{position:absolute;inset:0;color:#17323c}
     .mock b,.mock em,.mock i{font-style:normal}
     .brand{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:22px;font-weight:900;letter-spacing:0;color:rgba(255,255,255,.9);text-align:center;white-space:nowrap}
@@ -1736,7 +1744,7 @@ function reviewSceneHtmlPhoto(post, entries, mode, index = 0) {
     .meta{position:absolute;left:${mode === 'photo' ? '44px' : '74px'};top:${mode === 'photo' ? '34px' : '36px'};z-index:9;display:flex;gap:8px}
     .meta span{height:${mode === 'photo' ? '30px' : '38px'};display:inline-flex;align-items:center;padding:0 13px;border-radius:999px;background:rgba(255,255,255,.76);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 22px rgba(20,60,66,.08);font-size:${mode === 'photo' ? '12px' : '16px'};font-weight:900;color:${palette.accentDark};white-space:nowrap}
     .label{position:absolute;z-index:8;left:${mode === 'cover' ? '96px' : mode === 'detail' ? '86px' : '58px'};bottom:${mode === 'cover' ? '64px' : mode === 'detail' ? '348px' : '56px'};max-width:${mode === 'photo' ? '260px' : '360px'};padding:${mode === 'photo' ? '11px 16px' : '14px 20px'};border-radius:18px;background:${palette.warm};color:#1b3038;font-size:${mode === 'photo' ? '16px' : '22px'};line-height:1.15;font-weight:900;box-shadow:0 16px 34px rgba(30,70,76,.15);transform:rotate(${scene % 2 ? '-4deg' : '3deg'})}
-    .title{position:absolute;z-index:8;right:${mode === 'cover' ? '68px' : '56px'};bottom:${mode === 'cover' ? '72px' : '54px'};width:${mode === 'cover' ? '420px' : '720px'};display:${mode === 'photo' ? 'none' : 'block'};font-size:${mode === 'cover' ? '34px' : '36px'};line-height:1.22;font-weight:900;color:#152934;text-shadow:0 2px 0 rgba(255,255,255,.68);word-break:keep-all}
+    .title{position:absolute;z-index:8;right:${mode === 'cover' ? '68px' : '56px'};bottom:${mode === 'cover' ? '72px' : '54px'};width:${mode === 'cover' ? '420px' : '720px'};display:none;font-size:${mode === 'cover' ? '34px' : '36px'};line-height:1.22;font-weight:900;color:#152934;text-shadow:0 2px 0 rgba(255,255,255,.68);word-break:keep-all}
     .title small{display:block;margin-top:8px;font-size:${mode === 'cover' ? '17px' : '19px'};line-height:1.35;color:#5c707a;font-weight:800}
     .prop{position:absolute;z-index:3;box-shadow:0 18px 42px rgba(30,68,74,.11)}
     .towel{right:${mode === 'photo' ? '70px' : '108px'};bottom:${mode === 'photo' ? '108px' : '104px'};width:${mode === 'photo' ? '178px' : '240px'};height:${mode === 'photo' ? '78px' : '96px'};border-radius:52px;background:repeating-linear-gradient(90deg,#fff 0 9px,#eef6f3 9px 18px)}
@@ -1791,6 +1799,29 @@ function reviewSceneHtmlPhoto(post, entries, mode, index = 0) {
     .photo.variant-1.scene-3 .product-zone{left:58px;top:94px;transform:rotate(11deg) scale(.94)}
     .photo.variant-1.scene-6 .product-zone{left:226px;top:92px;transform:rotate(-4deg) scale(.86)}
     .photo.variant-1.scene-8 .product-zone{left:154px;top:86px;transform:rotate(2deg) scale(1.02)}
+    .photo.scene-0 .real-product{left:74px;top:78px;width:520px;height:520px;transform:rotate(-3deg)}
+    .photo.scene-1 .real-product{left:42px;top:154px;width:500px;height:500px;transform:rotate(7deg)}
+    .photo.scene-2 .real-product{left:-18px;top:36px;width:650px;height:650px;transform:rotate(0deg)}
+    .photo.scene-3 .real-product{left:210px;top:88px;width:430px;height:430px;transform:rotate(-10deg)}
+    .photo.scene-4 .real-product{left:230px;top:106px;width:430px;height:430px;transform:rotate(4deg)}
+    .photo.scene-5 .real-product{left:60px;top:58px;width:520px;height:520px;transform:rotate(-7deg)}
+    .photo.scene-6 .real-product{left:120px;top:126px;width:430px;height:430px;transform:rotate(3deg)}
+    .photo.scene-7 .real-product{left:76px;top:62px;width:560px;height:560px;transform:rotate(0deg)}
+    .photo.scene-8 .real-product{left:34px;top:138px;width:450px;height:450px;transform:rotate(-9deg)}
+    .photo.variant-1.scene-0 .real-product{left:126px;top:118px;width:460px;height:460px;transform:rotate(6deg)}
+    .photo.variant-1.scene-1 .real-product{left:190px;top:124px;width:430px;height:430px;transform:rotate(-9deg)}
+    .photo.variant-1.scene-3 .real-product{left:58px;top:92px;width:470px;height:470px;transform:rotate(11deg)}
+    .photo.variant-1.scene-6 .real-product{left:214px;top:86px;width:420px;height:420px;transform:rotate(-4deg)}
+    .photo.variant-1.scene-8 .real-product{left:132px;top:76px;width:500px;height:500px;transform:rotate(2deg)}
+    .photo.scene-1 .real-product img,.photo.scene-4 .real-product img,.photo.scene-8 .real-product img{object-fit:cover}
+    .photo.scene-1 .real-product img{object-position:50% 38%;transform:scale(1.08)}
+    .photo.scene-2 .real-product img{object-fit:cover;object-position:44% 34%;transform:scale(1.1)}
+    .photo.scene-3 .real-product img{object-fit:cover;object-position:22% 50%;transform:scale(1.12)}
+    .photo.scene-4 .real-product img{object-position:72% 48%;transform:scale(1.16)}
+    .photo.scene-5 .real-product img{object-fit:contain;transform:scale(.96)}
+    .photo.scene-7 .real-product img{object-fit:cover;object-position:50% 50%;transform:scale(1.04)}
+    .photo.scene-8 .real-product img{object-position:38% 56%;transform:scale(1.12)}
+    .photo.variant-1 .real-product img{object-fit:contain;transform:scale(.98)}
     .photo.scene-1{background:linear-gradient(145deg,#fff 0%,${palette.soft} 42%,#f7e6dc 100%)}
     .photo.scene-1:after{content:'';position:absolute;left:310px;bottom:-78px;width:380px;height:310px;border-radius:120px 120px 34px 34px;background:linear-gradient(135deg,#f0c0a2,#d9977b);opacity:.8;transform:rotate(12deg);z-index:4}
     .photo.scene-2{background:linear-gradient(140deg,${palette.second} 0%,#fff 58%,${palette.soft} 100%)}
@@ -1820,6 +1851,8 @@ function reviewSceneHtmlPhoto(post, entries, mode, index = 0) {
     <div class="meta"><span>${htmlEscape(rankText)}</span><span>${htmlEscape(viewsText)}</span><span>${htmlEscape(dateText)}</span></div>
     <img class="source-tint" src="${altAUrl}" alt="">
     <div class="product-zone">${mockupHtml}</div>
+    <div class="real-product"><img src="${mainUrl}" alt=""></div>
+    <div class="real-alt"><img src="${altAUrl}" alt=""></div>
     <div class="prop towel"></div>
     <div class="prop pouch"></div>
     <div class="hand"></div>
