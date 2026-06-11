@@ -14,9 +14,10 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260610-source-images';
+const BLOG_ASSET_VERSION = '20260611-review-remix-2';
 const MAX_SOURCE_GALLERY_IMAGES = 8;
 const SOURCE_GALLERY_WINDOW = 5;
+const REVIEW_PHOTO_COUNT = 18;
 
 const CATEGORY_NAMES = {
   '10000010001': '스킨케어',
@@ -301,19 +302,47 @@ function sourceGallerySrcs(post, base) {
   return uniqueFiles.map((file) => imageAssetSrc(`${base}${file}`));
 }
 
+function reviewImageFileForPost(post) {
+  return post && post.reviewImageFile ? post.reviewImageFile : '';
+}
+
+function reviewDetailFileForPost(post) {
+  return post && post.reviewDetailFile ? post.reviewDetailFile : '';
+}
+
+function reviewGalleryFilesForPost(post) {
+  return Array.isArray(post && post.reviewGalleryFiles) ? post.reviewGalleryFiles.filter(Boolean) : [];
+}
+
+function reviewImageSrc(post, base) {
+  const file = reviewImageFileForPost(post);
+  return file ? imageAssetSrc(`${base}${file}`) : '';
+}
+
+function reviewDetailSrc(post, base) {
+  const file = reviewDetailFileForPost(post) || reviewImageFileForPost(post);
+  return file ? imageAssetSrc(`${base}${file}`) : '';
+}
+
+function reviewGallerySrcs(post, base) {
+  return reviewGalleryFilesForPost(post).map((file) => imageAssetSrc(`${base}${file}`));
+}
+
 function postImageSrc(post) {
-  return sourceImageSrc(post, '../../images/blog/') || imageAssetSrc(`../../images/blog/${path.basename(post.image)}`);
+  return reviewImageSrc(post, '../../images/blog/') || imageAssetSrc(`../../images/blog/${path.basename(post.image)}`);
 }
 
 function blogIndexImageSrc(post) {
-  return sourceImageSrc(post, '../images/blog/') || imageAssetSrc(`../images/blog/${postCardImageFile(post)}`);
+  return reviewImageSrc(post, '../images/blog/') || imageAssetSrc(`../images/blog/${postCardImageFile(post)}`);
 }
 
 function homeImageSrc(post) {
-  return sourceImageSrc(post, 'images/blog/') || imageAssetSrc(`images/blog/${postCardImageFile(post)}`);
+  return reviewImageSrc(post, 'images/blog/') || imageAssetSrc(`images/blog/${postCardImageFile(post)}`);
 }
 
 function postCardImageFile(post) {
+  const reviewFile = reviewImageFileForPost(post);
+  if (reviewFile) return reviewFile;
   const profile = getBlogProductProfile(post);
   return profile && profile.detailFile ? profile.detailFile : path.basename(post.image);
 }
@@ -335,18 +364,18 @@ function blogReviewAssets(post) {
   if (!profile || !profile.assetPrefix || !profile.captions.length) return null;
   const base = '../../images/blog/';
   const ext = profile.assetExt || 'png';
-  const realProductImage = sourceImageSrc(post, base);
-  const realProductImages = sourceGallerySrcs(post, base);
-  const captions = realProductImages.length
-    ? profile.captions.slice(0, Math.max(1, Math.min(profile.captions.length, realProductImages.length)))
+  const generatedReviewImages = reviewGallerySrcs(post, base);
+  const generatedDetail = reviewDetailSrc(post, base);
+  const captions = generatedReviewImages.length
+    ? profile.captions.slice(0, Math.max(1, Math.min(profile.captions.length, generatedReviewImages.length)))
     : profile.captions;
 
   const photos = captions.map((caption, index) => ({
     src:
-      realProductImages[index] ||
-      realProductImage ||
+      generatedReviewImages[index] ||
+      generatedDetail ||
       imageAssetSrc(`${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`),
-    source: Boolean(realProductImages[index] || realProductImage),
+    source: false,
     title: caption[0],
     caption: caption[1],
     alt: `${post.shortName} 후기형 사진 ${index + 1}`
@@ -354,7 +383,7 @@ function blogReviewAssets(post) {
 
   return {
     profile,
-    detail: realProductImage || imageAssetSrc(`${base}${profile.detailFile}`),
+    detail: generatedDetail || imageAssetSrc(`${base}${profile.detailFile}`),
     stock: postImageSrc(post),
     photos
   };
@@ -686,7 +715,7 @@ ${analyticsTag()}
     .lead{max-width:760px;color:#475569;font-weight:700}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:26px}
     .post-card{display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #dfead8;border-radius:8px;background:#fff;text-decoration:none;color:#172018}
-    .post-card img{width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;object-position:center;border-radius:6px;background:#fff;padding:8px}
+    .post-card img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;object-position:center;border-radius:6px;background:#fff}
     .post-card .category{font-size:12px;color:#315b11;font-weight:900}
     .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}
     .card-meta span{display:inline-flex;align-items:center;border-radius:999px;background:#f0f8e9;color:#426031;padding:2px 8px;font-size:11px;font-weight:900;line-height:1.5}
@@ -1006,6 +1035,276 @@ async function hydrateSourceImages(posts, rankingPosts, options = {}) {
   return hydrated;
 }
 
+function safeHex(value, fallback) {
+  return /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value) : fallback;
+}
+
+function reviewPalette(post) {
+  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post) || {};
+  const visual = profile.visual || {};
+  const visualProfile = profile.visualProfile || {};
+  const palette = visualProfile.palette || {};
+  return {
+    accent: safeHex(palette.accent || visual.accent, '#35c7d0'),
+    accentDark: safeHex(palette.accentDark || visual.accentDark, '#087883'),
+    second: safeHex(palette.second || visual.second, '#b8eef3'),
+    soft: safeHex(palette.soft || visual.soft, '#f2fdff'),
+    warm: safeHex(palette.warm || visual.warm, '#ffe88a')
+  };
+}
+
+function reviewAssetFilesForPost(post) {
+  return {
+    cover: `${post.slug}-review-cover.jpg`,
+    detail: `${post.slug}-review-detail.jpg`,
+    photos: Array.from({ length: REVIEW_PHOTO_COUNT }, (_, index) =>
+      `${post.slug}-review-${String(index + 1).padStart(2, '0')}.jpg`
+    )
+  };
+}
+
+async function reviewAssetFilesExist(files) {
+  const names = [files.cover, files.detail, ...files.photos];
+  const checks = await Promise.all(names.map((name) => localFileExists(name)));
+  return checks.every(Boolean);
+}
+
+function withReviewAssetFiles(post, files) {
+  return {
+    ...post,
+    reviewImageFile: files.cover,
+    reviewDetailFile: files.detail,
+    reviewGalleryFiles: files.photos,
+    reviewAssetVersion: BLOG_ASSET_VERSION,
+    image: `/images/blog/${files.cover}`
+  };
+}
+
+async function sourceEntriesForReview(post) {
+  const files = Array.from(
+    new Set([post.sourceImageFile, ...(Array.isArray(post.sourceGalleryFiles) ? post.sourceGalleryFiles : [])].filter(Boolean))
+  );
+  const entries = [];
+  for (const file of files) {
+    const fullPath = path.join(imageDir, file);
+    try {
+      await fs.access(fullPath);
+      entries.push({
+        file,
+        url: pathToFileURL(fullPath).href
+      });
+    } catch {
+      // The source manifest can outlive a deleted local file; skip that stale reference.
+    }
+  }
+  return entries;
+}
+
+function pickSource(entries, index) {
+  if (!entries.length) return null;
+  return entries[((index % entries.length) + entries.length) % entries.length];
+}
+
+function reviewCaptionFor(post, index) {
+  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post) || {};
+  const captions = Array.isArray(profile.captions) && profile.captions.length ? profile.captions : [];
+  const fallback = [
+    '패키지 색감이 먼저 보여서 첫인상이 또렷해요.',
+    '구성이나 옵션명이 긴 상품은 사진으로 한 번 더 보는 게 편합니다.'
+  ];
+  return captions[index % captions.length] || [`컷 ${index + 1}`, fallback[index % fallback.length]];
+}
+
+function reviewSceneHtml(post, entries, mode, index = 0) {
+  const palette = reviewPalette(post);
+  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post);
+  const copy = buildBlogCopy(post, profile);
+  const caption = reviewCaptionFor(post, index);
+  const main = pickSource(entries, index) || entries[0];
+  const sideA = pickSource(entries, index + 1) || main;
+  const sideB = pickSource(entries, index + 2) || main;
+  const scene = index % 6;
+  const title = truncate(post.shortName || post.title, mode === 'cover' ? 34 : 26);
+  const subtitle = mode === 'detail' ? copy.photoTitle : caption[0];
+  const dimensions = {
+    cover: [1200, 630],
+    detail: [900, 1200],
+    photo: [720, 720]
+  }[mode];
+  const [width, height] = dimensions;
+  const rankText = post.rank ? `인기 ${post.rank}위` : '인기상품';
+  const viewsText = post.viewCount ? `조회 ${formatNumber(post.viewCount)}회` : '재고 체크';
+  const dateText = formatPostDate(post.publishedAt || post.rankingDate);
+  const mainUrl = htmlEscape(main.url);
+  const sideAUrl = htmlEscape(sideA.url);
+  const sideBUrl = htmlEscape(sideB.url);
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;width:${width}px;height:${height}px;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;color:#16252f;background:#f8fbfa}
+    .scene{position:relative;width:${width}px;height:${height}px;overflow:hidden;background:
+      radial-gradient(circle at 14% 18%,rgba(255,255,255,.95),rgba(255,255,255,0) 24%),
+      linear-gradient(135deg,${palette.soft} 0%,#fff 46%,${palette.second} 100%)}
+    .scene:before{content:'';position:absolute;inset:0;opacity:.16;background-image:radial-gradient(circle,rgba(20,60,70,.22) 1px,transparent 1.2px);background-size:18px 18px}
+    .desk{position:absolute;left:-8%;right:-8%;bottom:-10%;height:34%;background:linear-gradient(180deg,#ffffff 0%,#edf3f2 100%);box-shadow:0 -18px 60px rgba(34,68,76,.08);transform:rotate(${scene % 2 ? '-1.5deg' : '1.2deg'})}
+    .window{position:absolute;right:${mode === 'photo' ? '34px' : '72px'};top:${mode === 'photo' ? '34px' : '72px'};width:${mode === 'photo' ? '118px' : '176px'};height:${mode === 'photo' ? '156px' : '220px'};border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.15));border:1px solid rgba(255,255,255,.78)}
+    .plant{position:absolute;left:${mode === 'detail' ? '54px' : '38px'};top:${mode === 'cover' ? '42px' : '66px'};width:120px;height:150px;opacity:.72}
+    .plant i{position:absolute;left:55px;bottom:0;width:12px;height:118px;border-radius:999px;background:#6ea77f}
+    .plant b{position:absolute;display:block;width:58px;height:26px;border-radius:58px 6px;background:#7fbe93;transform-origin:left center}
+    .plant b:nth-child(2){left:58px;top:24px;transform:rotate(-28deg)}
+    .plant b:nth-child(3){left:48px;top:58px;transform:rotate(30deg)}
+    .plant b:nth-child(4){left:58px;top:90px;transform:rotate(-16deg)}
+    .polaroid{position:absolute;background:#fff;border-radius:22px;padding:22px 22px 70px;box-shadow:0 34px 80px rgba(27,60,70,.22);border:1px solid rgba(214,231,232,.95)}
+    .polaroid img{display:block;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:12px}
+    .main-card{left:${mode === 'cover' ? '78px' : mode === 'detail' ? '78px' : '70px'};top:${mode === 'cover' ? '80px' : mode === 'detail' ? '92px' : '92px'};width:${mode === 'cover' ? '490px' : mode === 'detail' ? '560px' : '410px'};height:${mode === 'cover' ? '420px' : mode === 'detail' ? '650px' : '410px'};transform:rotate(${scene % 2 ? '-2.4deg' : '2.2deg'});z-index:3}
+    .main-card .memo{position:absolute;left:26px;right:26px;bottom:18px;font-size:${mode === 'photo' ? '24px' : '28px'};line-height:1.25;font-weight:900;color:${palette.accentDark};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .phone{position:absolute;right:${mode === 'cover' ? '92px' : mode === 'detail' ? '70px' : '48px'};bottom:${mode === 'cover' ? '74px' : mode === 'detail' ? '92px' : '76px'};width:${mode === 'cover' ? '250px' : mode === 'detail' ? '255px' : '176px'};height:${mode === 'cover' ? '420px' : mode === 'detail' ? '456px' : '300px'};border-radius:34px;background:#15212a;padding:14px;box-shadow:0 28px 70px rgba(20,40,52,.28);z-index:4;transform:rotate(${scene % 3 === 0 ? '4deg' : '-3deg'})}
+    .phone-screen{position:relative;width:100%;height:100%;border-radius:24px;background:#fff;overflow:hidden;padding:18px 15px}
+    .phone-screen img{width:100%;height:47%;object-fit:contain;background:#fafafa;border-radius:14px}
+    .phone-screen h3{margin:12px 0 8px;font-size:${mode === 'photo' ? '15px' : '20px'};line-height:1.18;color:#16252f;word-break:keep-all}
+    .phone-screen p{margin:0;font-size:${mode === 'photo' ? '12px' : '15px'};line-height:1.35;color:#61717d;font-weight:800}
+    .phone-screen em{position:absolute;left:15px;right:15px;bottom:16px;height:42px;border-radius:14px;background:${palette.accent};color:#052e34;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:${mode === 'photo' ? '14px' : '17px'};font-weight:900}
+    .side-card{position:absolute;width:${mode === 'cover' ? '220px' : mode === 'detail' ? '238px' : '178px'};height:${mode === 'cover' ? '250px' : mode === 'detail' ? '282px' : '190px'};border-radius:18px;background:#fff;padding:12px;box-shadow:0 22px 48px rgba(27,60,70,.16);z-index:2;border:1px solid rgba(214,231,232,.85)}
+    .side-card img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+    .side-a{right:${mode === 'cover' ? '338px' : mode === 'detail' ? '92px' : '40px'};top:${mode === 'cover' ? '56px' : mode === 'detail' ? '608px' : '28px'};transform:rotate(${scene % 2 ? '5deg' : '-5deg'})}
+    .side-b{left:${mode === 'cover' ? '500px' : mode === 'detail' ? '590px' : '60px'};bottom:${mode === 'cover' ? '54px' : mode === 'detail' ? '112px' : '42px'};transform:rotate(${scene % 2 ? '-6deg' : '6deg'})}
+    .hand{position:absolute;left:${mode === 'photo' ? '10px' : '610px'};bottom:${mode === 'photo' ? '-40px' : '-36px'};width:${mode === 'photo' ? '220px' : '250px'};height:${mode === 'photo' ? '180px' : '210px'};border-radius:80px 80px 30px 30px;background:linear-gradient(135deg,#f6c7aa,#e8a887);opacity:${scene === 1 || scene === 3 ? '.88' : '.42'};transform:rotate(${scene % 2 ? '12deg' : '-10deg'});z-index:1}
+    .chip{position:absolute;left:${mode === 'cover' ? '86px' : '74px'};top:${mode === 'cover' ? '44px' : '46px'};display:flex;gap:10px;z-index:6}
+    .chip span{display:inline-flex;align-items:center;height:${mode === 'photo' ? '34px' : '42px'};padding:0 16px;border-radius:999px;background:rgba(255,255,255,.86);border:1px solid rgba(255,255,255,.96);color:${palette.accentDark};font-size:${mode === 'photo' ? '14px' : '18px'};font-weight:900;box-shadow:0 10px 28px rgba(20,70,80,.1)}
+    .title-box{position:absolute;right:${mode === 'cover' ? '92px' : '62px'};top:${mode === 'cover' ? '86px' : mode === 'detail' ? '54px' : '520px'};width:${mode === 'cover' ? '472px' : mode === 'detail' ? '690px' : '610px'};z-index:5;padding:${mode === 'photo' ? '18px 22px' : '26px 30px'};border-radius:24px;background:rgba(255,255,255,.86);box-shadow:0 24px 60px rgba(20,60,70,.14);backdrop-filter:blur(8px)}
+    .title-box h1{margin:0 0 8px;font-size:${mode === 'cover' ? '42px' : mode === 'detail' ? '40px' : '27px'};line-height:1.18;color:#16252f;word-break:keep-all}
+    .title-box p{margin:0;font-size:${mode === 'cover' ? '22px' : mode === 'detail' ? '22px' : '18px'};line-height:1.42;color:#506574;font-weight:800;word-break:keep-all}
+    .sticker{position:absolute;right:${mode === 'photo' ? '34px' : '72px'};top:${mode === 'photo' ? '210px' : '300px'};width:${mode === 'photo' ? '116px' : '148px'};height:${mode === 'photo' ? '116px' : '148px'};border-radius:999px;background:${palette.warm};display:flex;align-items:center;justify-content:center;text-align:center;color:#112831;font-size:${mode === 'photo' ? '22px' : '28px'};line-height:1.05;font-weight:900;box-shadow:0 18px 40px rgba(20,40,52,.16);transform:rotate(-7deg);z-index:6}
+    .detail-list{position:absolute;left:86px;right:86px;bottom:68px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;z-index:6}
+    .detail-list div{min-height:118px;border-radius:22px;background:rgba(255,255,255,.9);padding:22px;box-shadow:0 18px 42px rgba(20,60,70,.13)}
+    .detail-list b{display:block;color:${palette.accentDark};font-size:24px;margin-bottom:4px}
+    .detail-list span{display:block;color:#526574;font-size:18px;line-height:1.4;font-weight:800}
+    .photo .title-box{display:${mode === 'photo' ? 'block' : 'none'}}
+    .cover .detail-list,.photo .detail-list{display:none}
+    .detail .side-b{display:none}
+    .detail .title-box{top:56px;right:70px}
+    .detail .main-card{top:210px}
+    .detail .side-a{top:690px}
+    .photo .main-card{top:${scene % 2 ? '86px' : '72px'};left:${scene % 3 === 0 ? '54px' : '88px'};transform:rotate(${scene % 2 ? '2.8deg' : '-2.2deg'})}
+    .photo .phone{display:${scene === 2 || scene === 5 ? 'block' : 'none'}}
+    .photo .side-a{display:${scene === 0 || scene === 4 ? 'block' : 'none'}}
+    .photo .side-b{display:${scene === 1 || scene === 3 ? 'block' : 'none'}}
+    .photo .sticker{display:${scene === 0 || scene === 5 ? 'flex' : 'none'}}
+  </style>
+</head>
+<body>
+  <div class="scene ${mode}">
+    <div class="desk"></div>
+    <div class="window"></div>
+    <div class="plant"><i></i><b></b><b></b><b></b></div>
+    <div class="chip"><span>${htmlEscape(rankText)}</span><span>${htmlEscape(viewsText)}</span><span>${htmlEscape(dateText)}</span></div>
+    <div class="polaroid main-card">
+      <img src="${mainUrl}" alt="">
+      <div class="memo">${htmlEscape(caption[0])}</div>
+    </div>
+    <div class="side-card side-a"><img src="${sideAUrl}" alt=""></div>
+    <div class="side-card side-b"><img src="${sideBUrl}" alt=""></div>
+    <div class="hand"></div>
+    <div class="phone">
+      <div class="phone-screen">
+        <img src="${mainUrl}" alt="">
+        <h3>${htmlEscape(title)}</h3>
+        <p>${htmlEscape(caption[1])}</p>
+        <em>재고 바로 보기</em>
+      </div>
+    </div>
+    <div class="title-box">
+      <h1>${htmlEscape(title)}</h1>
+      <p>${htmlEscape(subtitle)} · 구매 전 느낌만 빠르게 봐요.</p>
+    </div>
+    <div class="sticker">오늘<br>체크</div>
+    <div class="detail-list">
+      <div><b>색감</b><span>패키지 톤이 한눈에 들어오게 정리했어요.</span></div>
+      <div><b>구성</b><span>옵션과 기획 문구는 구매 화면에서 한 번 더 확인해요.</span></div>
+      <div><b>재고</b><span>온라인, 오늘드림, 근처 매장을 같이 보면 편합니다.</span></div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+async function renderReviewHtml(browser, html, outputPath, width, height) {
+  const tempPath = path.join(imageDir, `${path.basename(outputPath, path.extname(outputPath))}.html`);
+  await fs.writeFile(tempPath, html, 'utf8');
+  const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(pathToFileURL(tempPath).href, { waitUntil: 'load' });
+    await page
+      .waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete && img.naturalWidth > 0),
+        { timeout: 10000 }
+      )
+      .catch(() => {});
+    await page.screenshot({ path: outputPath, type: 'jpeg', quality: 88 });
+  } finally {
+    await page.close();
+    await fs.rm(tempPath, { force: true });
+  }
+}
+
+async function renderReviewAssetsForPost(browser, post) {
+  const files = reviewAssetFilesForPost(post);
+  if (post.reviewAssetVersion === BLOG_ASSET_VERSION && (await reviewAssetFilesExist(files))) {
+    return withReviewAssetFiles(post, files);
+  }
+
+  const entries = await sourceEntriesForReview(post);
+  if (!entries.length) return post;
+
+  await renderReviewHtml(
+    browser,
+    reviewSceneHtml(post, entries, 'cover', 0),
+    path.join(imageDir, files.cover),
+    1200,
+    630
+  );
+  await renderReviewHtml(
+    browser,
+    reviewSceneHtml(post, entries, 'detail', 1),
+    path.join(imageDir, files.detail),
+    900,
+    1200
+  );
+
+  for (let index = 0; index < REVIEW_PHOTO_COUNT; index += 1) {
+    await renderReviewHtml(
+      browser,
+      reviewSceneHtml(post, entries, 'photo', index),
+      path.join(imageDir, files.photos[index]),
+      720,
+      720
+    );
+  }
+
+  return withReviewAssetFiles(post, files);
+}
+
+async function renderReviewAssetsForPosts(posts) {
+  if (!posts.length) return posts;
+
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch({ headless: true });
+  const rendered = [];
+  try {
+    for (const post of posts) {
+      rendered.push(await renderReviewAssetsForPost(browser, post));
+      console.log(`review assets ready: ${post.slug}`);
+    }
+  } finally {
+    await browser.close();
+  }
+  return rendered;
+}
+
 function mergePosts(existingPosts, generatedPosts) {
   const map = new Map();
   const entries = [
@@ -1273,11 +1572,12 @@ async function main() {
 
   await fs.mkdir(blogDir, { recursive: true });
   await fs.mkdir(imageDir, { recursive: true });
-  const posts = (
+  let posts = (
     await hydrateSourceImages(mergePosts(existingPosts, generatedPosts), rankingPosts, {
       probeGallery: !args.refreshExistingOnly
     })
   ).filter((post) => post.sourceImageFile);
+  posts = (await renderReviewAssetsForPosts(posts)).filter((post) => post.reviewImageFile);
 
   for (const post of posts) {
     const dir = path.join(blogDir, post.slug);
