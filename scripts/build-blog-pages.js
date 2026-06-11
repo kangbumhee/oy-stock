@@ -352,7 +352,9 @@ function postCardImageFile(post) {
 function isManualReviewProfile(profile) {
   return Boolean(
     profile &&
-      ['torriden-dive-in-serum', 'mediheal-toner-pad', 'mediheal-sun-serum'].includes(profile.id)
+      ['torriden-dive-in-serum', 'mediheal-toner-pad', 'mediheal-sun-serum', 'mediheal-gel-mask'].includes(
+        profile.id
+      )
   );
 }
 
