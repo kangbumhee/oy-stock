@@ -14,7 +14,7 @@ const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const MANIFEST_PATH = path.join(dataDir, 'blog-posts.json');
-const BLOG_ASSET_VERSION = '20260611-review-remix-2';
+const BLOG_ASSET_VERSION = '20260611-review-aligned';
 const MAX_SOURCE_GALLERY_IMAGES = 8;
 const SOURCE_GALLERY_WINDOW = 5;
 const REVIEW_PHOTO_COUNT = 18;
@@ -347,13 +347,101 @@ function postCardImageFile(post) {
   return profile && profile.detailFile ? profile.detailFile : path.basename(post.image);
 }
 
+function buildAlignedCaptions(post) {
+  const shortName = post.shortName || post.cleanName || '올리브영 인기상품';
+  return [
+    ['첫 느낌', '상품페이지 대표 이미지에서 보이는 첫인상과 색감을 먼저 정리했어요.'],
+    ['대표 이미지', '구매 화면에서 가장 먼저 보이는 상품 이미지를 카드처럼 보기 좋게 담았어요.'],
+    ['패키지 톤', '배경과 함께 보면 패키지 색감과 전체 분위기가 더 잘 들어와요.'],
+    ['상품명 확인', '비슷한 상품이 섞이지 않게 상품명과 기획 문구를 같이 보는 컷이에요.'],
+    ['확대 포인트', '작은 글씨보다 전체 상품 인상을 먼저 보려고 크게 배치했어요.'],
+    ['구성 체크', '단품, 기획, 증정 구성은 구매 화면에서 한 번 더 확인하는 게 좋아요.'],
+    ['모바일 화면', '휴대폰으로 열어봤을 때 보이는 느낌도 같이 볼 수 있게 넣었어요.'],
+    ['썸네일 느낌', '검색 목록에서 보일 첫인상을 생각해서 밝고 깔끔하게 정리했어요.'],
+    ['색감 비교', '같은 상품 이미지도 카드 배치에 따라 느낌이 달라 보여요.'],
+    ['옵션명 보기', '옵션이 여러 개인 상품은 이름 끝부분까지 보는 게 중요해요.'],
+    ['재고 확인 전', '사진으로 마음이 가면 온라인 재고와 매장 재고를 바로 이어서 보면 돼요.'],
+    ['오늘드림 체크', '급하게 필요하면 오늘드림 가능 여부까지 같이 보는 흐름이 편합니다.'],
+    ['상품 화면 느낌', '상세 이미지의 분위기를 블로그 카드처럼 한 번 더 정리했어요.'],
+    ['구매 전 메모', '가격, 쿠폰, 증정 구성은 마지막 구매 화면에서 다시 맞춰보면 좋아요.'],
+    ['카드 컷', '상품 이미지가 너무 딱딱해 보이지 않게 카드형으로 배치했어요.'],
+    ['이미지 한눈에', '대표컷과 보조컷을 같이 두면 상품 구분이 더 쉬워요.'],
+    ['랭킹 체크', '조회수와 업로드 날짜도 같이 보이게 넣어 현재 흐름을 확인하기 좋아요.'],
+    ['마무리', `${shortName} 찾을 때 헷갈리지 않게 대표 이미지를 중심으로 정리했어요.`]
+  ];
+}
+
+function buildAlignedBlogCopy(post, profile) {
+  const shortName = post.shortName || post.cleanName || '올리브영 인기상품';
+  const rawName = post.rawName || shortName;
+  const rankingText = post.rankingDateText
+    ? `${post.rankingDateText} 기준`
+    : '현재 기준';
+  const rankText = post.rank ? `조회 인기 ${post.rank}위` : '조회가 많이 붙은';
+  const viewText = post.viewCount ? `조회 ${formatNumber(post.viewCount)}회` : '조회 흐름';
+  const base = buildBlogCopy(post, profile);
+  const alignedVisual = base.visual
+    ? {
+        ...base.visual,
+        detailTitle: shortName,
+        detailSub: '올리브영 상품페이지 대표 이미지를 보기 좋게 정리한 컷',
+        features: [
+          ['대표 이미지', '상품페이지에서 확인한 이미지를 기준으로 정리했어요.'],
+          ['상품명 확인', '상품명과 기획 문구를 같이 보면 비슷한 옵션이 덜 헷갈려요.'],
+          ['구매 전 확인', '최종 옵션과 가격은 연결된 구매 화면에서 다시 확인해 주세요.']
+        ]
+      }
+    : base.visual;
+  return {
+    ...base,
+    title: base.title || `${shortName} 후기처럼 보기｜올리브영 재고`,
+    description: `${shortName} 상품페이지 대표 이미지를 블로그 후기 카드처럼 정리하고, 옵션명·온라인 재고·매장 재고 확인 포인트까지 바로 이어볼 수 있게 모았습니다.`,
+    heroLead:
+      '상품페이지에서 확인한 대표 이미지를 카드와 모바일 화면 느낌으로 다시 정리했습니다. 사진 분위기를 본 뒤 옵션명과 재고를 같이 확인하면 편해요.',
+    introBig: `${htmlEscape(shortName)}, <span class="soft-word">상품페이지 대표 이미지</span> 기준으로 먼저 느낌만 가볍게 봤어요.`,
+    introBody:
+      `${rankingText} ${rankText} 상품이에요. 아래 이미지는 올리브영 상품 이미지를 바탕으로 보기 좋게 다시 정리한 컷이라, 마음에 들면 상품명과 옵션을 맞춰 보고 재고를 확인하면 됩니다.`,
+    moodNotes: [
+      ['대표 이미지', `${htmlEscape(shortName)} 상품 화면에서 보이는 패키지와 색감을 중심으로 봤어요.`],
+      ['조회 흐름', `${viewText} 기준으로 관심이 붙은 상품이라 재고 변동도 같이 보는 게 좋아요.`],
+      ['구매 전', '옵션명, 기획 구성, 쿠폰, 배송 방식은 연결된 구매 화면에서 마지막으로 확인하면 됩니다.']
+    ],
+    photoTitle: `${shortName}, 상품 이미지로 먼저 보기`,
+    photoLead:
+      '아래 이미지는 올리브영 상품페이지 대표 이미지를 바탕으로 블로그 후기 카드처럼 다시 정리한 컷이에요. 실제 사용 장면을 설명하는 사진이 아니라, 구매 전 상품 구분과 분위기 확인을 돕는 이미지입니다.',
+    shoppingTitle: '사진으로 마음이 가면 옵션명부터 맞춰봐요',
+    shoppingParagraphs: [
+      `${htmlEscape(rawName)}처럼 상품명이 길거나 기획 문구가 붙은 상품은 같은 라인 안에서도 구성 표현이 달라질 수 있어요.`,
+      '이미지로 상품을 확인한 뒤에는 <span class="highlight">옵션명</span>, <span class="highlight">온라인 재고</span>, <span class="highlight">근처 매장 재고</span>를 같이 보는 쪽이 실수가 적습니다.'
+    ],
+    checklist: [
+      `${shortName} 상품명 먼저 맞춰보기`,
+      '단품, 기획, 증정 구성 문구 확인하기',
+      '온라인 재고와 가까운 매장 재고 같이 보기',
+      '오늘드림이나 픽업 가능 여부까지 한 번에 열어두기'
+    ],
+    tipTitle: '대표 이미지를 확인했다면 재고는 바로 보는 게 좋아요',
+    tipParagraph:
+      '조회가 붙은 상품은 옵션별 재고가 빠르게 바뀔 수 있어요. 이미지로 원하는 상품이 맞다고 느껴지면 상품명과 재고를 바로 이어서 확인하는 흐름이 가장 편합니다.',
+    tips: [
+      ['1. 상품명 길게 검색', '브랜드명과 제품 타입까지 같이 넣으면 비슷한 상품이 덜 섞여요.'],
+      ['2. 구성 문구 확인', '단품, 기획, 증정 구성이 다르면 원하는 상품이 달라질 수 있어요.'],
+      ['3. 받을 방식 고르기', '온라인, 오늘드림, 매장 픽업 중 지금 제일 편한 쪽을 먼저 확인하면 됩니다.']
+    ],
+    captions: buildAlignedCaptions(post),
+    ...(alignedVisual ? { visual: alignedVisual } : {})
+  };
+}
+
 function refreshPostCopy(post) {
   if (!post) return post;
   const profile = getBlogProductProfile(post) || buildAutoProductProfile(post);
   const postWithProfile = profile ? { ...post, profile } : post;
-  const copy = buildBlogCopy(postWithProfile, profile);
+  const copy = buildAlignedBlogCopy(postWithProfile, profile);
+  const alignedProfile = profile ? { ...profile, ...copy, title: copy.title, description: copy.description } : null;
   return {
     ...postWithProfile,
+    ...(alignedProfile ? { profile: alignedProfile } : {}),
     title: copy.title,
     description: copy.description
   };
@@ -361,14 +449,15 @@ function refreshPostCopy(post) {
 
 function blogReviewAssets(post) {
   const profile = getBlogProductProfile(post);
-  if (!profile || !profile.assetPrefix || !profile.captions.length) return null;
+  if (!profile || !profile.assetPrefix) return null;
   const base = '../../images/blog/';
   const ext = profile.assetExt || 'png';
   const generatedReviewImages = reviewGallerySrcs(post, base);
   const generatedDetail = reviewDetailSrc(post, base);
+  const alignedCaptions = buildAlignedCaptions(post);
   const captions = generatedReviewImages.length
-    ? profile.captions.slice(0, Math.max(1, Math.min(profile.captions.length, generatedReviewImages.length)))
-    : profile.captions;
+    ? alignedCaptions.slice(0, Math.max(1, Math.min(alignedCaptions.length, generatedReviewImages.length)))
+    : alignedCaptions;
 
   const photos = captions.map((caption, index) => ({
     src:
@@ -394,7 +483,7 @@ function blogPostTemplate(post, relatedPosts) {
   const imageUrl = absoluteUrl(post.image);
   const visibleImage = postImageSrc(post);
   const reviewAssets = blogReviewAssets(post);
-  const copy = buildBlogCopy(post, reviewAssets && reviewAssets.profile);
+  const copy = buildAlignedBlogCopy(post, reviewAssets && reviewAssets.profile);
   const coverImage = reviewAssets ? reviewAssets.detail : visibleImage;
   const searchHref = `${SITE_URL}/?q=${encodeURIComponent(post.query)}&autoBuy=${encodeURIComponent(post.goodsNo)}`;
   const curatorHref = `${SITE_URL}/api/oliveyoung/curator-redirect?goodsNo=${encodeURIComponent(post.goodsNo)}`;
@@ -1106,19 +1195,14 @@ function pickSource(entries, index) {
 }
 
 function reviewCaptionFor(post, index) {
-  const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post) || {};
-  const captions = Array.isArray(profile.captions) && profile.captions.length ? profile.captions : [];
-  const fallback = [
-    '패키지 색감이 먼저 보여서 첫인상이 또렷해요.',
-    '구성이나 옵션명이 긴 상품은 사진으로 한 번 더 보는 게 편합니다.'
-  ];
-  return captions[index % captions.length] || [`컷 ${index + 1}`, fallback[index % fallback.length]];
+  const captions = buildAlignedCaptions(post);
+  return captions[index % captions.length] || ['상품 이미지', '상품페이지 대표 이미지를 보기 좋게 정리했어요.'];
 }
 
 function reviewSceneHtml(post, entries, mode, index = 0) {
   const palette = reviewPalette(post);
   const profile = getBlogProductProfile(post) || post.profile || buildAutoProductProfile(post);
-  const copy = buildBlogCopy(post, profile);
+  const copy = buildAlignedBlogCopy(post, profile);
   const caption = reviewCaptionFor(post, index);
   const main = pickSource(entries, index) || entries[0];
   const sideA = pickSource(entries, index + 1) || main;
