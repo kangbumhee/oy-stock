@@ -349,6 +349,25 @@ function githubCuratorDataUrl() {
   return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(branch)}/${filePath}`;
 }
 
+function githubCuratorApiUrl() {
+  const explicit = String(process.env.CURATOR_LINKS_API_URL || '').trim();
+  if (explicit) return explicit;
+  const { owner, repo } = parseGithubRepo();
+  const branch = String(process.env.GITHUB_BRANCH || 'main').trim() || 'main';
+  const filePath =
+    String(process.env.CURATOR_LINKS_FILE || 'public/data/curator-links.json')
+      .trim()
+      .replace(/^\/+/, '') || 'public/data/curator-links.json';
+  const encodedPath = filePath
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  return (
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}` +
+    `/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`
+  );
+}
+
 async function fetchCuratorLinksFrom(url, source) {
   if (!url) return { url, source, data: null, error: 'empty url' };
   const requestUrl =
@@ -356,14 +375,28 @@ async function fetchCuratorLinksFrom(url, source) {
       ? url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now()
       : url;
   try {
+    const headers = {
+      Accept: source === 'github_api' ? 'application/vnd.github+json' : 'application/json',
+      'User-Agent': 'oy-stock-curator-redirect'
+    };
+    if (source === 'github_api' && githubToken()) {
+      headers.Authorization = `Bearer ${githubToken()}`;
+      headers['X-GitHub-Api-Version'] = '2022-11-28';
+    }
     const r = await fetch(requestUrl, {
-      headers: { Accept: 'application/json' },
+      headers,
       cache: 'no-store'
     });
     if (!r.ok) {
       return { url: requestUrl, source, data: null, error: 'HTTP ' + r.status };
     }
     const data = await r.json();
+    if (source === 'github_api') {
+      const content = String(data && data.content ? data.content : '').replace(/\s+/g, '');
+      if (!content) return { url: requestUrl, source, data: null, error: 'empty github content' };
+      const decoded = Buffer.from(content, 'base64').toString('utf8');
+      return { url: requestUrl, source, data: JSON.parse(decoded), error: null };
+    }
     return { url: requestUrl, source, data, error: null };
   } catch (e) {
     return { url: requestUrl, source, data: null, error: String(e.message || e) };
@@ -382,6 +415,7 @@ async function loadCuratorLinks(req, options = {}) {
   }
 
   const urls = [
+    { url: githubCuratorApiUrl(), source: 'github_api' },
     { url: githubCuratorDataUrl(), source: 'github_raw' },
     { url: curatorDataUrl(req), source: 'host_static' }
   ];
