@@ -168,9 +168,9 @@ function pendingCuratorHtml({ goodsNo, pollUrl, fallbackUrl, queueStatus }) {
   <main>
     <div class="spinner" aria-hidden="true"></div>
     <h1>사이트여는중</h1>
-    <p>큐레이터 링크를 확인하고 있습니다. 처음 보는 상품이면 자동 생성 후 열립니다.</p>
+    <p>올리브영 사이트를 준비하고 있습니다. 잠시만 기다려주세요.</p>
     <a href="${fallback}" id="fallback">올리브영 상품 보기</a>
-    <small id="status">${htmlEscape(queueStatus || '링크 확인 중')}</small>
+    <small id="status">사이트 연결 준비 중</small>
   </main>
   <script>
     (function () {
@@ -196,17 +196,17 @@ function pendingCuratorHtml({ goodsNo, pollUrl, fallbackUrl, queueStatus }) {
             data.source &&
             data.source !== 'fallback_basic_utm'
           ) {
-            setStatus('큐레이터 링크 확인 완료');
+            setStatus('사이트 연결 완료');
             window.location.replace(data.redirectUrl);
             return;
           }
-          if (data && data.queueStatus) setStatus(data.queueStatus);
+          if (data && data.queueStatus) setStatus('사이트 연결 준비 중');
         } catch (e) {
-          setStatus('링크 확인 재시도 중');
+          setStatus('다시 연결 중');
         }
 
         if (Date.now() - started > timeoutMs) {
-          setStatus('생성이 늦어져 일반 상품 페이지로 이동합니다. 잠시 후 다시 누르면 큐레이터 링크로 열릴 수 있습니다.');
+          setStatus('연결이 늦어져 상품 페이지로 이동합니다.');
           window.setTimeout(function () {
             window.location.replace(fallbackUrl);
           }, 1200);
@@ -215,7 +215,7 @@ function pendingCuratorHtml({ goodsNo, pollUrl, fallbackUrl, queueStatus }) {
         window.setTimeout(poll, intervalMs);
       }
 
-      setStatus('링크 생성 작업 확인 중: ' + goodsNo);
+      setStatus('사이트 연결 준비 중');
       window.setTimeout(poll, 1800);
     })();
   </script>
