@@ -1,3 +1,4 @@
+const fsSync = require('fs');
 const fs = require('fs/promises');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -350,18 +351,16 @@ function postCardImageFile(post) {
 }
 
 function isManualReviewProfile(profile) {
-  return Boolean(
-    profile &&
-      [
-        'torriden-dive-in-serum',
-        'mediheal-toner-pad',
-        'mediheal-sun-serum',
-        'mediheal-gel-mask',
-        'tonymoly-shocking-lip-tint',
-        'mediheal-repair-serum',
-        'foddle-cleansing-balm'
-      ].includes(profile.id)
-  );
+  if (!profile || !profile.assetPrefix) return false;
+  const ext = profile.assetExt || 'png';
+  const detail = profile.detailFile || `${profile.assetPrefix}-review-01.${ext}`;
+  const files = [
+    detail,
+    ...Array.from({ length: REVIEW_PHOTO_COUNT }, (_, index) =>
+      `${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`
+    )
+  ];
+  return files.every((file) => fsSync.existsSync(path.join(imageDir, file)));
 }
 
 function manualReviewAssetFilesForProfile(profile) {
