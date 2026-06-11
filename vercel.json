@@ -17,6 +17,7 @@
       }
     },
     { "src": "api/oliveyoung/curator-redirect.js", "use": "@vercel/node" },
+    { "src": "api/oliveyoung/curator-queue.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/shorten-proxy.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/landing-proxy.js", "use": "@vercel/node" },
     { "src": "api/favorites/sync.js", "use": "@vercel/node" },
@@ -60,6 +61,10 @@
     {
       "src": "/api/oliveyoung/curator-redirect",
       "dest": "/api/oliveyoung/curator-redirect.js"
+    },
+    {
+      "src": "/api/oliveyoung/curator-queue",
+      "dest": "/api/oliveyoung/curator-queue.js"
     },
     {
       "src": "/api/oliveyoung/shorten-proxy",
