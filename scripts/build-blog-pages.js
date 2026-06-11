@@ -1837,6 +1837,7 @@ async function main() {
       probeGallery: !args.refreshExistingOnly
     })
   ).filter((post) => post.sourceImageFile);
+  posts = posts.map(refreshPostCopy);
   posts = (await renderReviewAssetsForPosts(posts)).filter((post) => post.reviewImageFile);
 
   for (const post of posts) {

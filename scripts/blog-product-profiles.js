@@ -17,7 +17,8 @@ function titleFor(shortName, suffix) {
 }
 
 function descriptionFor(shortName, detail) {
-  return `${shortName}의 ${detail} 사진 느낌을 자연스럽게 보고 올리브영 재고와 구매 링크까지 바로 이어볼 수 있게 정리했습니다.`;
+  const normalized = String(detail || '').replace(/\s+/g, ' ').replace(/\.$/, '');
+  return `${shortName}의 ${normalized} 포인트를 사진으로 자연스럽게 살펴보고, 올리브영 재고와 구매 링크까지 바로 이어볼 수 있게 정리했습니다.`;
 }
 
 function deriveType(text) {
@@ -681,7 +682,9 @@ function packageCueFor(post, kind) {
 function moodCueFor(post) {
   const colorName = colorPaletteFor(post).colorName || '산뜻한';
   const type = deriveType(post.cleanName || post.shortName || '');
-  return `${colorName} 톤 ${type === '인기상품' ? '제품' : `${type} 무드`}라 사진에서 분위기가 먼저 들어옵니다.`;
+  return type === '인기상품'
+    ? `${colorName} 톤 제품이라 사진에서 분위기가 먼저 들어옵니다.`
+    : `${colorName} 톤 ${type} 무드라 사진에서 분위기가 먼저 들어옵니다.`;
 }
 
 function kindNoun(kind) {
