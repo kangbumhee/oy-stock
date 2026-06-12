@@ -2161,7 +2161,7 @@ function readStringArg(name) {
 function parseArgs() {
   const daily = hasFlag('--daily');
   const limit = readNumberArg('--limit', daily ? 50 : 1, 50);
-  const scanLimit = readNumberArg('--scan-limit', Math.max(limit, daily ? 100 : 20), 100);
+  const scanLimit = readNumberArg('--scan-limit', Math.max(limit, daily ? 100 : 20), 500);
 
   return {
     daily,
@@ -2238,13 +2238,12 @@ async function main() {
     await fs.mkdir(blogDir, { recursive: true });
     await fs.mkdir(imageDir, { recursive: true });
 
-    const refreshedTarget = await renderReviewAssetsForPost(
-      null,
+    const [refreshedTarget] = await renderReviewAssetsForPosts([
       refreshPostCopy({
         ...existingPosts[targetIndex],
         modifiedAt: new Date().toISOString()
       })
-    );
+    ]);
     if (!refreshedTarget.reviewImageFile) {
       throw new Error(`review assets not ready for --only-slug ${args.onlySlug}`);
     }

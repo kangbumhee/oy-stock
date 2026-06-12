@@ -22,7 +22,10 @@ function descriptionFor(shortName, detail) {
 }
 
 function deriveType(text) {
-  const value = String(text || '');
+  const value = String(text || '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const pairs = [
     ['토너패드', '토너패드'],
     ['선세럼', '선세럼'],
@@ -53,7 +56,13 @@ const BLOG_PRODUCT_PROFILES = [
     assetPrefix: 'torriden-dive-in-serum',
     assetExt: 'jpg',
     detailFile: 'torriden-dive-in-serum-detail-page-01.jpg',
-    match: (post) => textOf(post).includes('토리든') && textOf(post).includes('다이브인') && textOf(post).includes('세럼'),
+    match: (post) => {
+      const mainName = String(post.cleanName || post.rawName || post.shortName || '')
+        .replace(/\([^)]*\)/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return mainName.includes('토리든') && mainName.includes('다이브인') && mainName.includes('세럼');
+    },
     title: (shortName) => titleFor(shortName, '다이브인 세럼 올리브영 재고'),
     description: (shortName) => descriptionFor(shortName, '블루 보틀, 스포이드, 촉촉한 수분 세럼'),
     heroLead:
@@ -1234,7 +1243,6 @@ function getBlogProductProfile(post) {
   if (post && post.profile && post.profile.id && String(post.profile.id).startsWith('auto-')) {
     return buildAutoProductProfile(post);
   }
-  if (post && post.profile && post.profile.id) return post.profile;
   return null;
 }
 
