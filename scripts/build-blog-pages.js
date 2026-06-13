@@ -282,10 +282,16 @@ function absoluteUrl(urlPath) {
   return `${SITE_URL}${urlPath}`;
 }
 
-function imageAssetSrc(src) {
+function imageAssetSrc(src, version = BLOG_ASSET_VERSION) {
   if (/^https?:\/\//i.test(src)) return src;
   const separator = src.includes('?') ? '&' : '?';
-  return `${src}${separator}v=${BLOG_ASSET_VERSION}`;
+  return `${src}${separator}v=${version}`;
+}
+
+function assetVersionForPost(post) {
+  return post && post.reviewAssetVersion === MANUAL_REVIEW_ASSET_VERSION
+    ? MANUAL_REVIEW_ASSET_VERSION
+    : BLOG_ASSET_VERSION;
 }
 
 function sourceImageFileForPost(post) {
@@ -319,16 +325,17 @@ function reviewGalleryFilesForPost(post) {
 
 function reviewImageSrc(post, base) {
   const file = reviewImageFileForPost(post);
-  return file ? imageAssetSrc(`${base}${file}`) : '';
+  return file ? imageAssetSrc(`${base}${file}`, assetVersionForPost(post)) : '';
 }
 
 function reviewDetailSrc(post, base) {
   const file = reviewDetailFileForPost(post) || reviewImageFileForPost(post);
-  return file ? imageAssetSrc(`${base}${file}`) : '';
+  return file ? imageAssetSrc(`${base}${file}`, assetVersionForPost(post)) : '';
 }
 
 function reviewGallerySrcs(post, base) {
-  return reviewGalleryFilesForPost(post).map((file) => imageAssetSrc(`${base}${file}`));
+  const version = assetVersionForPost(post);
+  return reviewGalleryFilesForPost(post).map((file) => imageAssetSrc(`${base}${file}`, version));
 }
 
 function postImageSrc(post) {
@@ -466,13 +473,23 @@ function buildReviewBlogCopy(post, profile) {
   const aligned = buildAlignedBlogCopy(post, profile);
   if (isManualReviewProfile(profile)) {
     const profileCopy = buildBlogCopy(post, profile);
+    const preferArray = (value, fallback) => (Array.isArray(value) && value.length ? value : fallback);
     return {
       ...aligned,
-      photoTitle: profileCopy.photoTitle || aligned.photoTitle,
-      photoLead: profileCopy.photoLead || aligned.photoLead,
-      captions: Array.isArray(profileCopy.captions) && profileCopy.captions.length
-        ? profileCopy.captions
-        : aligned.captions
+      ...profileCopy,
+      title: profileCopy.title || aligned.title,
+      description: profileCopy.description || aligned.description,
+      heroLead: profileCopy.heroLead || aligned.heroLead,
+      introBig: profileCopy.introBig || aligned.introBig,
+      introBody: profileCopy.introBody || aligned.introBody,
+      moodNotes: preferArray(profileCopy.moodNotes, aligned.moodNotes),
+      shoppingParagraphs: preferArray(profileCopy.shoppingParagraphs, aligned.shoppingParagraphs),
+      checklist: preferArray(profileCopy.checklist, aligned.checklist),
+      tips: preferArray(profileCopy.tips, aligned.tips),
+      captions: preferArray(profileCopy.captions, aligned.captions),
+      visual: profileCopy.visual
+        ? { ...(aligned.visual || {}), ...profileCopy.visual }
+        : aligned.visual
     };
   }
 
@@ -503,10 +520,13 @@ function blogReviewAssets(post) {
   const ext = profile.assetExt || 'png';
   const manualFiles = manualReviewAssetFilesForProfile(profile);
   const useManualAssets = Boolean(manualFiles && post.reviewAssetVersion === MANUAL_REVIEW_ASSET_VERSION);
+  const version = assetVersionForPost(post);
   const generatedReviewImages = useManualAssets
-    ? manualFiles.photos.map((file) => imageAssetSrc(`${base}${file}`))
+    ? manualFiles.photos.map((file) => imageAssetSrc(`${base}${file}`, version))
     : reviewGallerySrcs(post, base);
-  const generatedDetail = useManualAssets ? imageAssetSrc(`${base}${manualFiles.detail}`) : reviewDetailSrc(post, base);
+  const generatedDetail = useManualAssets
+    ? imageAssetSrc(`${base}${manualFiles.detail}`, version)
+    : reviewDetailSrc(post, base);
   const copy = buildReviewBlogCopy(post, profile);
   const alignedCaptions =
     useManualAssets && Array.isArray(profile.captions) && profile.captions.length
@@ -522,7 +542,7 @@ function blogReviewAssets(post) {
     src:
       generatedReviewImages[index] ||
       generatedDetail ||
-      imageAssetSrc(`${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`),
+      imageAssetSrc(`${base}${profile.assetPrefix}-review-${String(index + 1).padStart(2, '0')}.${ext}`, version),
     source: false,
     title: caption[0],
     caption: caption[1],
@@ -531,7 +551,7 @@ function blogReviewAssets(post) {
 
   return {
     profile,
-    detail: generatedDetail || imageAssetSrc(`${base}${profile.detailFile}`),
+    detail: generatedDetail || imageAssetSrc(`${base}${profile.detailFile}`, version),
     stock: postImageSrc(post),
     photos
   };
