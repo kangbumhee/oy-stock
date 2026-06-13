@@ -585,7 +585,7 @@ function blogPostTemplate(post, relatedPosts) {
               .map(
                 (photo, index) => `<figure class="review-photo">
               <div class="photo-frame${photo.source ? ' source-frame' : ''}">
-                <img src="${photo.src}" alt="${htmlEscape(photo.alt)}" loading="${index < 6 ? 'eager' : 'lazy'}">
+                <img src="${photo.src}" alt="${htmlEscape(photo.alt)}" loading="eager">
               </div>
               <figcaption><b>${String(index + 1).padStart(2, '0')}</b><strong>${htmlEscape(photo.title)}</strong><span>${htmlEscape(photo.caption)}</span></figcaption>
             </figure>`
