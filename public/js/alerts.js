@@ -125,8 +125,8 @@ var RestockAlerts = {
     var rows = items
       .map(function (item) {
         var status = '확인전';
-        if (item.lastAvailable === true) status = '재고 ' + UI.num(item.lastQty || 0) + '개';
-        else if (item.lastAvailable === false) status = '품절';
+        if (item.lastAvailable === true) status = '온라인 ' + UI.num(item.lastQty || 0) + '개';
+        else if (item.lastAvailable === false) status = '온라인 품절';
         var label = item.scope === 'option' && item.optionName ? item.optionName : '상품 전체';
         return (
           '<div class="restock-manager-row">' +
@@ -236,7 +236,7 @@ var RestockAlerts = {
       }
       Storage.upsertRestockAlert(alert);
       self._refreshAfterChange();
-      UI.showSyncStatus('재입고 알림을 켰습니다. 현재 재고 상태를 기준으로 감시합니다.', false, 4500);
+      UI.showSyncStatus('온라인 재입고 알림을 켰습니다. 현재 온라인 재고 기준으로 감시합니다.', false, 4500);
       self.checkNow({ silent: true, baselineOnly: true, goodsNo: goodsNo });
     });
   },
@@ -259,13 +259,7 @@ var RestockAlerts = {
 
   optionQty: function (option) {
     var online = Number(option && option.onlineQty);
-    var total = Number(option && option.totalQty);
-    var inStock = Number(option && option.inStock);
-    var qty = 0;
-    if (isFinite(online) && online > 0) qty += online;
-    if (isFinite(total) && total > 0) qty += total;
-    else if (isFinite(inStock) && inStock > 0) qty += inStock;
-    return qty;
+    return isFinite(online) && online > 0 ? online : 0;
   },
 
   targetFromDetail: function (detail, alert) {
@@ -360,7 +354,7 @@ var RestockAlerts = {
       }
       this.refreshControls();
       if (opts.userInitiated) {
-        UI.showSyncStatus('재입고 알림 확인 완료: ' + successes + '개 상품 확인', false);
+        UI.showSyncStatus('온라인 재입고 알림 확인 완료: ' + successes + '개 상품 확인', false);
       }
     } finally {
       this.checking = false;
@@ -372,7 +366,7 @@ var RestockAlerts = {
     var body =
       alert.goodsName +
       (alert.scope === 'option' && alert.optionName ? ' · ' + alert.optionName : '') +
-      ' 재고가 다시 확인됐습니다.';
+      ' 온라인 재고가 다시 확인됐습니다.';
     var url = '/?q=' + encodeURIComponent(alert.goodsName || alert.goodsNo);
     var options = {
       body: body,
