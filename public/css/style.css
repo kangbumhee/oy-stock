@@ -378,7 +378,7 @@ button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px
 .restock-alert-option.compact .restock-switch{flex-basis:30px;width:30px;height:16px}
 .restock-alert-option.compact .restock-switch span{top:2px;left:2px;width:12px;height:12px}
 .restock-alert-option.compact.active .restock-switch span{transform:translateX(14px)}
-.restock-alert-option.compact .restock-toggle-state{display:none}
+.restock-alert-option.compact .restock-toggle-state{display:inline-block;min-width:22px}
 .restock-manager{
   margin:10px 12px 12px;
   padding:10px;
@@ -550,9 +550,9 @@ button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px
 
 .card-options{background:#f8fafc;border-top:1px solid #e2e8f0;padding:8px 10px;font-size:12px}
 .card-options.hidden{display:none}
-.card-opt-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f1f5f9}
+.card-opt-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f1f5f9}
 .card-opt-row:last-child{border-bottom:none}
-.card-opt-name{color:#334155;font-weight:500;flex:1;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-opt-name{color:#334155;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-opt-stock{font-size:11px;color:#64748b;white-space:nowrap}
 .opt-online-ok{color:#059669;font-weight:600}
 .opt-online-out{color:#dc2626}

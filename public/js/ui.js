@@ -1589,7 +1589,7 @@ var UI = {
               UI.esc(gid) +
               '">옵션 ' +
               detail.options.length +
-              '개 ▾</button>';
+              '개 ▴</button>';
           }
         } else {
           badges = '<span class="badge bg-gray">수집대기</span>';
@@ -1598,7 +1598,7 @@ var UI = {
         var optPanelF = '';
         if (detail && (detail.options || []).length > 1) {
           optPanelF =
-            '<div class="card-options hidden" id="opts-' +
+            '<div class="card-options" id="opts-' +
             UI.esc(gid) +
             '">' +
             detail.options
