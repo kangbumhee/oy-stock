@@ -369,5 +369,85 @@ var Storage = {
       return { favs: this.removeFavorite(gn), added: false };
     }
     return { favs: this.addFavorite(Object.assign({}, product, { goodsNo: gn })), added: true };
+  },
+
+  isRestockAlertUnlocked: function () {
+    return localStorage.getItem(this._key('restock_alert_unlocked')) === '1';
+  },
+  setRestockAlertUnlocked: function () {
+    localStorage.setItem(this._key('restock_alert_unlocked'), '1');
+  },
+  getRestockAlertStore: function () {
+    try {
+      return JSON.parse(localStorage.getItem(this._key('restock_alerts'))) || { items: {} };
+    } catch (e) {
+      return { items: {} };
+    }
+  },
+  setRestockAlertStore: function (store) {
+    localStorage.setItem(
+      this._key('restock_alerts'),
+      JSON.stringify({ items: (store && store.items) || {}, updatedAt: new Date().toISOString() })
+    );
+  },
+  getRestockAlerts: function () {
+    var items = this.getRestockAlertStore().items || {};
+    return Object.keys(items)
+      .map(function (id) {
+        return items[id];
+      })
+      .filter(function (item) {
+        return item && item.enabled !== false;
+      });
+  },
+  getRestockAlertItems: function () {
+    var items = this.getRestockAlertStore().items || {};
+    return Object.keys(items).map(function (id) {
+      return items[id];
+    });
+  },
+  getRestockAlert: function (id) {
+    var items = this.getRestockAlertStore().items || {};
+    return items[String(id || '')] || null;
+  },
+  upsertRestockAlert: function (alert) {
+    if (!alert || !alert.id) return null;
+    var store = this.getRestockAlertStore();
+    if (!store.items) store.items = {};
+    var prev = store.items[alert.id] || {};
+    store.items[alert.id] = Object.assign({}, prev, alert, {
+      enabled: true,
+      updatedAt: new Date().toISOString()
+    });
+    this.setRestockAlertStore(store);
+    return store.items[alert.id];
+  },
+  setRestockAlertEnabled: function (id, enabled) {
+    var store = this.getRestockAlertStore();
+    if (!store.items || !store.items[id]) return null;
+    store.items[id].enabled = enabled !== false;
+    store.items[id].updatedAt = new Date().toISOString();
+    this.setRestockAlertStore(store);
+    return store.items[id];
+  },
+  removeRestockAlert: function (id) {
+    var store = this.getRestockAlertStore();
+    if (store.items && store.items[id]) {
+      delete store.items[id];
+      this.setRestockAlertStore(store);
+    }
+  },
+  removeRestockAlertsForGoodsNo: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return;
+    var store = this.getRestockAlertStore();
+    var changed = false;
+    Object.keys(store.items || {}).forEach(function (id) {
+      if (String((store.items[id] && store.items[id].goodsNo) || '') === gn) {
+        delete store.items[id];
+        changed = true;
+      }
+    });
+    if (changed) this.setRestockAlertStore(store);
   }
 };

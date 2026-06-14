@@ -63,11 +63,19 @@ var App = {
           info.textContent =
             '📦 ' + t + ' 수집 | ' + (d.summary ? d.summary.total + '개 상품' : '');
       }
+      self._syncStickyTabsOffset();
+      if (window.RestockAlerts) RestockAlerts.refreshControls();
     });
 
     this._updateFavCount();
     UI._bindPopupEvents();
     document.addEventListener('click', this._onClick.bind(this));
+    if (window.PWA) PWA.init();
+    if (window.RestockAlerts) RestockAlerts.init(this);
+    this._syncStickyTabsOffset();
+    window.addEventListener('resize', function () {
+      self._syncStickyTabsOffset();
+    });
 
     var form = document.getElementById('search-form');
     if (form) {
@@ -85,6 +93,15 @@ var App = {
     // GPS 현재 위치 자동 감지 (저장된 위치가 없을 때만)
     if (!loc && navigator.geolocation) {
       this._detectLocation();
+    }
+  },
+
+  _syncStickyTabsOffset: function () {
+    var header = document.querySelector('header');
+    if (!header) return;
+    var height = Math.ceil(header.getBoundingClientRect().height);
+    if (height > 0) {
+      document.documentElement.style.setProperty('--header-height', height + 'px');
     }
   },
 
@@ -127,11 +144,13 @@ var App = {
           self.locationName = name;
           Storage.setLocation(lat, lng, name);
           if (locEl) locEl.textContent = '📍 ' + name;
+          self._syncStickyTabsOffset();
         });
       },
       function (err) {
         console.log('GPS 실패:', err.message);
         if (locEl) locEl.textContent = '📍 ' + self.locationName;
+        self._syncStickyTabsOffset();
       },
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
     );
@@ -175,6 +194,26 @@ var App = {
     var action = el.dataset.action;
 
     switch (action) {
+      case 'installApp':
+        e.preventDefault();
+        if (window.PWA) {
+          PWA.install();
+        } else if (window.UI) {
+          UI.showSyncStatus('앱 설치 파일을 불러오지 못했습니다. 새로고침 후 다시 눌러 주세요.', true, 5000);
+        } else {
+          alert('앱 설치 파일을 불러오지 못했습니다. 새로고침 후 다시 눌러 주세요.');
+        }
+        break;
+      case 'toggleRestockAlert':
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.RestockAlerts) RestockAlerts.toggleFromElement(el);
+        break;
+      case 'checkRestockAlerts':
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.RestockAlerts) RestockAlerts.checkNow({ userInitiated: true });
+        break;
       case 'buyNow': {
         e.preventDefault();
         e.stopPropagation();
@@ -1308,6 +1347,7 @@ var App = {
   _renderFavorites: function () {
     var favs = Storage.getFavorites();
     UI.renderFavorites(favs, this.detailData);
+    if (window.RestockAlerts) RestockAlerts.refreshControls();
     this._queueCuratorLinks(favs, 'favorites', CONFIG.CURATOR_QUEUE_FAVORITES_LIMIT || 50);
     void this._enrichFavorites(favs);
   },
@@ -1328,6 +1368,7 @@ var App = {
       stockStatus: p.stockStatus || ''
     };
     var result = Storage.toggleFavorite(product);
+    if (!result.added && window.RestockAlerts) RestockAlerts.removeForGoodsNo(product.goodsNo);
     this._updateFavCount();
     var btn = document.querySelector('[data-action="toggleFav"][data-index="' + idx + '"]');
     if (btn) {
@@ -1339,6 +1380,7 @@ var App = {
 
   _removeFav: function (goodsNo) {
     Storage.removeFavorite(goodsNo);
+    if (window.RestockAlerts) RestockAlerts.removeForGoodsNo(goodsNo);
     this._updateFavCount();
     this._renderFavorites();
     UI.showSyncStatus('즐겨찾기 해제', false);
@@ -1364,11 +1406,13 @@ var App = {
       product.price = product.price || searchP.priceToPay;
     }
     var result = Storage.toggleFavorite(product);
+    if (!result.added && window.RestockAlerts) RestockAlerts.removeForGoodsNo(goodsNo);
     this._updateFavCount();
     if (btnEl) {
       btnEl.textContent = result.added ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가';
       btnEl.classList.toggle('active', result.added);
     }
+    if (window.RestockAlerts) RestockAlerts.refreshControls();
   },
 
   _syncFavorites: function () {

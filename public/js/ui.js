@@ -1533,11 +1533,16 @@ var UI = {
       (timeStr
         ? '<span class="ok">📦 공개 캐시 ' + timeStr + '</span>'
         : '<span class="ok">매장·온라인 재고는 실시간 조회</span>') +
+      '<button type="button" class="alert-check-btn" data-action="checkRestockAlerts">알림확인</button>' +
       '</div>';
+    var alertPanel = window.RestockAlerts ? RestockAlerts.managerHtml() : '';
     var cards = favorites
       .map(function (f) {
         var gid = String(f.goodsNo || f.goodsNumber || '');
         var detail = detailMap[gid];
+        var displayName = detail ? detail.goodsName : f.goodsName;
+        var displayImage = (detail ? detail.thumbnail : '') || f.imageUrl || '';
+        var alertMeta = { goodsName: displayName || '', imageUrl: displayImage || '' };
         var listOnlineOnlyF = UI.inventoryOnlineOnly(detail);
         var vendorDeliveryF = UI.isVendorDeliveryProduct(f) || UI.isVendorDeliveryProduct(detail);
         var favCat =
@@ -1597,7 +1602,7 @@ var UI = {
             UI.esc(gid) +
             '">' +
             detail.options
-              .map(function (o) {
+              .map(function (o, optIdx) {
                 var optName = o.name || '기본';
                 if (optName.indexOf(']') > -1) optName = optName.substring(optName.lastIndexOf(']') + 1).trim();
                 if (optName.length > 25) optName = optName.substring(0, 25) + '…';
@@ -1614,6 +1619,10 @@ var UI = {
                 var stockColF = listOnlineOnlyF
                   ? onlineInfo
                   : storeInfo + ' | ' + onlineInfo;
+                var optionAlert =
+                  window.RestockAlerts
+                    ? RestockAlerts.optionControlHtml(gid, o, alertMeta, optIdx, true)
+                    : '';
                 return (
                   '<div class="card-opt-row">' +
                   '<span class="card-opt-name">' +
@@ -1622,6 +1631,7 @@ var UI = {
                   '<span class="card-opt-stock">' +
                   stockColF +
                   '</span>' +
+                  optionAlert +
                   '</div>'
                 );
               })
@@ -1629,7 +1639,7 @@ var UI = {
             '</div>';
         }
 
-        var img = (detail ? detail.thumbnail : '') || f.imageUrl || '';
+        var img = displayImage;
         var imgTag = img
           ? '<img src="' + UI.esc(img) + '" alt="" loading="lazy" decoding="async">'
           : '<div class="no-img">📦</div>';
@@ -1649,6 +1659,9 @@ var UI = {
           '" data-category="' +
           UI.esc(favCat) +
           '" data-original-label="바로구매">바로구매</button>' +
+          (window.RestockAlerts
+            ? RestockAlerts.productControlHtml(gid, alertMeta, 'card-restock-alert')
+            : '') +
           '</div>';
         return (
           '<div class="card' +
@@ -1664,7 +1677,7 @@ var UI = {
           '</div></div><div class="card-body"><div class="card-top"><p class="card-name" data-action="showFavDetail" data-goodsno="' +
           UI.esc(gid) +
           '">' +
-          UI.esc(detail ? detail.goodsName : f.goodsName) +
+          UI.esc(displayName) +
           '</p><button type="button" class="fav-btn active" data-action="removeFav" data-goodsno="' +
           UI.esc(gid) +
           '">★</button></div><div class="card-price">' +
@@ -1681,7 +1694,7 @@ var UI = {
         );
       })
       .join('');
-    c.innerHTML = bar + '<div class="grid">' + cards + '</div>';
+    c.innerHTML = bar + alertPanel + '<div class="grid">' + cards + '</div>';
   },
 
   _handlePopupRootClick: function (e) {
@@ -2153,6 +2166,7 @@ var UI = {
       '</div>';
 
     var opts = detail.options || [];
+    var alertMeta = { goodsName: detail.goodsName || '', imageUrl: detail.thumbnail || '' };
     var optTabs = '';
     if (opts.length > 1) {
       optTabs =
@@ -2257,6 +2271,10 @@ var UI = {
               UI.esc(pidStr) +
               '">🗺️ 이 옵션 전국 재고 보기</button>'
             : '';
+        var alertBtnPerOpt =
+          isFav && window.RestockAlerts
+            ? RestockAlerts.optionControlHtml(goodsNo, o, alertMeta, i, false)
+            : '';
         return (
           '<div class="opt-panel' +
           (i === 0 ? ' active' : '') +
@@ -2266,6 +2284,7 @@ var UI = {
           summary +
           storeHtml +
           allBtnPerOpt +
+          alertBtnPerOpt +
           '</div>'
         );
       })
@@ -2283,12 +2302,16 @@ var UI = {
       '">' +
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
+    var alertBtn =
+      isFav && window.RestockAlerts
+        ? RestockAlerts.productControlHtml(goodsNo, alertMeta, 'popup-restock-alert')
+        : '';
     var shareBtn =
       '<button type="button" class="popup-share-btn" data-action="shareStockSnapshot" data-goodsno="' +
       UI.esc(goodsNo) +
       '">📷 재고 결과 이미지로 공유</button>';
     var shareActions =
-      '<div class="popup-share-actions">' + favBtn + shareBtn + '</div>';
+      '<div class="popup-share-actions">' + favBtn + alertBtn + shareBtn + '</div>';
 
     var buyUnderTitle =
       '<div class="popup-buy-inline">' +
@@ -2321,6 +2344,7 @@ var UI = {
       '</div></div>';
     document.body.style.overflow = 'hidden';
     UI.prefetchAllStockForDetail(detail, goodsNo);
+    if (window.RestockAlerts) RestockAlerts.refreshControls();
   },
 
   showAllStockPanel: function (detail) {
