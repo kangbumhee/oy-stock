@@ -2008,6 +2008,22 @@ function mergePosts(existingPosts, generatedPosts) {
     .sort(sortBlogPosts);
 }
 
+function mergePostWithIncoming(existingPost, incomingPost) {
+  if (!incomingPost) return existingPost;
+  return {
+    ...existingPost,
+    ...incomingPost,
+    profile: existingPost.profile,
+    reviewImageFile: existingPost.reviewImageFile,
+    reviewDetailFile: existingPost.reviewDetailFile,
+    reviewGalleryFiles: existingPost.reviewGalleryFiles,
+    reviewAssetVersion: existingPost.reviewAssetVersion,
+    sourceImageFile: existingPost.sourceImageFile,
+    sourceGalleryFiles: existingPost.sourceGalleryFiles,
+    sourceGalleryCheckedAt: existingPost.sourceGalleryCheckedAt
+  };
+}
+
 function isSupportedBlogPost(post) {
   return Boolean(getBlogProductProfile(post) || buildAutoProductProfile(post));
 }
@@ -2258,9 +2274,20 @@ async function main() {
     await fs.mkdir(blogDir, { recursive: true });
     await fs.mkdir(imageDir, { recursive: true });
 
+    const rankingPosts = await fetchViewRanking(args.scanLimit);
+    const existingTarget = existingPosts[targetIndex];
+    const incomingTarget =
+      rankingPosts.find(
+        (post) =>
+          (existingTarget.goodsNo && post.goodsNo && String(post.goodsNo).toLowerCase() === String(existingTarget.goodsNo).toLowerCase()) ||
+          post.slug === existingTarget.slug
+      ) || null;
+    const refreshedSeed = mergePostWithIncoming(existingTarget, incomingTarget);
+
     const [refreshedTarget] = await renderReviewAssetsForPosts([
       refreshPostCopy({
-        ...existingPosts[targetIndex],
+        ...refreshedSeed,
+        publishedAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString()
       })
     ]);
