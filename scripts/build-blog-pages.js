@@ -752,6 +752,7 @@ ${analyticsTag()}
       <h1>${htmlEscape(post.title)}</h1>
       <p class="lead">${htmlEscape(copy.heroLead)}</p>
       <div class="meta">
+        <span>업로드 ${htmlEscape(formatPostDate(post.publishedAt || post.rankingDate))}</span>
         <span>조회 인기 ${post.rank}위</span>
         <span>${htmlEscape(post.categoryName)}</span>
         <span>${htmlEscape(post.rankingDateText)} 기준</span>
