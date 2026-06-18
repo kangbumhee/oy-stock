@@ -846,6 +846,7 @@ function blogIndexTemplate(posts) {
         <div class="card-meta">
           <span>업로드 ${htmlEscape(formatPostDate(post.publishedAt || post.rankingDate))}</span>
           <span>조회 ${formatNumber(post.viewCount)}회</span>
+          <span>인기 ${post.rank || ''}위</span>
         </div>
         <strong>${htmlEscape(post.title)}</strong>
         <small>${htmlEscape(post.description)}</small>
