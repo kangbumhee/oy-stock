@@ -47,6 +47,8 @@
 
 현재 메디힐 토너패드 글은 생성 이미지 기반이다. 추가 인기템은 공식 상세페이지 캡처를 참고한 Playwright/HTML 렌더 이미지 기반이다.
 
+현재 자동화의 수동 리뷰 이미지 통과 기준은 `.ai/BLOG_REVIEW_IMAGE_POLICY.md`를 우선한다. 완전한 실사 사진처럼 보이지 않아도, 공식 올리브영 소스 이미지를 바탕으로 상품군이 일관되게 보이는 재구성 리뷰 컷이면 통과 가능하다. 단, 잘못된 상품/카테고리, 원본 배너 스크린샷 그대로 사용, 반복 packshot, 모델/광고 이미지, JPG 리뷰 갤러리, 캡션 불일치는 계속 실패 처리한다.
+
 참고:
 
 - 공식 올리브영 상세페이지 캡처는 `tmp/oliveyoung-detail-captures/`에 참고용으로만 저장했다.
@@ -193,6 +195,7 @@ node --check public/js/app.js
 node --check scripts/blog-product-profiles.js
 node --check scripts/build-blog-pages.js
 node --check scripts/render-blog-product-assets.js
+node --check scripts/verify-manual-review-post.js
 node --check scripts/detail-stock.mjs
 ```
 
@@ -206,6 +209,12 @@ node scripts/build-blog-pages.js --limit 4
 ```
 
 이미지/레이아웃 확인은 Playwright로 `file://` 페이지를 열어 검사했다.
+
+수동 리뷰 포스트 구조 검증:
+
+```bash
+node scripts/verify-manual-review-post.js --slug <slug> --contact-sheet
+```
 
 체크해야 할 항목:
 

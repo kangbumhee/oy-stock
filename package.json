@@ -10,6 +10,7 @@
     "build:blog": "node scripts/build-blog-pages.js",
     "build:blog:daily": "node scripts/build-blog-pages.js --daily --limit 50 --scan-limit 100",
     "build:blog:assets": "node scripts/render-blog-product-assets.js",
+    "verify:blog:manual": "node scripts/verify-manual-review-post.js",
     "submit:indexnow": "node scripts/submit-indexnow.mjs"
   },
   "engines": {
