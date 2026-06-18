@@ -1,6 +1,5 @@
 /**
- * GitHub Actions + Playwright로 생성한 public/data/curator-links.json 만 조회.
- * (Vercel 서버에서 m.oliveyoung API 직접 호출은 Cloudflare 403)
+ * public/data/curator-links.json 캐시를 먼저 쓰고, 없으면 클릭 시점에 큐레이터 링크를 생성한다.
  *
  * format=json — JSON 응답
  * format=debug — 캐시 URL, 조회 결과, 항목 요약
@@ -602,7 +601,9 @@ module.exports = async function handler(req, res) {
     Date.now() - cachedGenerationErrorAt < 6 * 60 * 60 * 1000;
   const basicLong = mobileUrlBasicAffiliate(goodsNo);
 
-  const allowLiveLink = process.env.ENABLE_LIVE_CURATOR_LINKS === '1';
+  const allowLiveLink =
+    process.env.ENABLE_LIVE_CURATOR_LINKS !== '0' &&
+    process.env.DISABLE_LIVE_CURATOR_LINKS !== '1';
   const liveLink =
     allowLiveLink && !shortenedUrl && !cachedLong
       ? await createLiveCuratorLink(req, goodsNo, categoryNumber)
@@ -622,8 +623,12 @@ module.exports = async function handler(req, res) {
         : liveLink && liveLink.ok && liveLink.originalUrl
           ? 'live_original'
           : 'fallback_basic_utm';
+  const allowWorkflowQueue = process.env.ENABLE_CURATOR_WORKFLOW_QUEUE === '1';
   const queueRequest =
-    source === 'fallback_basic_utm' && !noTrigger && !suppressQueueForCachedError
+    allowWorkflowQueue &&
+    source === 'fallback_basic_utm' &&
+    !noTrigger &&
+    !suppressQueueForCachedError
       ? await triggerCuratorGeneration(goodsNo)
       : null;
   const queueStatus =

@@ -384,6 +384,7 @@ var App = {
 
   _queueCuratorLinks: function (products, source, limit) {
     try {
+      if (CONFIG.ENABLE_CURATOR_AUTO_QUEUE !== true) return;
       if (!CONFIG.CURATOR_QUEUE_PATH || !products || !products.length) return;
       var now = Date.now();
       var max = parseInt(String(limit || CONFIG.CURATOR_QUEUE_SEARCH_LIMIT || 50), 10);

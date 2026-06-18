@@ -67,7 +67,8 @@ var CONFIG = {
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
-  /** 검색/인기템 목록 상품을 백그라운드로 큐레이터 링크 생성 큐에 넣음 */
+  /** 검색/인기템 목록 조회만으로는 GitHub Actions 큐레이터 링크 생성을 요청하지 않음 */
+  ENABLE_CURATOR_AUTO_QUEUE: false,
   CURATOR_QUEUE_PATH: '/api/oliveyoung/curator-queue',
   CURATOR_QUEUE_SEARCH_LIMIT: 50,
   CURATOR_QUEUE_HOT_LIMIT: 80,
