@@ -647,6 +647,7 @@ function blogPostTemplate(post, relatedPosts) {
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="${pageUrl}">
 ${faviconTags()}
+  <link rel="stylesheet" href="/css/blog-floating-cta.css">
   <meta property="og:type" content="article">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="${SITE_NAME}">
@@ -816,6 +817,7 @@ ${analyticsTag()}
     </main>
     <footer>${SITE_NAME} · 올리브영 재고확인과 인기상품 랭킹을 빠르게 비교하는 검색 도구</footer>
   </div>
+  <script src="/js/blog-floating-cta.js" defer></script>
 </body>
 </html>`;
 }
