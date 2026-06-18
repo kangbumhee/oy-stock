@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "git": {
+    "deploymentEnabled": false
+  },
   "builds": [
     { "src": "public/**", "use": "@vercel/static" },
     { "src": "api/proxy.js", "use": "@vercel/node" },
