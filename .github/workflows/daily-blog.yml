@@ -22,6 +22,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -32,17 +34,38 @@ jobs:
 
       - run: npx playwright install chromium --with-deps
 
-      - name: Generate daily blog posts
-        run: npm run build:blog:daily
-
-      - name: Commit & Push
+      - name: Generate, Commit & Push
+        shell: bash
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/blog/ public/data/blog-posts.json public/images/blog/ public/index.html public/rss.xml public/site-map.html public/sitemap.xml
-          git diff --staged --quiet && {
-            echo "No new blog posts to commit."
-            exit 0
-          }
-          git commit -m "📝 daily blog $(TZ=Asia/Seoul date +%Y-%m-%d)"
-          git push
+
+          for attempt in 1 2 3; do
+            echo "Blog publish attempt ${attempt}/3"
+
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd public/blog public/images/blog
+
+            npm run build:blog:daily
+
+            git add public/blog/ public/data/blog-posts.json public/images/blog/ public/index.html public/rss.xml public/site-map.html public/sitemap.xml
+            if git diff --staged --quiet; then
+              echo "No new blog posts to commit."
+              exit 0
+            fi
+
+            git commit -m "📝 daily blog $(TZ=Asia/Seoul date +%Y-%m-%d)"
+            if git push origin HEAD:main; then
+              echo "Daily blog posts pushed."
+              exit 0
+            fi
+
+            echo "Push was rejected because main changed. Retrying from latest main..."
+            sleep $((attempt * 5))
+          done
+
+          echo "Failed to push daily blog posts after 3 attempts."
+          exit 1
