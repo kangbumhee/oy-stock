@@ -2,6 +2,8 @@
   'use strict';
 
   var SHOW_DELAY_MS = 2000;
+  var RETRY_MS = 500;
+  var MAX_ATTEMPTS = 12;
 
   function absoluteUrl(value) {
     try {
@@ -17,9 +19,21 @@
     return value || fallback || '';
   }
 
-  function firstHref(selector) {
-    var el = document.querySelector(selector);
+  function firstElement(selectors) {
+    for (var i = 0; i < selectors.length; i += 1) {
+      var el = document.querySelector(selectors[i]);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function hrefFrom(el) {
     return el ? el.getAttribute('href') || '' : '';
+  }
+
+  function goodsNoFromUrl() {
+    var match = window.location.pathname.match(/a\d{9,}/i);
+    return match ? match[0].toUpperCase() : '';
   }
 
   function productImage() {
@@ -39,16 +53,34 @@
     return a;
   }
 
-  function showFloatingCta() {
+  function showFloatingCta(attempt) {
     if (document.querySelector('.oy-floating-cta')) return;
 
-    var buySource = document.querySelector('.cta .buy-link');
-    var stockSource = document.querySelector('.cta .stock-link');
-    var buyHref = firstHref('.cta .buy-link');
-    var stockHref = firstHref('.cta .stock-link');
-    if (!buyHref || !stockHref) return;
-
+    var buySource = firstElement([
+      '.cta .buy-link',
+      '.buy-link',
+      'a[href*="/api/oliveyoung/curator-redirect"]',
+      'a[href*="curator-redirect?goodsNo="]'
+    ]);
+    var stockSource = firstElement([
+      '.cta .stock-link',
+      '.stock-link',
+      'a[href*="autoBuy="]',
+      'a[href*="/?q="]'
+    ]);
     var title = firstText('h1', '올리브영 인기 상품');
+    var goodsNo = goodsNoFromUrl();
+    var buyHref = hrefFrom(buySource) || (goodsNo ? '/api/oliveyoung/curator-redirect?goodsNo=' + goodsNo : '');
+    var stockHref = hrefFrom(stockSource) || '/?q=' + encodeURIComponent(title) + (goodsNo ? '&autoBuy=' + goodsNo : '');
+    if (!buyHref || !stockHref) {
+      if ((attempt || 0) < MAX_ATTEMPTS) {
+        window.setTimeout(function () {
+          showFloatingCta((attempt || 0) + 1);
+        }, RETRY_MS);
+      }
+      return;
+    }
+
     var imageUrl = productImage();
     var root = document.createElement('aside');
     root.className = 'oy-floating-cta';
@@ -108,7 +140,9 @@
   }
 
   function schedule() {
-    window.setTimeout(showFloatingCta, SHOW_DELAY_MS);
+    window.setTimeout(function () {
+      showFloatingCta(0);
+    }, SHOW_DELAY_MS);
   }
 
   if (document.readyState === 'loading') {
