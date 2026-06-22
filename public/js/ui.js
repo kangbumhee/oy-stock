@@ -47,6 +47,17 @@ var UI = {
     return url;
   },
 
+  trackGaEvent: function (eventName, params) {
+    try {
+      if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+      window.gtag(
+        'event',
+        eventName,
+        Object.assign({ transport_type: 'beacon' }, params || {})
+      );
+    } catch (e) {}
+  },
+
   /**
    * 블로그 구매 버튼과 같은 서버 리다이렉트 API로 통일한다.
    * 서버에서 curator-links.json → 모바일 앱 브릿지 → 웹 fallback 순서로 처리한다.
@@ -63,6 +74,22 @@ var UI = {
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 구매 →';
     var redirectUrl = UI.curatorRedirectUrl(goodsNo);
+    var eventSource =
+      el.dataset.analyticsSource ||
+      el.dataset.source ||
+      (String(el.className || '').indexOf('hot') >= 0 ? 'hot_ranking' : 'site_button');
+    var buttonText = String(el.textContent || '').trim().slice(0, 80);
+
+    UI.trackGaEvent('buy_click', {
+      goods_no: goodsNo,
+      event_source: eventSource,
+      button_text: buttonText
+    });
+    UI.trackGaEvent('curator_redirect_open', {
+      goods_no: goodsNo,
+      event_source: eventSource,
+      redirect_type: 'server_redirect'
+    });
 
     function tryOpenCuratorRedirect(url) {
       var newTab = window.open(url, '_blank', 'noopener,noreferrer');

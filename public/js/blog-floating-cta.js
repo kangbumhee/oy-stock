@@ -13,6 +13,17 @@
     }
   }
 
+  function trackGaEvent(eventName, params) {
+    try {
+      if (typeof window.gtag !== 'function') return;
+      window.gtag(
+        'event',
+        eventName,
+        Object.assign({ transport_type: 'beacon' }, params || {})
+      );
+    } catch (e) {}
+  }
+
   function firstText(selector, fallback) {
     var el = document.querySelector(selector);
     var value = el && el.textContent ? el.textContent.trim() : '';
@@ -29,6 +40,17 @@
 
   function hrefFrom(el) {
     return el ? el.getAttribute('href') || '' : '';
+  }
+
+  function goodsNoFromHref(href) {
+    try {
+      var url = new URL(href, window.location.href);
+      var value = url.searchParams.get('goodsNo') || '';
+      return String(value).trim().toUpperCase();
+    } catch (e) {
+      var match = String(href || '').match(/[?&]goodsNo=([AB]\d+)/i);
+      return match ? match[1].toUpperCase() : '';
+    }
   }
 
   function goodsNoFromUrl() {
@@ -139,11 +161,43 @@
     });
   }
 
+  function bindBuyTracking() {
+    document.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!target || !target.closest) return;
+      var link = target.closest(
+        'a[href*="/api/oliveyoung/curator-redirect"],a[href*="curator-redirect?goodsNo="]'
+      );
+      if (!link) return;
+
+      var href = hrefFrom(link);
+      var goodsNo = goodsNoFromHref(href) || goodsNoFromUrl();
+      var eventSource =
+        link.closest && link.closest('.oy-floating-cta')
+          ? 'blog_floating_cta'
+          : 'blog_body_cta';
+      var buttonText = String(link.textContent || '').trim().slice(0, 80);
+
+      trackGaEvent('buy_click', {
+        goods_no: goodsNo,
+        event_source: eventSource,
+        button_text: buttonText
+      });
+      trackGaEvent('curator_redirect_open', {
+        goods_no: goodsNo,
+        event_source: eventSource,
+        redirect_type: 'server_redirect'
+      });
+    });
+  }
+
   function schedule() {
     window.setTimeout(function () {
       showFloatingCta(0);
     }, SHOW_DELAY_MS);
   }
+
+  bindBuyTracking();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', schedule);
