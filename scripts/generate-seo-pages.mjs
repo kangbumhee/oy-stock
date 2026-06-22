@@ -11,6 +11,7 @@ const imageDir = path.join(publicDir, 'images');
 const SITE_URL = 'https://olivestock.co.kr';
 const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
+const WRITE_DISCOVERY_FILES = process.env.WRITE_GUIDE_DISCOVERY_FILES === '1';
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(
   new Date()
 );
@@ -186,6 +187,88 @@ const pages = [
   }
 ];
 
+const visualPresets = {
+  'oliveyoung-stock-check': [
+    ['mediheal-gel-mask-stock-a000000239102-review-cover.jpg', '품절 전 확인하는 인기 마스크팩'],
+    ['goodal-sunscreen-stock-a000000219553-review-cover.jpg', '세일 기간 빠르게 움직이는 선케어'],
+    ['clio-tint-stock-a000000185265-review-cover.jpg', '옵션별 재고가 갈리는 립 제품'],
+    ['anua-serum-stock-a000000255324-review-cover.jpg', '온라인·매장 재고를 같이 보는 세럼']
+  ],
+  'oliveyoung-stock-search': [
+    ['mediheal-toner-pad-200-stock-a000000255385-review-cover.jpg', '상품명 검색으로 찾는 토너패드'],
+    ['anua-serum-stock-a000000255324-review-cover.jpg', '브랜드명으로 좁히는 세럼'],
+    ['banila-co-cleansing-balm-stock-a000000244783-review-cover.jpg', '카테고리 검색으로 보는 클렌징'],
+    ['clio-hot-item-stock-a000000188988-review-cover.jpg', '색상 옵션 확인이 필요한 메이크업']
+  ],
+  'nearby-store-stock': [
+    ['mediheal-mask-pack-stock-a000000217620-review-cover.jpg', '근처 매장부터 비교하는 마스크팩'],
+    ['oliveyoung-hot-item-stock-a000000183329-review-cover.jpg', '방문 전 재고를 보는 인기상품'],
+    ['oliveyoung-lip-balm-stock-a000000144067-review-cover.jpg', '가까운 매장 소량 재고 확인'],
+    ['oliveyoung-hot-item-stock-a000000167662-review-cover.jpg', '오늘 필요한 상품 빠른 비교']
+  ],
+  'national-store-stock': [
+    ['banila-co-cleansing-balm-stock-a000000244783-review-cover.jpg', '전국 매장 대체 재고 탐색'],
+    ['foddle-cleansing-balm-stock-a000000230421-review-cover.jpg', '지역별로 다른 클렌징 재고'],
+    ['oliveyoung-cleanser-stock-a000000214907-review-cover.jpg', '매장별 차이가 큰 클렌저'],
+    ['oliveyoung-cleansing-balm-stock-a000000255622-review-cover.jpg', '옵션별 전국 재고 비교']
+  ],
+  'online-stock': [
+    ['anua-serum-stock-a000000255324-review-cover.jpg', '온라인 수량을 먼저 보는 세럼'],
+    ['mediheal-serum-stock-a000000255390-review-cover.jpg', '온라인 재고가 빠르게 줄어드는 앰플'],
+    ['oliveyoung-ampoule-stock-a000000255068-review-cover.jpg', '온라인·오늘배송 동시 확인'],
+    ['oliveyoung-ampoule-stock-a000000230854-review-cover.jpg', '매장 품절 시 대체 구매 확인']
+  ],
+  'today-dream-stock': [
+    ['clio-tint-stock-a000000224939-review-cover.jpg', '오늘배송 전 옵션 확인'],
+    ['clio-tint-stock-a000000185265-review-cover.jpg', '당일 수령 전 립 재고 체크'],
+    ['tonymoly-tint-stock-a000000205485-review-cover.jpg', '색상별 온라인 재고 비교'],
+    ['oliveyoung-lip-balm-stock-a000000144067-review-cover.jpg', '급하게 필요한 립밤 재고']
+  ],
+  'popular-products': [
+    ['oliveyoung-hot-item-stock-a000000183329-review-cover.jpg', '조회가 몰리는 인기상품'],
+    ['oliveyoung-hot-item-stock-a000000167662-review-cover.jpg', '랭킹에서 먼저 보는 상품'],
+    ['oliveyoung-hot-item-stock-a000000255740-review-cover.jpg', '재고 흐름을 확인할 인기템'],
+    ['oliveyoung-hot-item-stock-a000000250705-review-cover.jpg', '세일 기간 많이 찾는 상품']
+  ],
+  'ranking-sales': [
+    ['clio-hot-item-stock-a000000188988-review-cover.jpg', '랭킹 흐름을 보는 메이크업'],
+    ['banila-co-hot-item-stock-a000000247245-review-cover.jpg', '판매 흐름과 재고를 같이 확인'],
+    ['oliveyoung-hot-item-stock-a000000221757-review-cover.jpg', '조회수 높은 뷰티소품'],
+    ['oliveyoung-hot-item-stock-a000000248829-review-cover.jpg', '매출 흐름 참고용 인기상품']
+  ],
+  'sale-stock': [
+    ['oliveyoung-cleanser-stock-a000000212703-review-cover.jpg', '세일 상품 품절 전 확인'],
+    ['oliveyoung-cleanser-stock-a000000244488-review-cover.jpg', '할인 클렌저 재고 비교'],
+    ['banila-co-cleansing-balm-stock-a000000244783-review-cover.jpg', '할인 폭 큰 클렌징 재고'],
+    ['biore-hot-item-stock-a000000249451-review-cover.jpg', '행사 상품 빠른 재고 체크']
+  ],
+  'soldout-restock': [
+    ['oliveyoung-ampoule-stock-a000000243535-review-cover.jpg', '품절 뒤 다시 보는 앰플'],
+    ['oliveyoung-ampoule-stock-a000000202414-review-cover.jpg', '재입고 가능 상품 추적'],
+    ['mediheal-serum-stock-a000000255390-review-cover.jpg', '소량 재고 변화 확인'],
+    ['oliveyoung-hot-item-stock-a000000239099-review-cover.jpg', '품절 전 즐겨찾기 추천']
+  ],
+  'how-to-use': [
+    ['mediheal-toner-pad-200-stock-a000000255385-review-cover.jpg', '상품명으로 검색 시작'],
+    ['goodal-sunscreen-stock-a000000219556-review-cover.jpg', '카드 클릭 후 재고 확인'],
+    ['clio-hot-item-stock-a000000232098-review-cover.jpg', '옵션별 재고 비교'],
+    ['oliveyoung-hot-item-stock-a000000183329-review-cover.jpg', '인기템에서 대체 상품 찾기']
+  ],
+  'beauty-product-stock': [
+    ['clio-hot-item-stock-a000000188988-review-cover.jpg', '메이크업 색상 재고 확인'],
+    ['clio-tint-stock-a000000224939-review-cover.jpg', '립 옵션별 재고 비교'],
+    ['goodal-sunscreen-stock-a000000219553-review-cover.jpg', '선케어 상품 빠른 확인'],
+    ['anua-serum-stock-a000000255324-review-cover.jpg', '스킨케어 온라인 재고 확인']
+  ]
+};
+
+const fallbackVisuals = [
+  ['oliveyoung-hot-item-stock-a000000183329-review-cover.jpg', '올리브영 인기상품 재고 확인'],
+  ['mediheal-gel-mask-stock-a000000239102-review-cover.jpg', '인기 마스크팩 재고 확인'],
+  ['anua-serum-stock-a000000255324-review-cover.jpg', '세럼 온라인 재고 확인'],
+  ['clio-tint-stock-a000000185265-review-cover.jpg', '립 제품 옵션 재고 확인']
+];
+
 function htmlEscape(value) {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -204,6 +287,24 @@ function pageUrl(page) {
 
 function imageName(page) {
   return `olivestock-${page.slug}.svg`;
+}
+
+function blogImageUrl(fileName) {
+  return `/images/blog/${fileName}`;
+}
+
+function absoluteUrl(pathname) {
+  if (!pathname) return SITE_URL + '/images/olivestock-og-image.svg';
+  return pathname.startsWith('http') ? pathname : SITE_URL + pathname;
+}
+
+function guideVisuals(page) {
+  const rows = visualPresets[page.slug] || fallbackVisuals;
+  return rows.map(([fileName, label]) => ({
+    src: blogImageUrl(fileName),
+    abs: absoluteUrl(blogImageUrl(fileName)),
+    label
+  }));
 }
 
 function analyticsTag() {
@@ -260,8 +361,14 @@ function guideImage(page) {
 
 function pageTemplate(page, allPages) {
   const related = allPages.filter((p) => p.slug !== page.slug).slice(0, 4);
-  const img = `/images/${imageName(page)}`;
-  const absoluteImg = `${SITE_URL}${img}`;
+  const guideSvg = `/images/${imageName(page)}`;
+  const visuals = guideVisuals(page);
+  const primaryVisual = visuals[0] || {
+    src: guideSvg,
+    abs: absoluteUrl(guideSvg),
+    label: page.keyword
+  };
+  const absoluteImg = primaryVisual.abs;
   const cta = `/?q=${encodeURIComponent(page.query)}`;
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -270,7 +377,7 @@ function pageTemplate(page, allPages) {
         '@type': 'Article',
         headline: page.title,
         description: page.description,
-        image: absoluteImg,
+        image: visuals.length ? visuals.map((visual) => visual.abs) : absoluteImg,
         author: { '@type': 'Organization', name: SITE_NAME },
         publisher: { '@type': 'Organization', name: SITE_NAME },
         datePublished: today,
@@ -288,6 +395,34 @@ function pageTemplate(page, allPages) {
       }
     ]
   };
+  const heroVisualHtml =
+    '<div class="hero-visual" aria-label="' +
+    htmlEscape(page.keyword) +
+    ' 관련 상품 이미지">' +
+    visuals
+      .map(
+        (visual, index) => `<figure class="visual-card v${index + 1}">
+          <img src="${visual.src}" alt="${htmlEscape(visual.label)}" width="360" height="270" ${index === 0 ? 'loading="eager"' : 'loading="lazy"'} decoding="async">
+          <figcaption>${htmlEscape(visual.label)}</figcaption>
+        </figure>`
+      )
+      .join('\n        ') +
+    '</div>';
+  const visualStripHtml =
+    '<section class="visual-strip" aria-labelledby="visual-strip-title">' +
+    '<div><span>이미지로 먼저 보기</span><h2 id="visual-strip-title">' +
+    htmlEscape(page.keyword) +
+    '과 함께 보면 좋은 상품 이미지</h2></div>' +
+    '<div class="visual-strip-grid">' +
+    visuals
+      .map(
+        (visual) => `<figure>
+          <img src="${visual.src}" alt="${htmlEscape(visual.label)}" width="360" height="270" loading="lazy" decoding="async">
+          <figcaption>${htmlEscape(visual.label)}</figcaption>
+        </figure>`
+      )
+      .join('\n        ') +
+    '</div></section>';
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -306,7 +441,11 @@ ${faviconTags()}
   <meta property="og:description" content="${htmlEscape(page.description)}">
   <meta property="og:url" content="${pageUrl(page)}">
   <meta property="og:image" content="${absoluteImg}">
+  <meta property="og:image:secure_url" content="${absoluteImg}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:alt" content="${htmlEscape(primaryVisual.label)}">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${absoluteImg}">
   <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
 ${analyticsTag()}
   <style>
@@ -323,7 +462,13 @@ ${analyticsTag()}
     .kicker{display:inline-flex;margin-bottom:10px;padding:4px 10px;border-radius:999px;background:#e8f7da;color:#315b11;font-size:12px;font-weight:900}
     h1{font-size:36px;line-height:1.22;letter-spacing:0;margin-bottom:12px}
     .lead{font-size:17px;color:#475569;font-weight:700}
-    .hero img{width:100%;border-radius:18px;border:1px solid #dfead8;background:#fff;box-shadow:0 18px 42px rgba(15,23,42,.09)}
+    .hero-visual{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:340px}
+    .visual-card{position:relative;overflow:hidden;border-radius:18px;background:#fff;border:1px solid rgba(193,213,182,.8);box-shadow:0 16px 36px rgba(15,23,42,.1)}
+    .visual-card img{display:block;width:100%;height:100%;object-fit:cover}
+    .visual-card figcaption{position:absolute;left:10px;right:10px;bottom:10px;padding:7px 9px;border-radius:999px;background:rgba(14,44,25,.88);color:#fff;font-size:11px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .visual-card.v1{grid-row:span 2}
+    .visual-card.v1 img{min-height:340px}
+    .visual-card.v2 img,.visual-card.v3 img,.visual-card.v4 img{min-height:105px}
     .cta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
     .btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border-radius:10px;text-decoration:none;font-weight:900}
     .btn.primary{background:#193d22;color:#fff}
@@ -332,6 +477,13 @@ ${analyticsTag()}
     .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:28px}
     .summary div{padding:16px;border:1px solid #dfead8;border-radius:12px;background:#fbfdf8}
     .summary b{display:block;margin-bottom:6px;color:#193d22}
+    .visual-strip{margin:4px auto 28px;max-width:860px;padding:20px;border:1px solid #dfead8;border-radius:18px;background:linear-gradient(135deg,#ffffff 0%,#f7fff0 100%)}
+    .visual-strip>div:first-child span{display:inline-flex;margin-bottom:6px;padding:4px 9px;border-radius:999px;background:#e8f7da;color:#315b11;font-size:12px;font-weight:900}
+    .visual-strip h2{font-size:22px;line-height:1.35;margin-bottom:14px}
+    .visual-strip-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .visual-strip figure{overflow:hidden;border-radius:14px;background:#fff;border:1px solid #e1ead9}
+    .visual-strip img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover}
+    .visual-strip figcaption{padding:8px 9px;color:#193d22;font-size:12px;font-weight:900;line-height:1.35}
     article{max-width:760px;margin:0 auto}
     article h2{font-size:24px;line-height:1.35;margin:28px 0 10px;color:#172018}
     article p{font-size:16px;color:#374151;margin-bottom:12px}
@@ -340,14 +492,22 @@ ${analyticsTag()}
     .related h2{font-size:22px;margin-bottom:12px}
     .related-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .related-grid a{padding:13px;border:1px solid #dfead8;border-radius:10px;text-decoration:none;font-weight:900;color:#193d22;background:#fff}
+    .final-cta{margin:28px auto 0;max-width:760px;padding:22px;border-radius:18px;background:#123b24;color:#fff;box-shadow:0 18px 44px rgba(18,59,36,.18)}
+    .final-cta h2{font-size:24px;line-height:1.35;margin-bottom:8px;color:#fff}
+    .final-cta p{margin-bottom:16px;color:#d8f8df;font-weight:700}
+    .final-cta .btn{background:#d7ff52;color:#193d22}
     footer{padding:24px 22px;background:#16251a;color:#d9ead3;text-align:center;font-size:13px}
     @media(max-width:720px){
       header{align-items:flex-start;flex-direction:column}
       nav{flex-wrap:wrap}
       .hero{grid-template-columns:1fr;padding:28px 16px}
+      .hero-visual{min-height:auto}
+      .visual-card.v1 img{min-height:230px}
       h1{font-size:29px}
       main{padding:22px 16px}
       .summary{grid-template-columns:1fr}
+      .visual-strip{padding:16px}
+      .visual-strip-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       .related-grid{grid-template-columns:1fr}
     }
   </style>
@@ -372,12 +532,13 @@ ${analyticsTag()}
           <a class="btn secondary" href="/guide/">다른 검색어 보기</a>
         </div>
       </div>
-      <img src="${img}" alt="${htmlEscape(page.keyword)} 재고 확인 가이드 이미지" width="1200" height="630" loading="eager">
+      ${heroVisualHtml}
     </section>
     <main>
       <section class="summary" aria-label="핵심 요약">
         ${page.points.map((point, index) => `<div><b>${index + 1}. ${htmlEscape(point)}</b><span>${htmlEscape(page.keyword)} 관련 검색에서 먼저 보면 좋은 기준입니다.</span></div>`).join('\n        ')}
       </section>
+      ${visualStripHtml}
       <article>
         ${page.sections.map(([heading, body]) => `<h2>${htmlEscape(heading)}</h2>\n        <p>${htmlEscape(body)}</p>`).join('\n        ')}
         <div class="note">${SITE_NAME}에서는 상품명 검색 후 매장 재고, 온라인 재고, 인기상품 흐름을 함께 확인할 수 있습니다. 최종 가격과 구매 가능 조건은 연결된 구매 화면에서 다시 확인하세요.</div>
@@ -387,6 +548,11 @@ ${analyticsTag()}
         <div class="related-grid">
           ${related.map((item) => `<a href="/guide/${item.slug}/">${htmlEscape(item.keyword)}</a>`).join('\n          ')}
         </div>
+      </section>
+      <section class="final-cta" aria-label="재고 검색 바로가기">
+        <h2>${htmlEscape(page.query)} 재고를 지금 바로 확인해보세요</h2>
+        <p>상품명을 입력하면 근처 매장 재고, 온라인 재고, 인기상품 흐름을 한 화면에서 비교할 수 있습니다.</p>
+        <a class="btn" href="${cta}">올리브재고 접속 바로가기</a>
       </section>
     </main>
     <footer>${SITE_NAME} · 올리브영 재고확인과 인기상품 랭킹을 빠르게 비교하는 검색 도구</footer>
@@ -398,12 +564,20 @@ ${analyticsTag()}
 function guideIndexTemplate() {
   const items = pages
     .map(
-      (page) => `<a href="/guide/${page.slug}/">
+      (page) => {
+        const visual = guideVisuals(page)[0] || { src: `/images/${imageName(page)}`, label: page.keyword };
+        return `<a href="/guide/${page.slug}/">
+        <img src="${visual.src}" alt="${htmlEscape(visual.label)}" width="360" height="270" loading="lazy" decoding="async">
         <strong>${htmlEscape(page.keyword)}</strong>
         <span>${htmlEscape(page.description)}</span>
-      </a>`
+      </a>`;
+      }
     )
     .join('\n      ');
+  const indexVisual = guideVisuals(pages[0])[0] || {
+    abs: SITE_URL + '/images/olivestock-og-image.svg',
+    label: '올리브영 재고 검색 가이드'
+  };
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -413,6 +587,18 @@ function guideIndexTemplate() {
   <meta name="description" content="올리브영 재고확인, 매장 재고, 온라인 재고, 인기상품 랭킹 검색어별 가이드를 모았습니다.">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="${SITE_URL}/guide/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:site_name" content="${SITE_NAME}">
+  <meta property="og:title" content="올리브영 재고 검색어별 확인 가이드">
+  <meta property="og:description" content="올리브영 재고확인, 매장 재고, 온라인 재고, 인기상품 랭킹 검색어별 가이드를 모았습니다.">
+  <meta property="og:url" content="${SITE_URL}/guide/">
+  <meta property="og:image" content="${indexVisual.abs}">
+  <meta property="og:image:secure_url" content="${indexVisual.abs}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:alt" content="${htmlEscape(indexVisual.label)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${indexVisual.abs}">
 ${faviconTags()}
 ${analyticsTag()}
   <style>
@@ -425,7 +611,8 @@ ${analyticsTag()}
     h1{font-size:34px;line-height:1.22;margin-bottom:10px}
     p{color:#475569;font-weight:700}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:24px}
-    .grid a{display:flex;flex-direction:column;gap:6px;min-height:132px;padding:16px;border:1px solid #dfead8;border-radius:12px;background:#fff;color:#172018;text-decoration:none;box-shadow:0 8px 20px rgba(15,23,42,.04)}
+    .grid a{display:flex;flex-direction:column;gap:8px;min-height:132px;padding:12px;border:1px solid #dfead8;border-radius:14px;background:#fff;color:#172018;text-decoration:none;box-shadow:0 8px 20px rgba(15,23,42,.04)}
+    .grid img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#f1f5ec}
     .grid strong{color:#193d22}
     .grid span{font-size:13px;color:#64748b}
     @media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:28px}}
@@ -536,31 +723,42 @@ ${pages
 `;
 }
 
+async function writeTextIfChanged(filePath, content) {
+  try {
+    const current = await fs.readFile(filePath, 'utf8');
+    if (current.replace(/\r\n/g, '\n') === String(content).replace(/\r\n/g, '\n')) {
+      return;
+    }
+  } catch (_) {}
+  await fs.writeFile(filePath, content, 'utf8');
+}
+
 async function main() {
   await fs.mkdir(guideDir, { recursive: true });
   await fs.mkdir(imageDir, { recursive: true });
-  await fs.writeFile(path.join(imageDir, 'olivestock-og-image.svg'), guideImage(pages[0]), 'utf8');
+  await writeTextIfChanged(path.join(imageDir, 'olivestock-og-image.svg'), guideImage(pages[0]));
 
   for (const page of pages) {
     const dir = path.join(guideDir, page.slug);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'index.html'), pageTemplate(page, pages), 'utf8');
-    await fs.writeFile(path.join(imageDir, imageName(page)), guideImage(page), 'utf8');
+    await writeTextIfChanged(path.join(dir, 'index.html'), pageTemplate(page, pages));
+    await writeTextIfChanged(path.join(imageDir, imageName(page)), guideImage(page));
   }
 
-  await fs.writeFile(path.join(guideDir, 'index.html'), guideIndexTemplate(), 'utf8');
-  await fs.writeFile(path.join(publicDir, 'site-map.html'), siteMapTemplate(), 'utf8');
-  await fs.writeFile(
-    path.join(publicDir, 'robots.txt'),
-    `User-agent: *
+  await writeTextIfChanged(path.join(guideDir, 'index.html'), guideIndexTemplate());
+  if (WRITE_DISCOVERY_FILES) {
+    await writeTextIfChanged(path.join(publicDir, 'site-map.html'), siteMapTemplate());
+    await writeTextIfChanged(
+      path.join(publicDir, 'robots.txt'),
+      `User-agent: *
 Allow: /
 
 Sitemap: ${SITE_URL}/sitemap.xml
-`,
-    'utf8'
-  );
-  await fs.writeFile(path.join(publicDir, 'sitemap.xml'), sitemapXml(), 'utf8');
-  await fs.writeFile(path.join(publicDir, 'rss.xml'), rssXml(), 'utf8');
+`
+    );
+    await writeTextIfChanged(path.join(publicDir, 'sitemap.xml'), sitemapXml());
+    await writeTextIfChanged(path.join(publicDir, 'rss.xml'), rssXml());
+  }
 }
 
 main().catch((error) => {

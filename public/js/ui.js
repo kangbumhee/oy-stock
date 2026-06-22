@@ -285,6 +285,31 @@ var UI = {
     return d.innerHTML;
   },
 
+  errorText: function (value, fallback) {
+    var text = '';
+    if (value == null || value === true || value === false) {
+      text = '';
+    } else if (typeof value === 'string') {
+      text = value.trim();
+    } else if (typeof value === 'number') {
+      text = String(value);
+    } else if (typeof value === 'object') {
+      if (value.message != null) return UI.errorText(value.message, fallback);
+      if (value.error != null) return UI.errorText(value.error, fallback);
+      try {
+        text = JSON.stringify(value);
+      } catch (e) {
+        text = '';
+      }
+    } else {
+      text = String(value || '').trim();
+    }
+    if (!text || text === 'true' || text === 'false' || text === '[object Object]') {
+      return fallback || '조회 실패';
+    }
+    return text;
+  },
+
   escAttr: function (s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -2125,6 +2150,7 @@ var UI = {
     var root = document.getElementById('popup-root');
     if (!root) return;
     var oyLink = UI.oliveyoungFallbackUrl(goodsNo);
+    var safeMsg = UI.errorText(msg, '재고 조회를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -2133,7 +2159,7 @@ var UI = {
       UI.esc(name) +
       '</h3><button type="button" data-action="closePopup">✕</button></div>' +
       '<div class="popup-error"><p>⚠️ ' +
-      UI.esc(msg) +
+      UI.esc(safeMsg) +
       '</p>' +
       '<p class="popup-note">즐겨찾기에 추가하면 다음 수집 시 자동으로 재고가 업데이트됩니다.</p>' +
       '<a href="' +

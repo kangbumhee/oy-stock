@@ -1511,7 +1511,7 @@ var App = {
           UI.showDetailPopup(d, gn);
           return;
         }
-        UI.showPopupError(p.goodsName, d.error || '조회 실패', gn);
+        UI.showPopupError(p.goodsName, d.message || d.error || '조회 실패', gn);
         return;
       } catch (e) {
         UI.showPopupError(p.goodsName, '서버 연결 실패: ' + (e.message || String(e)), gn);
@@ -1566,6 +1566,7 @@ var App = {
         discountRate: fav ? fav.discountRate || 0 : 0,
         imageUrl: fav ? fav.imageUrl || '' : ''
       });
+      var favLookupError = '';
       try {
         var r = await fetch(
           CONFIG.REALTIME_API +
@@ -1589,9 +1590,12 @@ var App = {
           UI.showDetailPopup(d, gn);
           return;
         }
-      } catch (e) {}
+        favLookupError = UI.errorText(d && (d.message || d.error), '');
+      } catch (e) {
+        favLookupError = e && e.message ? '서버 연결 실패: ' + e.message : '';
+      }
     }
-    UI.showPopupError(name, '다음 수집 시 재고가 업데이트됩니다.', gn);
+    UI.showPopupError(name, favLookupError || '다음 수집 시 재고가 업데이트됩니다.', gn);
   }
 };
 

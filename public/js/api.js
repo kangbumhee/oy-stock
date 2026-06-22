@@ -65,6 +65,33 @@ var API = {
     return String(value);
   },
 
+  _productCountFromSearchData: function (data) {
+    var dd = (data && data.data) || {};
+    var inv = dd.inventory != null ? dd.inventory : data && data.inventory;
+    var flat =
+      dd.products != null
+        ? dd.products
+        : data && data.products != null
+          ? data.products
+          : null;
+    if (Array.isArray(inv)) return inv.length;
+    if (inv && typeof inv === 'object' && Array.isArray(inv.products)) return inv.products.length;
+    if (Array.isArray(flat)) return flat.length;
+    return 0;
+  },
+
+  _shouldTryDirectAfterProxy: function (data) {
+    if (!data || data.success === false) return false;
+    var dd = data.data || {};
+    var source = String(data.source || dd.source || '').toLowerCase();
+    var isFallback =
+      data.fallback === true ||
+      source.indexOf('fallback') >= 0 ||
+      source.indexOf('local-stock-detail-cache') >= 0 ||
+      source.indexOf('fallback-local') >= 0;
+    return isFallback && API._productCountFromSearchData(data) === 0;
+  },
+
   _fetchWithTimeout: function (url, timeoutMs, outerSignal) {
     var controller = new AbortController();
     var timedOut = false;
@@ -129,8 +156,6 @@ var API = {
       });
     }
 
-    if (opts.forceProxy) return fetchViaProxy();
-
     var correctedKeyword = API._correctKeyword(keyword);
     var directUrl =
       API.DIRECT_PRODUCTS_URL +
@@ -139,19 +164,30 @@ var API = {
       '&size=' +
       encodeURIComponent(size || CONFIG.SEARCH_SIZE);
 
-    return fetchViaProxy().catch(function (proxyErr) {
-      if (opts.signal && opts.signal.aborted) throw proxyErr;
-      return API._fetchWithTimeout(directUrl, 2500, opts.signal)
-        .then(function (r) {
-          if (r.ok)
-            return r.json().then(function (data) {
-              return saveAndReturn(data);
-            });
-          throw new Error('direct search ' + r.status);
-        })
-        .catch(function () {
-          throw proxyErr;
+    function fetchDirectProducts() {
+      return API._fetchWithTimeout(directUrl, 3000, opts.signal).then(function (r) {
+        if (r.ok)
+          return r.json().then(function (data) {
+            return saveAndReturn(data);
+          });
+        throw new Error('direct search ' + r.status);
+      });
+    }
+
+    if (opts.forceProxy) return fetchViaProxy();
+
+    return fetchViaProxy().then(function (data) {
+      if (API._shouldTryDirectAfterProxy(data)) {
+        return fetchDirectProducts().catch(function () {
+          return data;
         });
+      }
+      return data;
+    }).catch(function (proxyErr) {
+      if (opts.signal && opts.signal.aborted) throw proxyErr;
+      return fetchDirectProducts().catch(function () {
+        throw proxyErr;
+      });
     });
   },
 
