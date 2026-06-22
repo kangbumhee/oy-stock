@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260622-1';
+const CACHE_NAME = 'olivestock-app-v20260622-2';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -7,18 +7,18 @@ const CORE_ASSETS = [
   '/favicon-192x192.png',
   '/favicon-512x512.png',
   '/apple-touch-icon.png',
-  '/css/style.css?v=20260622-1',
-  '/js/config.js?v=20260622-1',
-  '/js/pwa.js?v=20260622-1',
-  '/js/storage.js?v=20260622-1',
-  '/js/api.js?v=20260622-1',
-  '/js/ui.js?v=20260622-1',
+  '/css/style.css?v=20260622-2',
+  '/js/config.js?v=20260622-2',
+  '/js/pwa.js?v=20260622-2',
+  '/js/storage.js?v=20260622-2',
+  '/js/api.js?v=20260622-2',
+  '/js/ui.js?v=20260622-2',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/alerts.js?v=20260622-1',
-  '/js/app.js?v=20260622-1'
+  '/js/alerts.js?v=20260622-2',
+  '/js/app.js?v=20260622-2'
 ];
 
 self.addEventListener('install', function (event) {

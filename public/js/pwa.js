@@ -31,7 +31,7 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20260622-1')
+      .register('/sw.js?v=20260622-2')
       .then(function (registration) {
         if (registration && registration.update) {
           try {
