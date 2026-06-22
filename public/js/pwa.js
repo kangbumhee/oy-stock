@@ -21,9 +21,23 @@ var PWA = {
       this._syncInstallButton();
       return;
     }
+    if (!this._controllerChangeBound) {
+      this._controllerChangeBound = true;
+      var refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    }
     navigator.serviceWorker
-      .register('/sw.js')
-      .then(function () {
+      .register('/sw.js?v=20260622-1')
+      .then(function (registration) {
+        if (registration && registration.update) {
+          try {
+            registration.update();
+          } catch (e) {}
+        }
         return navigator.serviceWorker.ready;
       })
       .then(function () {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260614-5';
+const CACHE_NAME = 'olivestock-app-v20260622-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -7,18 +7,18 @@ const CORE_ASSETS = [
   '/favicon-192x192.png',
   '/favicon-512x512.png',
   '/apple-touch-icon.png',
-  '/css/style.css?v=20260614-5',
-  '/js/config.js?v=20260614-5',
-  '/js/pwa.js?v=20260614-5',
-  '/js/storage.js?v=20260614-5',
-  '/js/api.js?v=20260531-10',
-  '/js/ui.js?v=20260614-5',
+  '/css/style.css?v=20260622-1',
+  '/js/config.js?v=20260622-1',
+  '/js/pwa.js?v=20260622-1',
+  '/js/storage.js?v=20260622-1',
+  '/js/api.js?v=20260622-1',
+  '/js/ui.js?v=20260622-1',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/alerts.js?v=20260614-5',
-  '/js/app.js?v=20260614-5'
+  '/js/alerts.js?v=20260622-1',
+  '/js/app.js?v=20260622-1'
 ];
 
 self.addEventListener('install', function (event) {
@@ -64,6 +64,31 @@ self.addEventListener('fetch', function (event) {
   var url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.indexOf('/api/') === 0) return;
+  var isNavigation =
+    request.mode === 'navigate' ||
+    (request.headers.get('accept') || '').indexOf('text/html') >= 0;
+
+  if (isNavigation) {
+    event.respondWith(
+      fetch(request)
+        .then(function (response) {
+          var copy = response.clone();
+          if (response.ok) {
+            caches.open(CACHE_NAME).then(function (cache) {
+              cache.put(request, copy);
+              if (url.pathname === '/') cache.put('/', response.clone());
+            });
+          }
+          return response;
+        })
+        .catch(function () {
+          return caches.match(request).then(function (cached) {
+            return cached || caches.match('/');
+          });
+        })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then(function (cached) {

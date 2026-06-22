@@ -39,6 +39,13 @@
     { "src": "/blog/([^/]+)/?", "dest": "/public/blog/$1/index.html" },
     { "src": "/site-map/?", "dest": "/public/site-map.html" },
     {
+      "src": "/sw.js",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      },
+      "dest": "/public/sw.js"
+    },
+    {
       "src": "/data/(.*)",
       "headers": {
         "Access-Control-Allow-Origin": "*",
