@@ -266,6 +266,19 @@ function githubToken() {
   );
 }
 
+function workflowQueueEnabled() {
+  const explicit = String(process.env.ENABLE_CURATOR_WORKFLOW_QUEUE || '')
+    .trim()
+    .toLowerCase();
+  const disabled = String(process.env.DISABLE_CURATOR_WORKFLOW_QUEUE || '')
+    .trim()
+    .toLowerCase();
+
+  if (disabled === '1' || disabled === 'true') return false;
+  if (explicit === '0' || explicit === 'false') return false;
+  return true;
+}
+
 function pruneGenerationRequestCache() {
   const now = Date.now();
   for (const [goodsNo, item] of generationRequestCache) {
@@ -623,7 +636,7 @@ module.exports = async function handler(req, res) {
         : liveLink && liveLink.ok && liveLink.originalUrl
           ? 'live_original'
           : 'fallback_basic_utm';
-  const allowWorkflowQueue = process.env.ENABLE_CURATOR_WORKFLOW_QUEUE === '1';
+  const allowWorkflowQueue = workflowQueueEnabled();
   const queueRequest =
     allowWorkflowQueue &&
     source === 'fallback_basic_utm' &&
