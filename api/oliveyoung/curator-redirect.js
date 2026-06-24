@@ -10,6 +10,10 @@ const FALLBACK_WWW =
 const CURATOR_CACHE_TTL_MS = 60 * 1000;
 const GENERATION_REQUEST_TTL_MS = 10 * 60 * 1000;
 const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
+const LIVE_CURATOR_TIMEOUT_MS = Math.max(
+  1000,
+  Number.parseInt(process.env.LIVE_CURATOR_TIMEOUT_MS || '9000', 10) || 9000
+);
 
 let curatorLinksCache = null;
 const generationRequestCache = new Map();
@@ -33,6 +37,18 @@ function htmlEscape(value) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function withTimeout(promise, timeoutMs, timeoutValue) {
+  let timer = null;
+  return Promise.race([
+    promise.finally(() => {
+      if (timer) clearTimeout(timer);
+    }),
+    new Promise((resolve) => {
+      timer = setTimeout(() => resolve(timeoutValue), timeoutMs);
+    })
+  ]);
 }
 
 function oliveYoungAndroidIntentUrl(appUrl, fallbackUrl) {
@@ -147,7 +163,7 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
   const checkUrl =
     '/api/oliveyoung/curator-redirect?goodsNo=' +
     encodeURIComponent(goodsNo) +
-    '&format=json&refresh=1&noTrigger=1&noLive=1';
+    '&format=json&refresh=1&noTrigger=1';
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -633,7 +649,10 @@ module.exports = async function handler(req, res) {
     process.env.DISABLE_LIVE_CURATOR_LINKS !== '1';
   const liveLink =
     allowLiveLink && !noLive && !shortenedUrl && !cachedLong
-      ? await createLiveCuratorLink(req, goodsNo, categoryNumber)
+      ? await withTimeout(createLiveCuratorLink(req, goodsNo, categoryNumber), LIVE_CURATOR_TIMEOUT_MS, {
+          ok: false,
+          error: 'live_generation_timeout'
+        })
       : null;
 
   let redirectTarget =
@@ -736,21 +755,6 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (!directMode && isMobileUserAgent(req)) {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
-    res.end(
-      mobileBridgeHtml({
-        goodsNo,
-        appUrl,
-        webUrl: redirectTarget,
-        androidIntentUrl
-      })
-    );
-    return;
-  }
-
   if (source === 'fallback_basic_utm') {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -761,6 +765,21 @@ module.exports = async function handler(req, res) {
         queueStatus,
         queueOk: queueRequest ? queueRequest.ok : null,
         queueDetail: queueRequest && (queueRequest.detail || queueRequest.status)
+      })
+    );
+    return;
+  }
+
+  if (!directMode && isMobileUserAgent(req)) {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(
+      mobileBridgeHtml({
+        goodsNo,
+        appUrl,
+        webUrl: redirectTarget,
+        androidIntentUrl
       })
     );
     return;
