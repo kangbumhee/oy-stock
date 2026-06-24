@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-23T05:11:24.507Z",
+  "updatedAt": "2026-06-24T05:08:05.555Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -7,101 +7,47 @@
   },
   "summary": {
     "total": 6,
-    "active": 6,
+    "active": 0,
     "soldout": 0,
-    "discontinued": 0,
+    "discontinued": 6,
     "errors": 0
   },
   "recentEvents": [
     {
-      "type": "stock_changed",
+      "type": "discontinued",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 44,
-      "to": 44,
-      "fromQty": 147,
-      "toQty": 144,
-      "date": "2026-06-23T05:11:24.507Z"
+      "date": "2026-06-24T05:08:05.555Z"
     },
     {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 454,
-      "to": 495,
-      "date": "2026-06-23T05:11:24.507Z"
-    },
-    {
-      "type": "stock_changed",
+      "type": "discontinued",
       "goodsNo": "A000000154189",
       "goodsName": "[6월 올영픽] 어노브 볼륨 업 컬링 에센스 147ml 기획/단품 (수분 컬크림) (+워터에센스미스트 30ml)",
-      "from": 75,
-      "to": 73,
-      "fromQty": 357,
-      "toQty": 351,
-      "date": "2026-06-23T05:11:24.507Z"
+      "date": "2026-06-24T05:08:05.555Z"
     },
     {
-      "type": "online_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "[6월 올영픽] 어노브 볼륨 업 컬링 에센스 147ml 기획/단품 (수분 컬크림) (+워터에센스미스트 30ml)",
-      "from": 1732,
-      "to": 1704,
-      "date": "2026-06-23T05:11:24.507Z"
+      "type": "discontinued",
+      "goodsNo": "A000000256047",
+      "goodsName": "[NEW/6월올영픽]토리든 다이브인 저분자 히알루론산 세럼 50ml 더블 기획 (밸풀 세럼 20ml+선크림 20ml) ",
+      "date": "2026-06-24T05:08:05.555Z"
     },
     {
-      "type": "stock_changed",
+      "type": "discontinued",
       "goodsNo": "A000000255385",
       "goodsName": "[6월 올영픽/한정기획] 메디힐 더마 토너패드 200매 대용량 7종 기획 골라담기 (+휴대용 케이스)",
-      "from": 163,
-      "to": 165,
-      "fromQty": 1562,
-      "toQty": 1541,
-      "date": "2026-06-23T05:11:24.507Z"
+      "date": "2026-06-24T05:08:05.555Z"
     },
     {
-      "type": "online_changed",
-      "goodsNo": "A000000255385",
-      "goodsName": "[6월 올영픽/한정기획] 메디힐 더마 토너패드 200매 대용량 7종 기획 골라담기 (+휴대용 케이스)",
-      "from": 9649,
-      "to": 9566,
-      "date": "2026-06-23T05:11:24.507Z"
-    },
-    {
-      "type": "stock_changed",
+      "type": "discontinued",
       "goodsNo": "A000000255391",
       "goodsName": "[6월 올영픽] 메디힐 마데카소사이드 수분 선세럼 흔적 리페어 50+50g",
-      "from": 53,
-      "to": 54,
-      "fromQty": 202,
-      "toQty": 205,
-      "date": "2026-06-23T05:11:24.507Z"
+      "date": "2026-06-24T05:08:05.555Z"
     },
     {
-      "type": "online_changed",
-      "goodsNo": "A000000255391",
-      "goodsName": "[6월 올영픽] 메디힐 마데카소사이드 수분 선세럼 흔적 리페어 50+50g",
-      "from": 7017,
-      "to": 6801,
-      "date": "2026-06-23T05:11:24.507Z"
-    },
-    {
-      "type": "stock_changed",
+      "type": "discontinued",
       "goodsNo": "A000000239102",
       "goodsName": "[단독기획 8+1매] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 1,
-      "fromQty": 5,
-      "toQty": 1,
-      "date": "2026-06-23T05:11:24.507Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[단독기획 8+1매] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 3279,
-      "to": 3067,
-      "date": "2026-06-23T05:11:24.507Z"
+      "date": "2026-06-24T05:08:05.555Z"
     }
   ],
   "products": {
@@ -113,8 +59,8 @@
       "discountRate": 6,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0015/A00000015418925ko.png?l=ko",
       "itemCount": 2,
-      "status": "active",
-      "statusLabel": "✅ 재고있음",
+      "status": "discontinued",
+      "statusLabel": "⛔ 단종/삭제",
       "options": [
         {
           "name": "[올영픽] 본품+워터에센스미스트30ml",
@@ -745,7 +691,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-23T05:11:24.507Z"
+      "updatedAt": "2026-06-24T05:08:05.555Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -755,8 +701,8 @@
       "discountRate": 11,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782269ko.jpg?l=ko",
       "itemCount": 3,
-      "status": "active",
-      "statusLabel": "✅ 재고있음",
+      "status": "discontinued",
+      "statusLabel": "⛔ 단종/삭제",
       "options": [
         {
           "name": "[단품] 딥클린마스터",
@@ -1701,7 +1647,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-23T05:11:24.507Z"
+      "updatedAt": "2026-06-24T05:08:05.555Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1711,8 +1657,8 @@
       "discountRate": 28,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0025/A00000025604710ko.jpg?l=ko",
       "itemCount": 1,
-      "status": "active",
-      "statusLabel": "✅ 재고있음",
+      "status": "discontinued",
+      "statusLabel": "⛔ 단종/삭제",
       "options": [
         {
           "name": "본품X2+밸런스풀20ml+선크림20ml",
@@ -2029,7 +1975,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-23T05:11:24.507Z"
+      "updatedAt": "2026-06-24T05:08:05.555Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -2039,8 +1985,8 @@
       "discountRate": 28,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0025/A000000255385221ko.jpg?l=ko",
       "itemCount": 8,
-      "status": "active",
-      "statusLabel": "✅ 재고있음",
+      "status": "discontinued",
+      "statusLabel": "⛔ 단종/삭제",
       "options": [
         {
           "name": " 마데카소사이드 200매+케이스+스티커",
@@ -4555,7 +4501,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-23T05:11:24.507Z"
+      "updatedAt": "2026-06-24T05:08:05.555Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -4565,8 +4511,8 @@
       "discountRate": 35,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0025/A00000025539155ko.jpg?l=ko",
       "itemCount": 11,
-      "status": "active",
-      "statusLabel": "✅ 재고있음",
+      "status": "discontinued",
+      "statusLabel": "⛔ 단종/삭제",
       "options": [
         {
           "name": "선세럼 더블 (미증정)",
@@ -8023,7 +7969,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-23T05:11:24.507Z"
+      "updatedAt": "2026-06-24T05:08:05.555Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -8033,8 +7979,8 @@
       "discountRate": 30,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/A00000023910256ko.jpg?l=ko",
       "itemCount": 4,
-      "status": "active",
-      "statusLabel": "✅ 재고있음",
+      "status": "discontinued",
+      "statusLabel": "⛔ 단종/삭제",
       "options": [
         {
           "name": " 하이퍼 콜라겐 8+1매",
@@ -9293,7 +9239,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-23T05:11:24.507Z"
+      "updatedAt": "2026-06-24T05:08:05.555Z"
     }
   }
 }
