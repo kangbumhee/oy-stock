@@ -418,6 +418,7 @@ async function main() {
 
     let generatedCount = 0;
     let landingFailureCount = 0;
+    let exceptionFailureCount = 0;
 
     for (const gn of goodsList) {
       if (CURATOR_MISSING_ONLY && hasUsableCuratorEntry(links[gn])) {
@@ -433,139 +434,172 @@ async function main() {
       const apiKey = generateApiKey();
       console.log(`\n📎 ${gn}`);
 
-      const pack = await page.evaluate(
-        async ({
-          goodsNo,
-          registerId,
-          apiKey,
-          placeholderCat,
-          authJwt: jwt
-        }) => {
-          async function landing(body) {
-            const headers = {
-              'Content-Type': 'application/json',
-              Accept: 'application/json, text/plain, */*',
-              Origin: 'https://m.oliveyoung.co.kr',
-              Referer:
-                'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search',
-              'x-api-key': apiKey
-            };
-            if (jwt) {
-              headers.authorization = jwt;
-            }
-            const r = await fetch(
-              'https://m.oliveyoung.co.kr/review/api/affiliate/v1/activities/landing',
-              {
-                method: 'POST',
-                credentials: 'include',
-                headers,
-                body: JSON.stringify(body)
+      let pack;
+      try {
+        pack = await page.evaluate(
+          async ({
+            goodsNo,
+            registerId,
+            apiKey,
+            placeholderCat,
+            authJwt: jwt
+          }) => {
+            async function landing(body) {
+              const headers = {
+                'Content-Type': 'application/json',
+                Accept: 'application/json, text/plain, */*',
+                Origin: 'https://m.oliveyoung.co.kr',
+                Referer:
+                  'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search',
+                'x-api-key': apiKey
+              };
+              if (jwt) {
+                headers.authorization = jwt;
               }
-            );
-            const t = await r.text();
-            let json;
-            try {
-              json = JSON.parse(t);
-            } catch {
-              return { ok: false, status: r.status, preview: t.slice(0, 120) };
-            }
-            return { ok: r.ok, status: r.status, json };
-          }
-
-          async function shorten(originalUrl, rid) {
-            const r = await fetch(
-              'https://m.oliveyoung.co.kr/base/shorten/v2/verified',
-              {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Accept: 'application/json, text/plain, */*',
-                  Origin: 'https://m.oliveyoung.co.kr',
-                  Referer: 'https://m.oliveyoung.co.kr/',
-                  'x-api-key': apiKey
-                },
-                body: JSON.stringify([{ originalUrl, registerId: rid }])
+              try {
+                const r = await fetch(
+                  'https://m.oliveyoung.co.kr/review/api/affiliate/v1/activities/landing',
+                  {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers,
+                    body: JSON.stringify(body)
+                  }
+                );
+                const t = await r.text();
+                let json;
+                try {
+                  json = JSON.parse(t);
+                } catch {
+                  return { ok: false, status: r.status, preview: t.slice(0, 120) };
+                }
+                return { ok: r.ok, status: r.status, json };
+              } catch (e) {
+                return {
+                  ok: false,
+                  status: 0,
+                  error: e && e.message ? e.message : String(e)
+                };
               }
-            );
-            const t = await r.text();
-            let json;
-            try {
-              json = JSON.parse(t);
-            } catch {
-              return { ok: false, status: r.status, preview: t.slice(0, 120) };
             }
-            return { ok: r.ok, status: r.status, json };
-          }
 
-          const attempts = [
-            { goodsNumber: goodsNo, categoryNumber: placeholderCat },
-            { goodsNumber: goodsNo },
-            { goodsNumber: goodsNo, categoryNumber: '' }
-          ];
-
-          let affiliateActivityId = null;
-          let affiliatePartnerId = registerId;
-          let lastLanding = null;
-
-          for (const body of attempts) {
-            const L = await landing(body);
-            lastLanding = L;
-            const id = L.json && L.json.data && L.json.data.affiliateActivityId;
-            if (L.ok && id) {
-              affiliateActivityId = id;
-              affiliatePartnerId =
-                (L.json.data.affiliatePartnerId || registerId);
-              break;
+            async function shorten(originalUrl, rid) {
+              try {
+                const r = await fetch(
+                  'https://m.oliveyoung.co.kr/base/shorten/v2/verified',
+                  {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Accept: 'application/json, text/plain, */*',
+                      Origin: 'https://m.oliveyoung.co.kr',
+                      Referer: 'https://m.oliveyoung.co.kr/',
+                      'x-api-key': apiKey
+                    },
+                    body: JSON.stringify([{ originalUrl, registerId: rid }])
+                  }
+                );
+                const t = await r.text();
+                let json;
+                try {
+                  json = JSON.parse(t);
+                } catch {
+                  return { ok: false, status: r.status, preview: t.slice(0, 120) };
+                }
+                return { ok: r.ok, status: r.status, json };
+              } catch (e) {
+                return {
+                  ok: false,
+                  status: 0,
+                  error: e && e.message ? e.message : String(e)
+                };
+              }
             }
-          }
 
-          if (!affiliateActivityId) {
-            return {
-              ok: false,
-              step: 'landing',
-              detail: lastLanding
-            };
-          }
+            const attempts = [
+              { goodsNumber: goodsNo, categoryNumber: placeholderCat },
+              { goodsNumber: goodsNo },
+              { goodsNumber: goodsNo, categoryNumber: '' }
+            ];
 
-          const originalUrl =
-            'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
-            encodeURIComponent(goodsNo) +
-            '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' +
-            affiliateActivityId;
+            let affiliateActivityId = null;
+            let affiliatePartnerId = registerId;
+            let lastLanding = null;
 
-          const S = await shorten(originalUrl, affiliatePartnerId);
-          const row = S.json && S.json.data && S.json.data[0];
-          const shortenedUrl = row && row.shortenedUrl;
+            for (const body of attempts) {
+              const L = await landing(body);
+              lastLanding = L;
+              const id = L.json && L.json.data && L.json.data.affiliateActivityId;
+              if (L.ok && id) {
+                affiliateActivityId = id;
+                affiliatePartnerId =
+                  (L.json.data.affiliatePartnerId || registerId);
+                break;
+              }
+            }
 
-          if (S.ok && shortenedUrl) {
+            if (!affiliateActivityId) {
+              return {
+                ok: false,
+                step: 'landing',
+                detail: lastLanding
+              };
+            }
+
+            const originalUrl =
+              'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+              encodeURIComponent(goodsNo) +
+              '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' +
+              affiliateActivityId;
+
+            const S = await shorten(originalUrl, affiliatePartnerId);
+            const row = S.json && S.json.data && S.json.data[0];
+            const shortenedUrl = row && row.shortenedUrl;
+
+            if (S.ok && shortenedUrl) {
+              return {
+                ok: true,
+                shortenedUrl,
+                originalUrl,
+                affiliateActivityId,
+                affiliatePartnerId
+              };
+            }
+
             return {
               ok: true,
-              shortenedUrl,
+              partial: true,
+              shortenedUrl: null,
               originalUrl,
               affiliateActivityId,
-              affiliatePartnerId
+              affiliatePartnerId,
+              shortenDetail: S
             };
+          },
+          {
+            goodsNo: gn,
+            registerId: regId,
+            apiKey,
+            placeholderCat: PLACEHOLDER_CATEGORY,
+            authJwt: authJwt || ''
           }
-
-          return {
-            ok: true,
-            partial: true,
+        );
+      } catch (e) {
+        exceptionFailureCount += 1;
+        console.log('  ❌ 생성 요청 예외', e && e.message ? e.message : String(e));
+        if (!links[gn]) {
+          links[gn] = {
             shortenedUrl: null,
-            originalUrl,
-            affiliateActivityId,
-            affiliatePartnerId,
-            shortenDetail: S
+            originalUrl: null,
+            error: 'request_exception',
+            detail: e && e.message ? e.message : String(e),
+            generatedAt: now
           };
-        },
-        {
-          goodsNo: gn,
-          registerId: regId,
-          apiKey,
-          placeholderCat: PLACEHOLDER_CATEGORY,
-          authJwt: authJwt || ''
         }
-      );
+        await sleep(1000);
+        continue;
+      }
 
       if (pack.ok && !pack.partial) {
         generatedCount += 1;
@@ -610,10 +644,13 @@ async function main() {
     };
     fs.writeFileSync(CURATOR_FILE, JSON.stringify(out, null, 2), 'utf8');
     console.log(`\n저장: ${CURATOR_FILE}`);
+    console.log(
+      `요약: 생성 ${generatedCount}건, landing 실패 ${landingFailureCount}건, 예외 ${exceptionFailureCount}건`
+    );
 
-    if (generatedCount === 0 && landingFailureCount > 0) {
+    if (generatedCount === 0 && landingFailureCount + exceptionFailureCount > 0) {
       console.error(
-        `큐레이터 landing 전부 실패 (${landingFailureCount}건). 쿠키/토큰 Secret을 갱신하세요.`
+        `큐레이터 생성 전부 실패 (${landingFailureCount + exceptionFailureCount}건). 쿠키/토큰 Secret을 갱신하세요.`
       );
       process.exitCode = 1;
     }

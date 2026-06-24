@@ -32,6 +32,8 @@ jobs:
           CURATOR_BACKFILL_BATCH_SIZE: 120
           CURATOR_INCLUDE_LIVE_CATEGORIES: 1
           CURATOR_RANKING_SIZE: 128
+          CURATOR_RANKING_TIMEOUT_MS: 20000
+          CURATOR_RANKING_BATCH_SIZE: 2
         run: node scripts/collect-curator-backfill.mjs
 
       - name: Stop when complete

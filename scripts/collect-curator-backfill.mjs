@@ -71,9 +71,9 @@ async function addLiveRankingGoods(out) {
   const baseUrl = String(process.env.CURATOR_RANKING_BASE_URL || DEFAULT_RANKING_BASE);
   const size = Number.parseInt(String(process.env.CURATOR_RANKING_SIZE || '128'), 10) || 128;
   const timeoutMs =
-    Number.parseInt(String(process.env.CURATOR_RANKING_TIMEOUT_MS || '8000'), 10) || 8000;
+    Number.parseInt(String(process.env.CURATOR_RANKING_TIMEOUT_MS || '20000'), 10) || 20000;
   const batchSize =
-    Number.parseInt(String(process.env.CURATOR_RANKING_BATCH_SIZE || '5'), 10) || 5;
+    Number.parseInt(String(process.env.CURATOR_RANKING_BATCH_SIZE || '2'), 10) || 2;
   const categories = String(process.env.CURATOR_CATEGORY_IDS || '')
     .split(/[\s,;]+/)
     .map((value) => value.trim())
@@ -139,12 +139,12 @@ function githubOutput(values) {
 
 async function main() {
   const known = new Set();
-  addKnownRepoGoods(known);
   await addLiveRankingGoods(known);
+  addKnownRepoGoods(known);
 
   const curator = readJson('public/data/curator-links.json', { links: {} });
   const links = curator.links || {};
-  const allGoods = Array.from(known).sort();
+  const allGoods = Array.from(known);
   const missing = allGoods.filter((goodsNo) => {
     const entry = links[goodsNo];
     if (hasUsableCuratorLink(entry)) return false;
