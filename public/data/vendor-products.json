@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-06-24T20:16:57+09:00",
+  "updatedAt": "2026-06-24T21:18:07+09:00",
   "source": "oliveyoung-official-search-supplement",
   "products": [
     {
@@ -23,7 +23,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 1
+      "rank": 1,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000232827",
@@ -45,7 +46,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 2
+      "rank": 2,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000232782",
@@ -67,7 +69,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 3
+      "rank": 3,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000248532",
@@ -89,7 +92,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 4
+      "rank": 4,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000235112",
@@ -111,7 +115,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 5
+      "rank": 5,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000251448",
@@ -133,7 +138,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 6
+      "rank": 6,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000235110",
@@ -155,7 +161,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 7
+      "rank": 7,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000248544",
@@ -177,7 +184,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 8
+      "rank": 8,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000256087",
@@ -199,7 +207,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 9
+      "rank": 9,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000248546",
@@ -221,7 +230,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 10
+      "rank": 10,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000248547",
@@ -243,7 +253,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 11
+      "rank": 11,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "B000000256089",
@@ -265,7 +276,8 @@
       "vendorDelivery": true,
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
-      "rank": 12
+      "rank": 12,
+      "keywordRanks": {}
     },
     {
       "goodsNo": "A000000174309",
@@ -288,7 +300,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 1
+      "rank": 1,
+      "keywordRanks": {
+        "키티": 1,
+        "헬로키티": 1
+      }
     },
     {
       "goodsNo": "A000000180532",
@@ -311,7 +327,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 2
+      "rank": 2,
+      "keywordRanks": {
+        "키티": 2,
+        "헬로키티": 2
+      }
     },
     {
       "goodsNo": "A000000248432",
@@ -334,7 +354,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 3
+      "rank": 3,
+      "keywordRanks": {
+        "키티": 3,
+        "헬로키티": 3
+      }
     },
     {
       "goodsNo": "A000000189126",
@@ -357,7 +381,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 4
+      "rank": 4,
+      "keywordRanks": {
+        "키티": 4,
+        "헬로키티": 4
+      }
     },
     {
       "goodsNo": "A000000247600",
@@ -380,7 +408,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 5
+      "rank": 5,
+      "keywordRanks": {
+        "키티": 5,
+        "헬로키티": 5
+      }
     },
     {
       "goodsNo": "A000000226213",
@@ -403,7 +435,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 6
+      "rank": 6,
+      "keywordRanks": {
+        "키티": 6,
+        "헬로키티": 6
+      }
     },
     {
       "goodsNo": "A000000219331",
@@ -426,7 +462,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 7
+      "rank": 7,
+      "keywordRanks": {
+        "키티": 7,
+        "헬로키티": 7
+      }
     },
     {
       "goodsNo": "A000000226241",
@@ -449,7 +489,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 8
+      "rank": 8,
+      "keywordRanks": {
+        "키티": 8,
+        "헬로키티": 8
+      }
     },
     {
       "goodsNo": "A000000183645",
@@ -472,7 +516,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 9
+      "rank": 9,
+      "keywordRanks": {
+        "키티": 9,
+        "헬로키티": 9
+      }
     },
     {
       "goodsNo": "A000000231339",
@@ -495,7 +543,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 10
+      "rank": 10,
+      "keywordRanks": {
+        "키티": 10,
+        "헬로키티": 10
+      }
     },
     {
       "goodsNo": "A000000221675",
@@ -518,7 +570,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 11
+      "rank": 11,
+      "keywordRanks": {
+        "키티": 11,
+        "헬로키티": 11
+      }
     },
     {
       "goodsNo": "A000000164840",
@@ -541,7 +597,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 12
+      "rank": 12,
+      "keywordRanks": {
+        "키티": 12,
+        "헬로키티": 12
+      }
     },
     {
       "goodsNo": "A000000214790",
@@ -564,7 +624,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 13
+      "rank": 13,
+      "keywordRanks": {
+        "키티": 13,
+        "헬로키티": 13
+      }
     },
     {
       "goodsNo": "A000000223264",
@@ -587,7 +651,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 14
+      "rank": 14,
+      "keywordRanks": {
+        "키티": 14,
+        "헬로키티": 14
+      }
     },
     {
       "goodsNo": "A000000225250",
@@ -610,7 +678,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 15
+      "rank": 15,
+      "keywordRanks": {
+        "키티": 15,
+        "헬로키티": 15
+      }
     },
     {
       "goodsNo": "A000000219702",
@@ -633,7 +705,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 16
+      "rank": 16,
+      "keywordRanks": {
+        "키티": 16,
+        "헬로키티": 16
+      }
     },
     {
       "goodsNo": "B000000254635",
@@ -656,7 +732,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 17
+      "rank": 17,
+      "keywordRanks": {
+        "키티": 17,
+        "헬로키티": 17
+      }
     },
     {
       "goodsNo": "A000000158991",
@@ -679,7 +759,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 18
+      "rank": 18,
+      "keywordRanks": {
+        "키티": 18,
+        "헬로키티": 18
+      }
     },
     {
       "goodsNo": "A000000200537",
@@ -702,7 +786,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 19
+      "rank": 19,
+      "keywordRanks": {
+        "키티": 19,
+        "헬로키티": 19
+      }
     },
     {
       "goodsNo": "A000000249779",
@@ -725,7 +813,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 20
+      "rank": 20,
+      "keywordRanks": {
+        "키티": 20,
+        "헬로키티": 20
+      }
     },
     {
       "goodsNo": "A000000248705",
@@ -748,7 +840,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 21
+      "rank": 21,
+      "keywordRanks": {
+        "키티": 21,
+        "헬로키티": 21
+      }
     },
     {
       "goodsNo": "A000000223265",
@@ -771,7 +867,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 22
+      "rank": 22,
+      "keywordRanks": {
+        "키티": 22,
+        "헬로키티": 22
+      }
     },
     {
       "goodsNo": "A000000240166",
@@ -794,7 +894,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 23
+      "rank": 23,
+      "keywordRanks": {
+        "키티": 23,
+        "헬로키티": 23
+      }
     },
     {
       "goodsNo": "A000000235192",
@@ -817,7 +921,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 24
+      "rank": 24,
+      "keywordRanks": {
+        "키티": 24,
+        "헬로키티": 24
+      }
     },
     {
       "goodsNo": "A000000247099",
@@ -840,7 +948,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 25
+      "rank": 25,
+      "keywordRanks": {
+        "키티": 25,
+        "헬로키티": 25
+      }
     },
     {
       "goodsNo": "A000000209147",
@@ -863,7 +975,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 26
+      "rank": 26,
+      "keywordRanks": {
+        "키티": 26,
+        "헬로키티": 26
+      }
     },
     {
       "goodsNo": "A000000212807",
@@ -886,7 +1002,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 27
+      "rank": 27,
+      "keywordRanks": {
+        "키티": 27,
+        "헬로키티": 27
+      }
     },
     {
       "goodsNo": "A000000158147",
@@ -909,7 +1029,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 28
+      "rank": 28,
+      "keywordRanks": {
+        "키티": 28,
+        "헬로키티": 28
+      }
     },
     {
       "goodsNo": "A000000219518",
@@ -932,7 +1056,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 29
+      "rank": 29,
+      "keywordRanks": {
+        "키티": 29,
+        "헬로키티": 29
+      }
     },
     {
       "goodsNo": "A000000139762",
@@ -955,7 +1083,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 30
+      "rank": 30,
+      "keywordRanks": {
+        "키티": 30,
+        "헬로키티": 30
+      }
     },
     {
       "goodsNo": "A000000166314",
@@ -978,7 +1110,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 31
+      "rank": 31,
+      "keywordRanks": {
+        "키티": 31,
+        "헬로키티": 31
+      }
     },
     {
       "goodsNo": "A000000240905",
@@ -1001,7 +1137,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 32
+      "rank": 32,
+      "keywordRanks": {
+        "키티": 32,
+        "헬로키티": 32
+      }
     },
     {
       "goodsNo": "A000000233226",
@@ -1024,7 +1164,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 33
+      "rank": 33,
+      "keywordRanks": {
+        "키티": 33,
+        "헬로키티": 33
+      }
     },
     {
       "goodsNo": "A000000115174",
@@ -1047,7 +1191,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 34
+      "rank": 34,
+      "keywordRanks": {
+        "키티": 34,
+        "헬로키티": 34
+      }
     },
     {
       "goodsNo": "A000000231795",
@@ -1070,7 +1218,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 35
+      "rank": 35,
+      "keywordRanks": {
+        "키티": 35,
+        "헬로키티": 35
+      }
     },
     {
       "goodsNo": "A000000241103",
@@ -1093,7 +1245,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 36
+      "rank": 36,
+      "keywordRanks": {
+        "키티": 36,
+        "헬로키티": 36
+      }
     },
     {
       "goodsNo": "A000000204891",
@@ -1116,7 +1272,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 37
+      "rank": 37,
+      "keywordRanks": {
+        "키티": 37,
+        "헬로키티": 37
+      }
     },
     {
       "goodsNo": "A000000233837",
@@ -1139,7 +1299,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 38
+      "rank": 38,
+      "keywordRanks": {
+        "키티": 38,
+        "헬로키티": 38
+      }
     },
     {
       "goodsNo": "B000000259871",
@@ -1162,7 +1326,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 39
+      "rank": 39,
+      "keywordRanks": {
+        "키티": 39,
+        "헬로키티": 39
+      }
     },
     {
       "goodsNo": "A000000212803",
@@ -1185,7 +1353,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 40
+      "rank": 40,
+      "keywordRanks": {
+        "키티": 40,
+        "헬로키티": 40
+      }
     },
     {
       "goodsNo": "A000000231411",
@@ -1208,7 +1380,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 41
+      "rank": 41,
+      "keywordRanks": {
+        "키티": 41,
+        "헬로키티": 41
+      }
     },
     {
       "goodsNo": "A000000213548",
@@ -1231,7 +1407,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 42
+      "rank": 42,
+      "keywordRanks": {
+        "키티": 42,
+        "헬로키티": 42
+      }
     },
     {
       "goodsNo": "A000000216263",
@@ -1254,7 +1434,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 43
+      "rank": 43,
+      "keywordRanks": {
+        "키티": 43,
+        "헬로키티": 43
+      }
     },
     {
       "goodsNo": "A000000225273",
@@ -1277,7 +1461,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 44
+      "rank": 44,
+      "keywordRanks": {
+        "키티": 44,
+        "헬로키티": 44
+      }
     },
     {
       "goodsNo": "B000000250746",
@@ -1289,7 +1477,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0025/B00000025074613ko.jpg?l=ko",
       "priceToPay": 20900,
@@ -1300,7 +1493,16 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 45
+      "rank": 45,
+      "keywordRanks": {
+        "키티": 45,
+        "헬로키티": 45,
+        "마이멜로디": 5,
+        "마멜": 5,
+        "my melody": 5,
+        "mymelody": 5,
+        "산리오": 5
+      }
     },
     {
       "goodsNo": "A000000231033",
@@ -1323,7 +1525,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 46
+      "rank": 46,
+      "keywordRanks": {
+        "키티": 46,
+        "헬로키티": 46
+      }
     },
     {
       "goodsNo": "A000000233288",
@@ -1346,7 +1552,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 47
+      "rank": 47,
+      "keywordRanks": {
+        "키티": 47,
+        "헬로키티": 47
+      }
     },
     {
       "goodsNo": "A000000242754",
@@ -1369,7 +1579,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 48
+      "rank": 48,
+      "keywordRanks": {
+        "키티": 48,
+        "헬로키티": 48
+      }
     },
     {
       "goodsNo": "A000000248910",
@@ -1392,7 +1606,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 49
+      "rank": 49,
+      "keywordRanks": {
+        "키티": 49,
+        "헬로키티": 49
+      }
     },
     {
       "goodsNo": "A000000248703",
@@ -1415,7 +1633,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 50
+      "rank": 50,
+      "keywordRanks": {
+        "키티": 50,
+        "헬로키티": 50
+      }
     },
     {
       "goodsNo": "B000000256750",
@@ -1438,7 +1660,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 51
+      "rank": 51,
+      "keywordRanks": {
+        "키티": 51,
+        "헬로키티": 51
+      }
     },
     {
       "goodsNo": "A000000231410",
@@ -1461,7 +1687,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 52
+      "rank": 52,
+      "keywordRanks": {
+        "키티": 52,
+        "헬로키티": 52
+      }
     },
     {
       "goodsNo": "A000000248702",
@@ -1484,7 +1714,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 53
+      "rank": 53,
+      "keywordRanks": {
+        "키티": 53,
+        "헬로키티": 53
+      }
     },
     {
       "goodsNo": "A000000210591",
@@ -1507,7 +1741,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 54
+      "rank": 54,
+      "keywordRanks": {
+        "키티": 54,
+        "헬로키티": 54
+      }
     },
     {
       "goodsNo": "A000000248141",
@@ -1530,7 +1768,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 55
+      "rank": 55,
+      "keywordRanks": {
+        "키티": 55,
+        "헬로키티": 55
+      }
     },
     {
       "goodsNo": "A000000244494",
@@ -1553,7 +1795,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 56
+      "rank": 56,
+      "keywordRanks": {
+        "키티": 56,
+        "헬로키티": 56
+      }
     },
     {
       "goodsNo": "B000000258971",
@@ -1576,7 +1822,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 57
+      "rank": 57,
+      "keywordRanks": {
+        "키티": 57,
+        "헬로키티": 57
+      }
     },
     {
       "goodsNo": "B000000249557",
@@ -1599,7 +1849,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 58
+      "rank": 58,
+      "keywordRanks": {
+        "키티": 58,
+        "헬로키티": 58
+      }
     },
     {
       "goodsNo": "B000000223214",
@@ -1622,7 +1876,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 59
+      "rank": 59,
+      "keywordRanks": {
+        "키티": 59,
+        "헬로키티": 59
+      }
     },
     {
       "goodsNo": "A000000240573",
@@ -1645,7 +1903,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 60
+      "rank": 60,
+      "keywordRanks": {
+        "키티": 60,
+        "헬로키티": 60
+      }
     },
     {
       "goodsNo": "A000000241689",
@@ -1668,7 +1930,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 61
+      "rank": 61,
+      "keywordRanks": {
+        "키티": 61,
+        "헬로키티": 61
+      }
     },
     {
       "goodsNo": "B000000205842",
@@ -1691,7 +1957,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 62
+      "rank": 62,
+      "keywordRanks": {
+        "키티": 62,
+        "헬로키티": 62
+      }
     },
     {
       "goodsNo": "B000000249201",
@@ -1714,7 +1984,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 63
+      "rank": 63,
+      "keywordRanks": {
+        "키티": 63,
+        "헬로키티": 63
+      }
     },
     {
       "goodsNo": "B000000249204",
@@ -1737,7 +2011,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 64
+      "rank": 64,
+      "keywordRanks": {
+        "키티": 64,
+        "헬로키티": 64
+      }
     },
     {
       "goodsNo": "B000000249546",
@@ -1760,7 +2038,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 65
+      "rank": 65,
+      "keywordRanks": {
+        "키티": 65,
+        "헬로키티": 65
+      }
     },
     {
       "goodsNo": "B000000249484",
@@ -1783,7 +2065,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 66
+      "rank": 66,
+      "keywordRanks": {
+        "키티": 66,
+        "헬로키티": 66
+      }
     },
     {
       "goodsNo": "A000000231428",
@@ -1806,7 +2092,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 67
+      "rank": 67,
+      "keywordRanks": {
+        "키티": 67,
+        "헬로키티": 67
+      }
     },
     {
       "goodsNo": "A000000233654",
@@ -1829,7 +2119,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 68
+      "rank": 68,
+      "keywordRanks": {
+        "키티": 68,
+        "헬로키티": 68
+      }
     },
     {
       "goodsNo": "A000000241612",
@@ -1852,7 +2146,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 69
+      "rank": 69,
+      "keywordRanks": {
+        "키티": 69,
+        "헬로키티": 69
+      }
     },
     {
       "goodsNo": "B000000205843",
@@ -1875,7 +2173,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 70
+      "rank": 70,
+      "keywordRanks": {
+        "키티": 70,
+        "헬로키티": 70
+      }
     },
     {
       "goodsNo": "B000000205848",
@@ -1898,7 +2200,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 71
+      "rank": 71,
+      "keywordRanks": {
+        "키티": 71,
+        "헬로키티": 71
+      }
     },
     {
       "goodsNo": "B000000249194",
@@ -1921,7 +2227,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 72
+      "rank": 72,
+      "keywordRanks": {
+        "키티": 72,
+        "헬로키티": 72
+      }
     },
     {
       "goodsNo": "A000000233653",
@@ -1944,7 +2254,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 74
+      "rank": 74,
+      "keywordRanks": {
+        "키티": 74,
+        "헬로키티": 74
+      }
     },
     {
       "goodsNo": "B000000191872",
@@ -1967,7 +2281,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 75
+      "rank": 75,
+      "keywordRanks": {
+        "키티": 75,
+        "헬로키티": 75
+      }
     },
     {
       "goodsNo": "B000000191878",
@@ -1990,7 +2308,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 76
+      "rank": 76,
+      "keywordRanks": {
+        "키티": 76,
+        "헬로키티": 76
+      }
     },
     {
       "goodsNo": "B000000191879",
@@ -2013,7 +2335,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 77
+      "rank": 77,
+      "keywordRanks": {
+        "키티": 77,
+        "헬로키티": 77
+      }
     },
     {
       "goodsNo": "B000000205847",
@@ -2036,7 +2362,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 78
+      "rank": 78,
+      "keywordRanks": {
+        "키티": 78,
+        "헬로키티": 78
+      }
     },
     {
       "goodsNo": "B000000248995",
@@ -2059,7 +2389,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 79
+      "rank": 79,
+      "keywordRanks": {
+        "키티": 79,
+        "헬로키티": 79
+      }
     },
     {
       "goodsNo": "B000000249205",
@@ -2082,7 +2416,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 80
+      "rank": 80,
+      "keywordRanks": {
+        "키티": 80,
+        "헬로키티": 80
+      }
     },
     {
       "goodsNo": "B000000249206",
@@ -2105,7 +2443,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 81
+      "rank": 81,
+      "keywordRanks": {
+        "키티": 81,
+        "헬로키티": 81
+      }
     },
     {
       "goodsNo": "B000000258968",
@@ -2128,7 +2470,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 82
+      "rank": 82,
+      "keywordRanks": {
+        "키티": 82,
+        "헬로키티": 82
+      }
     },
     {
       "goodsNo": "A000000233316",
@@ -2151,7 +2497,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 83
+      "rank": 83,
+      "keywordRanks": {
+        "키티": 83,
+        "헬로키티": 83
+      }
     },
     {
       "goodsNo": "A000000215353",
@@ -2163,7 +2513,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021535301ko.jpg?l=ko",
       "priceToPay": 3500,
@@ -2174,7 +2529,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 84
+      "rank": 84,
+      "keywordRanks": {
+        "키티": 84,
+        "헬로키티": 84,
+        "마이멜로디": 24,
+        "마멜": 24,
+        "my melody": 24,
+        "mymelody": 24,
+        "산리오": 24
+      }
     },
     {
       "goodsNo": "A000000215333",
@@ -2186,7 +2550,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021533301ko.jpg?l=ko",
       "priceToPay": 4000,
@@ -2197,7 +2566,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 85
+      "rank": 85,
+      "keywordRanks": {
+        "키티": 85,
+        "헬로키티": 85,
+        "마이멜로디": 19,
+        "마멜": 19,
+        "my melody": 19,
+        "mymelody": 19,
+        "산리오": 19
+      }
     },
     {
       "goodsNo": "A000000215318",
@@ -2220,7 +2598,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 86
+      "rank": 86,
+      "keywordRanks": {
+        "키티": 86,
+        "헬로키티": 86
+      }
     },
     {
       "goodsNo": "A000000230160",
@@ -2243,7 +2625,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 87
+      "rank": 87,
+      "keywordRanks": {
+        "키티": 87,
+        "헬로키티": 87
+      }
     },
     {
       "goodsNo": "A000000194103",
@@ -2266,7 +2652,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 88
+      "rank": 88,
+      "keywordRanks": {
+        "키티": 88,
+        "헬로키티": 88
+      }
     },
     {
       "goodsNo": "A000000215346",
@@ -2278,7 +2668,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021534601ko.jpg?l=ko",
       "priceToPay": 6500,
@@ -2289,7 +2684,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 89
+      "rank": 89,
+      "keywordRanks": {
+        "키티": 89,
+        "헬로키티": 89,
+        "마이멜로디": 21,
+        "마멜": 21,
+        "my melody": 21,
+        "mymelody": 21,
+        "산리오": 21
+      }
     },
     {
       "goodsNo": "A000000215355",
@@ -2301,7 +2705,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021535501ko.jpg?l=ko",
       "priceToPay": 3500,
@@ -2312,7 +2721,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 90
+      "rank": 90,
+      "keywordRanks": {
+        "키티": 90,
+        "헬로키티": 90,
+        "마이멜로디": 22,
+        "마멜": 22,
+        "my melody": 22,
+        "mymelody": 22,
+        "산리오": 22
+      }
     },
     {
       "goodsNo": "A000000233636",
@@ -2324,7 +2742,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/A00000023363607ko.jpg?l=ko",
       "priceToPay": 1960,
@@ -2335,7 +2758,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 91
+      "rank": 91,
+      "keywordRanks": {
+        "키티": 91,
+        "헬로키티": 91,
+        "마이멜로디": 29,
+        "마멜": 29,
+        "my melody": 29,
+        "mymelody": 29,
+        "산리오": 29
+      }
     },
     {
       "goodsNo": "B000000259870",
@@ -2358,7 +2790,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 92
+      "rank": 92,
+      "keywordRanks": {
+        "키티": 92,
+        "헬로키티": 92
+      }
     },
     {
       "goodsNo": "A000000233290",
@@ -2370,7 +2806,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/A00000023329007ko.jpg?l=ko",
       "priceToPay": 4390,
@@ -2381,7 +2822,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 93
+      "rank": 93,
+      "keywordRanks": {
+        "키티": 93,
+        "헬로키티": 93,
+        "마이멜로디": 25,
+        "마멜": 25,
+        "my melody": 25,
+        "mymelody": 25,
+        "산리오": 25
+      }
     },
     {
       "goodsNo": "B000000259868",
@@ -2404,7 +2854,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 94
+      "rank": 94,
+      "keywordRanks": {
+        "키티": 94,
+        "헬로키티": 94
+      }
     },
     {
       "goodsNo": "B000000224788",
@@ -2427,7 +2881,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 95
+      "rank": 95,
+      "keywordRanks": {
+        "키티": 95,
+        "헬로키티": 95
+      }
     },
     {
       "goodsNo": "B000000237968",
@@ -2450,7 +2908,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 96
+      "rank": 96,
+      "keywordRanks": {
+        "키티": 96,
+        "헬로키티": 96
+      }
     },
     {
       "goodsNo": "B000000237373",
@@ -2473,7 +2935,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 97
+      "rank": 97,
+      "keywordRanks": {
+        "키티": 97,
+        "헬로키티": 97
+      }
     },
     {
       "goodsNo": "B000000217030",
@@ -2485,7 +2951,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/B00000021703001ko.png?l=ko",
       "priceToPay": 19250,
@@ -2496,7 +2967,16 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 98
+      "rank": 98,
+      "keywordRanks": {
+        "키티": 98,
+        "헬로키티": 98,
+        "마이멜로디": 17,
+        "마멜": 17,
+        "my melody": 17,
+        "mymelody": 17,
+        "산리오": 17
+      }
     },
     {
       "goodsNo": "A000000219515",
@@ -2519,7 +2999,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 99
+      "rank": 99,
+      "keywordRanks": {
+        "키티": 99,
+        "헬로키티": 99
+      }
     },
     {
       "goodsNo": "A000000229705",
@@ -2531,7 +3015,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0022/A00000022970503ko.jpg?l=ko",
       "priceToPay": 1270,
@@ -2542,7 +3031,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 100
+      "rank": 100,
+      "keywordRanks": {
+        "키티": 100,
+        "헬로키티": 100,
+        "마이멜로디": 26,
+        "마멜": 26,
+        "my melody": 26,
+        "mymelody": 26,
+        "산리오": 26
+      }
     },
     {
       "goodsNo": "A000000223832",
@@ -2565,7 +3063,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 101
+      "rank": 101,
+      "keywordRanks": {
+        "키티": 101,
+        "헬로키티": 101
+      }
     },
     {
       "goodsNo": "A000000229706",
@@ -2577,7 +3079,12 @@
         "헬로키티",
         "챠미키티",
         "kitty",
-        "hello kitty"
+        "hello kitty",
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "my-melody",
+        "산리오"
       ],
       "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0022/A00000022970603ko.jpg?l=ko",
       "priceToPay": 12750,
@@ -2588,7 +3095,16 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 102
+      "rank": 102,
+      "keywordRanks": {
+        "키티": 102,
+        "헬로키티": 102,
+        "마이멜로디": 30,
+        "마멜": 30,
+        "my melody": 30,
+        "mymelody": 30,
+        "산리오": 30
+      }
     },
     {
       "goodsNo": "A000000227015",
@@ -2611,7 +3127,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 103
+      "rank": 103,
+      "keywordRanks": {
+        "키티": 103,
+        "헬로키티": 103
+      }
     },
     {
       "goodsNo": "A000000212026",
@@ -2634,7 +3154,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 104
+      "rank": 104,
+      "keywordRanks": {
+        "키티": 104,
+        "헬로키티": 104
+      }
     },
     {
       "goodsNo": "A000000150753",
@@ -2657,7 +3181,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 105
+      "rank": 105,
+      "keywordRanks": {
+        "키티": 105,
+        "헬로키티": 105
+      }
     },
     {
       "goodsNo": "B000000249551",
@@ -2680,7 +3208,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 106
+      "rank": 106,
+      "keywordRanks": {
+        "키티": 106,
+        "헬로키티": 106
+      }
     },
     {
       "goodsNo": "B000000251205",
@@ -2703,7 +3235,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 107
+      "rank": 107,
+      "keywordRanks": {
+        "키티": 107,
+        "헬로키티": 107
+      }
     },
     {
       "goodsNo": "B000000249555",
@@ -2726,7 +3262,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 108
+      "rank": 108,
+      "keywordRanks": {
+        "키티": 108,
+        "헬로키티": 108
+      }
     },
     {
       "goodsNo": "B000000253960",
@@ -2749,7 +3289,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 109
+      "rank": 109,
+      "keywordRanks": {
+        "키티": 109,
+        "헬로키티": 109
+      }
     },
     {
       "goodsNo": "B000000249559",
@@ -2772,7 +3316,11 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 110
+      "rank": 110,
+      "keywordRanks": {
+        "키티": 110,
+        "헬로키티": 110
+      }
     },
     {
       "goodsNo": "A000000160534",
@@ -2795,7 +3343,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 111
+      "rank": 111,
+      "keywordRanks": {
+        "키티": 111,
+        "헬로키티": 111
+      }
     },
     {
       "goodsNo": "A000000241687",
@@ -2818,7 +3370,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 112
+      "rank": 112,
+      "keywordRanks": {
+        "키티": 112,
+        "헬로키티": 112
+      }
     },
     {
       "goodsNo": "A000000244644",
@@ -2841,7 +3397,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 113
+      "rank": 113,
+      "keywordRanks": {
+        "키티": 113,
+        "헬로키티": 113
+      }
     },
     {
       "goodsNo": "A000000229442",
@@ -2864,7 +3424,11 @@
       "inventoryScope": "official-search",
       "stockStatus": "official_search",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 114
+      "rank": 114,
+      "keywordRanks": {
+        "키티": 114,
+        "헬로키티": 114
+      }
     },
     {
       "goodsNo": "B000000249558",
@@ -2887,7 +3451,755 @@
       "inventoryScope": "vendor",
       "stockStatus": "vendor_delivery",
       "source": "oliveyoung-official-search-supplement",
-      "rank": 115
+      "rank": 115,
+      "keywordRanks": {
+        "키티": 115,
+        "헬로키티": 115
+      }
+    },
+    {
+      "goodsNo": "A000000209735",
+      "goodsNumber": "A000000209735",
+      "goodsName": "[디바이스 2관왕] 메디큐브 부스터프로 짱구 에디션/미니플러스/브이롤러 기획/하이포커스샷 플러스 택 1",
+      "brandName": "메디큐브 에이지알",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A000000209735135ko.jpg?l=ko",
+      "priceToPay": 122000,
+      "originalPrice": 126000,
+      "discountRate": 3,
+      "categoryNumber": "1000001000100180001",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 1,
+      "keywordRanks": {
+        "마이멜로디": 1,
+        "마멜": 1,
+        "my melody": 1,
+        "mymelody": 1,
+        "산리오": 1
+      }
+    },
+    {
+      "goodsNo": "A000000248265",
+      "goodsNumber": "A000000248265",
+      "goodsName": "파우더 벨벳 틴트 3.3g 기획 4colors (마이멜로디/쿠로미 실리콘 키링+캐릭터씰)",
+      "brandName": "어뮤즈",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/A00000024826588ko.jpg?l=ko",
+      "priceToPay": 7600,
+      "originalPrice": 19000,
+      "discountRate": 60,
+      "categoryNumber": "1000001000200060003",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 2,
+      "keywordRanks": {
+        "마이멜로디": 2,
+        "마멜": 2,
+        "my melody": 2,
+        "mymelody": 2,
+        "산리오": 2
+      }
+    },
+    {
+      "goodsNo": "A000000218528",
+      "goodsNumber": "A000000218528",
+      "goodsName": "세라마이드 아토 수딩 젤 175ML",
+      "brandName": "일리윤",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021852805ko.png?l=ko",
+      "priceToPay": 13900,
+      "originalPrice": 17900,
+      "discountRate": 22,
+      "categoryNumber": "1000001000300250001",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 3,
+      "keywordRanks": {
+        "마이멜로디": 3,
+        "마멜": 3,
+        "my melody": 3,
+        "mymelody": 3,
+        "산리오": 3
+      }
+    },
+    {
+      "goodsNo": "A000000200357",
+      "goodsNumber": "A000000200357",
+      "goodsName": "[틴케이스키링증정/몬치치 콜라보] 어뮤즈 세라믹 스킨 퍼펙터 쿠션 (리필+몬치치 헤어시트 증정)",
+      "brandName": "어뮤즈",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A000000200357154ko.jpg?l=ko",
+      "priceToPay": 30400,
+      "originalPrice": 38000,
+      "discountRate": 20,
+      "categoryNumber": "1000001000200010009",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 4,
+      "keywordRanks": {
+        "마이멜로디": 4,
+        "마멜": 4,
+        "my melody": 4,
+        "mymelody": 4,
+        "산리오": 4
+      }
+    },
+    {
+      "goodsNo": "A000000191876",
+      "goodsNumber": "A000000191876",
+      "goodsName": "화이트닝 미백 칫솔 2입 마이멜로디 기획",
+      "brandName": "유시몰",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/A00000019187613ko.jpg?l=ko",
+      "priceToPay": 9900,
+      "originalPrice": 11900,
+      "discountRate": 17,
+      "categoryNumber": "1000002000300150002",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 6,
+      "keywordRanks": {
+        "마이멜로디": 6,
+        "마멜": 6,
+        "my melody": 6,
+        "mymelody": 6,
+        "산리오": 6
+      }
+    },
+    {
+      "goodsNo": "A000000198850",
+      "goodsNumber": "A000000198850",
+      "goodsName": "베베 틴트 3.8g 12종 (기획/단품)",
+      "brandName": "어뮤즈",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/A000000198850102ko.jpg?l=ko",
+      "priceToPay": 17000,
+      "originalPrice": 20000,
+      "discountRate": 15,
+      "categoryNumber": "1000001000200060003",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 7,
+      "keywordRanks": {
+        "마이멜로디": 7,
+        "마멜": 7,
+        "my melody": 7,
+        "mymelody": 7,
+        "산리오": 7
+      }
+    },
+    {
+      "goodsNo": "A000000227124",
+      "goodsNumber": "A000000227124",
+      "goodsName": "산리오캐릭터즈 마이멜로디 밴드 10매입x10EA",
+      "brandName": "아텍스",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0022/A00000022712401ko.jpg?l=ko",
+      "priceToPay": 12750,
+      "originalPrice": 15000,
+      "discountRate": 15,
+      "categoryNumber": "1000002000500030002",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 8,
+      "keywordRanks": {
+        "마이멜로디": 8,
+        "마멜": 8,
+        "my melody": 8,
+        "mymelody": 8,
+        "산리오": 8
+      }
+    },
+    {
+      "goodsNo": "B000000249481",
+      "goodsNumber": "B000000249481",
+      "goodsName": "마이멜로디 순면소프트 생리대 대형 12P*4팩",
+      "brandName": "마리솜",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/B00000024948101ko.jpg?l=ko",
+      "priceToPay": 20500,
+      "originalPrice": 20500,
+      "discountRate": 0,
+      "categoryNumber": "1000002000400010001",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 9,
+      "keywordRanks": {
+        "마이멜로디": 9,
+        "마멜": 9,
+        "my melody": 9,
+        "mymelody": 9,
+        "산리오": 9
+      }
+    },
+    {
+      "goodsNo": "A000000227125",
+      "goodsNumber": "A000000227125",
+      "goodsName": "산리오캐릭터즈 마이멜로디 밴드 10매입",
+      "brandName": "아텍스",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0022/A00000022712501ko.jpg?l=ko",
+      "priceToPay": 1270,
+      "originalPrice": 1500,
+      "discountRate": 15,
+      "categoryNumber": "1000002000500030002",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 10,
+      "keywordRanks": {
+        "마이멜로디": 10,
+        "마멜": 10,
+        "my melody": 10,
+        "mymelody": 10,
+        "산리오": 10
+      }
+    },
+    {
+      "goodsNo": "B000000249542",
+      "goodsNumber": "B000000249542",
+      "goodsName": "[바쿠X산리오] 리유저블 바쿠백 마이멜로디 스트로베리",
+      "brandName": "바쿠",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/B00000024954201ko.jpg?l=ko",
+      "priceToPay": 20900,
+      "originalPrice": 22000,
+      "discountRate": 5,
+      "categoryNumber": "1000003000700040004",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 11,
+      "keywordRanks": {
+        "마이멜로디": 11,
+        "마멜": 11,
+        "my melody": 11,
+        "mymelody": 11,
+        "산리오": 11
+      }
+    },
+    {
+      "goodsNo": "B000000242615",
+      "goodsNumber": "B000000242615",
+      "goodsName": "스쿨핏 산리오캐릭터즈 원터치 피규어 텀블러 320ml (LHC3347)",
+      "brandName": "락앤락",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/B00000024261501ko.jpg?l=ko",
+      "priceToPay": 25130,
+      "originalPrice": 35900,
+      "discountRate": 30,
+      "categoryNumber": "1000003000500180004",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 12,
+      "keywordRanks": {
+        "마이멜로디": 12,
+        "마멜": 12,
+        "my melody": 12,
+        "mymelody": 12,
+        "산리오": 12
+      }
+    },
+    {
+      "goodsNo": "B000000242616",
+      "goodsNumber": "B000000242616",
+      "goodsName": "스쿨핏 산리오캐릭터즈 원터치 피규어 보틀 430ml (ABF899)",
+      "brandName": "락앤락",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/B00000024261601ko.jpg?l=ko",
+      "priceToPay": 15540,
+      "originalPrice": 22200,
+      "discountRate": 30,
+      "categoryNumber": "1000003000500180004",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 13,
+      "keywordRanks": {
+        "마이멜로디": 13,
+        "마멜": 13,
+        "my melody": 13,
+        "mymelody": 13,
+        "산리오": 13
+      }
+    },
+    {
+      "goodsNo": "B000000236131",
+      "goodsNumber": "B000000236131",
+      "goodsName": "NEW 산리오 원터치 텀블러 /보틀/ 도시락",
+      "brandName": "락앤락",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/B00000023613101ko.png?l=ko",
+      "priceToPay": 27500,
+      "originalPrice": 27500,
+      "discountRate": 0,
+      "categoryNumber": "1000003000500180001",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 14,
+      "keywordRanks": {
+        "마이멜로디": 14,
+        "마멜": 14,
+        "my melody": 14,
+        "mymelody": 14,
+        "산리오": 14
+      }
+    },
+    {
+      "goodsNo": "B000000217032",
+      "goodsNumber": "B000000217032",
+      "goodsName": "스쿨핏 산리오캐릭터즈 어린이 도시락 710ml",
+      "brandName": "락앤락",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/B00000021703201ko.png?l=ko",
+      "priceToPay": 31500,
+      "originalPrice": 45000,
+      "discountRate": 30,
+      "categoryNumber": "1000003000500180004",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 15,
+      "keywordRanks": {
+        "마이멜로디": 15,
+        "마멜": 15,
+        "my melody": 15,
+        "mymelody": 15,
+        "산리오": 15
+      }
+    },
+    {
+      "goodsNo": "A000000194459",
+      "goodsNumber": "A000000194459",
+      "goodsName": "산리오 Y2K 핸드폰 스티커 (마이멜로디/쿠로미/시나모롤/포차코)",
+      "brandName": "텐바이텐",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/A00000019445901ko.jpg?l=ko",
+      "priceToPay": 3000,
+      "originalPrice": 3000,
+      "discountRate": 0,
+      "categoryNumber": "1000003000600010001",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 16,
+      "keywordRanks": {
+        "마이멜로디": 16,
+        "마멜": 16,
+        "my melody": 16,
+        "mymelody": 16,
+        "산리오": 16
+      }
+    },
+    {
+      "goodsNo": "B000000242927",
+      "goodsNumber": "B000000242927",
+      "goodsName": "스쿨핏 산리오캐릭터즈 세 칸 나눔 클리어 도시락 (LCB503)",
+      "brandName": "락앤락",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/B00000024292701ko.jpg?l=ko",
+      "priceToPay": 20930,
+      "originalPrice": 29900,
+      "discountRate": 30,
+      "categoryNumber": "1000003000500180004",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 18,
+      "keywordRanks": {
+        "마이멜로디": 18,
+        "마멜": 18,
+        "my melody": 18,
+        "mymelody": 18,
+        "산리오": 18
+      }
+    },
+    {
+      "goodsNo": "A000000194379",
+      "goodsNumber": "A000000194379",
+      "goodsName": "산리오 Y2K 윈도우스티커 (마이멜로디/쿠로미/시나모롤/포차코)",
+      "brandName": "텐바이텐",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/A00000019437901ko.jpg?l=ko",
+      "priceToPay": 3000,
+      "originalPrice": 3000,
+      "discountRate": 0,
+      "categoryNumber": "1000003000600010001",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 20,
+      "keywordRanks": {
+        "마이멜로디": 20,
+        "마멜": 20,
+        "my melody": 20,
+        "mymelody": 20,
+        "산리오": 20
+      }
+    },
+    {
+      "goodsNo": "A000000194299",
+      "goodsNumber": "A000000194299",
+      "goodsName": "산리오 틴케이스 스티커팩 (마이멜로디/쿠로미/시나모롤/포차코/폼폼푸린)",
+      "brandName": "텐바이텐",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/A00000019429901ko.jpg?l=ko",
+      "priceToPay": 9500,
+      "originalPrice": 9500,
+      "discountRate": 0,
+      "categoryNumber": "1000003000600010001",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 23,
+      "keywordRanks": {
+        "마이멜로디": 23,
+        "마멜": 23,
+        "my melody": 23,
+        "mymelody": 23,
+        "산리오": 23
+      }
+    },
+    {
+      "goodsNo": "A000000228336",
+      "goodsNumber": "A000000228336",
+      "goodsName": "[몬치치 콜라보] 어뮤즈 꽃 아이 팔레트 (+몬치치 증명사진 키링 증정)",
+      "brandName": "어뮤즈",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0022/A00000022833690ko.jpg?l=ko",
+      "priceToPay": 23800,
+      "originalPrice": 28000,
+      "discountRate": 15,
+      "categoryNumber": "1000001000200070003",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 27,
+      "keywordRanks": {
+        "마이멜로디": 27,
+        "마멜": 27,
+        "my melody": 27,
+        "mymelody": 27,
+        "산리오": 27
+      }
+    },
+    {
+      "goodsNo": "A000000218173",
+      "goodsNumber": "A000000218173",
+      "goodsName": "파우더 벨벳 틴트 3.3g 8종 (기획/단품)",
+      "brandName": "어뮤즈",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021817387ko.jpg?l=ko",
+      "priceToPay": 16150,
+      "originalPrice": 19000,
+      "discountRate": 15,
+      "categoryNumber": "1000001000200060003",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 28,
+      "keywordRanks": {
+        "마이멜로디": 28,
+        "마멜": 28,
+        "my melody": 28,
+        "mymelody": 28,
+        "산리오": 28
+      }
+    },
+    {
+      "goodsNo": "A000000219652",
+      "goodsNumber": "A000000219652",
+      "goodsName": "파우더 립 앤 치크 4g 12종 (기획/단품)",
+      "brandName": "어뮤즈",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0021/A00000021965292ko.jpg?l=ko",
+      "priceToPay": 16150,
+      "originalPrice": 19000,
+      "discountRate": 15,
+      "categoryNumber": "1000001000200010006",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 31,
+      "keywordRanks": {
+        "마이멜로디": 31,
+        "마멜": 31,
+        "my melody": 31,
+        "mymelody": 31,
+        "산리오": 31
+      }
+    },
+    {
+      "goodsNo": "B000000192142",
+      "goodsNumber": "B000000192142",
+      "goodsName": "산리오 모니터 걸이형 방향제 8ml 3종 중 택1(마이멜로디/쿠로미/시나모롤)",
+      "brandName": "로이체",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/B00000019214211ko.jpg?l=ko",
+      "priceToPay": 21500,
+      "originalPrice": 21500,
+      "discountRate": 0,
+      "categoryNumber": "1000001000500120005",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 32,
+      "keywordRanks": {
+        "마이멜로디": 32,
+        "마멜": 32,
+        "my melody": 32,
+        "mymelody": 32,
+        "산리오": 32
+      }
+    },
+    {
+      "goodsNo": "B000000192169",
+      "goodsNumber": "B000000192169",
+      "goodsName": "산리오 차량용 방향제 2ml 3종 중 택1(마이멜로디/시나모롤/쿠로미)",
+      "brandName": "로이체",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0019/B00000019216908ko.jpg?l=ko",
+      "priceToPay": 16100,
+      "originalPrice": 16100,
+      "discountRate": 0,
+      "categoryNumber": "1000001000500120004",
+      "vendorDelivery": true,
+      "inventoryScope": "vendor",
+      "stockStatus": "vendor_delivery",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 33,
+      "keywordRanks": {
+        "마이멜로디": 33,
+        "마멜": 33,
+        "my melody": 33,
+        "mymelody": 33,
+        "산리오": 33
+      }
+    },
+    {
+      "goodsNo": "A000000228519",
+      "goodsNumber": "A000000228519",
+      "goodsName": "콤부차 레몬/매실/피치/스트로베리키위 10T 기획 (+티코스터) (산리오) (2507)",
+      "brandName": "티젠",
+      "keywordAliases": [
+        "마이멜로디",
+        "마멜",
+        "my melody",
+        "mymelody",
+        "my-melody",
+        "산리오"
+      ],
+      "imageUrl": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0022/A00000022851911ko.jpg?l=ko",
+      "priceToPay": 7500,
+      "originalPrice": 7500,
+      "discountRate": 0,
+      "categoryNumber": "1000002000200200009,1000002000200220011",
+      "vendorDelivery": false,
+      "inventoryScope": "official-search",
+      "stockStatus": "official_search",
+      "source": "oliveyoung-official-search-supplement",
+      "rank": 34,
+      "keywordRanks": {
+        "마이멜로디": 34,
+        "마멜": 34,
+        "my melody": 34,
+        "mymelody": 34,
+        "산리오": 34
+      }
     }
   ]
 }

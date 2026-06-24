@@ -458,7 +458,23 @@ async function getVendorSupplementMatches(keyword, origin) {
   return rows
     .filter((p) => productMatchesKeyword(p, keyword))
     .map(normalizeSupplementProduct)
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => supplementRankForKeyword(a, keyword) - supplementRankForKeyword(b, keyword));
+}
+
+function supplementRankForKeyword(product, keyword) {
+  const kw = normalizeText(keyword);
+  const ranks = (product && product.keywordRanks) || {};
+  let best = Number.POSITIVE_INFINITY;
+  Object.keys(ranks).forEach((k) => {
+    if (normalizeText(k) === kw || normalizeText(k).includes(kw) || kw.includes(normalizeText(k))) {
+      const n = Number(ranks[k]);
+      if (Number.isFinite(n) && n > 0 && n < best) best = n;
+    }
+  });
+  if (Number.isFinite(best)) return best;
+  const rank = Number(product && product.rank);
+  return Number.isFinite(rank) && rank > 0 ? rank + 10000 : Number.MAX_SAFE_INTEGER;
 }
 
 function supplementSourceSuffix(products) {
