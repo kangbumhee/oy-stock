@@ -6,6 +6,8 @@ const SEARCH_CACHE_MAX = 200;
 const searchCache = new Map();
 
 const PRODUCTS_TIMEOUT_MS = 4500;
+const OFFICIAL_SEARCH_TIMEOUT_MS = 3500;
+const OFFICIAL_SEARCH_PAGE_SIZE = 48;
 const LOCAL_DETAIL_CACHE_TTL_MS = 60 * 1000;
 const localDetailCache = { ts: 0, data: null };
 const localVendorCache = { ts: 0, data: null };
@@ -103,6 +105,175 @@ async function fetchUpstreamProducts(keyword, size) {
   const result = await fetchUpstreamInventory(url, PRODUCTS_TIMEOUT_MS);
   const parsed = result ? tryParseJson(result.text) : null;
   return { status: result ? result.r.status : 500, text: result ? result.text : '', parsed };
+}
+
+function getOfficialCookieHeader() {
+  return String(
+    process.env.OLIVEYOUNG_SEARCH_COOKIE ||
+      process.env.OY_REFRESH_COOKIE ||
+      process.env.OY_CURATOR_COOKIE ||
+      ''
+  ).trim();
+}
+
+function numberFromOfficial(value) {
+  if (value == null) return 0;
+  const n = Number.parseInt(String(value).replace(/[^\d.-]/g, ''), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function officialImageUrl(pathName) {
+  const raw = String(pathName || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return 'https://image.oliveyoung.co.kr/uploads/images/goods/' + raw.replace(/^\/+/, '');
+}
+
+function normalizeOfficialProduct(row) {
+  if (!row || typeof row !== 'object') return null;
+  const goodsNo = String(row.GOODS_NO || row.goodsNo || row.goodsNumber || '').trim();
+  if (!goodsNo || goodsNo === 'A000000000000') return null;
+
+  const salePrice = numberFromOfficial(row.SALE_PRC || row.salePrice || row.priceToPay);
+  const normalPrice = numberFromOfficial(row.NORM_PRC || row.SUP_PRC || row.originalPrice);
+  const originalPrice = normalPrice || salePrice;
+  const priceToPay = salePrice || originalPrice;
+
+  return {
+    goodsNo,
+    goodsNumber: goodsNo,
+    goodsName: String(row.GOODS_NM || row.goodsName || goodsNo).trim(),
+    brandName: String(row.ONL_BRND_NM || row.BRND_NM || row.brandName || '').trim(),
+    imageUrl: officialImageUrl(row.IMG_PATH_NM || row.imageUrl || row.thumbnail),
+    priceToPay,
+    originalPrice,
+    discountRate:
+      originalPrice > priceToPay && priceToPay > 0
+        ? Math.round((1 - priceToPay / originalPrice) * 100)
+        : 0,
+    categoryNumber: String(row.DISP_CAT_NO || row.categoryNumber || '').trim(),
+    goodsOut: row.GOODS_SOUT_INFO === 'Y',
+    todayDelivery: row.QUICK_YN === 'Y',
+    source: 'oliveyoung-official-search'
+  };
+}
+
+async function fetchOfficialSearchPage(keyword, startCount, listnum) {
+  const cookieHeader = getOfficialCookieHeader();
+  if (!cookieHeader) {
+    return { status: 0, parsed: null, text: '', skipped: true };
+  }
+
+  const body = new URLSearchParams({
+    query: String(keyword || ''),
+    reQuery: '',
+    rt: '',
+    collection: 'OLIVE_GOODS,OLIVE_PLAN,OLIVE_EVENT,OLIVE_BRAND,OLIVE_QUICK_LINK',
+    listnum: String(Math.max(1, Math.min(parseSize(listnum), OFFICIAL_SEARCH_PAGE_SIZE))),
+    startCount: String(Math.max(0, Number.parseInt(String(startCount || 0), 10) || 0)),
+    sort: 'RANK/DESC',
+    goods_sort: 'WEIGHT/DESC,RANK/DESC',
+    disPlayCateId: '',
+    cateId: '',
+    cateId2: '',
+    sale_below_price: '',
+    sale_over_price: '',
+    brandCheck: '',
+    benefitCheck: '',
+    attrCheck0: '',
+    attrCheck1: '',
+    attrCheck2: '',
+    attrCheck3: '',
+    attrCheck4: '',
+    authenticYn: '',
+    typeChk: '',
+    onlyOneBrand: '',
+    quickYn: 'N',
+    displayMediaTypes: '02'
+  });
+
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), OFFICIAL_SEARCH_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch('https://www.oliveyoung.co.kr/store/search/NewMainSearchApi.do', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        Cookie: cookieHeader,
+        Origin: 'https://www.oliveyoung.co.kr',
+        Referer:
+          'https://www.oliveyoung.co.kr/store/search/getSearchMain.do?query=' +
+          encodeURIComponent(String(keyword || '')) +
+          '&giftYn=N',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(t);
+  }
+
+  const text = await r.text();
+  return { status: r.status, parsed: tryParseJson(text), text };
+}
+
+function officialGoodsFromPayload(payload) {
+  const data = payload && Array.isArray(payload.Data) ? payload.Data : [];
+  return data.find((item) => item && item.CollName === 'OLIVE_GOODS') || null;
+}
+
+async function fetchOfficialSearchProducts(keyword, size) {
+  const limit = parseSize(size);
+  const firstPageSize = Math.min(OFFICIAL_SEARCH_PAGE_SIZE, limit);
+  const first = await fetchOfficialSearchPage(keyword, 0, firstPageSize);
+  const firstGoods = officialGoodsFromPayload(first.parsed);
+  const firstRows = firstGoods && Array.isArray(firstGoods.Result) ? firstGoods.Result : [];
+  const totalCount = numberFromOfficial(firstGoods && firstGoods.TotalCount);
+
+  if (!firstRows.length || first.status >= 400) {
+    return {
+      status: first.status || 500,
+      parsed: null,
+      products: [],
+      totalCount: 0,
+      text: first.text || ''
+    };
+  }
+
+  const products = firstRows.map(normalizeOfficialProduct).filter(Boolean);
+  const wanted = Math.min(limit, totalCount || products.length);
+  const starts = [];
+  for (let start = firstPageSize; start < wanted; start += OFFICIAL_SEARCH_PAGE_SIZE) {
+    starts.push(start);
+  }
+
+  if (starts.length) {
+    const pages = await Promise.allSettled(
+      starts.map((start) =>
+        fetchOfficialSearchPage(keyword, start, Math.min(OFFICIAL_SEARCH_PAGE_SIZE, wanted - start))
+      )
+    );
+    pages.forEach((page) => {
+      if (page.status !== 'fulfilled') return;
+      const goods = officialGoodsFromPayload(page.value && page.value.parsed);
+      const rows = goods && Array.isArray(goods.Result) ? goods.Result : [];
+      rows.map(normalizeOfficialProduct).filter(Boolean).forEach((p) => products.push(p));
+    });
+  }
+
+  return {
+    status: first.status,
+    parsed: first.parsed,
+    products,
+    totalCount: totalCount || products.length,
+    text: first.text || ''
+  };
 }
 
 function getProducts(payload) {
@@ -241,20 +412,25 @@ function normalizeProduct(product) {
   });
 }
 
-function buildUnifiedPayload(products, keyword, source, updatedAt, message) {
+function buildUnifiedPayload(products, keyword, source, updatedAt, message, options) {
+  options = options || {};
   const normalized = products.map(normalizeProduct).filter(Boolean);
+  const totalCount =
+    Number.isFinite(options.totalCount) && options.totalCount > normalized.length
+      ? options.totalCount
+      : normalized.length;
   return {
     success: true,
-    fallback: source !== 'products-primary',
+    fallback: /^fallback|vendor-supplement/.test(String(source || '')),
     message,
     data: {
       keyword: String(keyword || ''),
-      totalCount: normalized.length,
-      nextPage: false,
+      totalCount,
+      nextPage: normalized.length < totalCount,
       count: normalized.length,
       products: normalized,
       inventory: {
-        totalCount: normalized.length,
+        totalCount,
         products: normalized
       },
       source,
@@ -422,10 +598,60 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const productsResult = await fetchUpstreamProducts(queryKeyword, size);
+    const [officialResult, productsResult] = await Promise.allSettled([
+      fetchOfficialSearchProducts(queryKeyword, size),
+      fetchUpstreamProducts(queryKeyword, size)
+    ]).then((results) => [
+      results[0].status === 'fulfilled' ? results[0].value : null,
+      results[1].status === 'fulfilled' ? results[1].value : null
+    ]);
     const primaryProducts = getProducts(productsResult && productsResult.parsed);
     const productCount = primaryProducts.length;
     const supplementProducts = await getVendorSupplementMatches(queryKeyword, requestOrigin(req));
+
+    if (
+      officialResult &&
+      officialResult.status < 500 &&
+      officialResult.products &&
+      officialResult.products.length > productCount
+    ) {
+      const mergedProducts = mergeSearchProducts(
+        officialResult.products,
+        supplementProducts,
+        queryKeyword,
+        size
+      );
+      const officialBody = JSON.stringify(
+        buildUnifiedPayload(
+          mergedProducts,
+          queryKeyword,
+          supplementProducts.length
+            ? 'official-search+vendor-supplement'
+            : 'official-search',
+          new Date().toISOString(),
+          supplementProducts.length
+            ? '공식 검색 결과와 업체배송 보조 상품을 함께 표시합니다.'
+            : undefined,
+          {
+            totalCount: Math.max(
+              officialResult.totalCount || 0,
+              mergedProducts.length + Math.max(0, supplementProducts.length - officialResult.products.length)
+            )
+          }
+        )
+      );
+      pruneSearchCache();
+      searchCache.set(ck, { body: officialBody, status: 200, ts: Date.now() });
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('X-Cache', 'MISS');
+      res.setHeader(
+        'X-Search-Source',
+        supplementProducts.length ? 'official-search+vendor-supplement' : 'official-search'
+      );
+      res.end(officialBody);
+      return;
+    }
 
     if (
       productsResult &&
