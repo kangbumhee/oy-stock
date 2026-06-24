@@ -35,6 +35,9 @@ const PLACEHOLDER_CATEGORY = '1000001000000000000';
 
 /** curator-links 항목이 이 시간 이내면 landing/shorten 재호출 안 함 */
 const CURATOR_ENTRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const CURATOR_MISSING_ONLY =
+  String(process.env.CURATOR_MISSING_ONLY || '').trim().toLowerCase() === '1' ||
+  String(process.env.CURATOR_MISSING_ONLY || '').trim().toLowerCase() === 'true';
 
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 const AFFILIATE_REFERER =
@@ -315,6 +318,10 @@ function isFreshCuratorEntry(entry) {
   return Date.now() - t < CURATOR_ENTRY_MAX_AGE_MS;
 }
 
+function hasUsableCuratorEntry(entry) {
+  return !!(entry && (entry.shortenedUrl || entry.originalUrl));
+}
+
 function loadPrevCurator() {
   try {
     return JSON.parse(fs.readFileSync(CURATOR_FILE, 'utf8'));
@@ -413,6 +420,11 @@ async function main() {
     let landingFailureCount = 0;
 
     for (const gn of goodsList) {
+      if (CURATOR_MISSING_ONLY && hasUsableCuratorEntry(links[gn])) {
+        console.log(`\n📎 ${gn} → 큐레이터 링크 있음, 스킵`);
+        continue;
+      }
+
       if (isFreshCuratorEntry(links[gn])) {
         console.log(`\n📎 ${gn} → 24h 이내 유효한 shortenedUrl 있음, 스킵`);
         continue;

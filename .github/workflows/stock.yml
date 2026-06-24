@@ -30,6 +30,9 @@ jobs:
 
       - name: Generate curator links
         env:
+          CURATOR_MAX_GOODS: 120
+          CURATOR_MISSING_ONLY: 1
+          CURATOR_INCLUDE_LIVE_RANKING: 1
           OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
           OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
           OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}

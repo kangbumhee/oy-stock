@@ -1,0 +1,77 @@
+name: Backfill All Curator Links
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 0-16 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: curator-backfill-main
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Select missing curator links
+        id: batch
+        env:
+          CURATOR_BACKFILL_BATCH_SIZE: 120
+          CURATOR_INCLUDE_LIVE_CATEGORIES: 1
+          CURATOR_RANKING_SIZE: 128
+        run: node scripts/collect-curator-backfill.mjs
+
+      - name: Stop when complete
+        if: steps.batch.outputs.hasGoods != 'true'
+        run: echo "No missing curator links."
+
+      - run: npm ci
+        if: steps.batch.outputs.hasGoods == 'true'
+
+      - run: npx playwright install chromium --with-deps
+        if: steps.batch.outputs.hasGoods == 'true'
+
+      - name: Generate missing curator links
+        if: steps.batch.outputs.hasGoods == 'true'
+        env:
+          CURATOR_GOODS_NOS: ${{ steps.batch.outputs.goodsNos }}
+          CURATOR_MAX_GOODS: 120
+          CURATOR_MISSING_ONLY: 1
+          CURATOR_INCLUDE_LIVE_RANKING: 0
+          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
+          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
+          OY_LINKAGE_JWT: ${{ secrets.OY_LINKAGE_JWT }}
+          OLIVEYOUNG_LINKAGE_STRING: ${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}
+          OLIVEYOUNG_LINKAGE_JWT: ${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
+        run: node scripts/generate-curator-links.mjs
+
+      - name: Commit & Push
+        if: steps.batch.outputs.hasGoods == 'true'
+        env:
+          CURATOR_GOODS_NOS: ${{ steps.batch.outputs.goodsNos }}
+        run: |
+          cp public/data/curator-links.json /tmp/generated-curator-links.json
+          git fetch origin main
+          git reset --hard origin/main
+          node scripts/merge-curator-links.mjs /tmp/generated-curator-links.json public/data/curator-links.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/curator-links.json
+          git diff --staged --quiet || git commit -m "🔗 curator backfill $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
+          git push
