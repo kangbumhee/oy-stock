@@ -141,6 +141,103 @@ function mobileBridgeHtml({ goodsNo, appUrl, webUrl, androidIntentUrl }) {
 </html>`;
 }
 
+function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
+  const statusText = queueStatus || '구매 링크를 준비하고 있습니다.';
+  const safeGoodsNo = htmlEscape(goodsNo);
+  const checkUrl =
+    '/api/oliveyoung/curator-redirect?goodsNo=' +
+    encodeURIComponent(goodsNo) +
+    '&format=json&refresh=1&noTrigger=1&noLive=1';
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>구매 링크 준비 중</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:#f4fbf7;color:#14251c}
+    main{width:100%;max-width:440px;padding:28px;border:1px solid #c7ecd6;border-radius:14px;background:#fff;text-align:center;box-shadow:0 18px 56px rgba(21,90,50,.12)}
+    .spinner{width:46px;height:46px;margin:0 auto 16px;border:5px solid #ddf7e7;border-top-color:#12a150;border-radius:50%;animation:spin .9s linear infinite}
+    h1{font-size:22px;line-height:1.35;margin-bottom:10px}
+    p{font-size:14px;line-height:1.7;color:#526457;margin-bottom:18px}
+    .status{min-height:22px;font-size:13px;font-weight:800;color:#09803c;margin-bottom:16px}
+    .actions{display:grid;gap:8px;margin-top:12px}
+    button,a{min-height:44px;border-radius:8px;border:1px solid #16a34a;text-decoration:none;font:inherit;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    button{background:#16a34a;color:#fff}
+    a{background:#f0fdf4;color:#0b7033}
+    small{display:block;margin-top:14px;color:#809083;font-size:12px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="spinner" aria-hidden="true"></div>
+    <h1>구매 링크 준비 중</h1>
+    <p>상품번호 ${safeGoodsNo}의 구매 링크를 준비하고 있습니다. 준비되면 자동으로 올리브영으로 이동합니다.</p>
+    <div class="status" id="status">${htmlEscape(statusText)}</div>
+    <div class="actions">
+      <button type="button" id="retry">지금 다시 확인</button>
+      <a href="/" id="home">재고 검색으로 돌아가기</a>
+    </div>
+    <small>${queueOk === false ? htmlEscape(queueDetail || '자동 생성 요청을 확인해 주세요.') : '잠시만 기다려주세요.'}</small>
+  </main>
+  <script>
+    (function () {
+      var checkUrl = ${JSON.stringify(checkUrl)};
+      var statusEl = document.getElementById('status');
+      var retryBtn = document.getElementById('retry');
+      var tries = 0;
+      var timer = null;
+
+      function setStatus(text) {
+        if (statusEl) statusEl.textContent = text;
+      }
+
+      function schedule(delay) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(check, delay);
+      }
+
+      function readyUrl(data) {
+        if (!data || data.source === 'fallback_basic_utm') return '';
+        return data.redirectUrl || data.shortenedUrl || data.longUrl || '';
+      }
+
+      function check() {
+        tries += 1;
+        setStatus(tries <= 1 ? '링크 상태 확인 중...' : '아직 준비 중입니다. 다시 확인 중...');
+        fetch(checkUrl, { cache: 'no-store' })
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            var url = readyUrl(data);
+            if (url) {
+              setStatus('준비 완료. 이동합니다.');
+              window.location.replace(url);
+              return;
+            }
+            schedule(tries < 12 ? 5000 : 10000);
+          })
+          .catch(function () {
+            setStatus('확인에 실패했습니다. 다시 시도 중...');
+            schedule(10000);
+          });
+      }
+
+      if (retryBtn) {
+        retryBtn.addEventListener('click', function () {
+          check();
+        });
+      }
+      schedule(3000);
+    })();
+  </script>
+</body>
+</html>`;
+}
+
 function curatorDataUrl(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https')
     .split(',')[0]
@@ -493,6 +590,7 @@ module.exports = async function handler(req, res) {
   const debugMode = q.format === 'debug';
   const noTrigger = q.noTrigger === '1' || q.noTrigger === 'true';
   const forceRefresh = q.refresh === '1' || q.refresh === 'true';
+  const noLive = q.noLive === '1' || q.noLive === 'true';
   const directMode =
     q.direct === '1' || q.direct === 'true' || q.web === '1' || q.bridge === '0';
 
@@ -534,7 +632,7 @@ module.exports = async function handler(req, res) {
     process.env.ENABLE_LIVE_CURATOR_LINKS !== '0' &&
     process.env.DISABLE_LIVE_CURATOR_LINKS !== '1';
   const liveLink =
-    allowLiveLink && !shortenedUrl && !cachedLong
+    allowLiveLink && !noLive && !shortenedUrl && !cachedLong
       ? await createLiveCuratorLink(req, goodsNo, categoryNumber)
       : null;
 
@@ -648,6 +746,21 @@ module.exports = async function handler(req, res) {
         appUrl,
         webUrl: redirectTarget,
         androidIntentUrl
+      })
+    );
+    return;
+  }
+
+  if (source === 'fallback_basic_utm') {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(
+      pendingCuratorHtml({
+        goodsNo,
+        queueStatus,
+        queueOk: queueRequest ? queueRequest.ok : null,
+        queueDetail: queueRequest && (queueRequest.detail || queueRequest.status)
       })
     );
     return;
