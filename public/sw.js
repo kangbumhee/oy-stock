@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260622-2';
+const CACHE_NAME = 'olivestock-app-v20260624-2';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -70,23 +70,16 @@ self.addEventListener('fetch', function (event) {
 
   if (isNavigation) {
     event.respondWith(
-      fetch(request)
-        .then(function (response) {
-          var copy = response.clone();
-          if (response.ok) {
-            caches.open(CACHE_NAME).then(function (cache) {
-              cache.put(request, copy);
-              if (url.pathname === '/') cache.put('/', response.clone());
-            });
-          }
-          return response;
-        })
+      fetch(request, { cache: 'no-store' })
         .catch(function () {
-          return caches.match(request).then(function (cached) {
-            return cached || caches.match('/');
-          });
+          return caches.match('/');
         })
     );
+    return;
+  }
+
+  if (url.pathname.indexOf('/blog/') === 0 || url.pathname.indexOf('/data/') === 0) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
 
