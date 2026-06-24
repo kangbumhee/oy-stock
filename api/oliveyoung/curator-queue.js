@@ -1,6 +1,6 @@
 const QUEUE_TTL_MS = 30 * 60 * 1000;
 const RECENT_ERROR_TTL_MS = 60 * 60 * 1000;
-const DEFAULT_MAX_GOODS = 80;
+const DEFAULT_MAX_GOODS = 120;
 const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
 
 const queuedCache = new Map();

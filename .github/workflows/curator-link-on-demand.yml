@@ -36,7 +36,7 @@ jobs:
       - name: Generate requested curator links
         env:
           CURATOR_GOODS_NOS: ${{ inputs.goodsNos }}
-          CURATOR_MAX_GOODS: 80
+          CURATOR_MAX_GOODS: 120
           CURATOR_INCLUDE_LIVE_RANKING: 0
           OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
           OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
