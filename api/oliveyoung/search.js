@@ -421,7 +421,8 @@ function buildUnifiedPayload(products, keyword, source, updatedAt, message, opti
       : normalized.length;
   return {
     success: true,
-    fallback: /^fallback|vendor-supplement/.test(String(source || '')),
+    fallback:
+      /^fallback/.test(String(source || '')) || String(source || '') === 'vendor-supplement',
     message,
     data: {
       keyword: String(keyword || ''),
@@ -439,17 +440,42 @@ function buildUnifiedPayload(products, keyword, source, updatedAt, message, opti
   };
 }
 
+function normalizeSupplementProduct(product) {
+  const normalized = normalizeProduct(product);
+  if (!normalized) return null;
+  const vendorDelivery = isVendorDeliveryProduct(normalized);
+  return Object.assign({}, normalized, {
+    source: normalized.source || 'oliveyoung-official-search-supplement',
+    vendorDelivery,
+    inventoryScope: vendorDelivery ? 'vendor' : normalized.inventoryScope || 'official-search',
+    stockStatus: vendorDelivery ? 'vendor_delivery' : normalized.stockStatus || 'official_search'
+  });
+}
+
 async function getVendorSupplementMatches(keyword, origin) {
   const supplement = await loadVendorSupplementData(origin);
   const rows = Array.isArray(supplement && supplement.products) ? supplement.products : [];
-  return rows.filter((p) => productMatchesKeyword(p, keyword)).map((p) =>
-    Object.assign({}, p, {
-      source: p.source || 'oliveyoung-official-search-supplement',
-      vendorDelivery: true,
-      inventoryScope: 'vendor',
-      stockStatus: 'vendor_delivery'
-    })
-  );
+  return rows
+    .filter((p) => productMatchesKeyword(p, keyword))
+    .map(normalizeSupplementProduct)
+    .filter(Boolean);
+}
+
+function supplementSourceSuffix(products) {
+  if (!products || !products.length) return '';
+  return products.some(isVendorDeliveryProduct) ? 'vendor-supplement' : 'search-supplement';
+}
+
+function combinedSearchSource(base, supplementProducts) {
+  const suffix = supplementSourceSuffix(supplementProducts);
+  return suffix ? base + '+' + suffix : base;
+}
+
+function supplementMessage(products) {
+  if (!products || !products.length) return undefined;
+  return products.some(isVendorDeliveryProduct)
+    ? '공식 검색 보조 상품을 함께 표시합니다. 업체배송 상품은 상품 정보만 표시됩니다.'
+    : '공식 검색 보조 상품을 함께 표시합니다.';
 }
 
 function mergeSearchProducts(primaryProducts, supplementProducts, keyword, size) {
@@ -625,13 +651,9 @@ module.exports = async function handler(req, res) {
         buildUnifiedPayload(
           mergedProducts,
           queryKeyword,
-          supplementProducts.length
-            ? 'official-search+vendor-supplement'
-            : 'official-search',
+          combinedSearchSource('official-search', supplementProducts),
           new Date().toISOString(),
-          supplementProducts.length
-            ? '공식 검색 결과와 업체배송 보조 상품을 함께 표시합니다.'
-            : undefined,
+          supplementMessage(supplementProducts),
           {
             totalCount: Math.max(
               officialResult.totalCount || 0,
@@ -647,7 +669,7 @@ module.exports = async function handler(req, res) {
       res.setHeader('X-Cache', 'MISS');
       res.setHeader(
         'X-Search-Source',
-        supplementProducts.length ? 'official-search+vendor-supplement' : 'official-search'
+        combinedSearchSource('official-search', supplementProducts)
       );
       res.end(officialBody);
       return;
@@ -666,11 +688,14 @@ module.exports = async function handler(req, res) {
             buildUnifiedPayload(
               mergedProducts,
               queryKeyword,
-              'products-primary+vendor-supplement',
+              combinedSearchSource('products-primary', supplementProducts),
               productsResult.parsed &&
                 productsResult.parsed.data &&
                 productsResult.parsed.data.updatedAt,
-              '업체배송 상품은 실시간 재고 대상이 아니어서 상품 정보만 표시합니다.'
+              supplementMessage(supplementProducts),
+              {
+                totalCount: Math.max(productCount, supplementProducts.length, mergedProducts.length)
+              }
             )
           )
         : JSON.stringify(productsResult.parsed);
@@ -681,20 +706,24 @@ module.exports = async function handler(req, res) {
       res.setHeader('X-Cache', 'MISS');
       res.setHeader(
         'X-Search-Source',
-        supplementProducts.length ? 'products-primary+vendor-supplement' : 'products-primary'
+        combinedSearchSource('products-primary', supplementProducts)
       );
       res.end(body);
       return;
     }
 
     if (supplementProducts.length > 0) {
+      const source = supplementSourceSuffix(supplementProducts) || 'search-supplement';
       const supplementBody = JSON.stringify(
         buildUnifiedPayload(
           mergeSearchProducts([], supplementProducts, queryKeyword, size),
           queryKeyword,
-          'vendor-supplement',
+          source,
           null,
-          '업체배송 상품은 실시간 재고 대상이 아니어서 상품 정보만 표시합니다.'
+          supplementMessage(supplementProducts),
+          {
+            totalCount: supplementProducts.length
+          }
         )
       );
       pruneSearchCache();
@@ -702,7 +731,7 @@ module.exports = async function handler(req, res) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('X-Cache', 'MISS');
-      res.setHeader('X-Search-Source', 'vendor-supplement');
+      res.setHeader('X-Search-Source', source);
       res.end(supplementBody);
       return;
     }
