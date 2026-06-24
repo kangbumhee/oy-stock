@@ -578,7 +578,7 @@ function blogPostTemplate(post, relatedPosts) {
   const copy = buildReviewBlogCopy(post, reviewAssets && reviewAssets.profile);
   const coverImage = reviewAssets ? reviewAssets.detail : visibleImage;
   const searchHref = `${SITE_URL}/?q=${encodeURIComponent(post.query)}&autoBuy=${encodeURIComponent(post.goodsNo)}`;
-  const curatorHref = `${SITE_URL}/api/oliveyoung/curator-redirect?goodsNo=${encodeURIComponent(post.goodsNo)}`;
+  const curatorHref = `${SITE_URL}/api/oliveyoung/curator-redirect?goodsNo=${encodeURIComponent(post.goodsNo)}&direct=1`;
   const badge = post.badges.find((item) => item.includes('올영픽')) || post.badges[0] || '올리브영 인기상품';
   const moodNotes = copy.moodNotes
     .map((item) => `<div><b>${htmlEscape(item[0])}</b><span>${htmlEscape(item[1])}</span></div>`)

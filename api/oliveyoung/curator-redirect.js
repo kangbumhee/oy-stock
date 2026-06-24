@@ -487,12 +487,14 @@ module.exports = async function handler(req, res) {
   }
 
   const q = req.query || {};
-  const goodsNo = String(q.goodsNo || '').trim();
+  const goodsNo = normalizeGoodsNo(q.goodsNo);
   const categoryNumber = String(q.categoryNumber || q.category || '').trim();
   const jsonMode = q.format === 'json';
   const debugMode = q.format === 'debug';
   const noTrigger = q.noTrigger === '1' || q.noTrigger === 'true';
   const forceRefresh = q.refresh === '1' || q.refresh === 'true';
+  const directMode =
+    q.direct === '1' || q.direct === 'true' || q.web === '1' || q.bridge === '0';
 
   if (!goodsNo) {
     res.statusCode = 400;
@@ -636,7 +638,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (isMobileUserAgent(req)) {
+  if (!directMode && isMobileUserAgent(req)) {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');

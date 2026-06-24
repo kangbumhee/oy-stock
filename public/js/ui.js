@@ -43,7 +43,8 @@ var UI = {
       base +
       (base.indexOf('?') >= 0 ? '&' : '?') +
       'goodsNo=' +
-      encodeURIComponent(gn);
+      encodeURIComponent(gn) +
+      '&direct=1';
     return url;
   },
 

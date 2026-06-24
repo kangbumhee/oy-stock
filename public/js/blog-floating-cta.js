@@ -42,6 +42,19 @@
     return el ? el.getAttribute('href') || '' : '';
   }
 
+  function directCuratorHref(href) {
+    if (!href || String(href).indexOf('curator-redirect') < 0) return href || '';
+    try {
+      var url = new URL(href, window.location.href);
+      if (!url.searchParams.get('direct')) url.searchParams.set('direct', '1');
+      return url.href;
+    } catch (e) {
+      return String(href).indexOf('direct=') >= 0
+        ? href
+        : href + (String(href).indexOf('?') >= 0 ? '&' : '?') + 'direct=1';
+    }
+  }
+
   function goodsNoFromHref(href) {
     try {
       var url = new URL(href, window.location.href);
@@ -92,7 +105,10 @@
     ]);
     var title = firstText('h1', '올리브영 인기 상품');
     var goodsNo = goodsNoFromUrl();
-    var buyHref = hrefFrom(buySource) || (goodsNo ? '/api/oliveyoung/curator-redirect?goodsNo=' + goodsNo : '');
+    var buyHref = directCuratorHref(
+      hrefFrom(buySource) ||
+        (goodsNo ? '/api/oliveyoung/curator-redirect?goodsNo=' + goodsNo : '')
+    );
     var stockHref = hrefFrom(stockSource) || '/?q=' + encodeURIComponent(title) + (goodsNo ? '&autoBuy=' + goodsNo : '');
     if (!buyHref || !stockHref) {
       if ((attempt || 0) < MAX_ATTEMPTS) {
@@ -171,6 +187,11 @@
       if (!link) return;
 
       var href = hrefFrom(link);
+      var directHref = directCuratorHref(href);
+      if (directHref && directHref !== href) {
+        link.setAttribute('href', directHref);
+        href = directHref;
+      }
       var goodsNo = goodsNoFromHref(href) || goodsNoFromUrl();
       var eventSource =
         link.closest && link.closest('.oy-floating-cta')

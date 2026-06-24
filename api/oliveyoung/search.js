@@ -699,22 +699,30 @@ module.exports = async function handler(req, res) {
       (productCount > 0 || supplementProducts.length > 0)
     ) {
       const mergedProducts = mergeSearchProducts(primaryProducts, supplementProducts, queryKeyword, size);
-      const body = supplementProducts.length
-        ? JSON.stringify(
-            buildUnifiedPayload(
-              mergedProducts,
-              queryKeyword,
-              combinedSearchSource('products-primary', supplementProducts),
-              productsResult.parsed &&
-                productsResult.parsed.data &&
-                productsResult.parsed.data.updatedAt,
-              supplementMessage(supplementProducts),
-              {
-                totalCount: Math.max(productCount, supplementProducts.length, mergedProducts.length)
-              }
+      const upstreamTotal = Number(
+        (productsResult.parsed && productsResult.parsed.meta && productsResult.parsed.meta.total) ||
+          (productsResult.parsed && productsResult.parsed.data && productsResult.parsed.data.totalCount) ||
+          productCount
+      );
+      const body = JSON.stringify(
+        buildUnifiedPayload(
+          mergedProducts,
+          queryKeyword,
+          combinedSearchSource('products-primary', supplementProducts),
+          productsResult.parsed &&
+            productsResult.parsed.data &&
+            productsResult.parsed.data.updatedAt,
+          supplementMessage(supplementProducts),
+          {
+            totalCount: Math.max(
+              Number.isFinite(upstreamTotal) ? upstreamTotal : 0,
+              productCount,
+              supplementProducts.length,
+              mergedProducts.length
             )
-          )
-        : JSON.stringify(productsResult.parsed);
+          }
+        )
+      );
       pruneSearchCache();
       searchCache.set(ck, { body, status: 200, ts: Date.now() });
       res.statusCode = 200;
