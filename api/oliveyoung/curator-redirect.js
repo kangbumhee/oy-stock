@@ -141,92 +141,6 @@ function mobileBridgeHtml({ goodsNo, appUrl, webUrl, androidIntentUrl }) {
 </html>`;
 }
 
-function pendingCuratorHtml({ goodsNo, pollUrl, fallbackUrl, queueStatus }) {
-  const title = '사이트 여는 중';
-  const fallback = htmlEscape(fallbackUrl);
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex,nofollow">
-  <title>${title}</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:#f6fbf8;color:#12251a}
-    main{width:100%;max-width:420px;padding:24px;border:1px solid #b9ead0;border-radius:12px;background:#fff;text-align:center;box-shadow:0 18px 50px rgba(20,80,45,.12)}
-    .spinner{width:44px;height:44px;margin:0 auto 16px;border:4px solid #dff6e8;border-top-color:#16a34a;border-radius:999px;animation:spin 1s linear infinite}
-    h1{font-size:22px;line-height:1.35;margin-bottom:8px}
-    p{font-size:14px;line-height:1.7;color:#496154;margin-bottom:14px}
-    a{min-height:44px;border-radius:8px;border:1px solid #17a34a;text-decoration:none;font:inherit;font-weight:900;display:flex;align-items:center;justify-content:center;color:#12833b;background:#f0fdf4}
-    small{display:block;margin-top:14px;color:#7a8c82;font-size:12px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-  </style>
-</head>
-<body>
-  <main>
-    <div class="spinner" aria-hidden="true"></div>
-    <h1>사이트여는중</h1>
-    <p>올리브영 사이트를 준비하고 있습니다. 잠시만 기다려주세요.</p>
-    <a href="${fallback}" id="fallback">올리브영 상품 보기</a>
-    <small id="status">사이트 연결 준비 중</small>
-  </main>
-  <script>
-    (function () {
-      var pollUrl = ${JSON.stringify(pollUrl)};
-      var fallbackUrl = ${JSON.stringify(fallbackUrl)};
-      var goodsNo = ${JSON.stringify(goodsNo)};
-      var status = document.getElementById('status');
-      var started = Date.now();
-      var timeoutMs = 95000;
-      var intervalMs = 4500;
-
-      function setStatus(text) {
-        if (status) status.textContent = text;
-      }
-
-      async function poll() {
-        try {
-          var res = await fetch(pollUrl, { cache: 'no-store' });
-          var data = await res.json();
-          if (
-            data &&
-            data.redirectUrl &&
-            data.source &&
-            data.source !== 'fallback_basic_utm'
-          ) {
-            setStatus('사이트 연결 완료');
-            window.location.replace(data.redirectUrl);
-            return;
-          }
-          if (data && data.generationError) {
-            setStatus('상품 페이지로 이동합니다.');
-            window.location.replace(fallbackUrl);
-            return;
-          }
-          if (data && data.queueStatus) setStatus('사이트 연결 준비 중');
-        } catch (e) {
-          setStatus('다시 연결 중');
-        }
-
-        if (Date.now() - started > timeoutMs) {
-          setStatus('연결이 늦어져 상품 페이지로 이동합니다.');
-          window.setTimeout(function () {
-            window.location.replace(fallbackUrl);
-          }, 1200);
-          return;
-        }
-        window.setTimeout(poll, intervalMs);
-      }
-
-      setStatus('사이트 연결 준비 중');
-      window.setTimeout(poll, 1800);
-    })();
-  </script>
-</body>
-</html>`;
-}
-
 function curatorDataUrl(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https')
     .split(',')[0]
@@ -717,29 +631,6 @@ module.exports = async function handler(req, res) {
           (entry && entry.affiliateActivityId) ||
           (liveLink && liveLink.ok ? liveLink.affiliateActivityId : undefined),
         generatedAt: entry && entry.generatedAt
-      })
-    );
-    return;
-  }
-
-  if (source === 'fallback_basic_utm' && queueRequest && queueRequest.ok) {
-    const base = publicBaseUrl(req);
-    const poll = new URL('/api/oliveyoung/curator-redirect', base);
-    poll.searchParams.set('goodsNo', goodsNo);
-    poll.searchParams.set('format', 'json');
-    poll.searchParams.set('refresh', '1');
-    poll.searchParams.set('noTrigger', '1');
-    if (categoryNumber) poll.searchParams.set('categoryNumber', categoryNumber);
-
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
-    res.end(
-      pendingCuratorHtml({
-        goodsNo,
-        pollUrl: poll.toString(),
-        fallbackUrl: basicLong,
-        queueStatus
       })
     );
     return;
