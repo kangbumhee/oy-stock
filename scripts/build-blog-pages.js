@@ -357,6 +357,19 @@ function postCardImageFile(post) {
   return profile && profile.detailFile ? profile.detailFile : path.basename(post.image);
 }
 
+function isManualReviewPost(post) {
+  if (!post || post.reviewAssetVersion !== MANUAL_REVIEW_ASSET_VERSION) return false;
+  const reviewFile = reviewImageFileForPost(post);
+  const detailFile = reviewDetailFileForPost(post) || reviewFile;
+  const galleryFiles = reviewGalleryFilesForPost(post);
+  return (
+    /\.png$/i.test(reviewFile) &&
+    /\.png$/i.test(detailFile) &&
+    galleryFiles.length === REVIEW_PHOTO_COUNT &&
+    galleryFiles.every((file) => /\.png$/i.test(file))
+  );
+}
+
 function isManualReviewProfile(profile) {
   if (!profile || !profile.assetPrefix) return false;
   const ext = profile.assetExt || 'png';
@@ -823,6 +836,7 @@ ${analyticsTag()}
 }
 
 function blogIndexTemplate(posts) {
+  const publicPosts = posts.filter(isManualReviewPost);
   const description = '올리브영 인기상품, 올영픽, 품절·재입고 흐름을 바탕으로 매장·온라인 재고 확인 포인트를 정리한 올리브재고 블로그입니다.';
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -832,7 +846,7 @@ function blogIndexTemplate(posts) {
     url: `${SITE_URL}/blog/`,
     inLanguage: 'ko-KR',
     isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
-    blogPost: posts.map((post) => ({
+    blogPost: publicPosts.map((post) => ({
       '@type': 'BlogPosting',
       headline: post.title,
       url: absoluteUrl(post.url),
@@ -840,7 +854,7 @@ function blogIndexTemplate(posts) {
       datePublished: post.publishedAt
     }))
   };
-  const cards = posts
+  const cards = publicPosts
     .map(
       (post) => `<a class="post-card" href="${post.url}">
         <img src="${blogIndexImageSrc(post)}" alt="${htmlEscape(post.shortName)} 제품 이미지" width="360" height="270" loading="lazy">
@@ -873,7 +887,7 @@ ${analyticsTag()}
   <meta property="og:title" content="올리브영 재고 블로그 | ${SITE_NAME}">
   <meta property="og:description" content="${description}">
   <meta property="og:url" content="${SITE_URL}/blog/">
-  <meta property="og:image" content="${posts[0] ? absoluteUrl(posts[0].image) : `${SITE_URL}/images/olivestock-og-image.svg`}">
+  <meta property="og:image" content="${publicPosts[0] ? absoluteUrl(publicPosts[0].image) : `${SITE_URL}/images/olivestock-og-image.svg`}">
   <meta name="twitter:card" content="summary_large_image">
   <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
   <style>
@@ -2086,7 +2100,7 @@ function upsertBlock(text, start, end, content, beforeNeedle) {
 async function updateHomeBlogBlock(posts) {
   const indexPath = path.join(publicDir, 'index.html');
   let html = await fs.readFile(indexPath, 'utf8');
-  const latest = posts.slice(0, 3);
+  const latest = posts.filter(isManualReviewPost).slice(0, 3);
   const cards = latest
     .map(
       (post) => `<a class="blog-link-card" href="${post.url}">
@@ -2127,9 +2141,10 @@ async function updateHomeBlogBlock(posts) {
 async function updateSitemapXml(posts) {
   const file = path.join(publicDir, 'sitemap.xml');
   let xml = await fs.readFile(file, 'utf8');
+  const publicPosts = posts.filter(isManualReviewPost);
   const urls = [
     { loc: `${SITE_URL}/blog/`, priority: '0.8', changefreq: 'daily', lastmod: kstDate() },
-    ...posts.map((post) => ({
+    ...publicPosts.map((post) => ({
       loc: absoluteUrl(post.url),
       priority: '0.7',
       changefreq: 'weekly',
@@ -2156,6 +2171,7 @@ async function updateRssXml(posts) {
   const now = new Date().toUTCString();
   rss = rss.replace(/<lastBuildDate>.*?<\/lastBuildDate>/, `<lastBuildDate>${now}</lastBuildDate>`);
   const content = posts
+    .filter(isManualReviewPost)
     .map(
       (post) => `    <item>
       <title>${xmlEscape(post.title)}</title>
@@ -2174,7 +2190,10 @@ async function updateSiteMapHtml(posts) {
   const file = path.join(publicDir, 'site-map.html');
   let html = await fs.readFile(file, 'utf8');
   const content = `      <li><a href="/blog/">재고 블로그</a></li>
-${posts.map((post) => `      <li><a href="${post.url}">${htmlEscape(post.shortName || post.title)}</a></li>`).join('\n')}`;
+${posts
+  .filter(isManualReviewPost)
+  .map((post) => `      <li><a href="${post.url}">${htmlEscape(post.shortName || post.title)}</a></li>`)
+  .join('\n')}`;
   html = upsertBlock(html, '      <!-- BLOG_LINKS_START -->', '      <!-- BLOG_LINKS_END -->', content, '    </ul>');
   await fs.writeFile(file, html, 'utf8');
 }
@@ -2200,7 +2219,8 @@ function readStringArg(name) {
 
 function parseArgs() {
   const daily = hasFlag('--daily');
-  const limit = readNumberArg('--limit', daily ? 50 : 1, 50);
+  const requestedLimit = readNumberArg('--limit', 1, 50);
+  const limit = daily ? Math.min(requestedLimit, 1) : requestedLimit;
   const scanLimit = readNumberArg('--scan-limit', Math.max(limit, daily ? 100 : 20), 500);
 
   return {
@@ -2303,15 +2323,16 @@ async function main() {
       .map((post, index) => (index === targetIndex ? refreshedTarget : post))
       .filter(isSupportedBlogPost)
       .sort(sortBlogPosts);
+    const publicPosts = posts.filter(isManualReviewPost);
     const dir = path.join(blogDir, refreshedTarget.slug);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'index.html'), blogPostTemplate(refreshedTarget, posts), 'utf8');
-    await fs.writeFile(path.join(blogDir, 'index.html'), blogIndexTemplate(posts), 'utf8');
-    await writeManifest(posts);
-    await updateHomeBlogBlock(posts);
-    await updateSitemapXml(posts);
-    await updateRssXml(posts);
-    await updateSiteMapHtml(posts);
+    await fs.writeFile(path.join(dir, 'index.html'), blogPostTemplate(refreshedTarget, publicPosts), 'utf8');
+    await fs.writeFile(path.join(blogDir, 'index.html'), blogIndexTemplate(publicPosts), 'utf8');
+    await writeManifest(publicPosts);
+    await updateHomeBlogBlock(publicPosts);
+    await updateSitemapXml(publicPosts);
+    await updateRssXml(publicPosts);
+    await updateSiteMapHtml(publicPosts);
     console.log(`refreshed 1 blog post: ${refreshedTarget.slug}`);
     return;
   }
@@ -2334,20 +2355,22 @@ async function main() {
     })
   ).filter((post) => post.sourceImageFile);
   posts = posts.map(refreshPostCopy);
-  posts = (await renderReviewAssetsForPosts(posts)).filter((post) => post.reviewImageFile);
+  const postsToRender = args.refreshExistingOnly ? posts.filter(isManualReviewPost) : posts;
+  posts = (await renderReviewAssetsForPosts(postsToRender)).filter((post) => post.reviewImageFile);
+  const publicPosts = posts.filter(isManualReviewPost);
 
-  for (const post of posts) {
+  for (const post of publicPosts) {
     const dir = path.join(blogDir, post.slug);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'index.html'), blogPostTemplate(post, posts), 'utf8');
+    await fs.writeFile(path.join(dir, 'index.html'), blogPostTemplate(post, publicPosts), 'utf8');
   }
 
-  await fs.writeFile(path.join(blogDir, 'index.html'), blogIndexTemplate(posts), 'utf8');
-  await writeManifest(posts);
-  await updateHomeBlogBlock(posts);
-  await updateSitemapXml(posts);
-  await updateRssXml(posts);
-  await updateSiteMapHtml(posts);
+  await fs.writeFile(path.join(blogDir, 'index.html'), blogIndexTemplate(publicPosts), 'utf8');
+  await writeManifest(publicPosts);
+  await updateHomeBlogBlock(publicPosts);
+  await updateSitemapXml(publicPosts);
+  await updateRssXml(publicPosts);
+  await updateSiteMapHtml(publicPosts);
 
   console.log(`generated ${generatedPosts.length} blog post(s):`);
   for (const post of generatedPosts) {
