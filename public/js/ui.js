@@ -1,5 +1,7 @@
 var UI = {
   _curatorLinksPromise: null,
+  _curatorLinksIndex: {},
+  _curatorLinksLoadedAt: 0,
   _allStockCache: {},
   _allStockInflight: {},
 
@@ -14,20 +16,33 @@ var UI = {
     return url;
   },
 
-  loadCuratorLinksIndex: function () {
-    if (UI._curatorLinksPromise != null) return UI._curatorLinksPromise;
+  loadCuratorLinksIndex: function (force) {
+    if (!force && UI._curatorLinksPromise != null) return UI._curatorLinksPromise;
     var url = CONFIG.CURATOR_LINKS_JSON_URL || '/data/curator-links.json';
-    UI._curatorLinksPromise = fetch(url)
+    if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
+    UI._curatorLinksPromise = fetch(url, { cache: force ? 'no-store' : 'default' })
       .then(function (r) {
         if (!r.ok) return {};
         return r.json().then(function (data) {
-          return (data && data.links) || {};
+          var links = (data && data.links) || {};
+          UI._curatorLinksIndex = links;
+          UI._curatorLinksLoadedAt = Date.now();
+          return links;
         });
       })
       .catch(function () {
+        if (!UI._curatorLinksIndex) UI._curatorLinksIndex = {};
         return {};
       });
     return UI._curatorLinksPromise;
+  },
+
+  curatorLinkForGoodsNo: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn || !UI._curatorLinksIndex) return '';
+    var entry = UI._curatorLinksIndex[gn] || UI._curatorLinksIndex[gn.toUpperCase()];
+    if (!entry) return '';
+    return String(entry.shortenedUrl || entry.originalUrl || '').trim();
   },
 
   curatorRedirectUrl: function (goodsNo) {
@@ -74,7 +89,8 @@ var UI = {
     console.log('[oy] openOliveYoung 실행', goodsNo);
     var categoryNumber = el.dataset.category || '';
     var origLabel = el.getAttribute('data-original-label') || '올리브영에서 구매 →';
-    var redirectUrl = UI.curatorRedirectUrl(goodsNo);
+    var cachedCuratorUrl = UI.curatorLinkForGoodsNo(goodsNo);
+    var redirectUrl = cachedCuratorUrl || UI.curatorRedirectUrl(goodsNo);
     var eventSource =
       el.dataset.analyticsSource ||
       el.dataset.source ||
@@ -89,7 +105,7 @@ var UI = {
     UI.trackGaEvent('curator_redirect_open', {
       goods_no: goodsNo,
       event_source: eventSource,
-      redirect_type: 'server_redirect'
+      redirect_type: cachedCuratorUrl ? 'cached_direct' : 'server_redirect'
     });
 
     function tryOpenCuratorRedirect(url) {

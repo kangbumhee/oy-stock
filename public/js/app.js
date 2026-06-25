@@ -49,6 +49,7 @@ var App = {
 
     this.searchHistory = Storage.getHistory();
     UI.renderHistory(this.searchHistory);
+    if (UI.loadCuratorLinksIndex) UI.loadCuratorLinksIndex();
 
     API.loadDetailCache().then(function (d) {
       self.detailData = d;
@@ -430,6 +431,11 @@ var App = {
           .then(function (data) {
             if (data && data.queuedCount) {
               console.log('[oy-stock] 큐레이터 링크 준비 요청:', data.queuedCount, source || 'list');
+              if (UI.loadCuratorLinksIndex) {
+                window.setTimeout(function () {
+                  UI.loadCuratorLinksIndex(true);
+                }, 45000);
+              }
             }
           })
           .catch(function (e) {

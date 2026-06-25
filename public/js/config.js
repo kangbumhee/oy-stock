@@ -71,7 +71,7 @@ var CONFIG = {
   ENABLE_CURATOR_AUTO_QUEUE: true,
   CURATOR_QUEUE_PATH: '/api/oliveyoung/curator-queue',
   CURATOR_QUEUE_SEARCH_LIMIT: 120,
-  CURATOR_QUEUE_HOT_LIMIT: 120,
+  CURATOR_QUEUE_HOT_LIMIT: 128,
   CURATOR_QUEUE_FAVORITES_LIMIT: 120,
   LANDING_PROXY_PATH: '/api/oliveyoung/landing-proxy',
   SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',

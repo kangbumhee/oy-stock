@@ -59,6 +59,11 @@ function addKnownRepoGoods(out) {
     addGoodsNo(out, product && (product.goodsNo || product.goodsNumber))
   );
 
+  const history = readJson('public/data/history.json', { events: [] });
+  (history.events || []).forEach((event) =>
+    addGoodsNo(out, event && (event.goodsNo || event.goodsNumber))
+  );
+
   const watchlist = readJson('scripts/watchlist.json', { favorites: [] });
   (watchlist.favorites || []).forEach((product) =>
     addGoodsNo(out, product && (product.goodsNo || product.goodsNumber))

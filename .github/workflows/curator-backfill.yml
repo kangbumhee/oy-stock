@@ -35,7 +35,7 @@ jobs:
       - name: Select missing curator links
         id: batch
         env:
-          CURATOR_BACKFILL_BATCH_SIZE: 120
+          CURATOR_BACKFILL_BATCH_SIZE: 260
           CURATOR_INCLUDE_LIVE_CATEGORIES: 1
           CURATOR_RANKING_SIZE: 128
           CURATOR_RANKING_TIMEOUT_MS: 20000
@@ -66,7 +66,7 @@ jobs:
         if: steps.batch.outputs.hasGoods == 'true'
         env:
           CURATOR_GOODS_NOS: ${{ steps.batch.outputs.goodsNos }}
-          CURATOR_MAX_GOODS: 120
+          CURATOR_MAX_GOODS: 260
           CURATOR_MISSING_ONLY: 1
           CURATOR_INCLUDE_LIVE_RANKING: 0
           OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}

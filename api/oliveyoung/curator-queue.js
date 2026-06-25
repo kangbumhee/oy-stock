@@ -1,6 +1,6 @@
 const QUEUE_TTL_MS = 30 * 60 * 1000;
 const RECENT_ERROR_TTL_MS = 60 * 60 * 1000;
-const DEFAULT_MAX_GOODS = 120;
+const DEFAULT_MAX_GOODS = 260;
 const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
 
 const queuedCache = new Map();
@@ -41,7 +41,7 @@ function uniqueGoodsNos(values) {
 
 function maxGoods() {
   const n = Number.parseInt(String(process.env.CURATOR_QUEUE_MAX_GOODS || DEFAULT_MAX_GOODS), 10);
-  return Number.isFinite(n) && n > 0 ? Math.min(n, 120) : DEFAULT_MAX_GOODS;
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 260) : DEFAULT_MAX_GOODS;
 }
 
 function pruneQueueCache() {
@@ -68,25 +68,67 @@ function githubCuratorApiUrl() {
   );
 }
 
-async function loadCuratorLinks() {
+function githubCuratorRawUrl() {
+  const { owner, repo } = parseGithubRepo();
+  const branch = String(process.env.GITHUB_BRANCH || 'main').trim() || 'main';
+  const filePath =
+    String(process.env.CURATOR_LINKS_FILE || 'public/data/curator-links.json')
+      .trim()
+      .replace(/^\/+/, '') || 'public/data/curator-links.json';
+  return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(branch)}/${filePath}`;
+}
+
+function hostedCuratorUrl(req) {
+  const proto = String(req.headers['x-forwarded-proto'] || 'https')
+    .split(',')[0]
+    .trim();
+  const host = req.headers.host;
+  if (!host) return '';
+  return `${proto}://${host}/data/curator-links.json`;
+}
+
+async function fetchCuratorLinksFrom(url, source) {
   const token = githubToken();
   const headers = {
-    Accept: 'application/vnd.github+json',
+    Accept: source === 'github_api' ? 'application/vnd.github+json' : 'application/json',
     'User-Agent': 'oy-stock-curator-queue'
   };
-  if (token) {
+  if (source === 'github_api' && token) {
     headers.Authorization = `Bearer ${token}`;
     headers['X-GitHub-Api-Version'] = '2022-11-28';
   }
-  const response = await fetch(githubCuratorApiUrl(), {
+  const requestUrl =
+    source === 'github_raw' ? url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now() : url;
+  const response = await fetch(requestUrl, {
     headers,
     cache: 'no-store'
   });
-  if (!response.ok) throw new Error(`GitHub contents HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`${source} HTTP ${response.status}`);
   const json = await response.json();
+  if (source !== 'github_api') return json;
   const content = String(json && json.content ? json.content : '').replace(/\s+/g, '');
   if (!content) throw new Error('empty github content');
   return JSON.parse(Buffer.from(content, 'base64').toString('utf8'));
+}
+
+async function loadCuratorLinks(req) {
+  const candidates = [
+    [githubCuratorRawUrl(), 'github_raw'],
+    [hostedCuratorUrl(req), 'host_static'],
+    [githubCuratorApiUrl(), 'github_api']
+  ];
+  const errors = [];
+  for (const [url, source] of candidates) {
+    if (!url) continue;
+    try {
+      const data = await fetchCuratorLinksFrom(url, source);
+      if (data && data.links) return data;
+      errors.push(`${source}: invalid curator data`);
+    } catch (e) {
+      errors.push(`${source}: ${e.message || e}`);
+    }
+  }
+  throw new Error(errors.join(' | ') || 'curator links load failed');
 }
 
 function shouldGenerate(entry) {
@@ -165,7 +207,7 @@ module.exports = async function handler(req, res) {
     }
 
     pruneQueueCache();
-    const data = await loadCuratorLinks();
+    const data = await loadCuratorLinks(req);
     const links = (data && data.links) || {};
     const missing = requested.filter((goodsNo) => {
       if (queuedCache.has(goodsNo)) return false;
