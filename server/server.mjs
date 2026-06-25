@@ -72,19 +72,24 @@ async function withLock(fn) {
   }
 }
 
-async function withCuratorLock(fn) {
+const CURATOR_MAX_CONCURRENT = Math.max(
+  1,
+  Math.min(4, Number.parseInt(process.env.CURATOR_MAX_CONCURRENT || '3', 10) || 3)
+);
+
+async function withCuratorSlot(fn) {
   const start = Date.now();
-  while (curatorBusy) {
-    if (Date.now() - start > 25000) {
+  while (curatorActiveCount >= CURATOR_MAX_CONCURRENT) {
+    if (Date.now() - start > 60000) {
       throw new Error('curator_link_busy');
     }
     await sleep(150);
   }
-  curatorBusy = true;
+  curatorActiveCount += 1;
   try {
     return await fn();
   } finally {
-    curatorBusy = false;
+    curatorActiveCount = Math.max(0, curatorActiveCount - 1);
   }
 }
 
@@ -100,7 +105,8 @@ let curatorPage = null;
 let curatorBrowser = null;
 let curatorReady = false;
 let curatorInitPromise = null;
-let curatorBusy = false;
+let curatorActiveCount = 0;
+let curatorSharedPageBusy = false;
 let curatorCreatedAt = 0;
 
 const curatorLinkCache = new Map();
@@ -339,6 +345,7 @@ function setCuratorLinkCache(goodsNo, data) {
 
 function clearCuratorSession() {
   curatorReady = false;
+  curatorSharedPageBusy = false;
   curatorCreatedAt = 0;
   if (curatorPage) {
     try {
@@ -391,6 +398,8 @@ function sessionHealthPayload() {
     curator: curatorReady,
     curatorAge: curatorCreatedAt ? Math.floor((Date.now() - curatorCreatedAt) / 1000) : 0,
     curatorCacheSize: curatorLinkCache.size,
+    curatorActiveCount,
+    curatorMaxConcurrent: CURATOR_MAX_CONCURRENT,
     warming: !!initPromise || keepAliveRunning,
     uptime: process.uptime(),
     age: sessionAgeSeconds(),
@@ -497,6 +506,32 @@ async function ensureCuratorSession(auth) {
   }
 }
 
+async function acquireCuratorWorkPage() {
+  if (curatorPage && !curatorSharedPageBusy) {
+    curatorSharedPageBusy = true;
+    return {
+      page: curatorPage,
+      release: async () => {
+        curatorSharedPageBusy = false;
+      }
+    };
+  }
+
+  const workPage = await curatorContext.newPage();
+  await workPage.goto(CURATOR_AFFILIATE_REFERER, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000
+  });
+  return {
+    page: workPage,
+    release: async () => {
+      try {
+        await workPage.close();
+      } catch {}
+    }
+  };
+}
+
 async function generateCuratorLink(goodsNo, categoryNumber) {
   const normalized = normalizeGoodsNo(goodsNo);
   if (!normalized) {
@@ -513,11 +548,12 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
     return { success: false, error: 'missing_or_expired_curator_auth' };
   }
 
-  return withCuratorLock(async () => {
+  return withCuratorSlot(async () => {
     const secondHit = getCuratorLinkCache(normalized);
     if (secondHit) return { ...secondHit, cacheHit: true };
 
     await ensureCuratorSession(auth);
+    const work = await acquireCuratorWorkPage();
 
     const payload = {
       goodsNo: normalized,
@@ -529,15 +565,17 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
       placeholderCategory: CURATOR_PLACEHOLDER_CATEGORY
     };
 
-    const result = await curatorPage.evaluate(
-      async ({
-        goodsNo,
-        categoryNumber,
-        registerId,
-        apiKey,
-        authJwt,
-        placeholderCategory
-      }) => {
+    let result;
+    try {
+      result = await work.page.evaluate(
+        async ({
+          goodsNo,
+          categoryNumber,
+          registerId,
+          apiKey,
+          authJwt,
+          placeholderCategory
+        }) => {
         async function landing(body) {
           const headers = {
             'Content-Type': 'application/json',
@@ -679,9 +717,12 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
           shortenStatus: shortened.status,
           shortenDetail: shortenedUrl ? undefined : shortened
         };
-      },
-      payload
-    );
+        },
+        payload
+      );
+    } finally {
+      await work.release();
+    }
 
     if (result && result.success) {
       const saved = {

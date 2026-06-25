@@ -12,7 +12,7 @@ const GENERATION_REQUEST_TTL_MS = 10 * 60 * 1000;
 const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
 const LIVE_CURATOR_TIMEOUT_MS = Math.max(
   1000,
-  Number.parseInt(process.env.LIVE_CURATOR_TIMEOUT_MS || '25000', 10) || 25000
+  Number.parseInt(process.env.LIVE_CURATOR_TIMEOUT_MS || '55000', 10) || 55000
 );
 const DEFAULT_CURATOR_LIVE_API_URL =
   'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/curator-link';
