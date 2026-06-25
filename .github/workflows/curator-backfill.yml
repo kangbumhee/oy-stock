@@ -6,6 +6,7 @@ on:
     - cron: '*/30 0-16 * * *'
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -93,3 +94,9 @@ jobs:
           git add public/data/curator-links.json
           git diff --staged --quiet || git commit -m "🔗 curator backfill $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
           git push
+
+      - name: Continue backfill when more missing links remain
+        if: steps.batch.outputs.hasGoods == 'true' && fromJSON(steps.batch.outputs.missingCount) > fromJSON(steps.batch.outputs.batchCount)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run curator-backfill.yml --ref main
