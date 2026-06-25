@@ -623,7 +623,38 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
         }
 
         if (!affiliateActivityId) {
-          return { success: false, error: 'landing_failed', detail: lastLanding };
+          const fallbackOriginalUrl =
+            'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+            encodeURIComponent(goodsNo) +
+            '&utm_source=shutter&utm_medium=affiliate';
+          const fallbackShortened = await shorten(fallbackOriginalUrl, registerId);
+          const fallbackRow =
+            fallbackShortened.json &&
+            fallbackShortened.json.data &&
+            Array.isArray(fallbackShortened.json.data) &&
+            fallbackShortened.json.data[0];
+          const fallbackShortenedUrl =
+            fallbackRow && fallbackRow.shortenedUrl ? String(fallbackRow.shortenedUrl) : '';
+
+          if (fallbackShortened.ok && fallbackShortenedUrl) {
+            return {
+              success: true,
+              shortenedUrl: fallbackShortenedUrl,
+              originalUrl: fallbackOriginalUrl,
+              affiliateActivityId: null,
+              affiliatePartnerId: registerId,
+              shortenStatus: fallbackShortened.status,
+              landingDetail: lastLanding,
+              sourceHint: 'cloudrun_fallback_shortened'
+            };
+          }
+
+          return {
+            success: false,
+            error: 'landing_failed',
+            detail: lastLanding,
+            fallbackShortenDetail: fallbackShortened
+          };
         }
 
         const originalUrl =
@@ -657,7 +688,9 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
         ...result,
         goodsNo: normalized,
         generatedAt: new Date().toISOString(),
-        source: result.shortenedUrl ? 'cloudrun_live_shortened' : 'cloudrun_live_original'
+        source:
+          result.sourceHint ||
+          (result.shortenedUrl ? 'cloudrun_live_shortened' : 'cloudrun_live_original')
       };
       setCuratorLinkCache(normalized, saved);
       return saved;

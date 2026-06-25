@@ -516,6 +516,10 @@ async function createLiveCuratorLink(req, goodsNo, categoryNumber) {
   const cloudRun = await createCloudRunCuratorLink(goodsNo, categoryNumber);
   if (cloudRun.ok) return cloudRun;
 
+  if (process.env.ENABLE_VERCEL_LANDING_FALLBACK !== '1') {
+    return cloudRun;
+  }
+
   const base = publicBaseUrl(req);
   if (!base) return { ok: false, error: 'missing host' };
 
