@@ -20,6 +20,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: |
+            package.json
+            package-lock.json
+            scripts
+            public/data
+          sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4
         with:
@@ -43,8 +49,18 @@ jobs:
       - run: npm ci
         if: steps.batch.outputs.hasGoods == 'true'
 
-      - run: npx playwright install chromium --with-deps
+      - name: Cache Playwright Chromium
+        id: playwright-cache
         if: steps.batch.outputs.hasGoods == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ms-playwright-
+
+      - run: npx playwright install chromium --with-deps
+        if: steps.batch.outputs.hasGoods == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
 
       - name: Generate missing curator links
         if: steps.batch.outputs.hasGoods == 'true'
