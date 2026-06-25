@@ -12,8 +12,10 @@ const GENERATION_REQUEST_TTL_MS = 10 * 60 * 1000;
 const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
 const LIVE_CURATOR_TIMEOUT_MS = Math.max(
   1000,
-  Number.parseInt(process.env.LIVE_CURATOR_TIMEOUT_MS || '9000', 10) || 9000
+  Number.parseInt(process.env.LIVE_CURATOR_TIMEOUT_MS || '25000', 10) || 25000
 );
+const DEFAULT_CURATOR_LIVE_API_URL =
+  'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/curator-link';
 
 let curatorLinksCache = null;
 const generationRequestCache = new Map();
@@ -511,6 +513,9 @@ async function fetchJson(url, init) {
 }
 
 async function createLiveCuratorLink(req, goodsNo, categoryNumber) {
+  const cloudRun = await createCloudRunCuratorLink(goodsNo, categoryNumber);
+  if (cloudRun.ok) return cloudRun;
+
   const base = publicBaseUrl(req);
   if (!base) return { ok: false, error: 'missing host' };
 
@@ -578,6 +583,47 @@ async function createLiveCuratorLink(req, goodsNo, categoryNumber) {
     };
   } catch (e) {
     return { ok: false, error: String(e.message || e) };
+  }
+}
+
+async function createCloudRunCuratorLink(goodsNo, categoryNumber) {
+  const endpoint = String(process.env.CURATOR_LIVE_API_URL || DEFAULT_CURATOR_LIVE_API_URL).trim();
+  if (!endpoint) return { ok: false, error: 'missing_curator_live_api_url' };
+
+  try {
+    const url = new URL(endpoint);
+    url.searchParams.set('goodsNo', goodsNo);
+    if (categoryNumber) url.searchParams.set('categoryNumber', categoryNumber);
+
+    const headers = { Accept: 'application/json' };
+    const secret = String(process.env.CURATOR_LIVE_SECRET || process.env.CRON_SECRET || '').trim();
+    if (secret) headers.Authorization = `Bearer ${secret}`;
+
+    const result = await fetchJson(url.toString(), {
+      method: 'GET',
+      headers
+    });
+    const body = result.json || {};
+    if (result.ok && body.success && (body.shortenedUrl || body.originalUrl)) {
+      return {
+        ok: true,
+        shortenedUrl: body.shortenedUrl || null,
+        originalUrl: body.originalUrl || null,
+        affiliateActivityId: body.affiliateActivityId || null,
+        affiliatePartnerId: body.affiliatePartnerId || null,
+        liveSource: body.source || 'cloudrun_live',
+        cloudRunStatus: result.status,
+        cacheHit: !!body.cacheHit
+      };
+    }
+    return {
+      ok: false,
+      error: 'cloudrun_live_failed',
+      cloudRunStatus: result.status,
+      cloudRunBody: body || result.text.slice(0, 200)
+    };
+  } catch (e) {
+    return { ok: false, error: 'cloudrun_live_exception', detail: String(e.message || e) };
   }
 }
 
@@ -670,9 +716,11 @@ module.exports = async function handler(req, res) {
           ? 'live_original'
           : 'fallback_basic_utm';
   const allowWorkflowQueue = workflowQueueEnabled();
+  const shouldPersistLiveLink =
+    source !== 'fallback_basic_utm' && !shortenedUrl && !cachedLong && liveLink && liveLink.ok;
   const queueRequest =
     allowWorkflowQueue &&
-    source === 'fallback_basic_utm' &&
+    (source === 'fallback_basic_utm' || shouldPersistLiveLink) &&
     !noTrigger &&
     !suppressQueueForCachedError
       ? await triggerCuratorGeneration(goodsNo)

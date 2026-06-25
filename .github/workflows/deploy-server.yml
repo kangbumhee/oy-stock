@@ -37,14 +37,14 @@ jobs:
             --memory 2Gi \
             --cpu 1 \
             --min-instances 0 \
-            --max-instances 2 \
+            --max-instances 1 \
             --timeout 120 \
             --cpu-throttling \
-            --set-env-vars PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+            --set-env-vars "^~^PLAYWRIGHT_BROWSERS_PATH=/ms-playwright~OY_CURATOR_COOKIE=${{ secrets.OY_CURATOR_COOKIE }}~OY_REFRESH_COOKIE=${{ secrets.OY_REFRESH_COOKIE }}~OY_SESSION_ID=${{ secrets.OY_SESSION_ID }}~OY_LINKAGE_STRING=${{ secrets.OY_LINKAGE_STRING }}~OY_LINKAGE_JWT=${{ secrets.OY_LINKAGE_JWT }}~OLIVEYOUNG_LINKAGE_STRING=${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}~OLIVEYOUNG_LINKAGE_JWT=${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}~OLIVEYOUNG_AFFILIATE_REGISTER_ID=${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}~CURATOR_LIVE_SECRET=${{ secrets.CURATOR_LIVE_SECRET }}" \
             --clear-base-image \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Health Check
         run: |
           sleep 30
-          curl -f https://oy-stock-api-3596046881.asia-northeast3.run.app/health?warm=1 || echo "Health check failed"
+          curl -f "https://oy-stock-api-3596046881.asia-northeast3.run.app/health?warm=1&curator=1" || echo "Health check failed"
