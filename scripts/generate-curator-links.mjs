@@ -419,15 +419,19 @@ async function main() {
     let generatedCount = 0;
     let landingFailureCount = 0;
     let exceptionFailureCount = 0;
+    let hardFailureCount = 0;
+    let skippedCount = 0;
 
     for (const gn of goodsList) {
       if (CURATOR_MISSING_ONLY && hasUsableCuratorEntry(links[gn])) {
         console.log(`\n📎 ${gn} → 큐레이터 링크 있음, 스킵`);
+        skippedCount += 1;
         continue;
       }
 
       if (isFreshCuratorEntry(links[gn])) {
         console.log(`\n📎 ${gn} → 24h 이내 유효한 shortenedUrl 있음, 스킵`);
+        skippedCount += 1;
         continue;
       }
 
@@ -540,10 +544,41 @@ async function main() {
             }
 
             if (!affiliateActivityId) {
+              const fallbackOriginalUrl =
+                'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+                encodeURIComponent(goodsNo) +
+                '&utm_source=shutter&utm_medium=affiliate';
+              const fallbackShorten = await shorten(fallbackOriginalUrl, registerId);
+              const fallbackRow =
+                fallbackShorten.json &&
+                fallbackShorten.json.data &&
+                fallbackShorten.json.data[0];
+              const fallbackShortenedUrl = fallbackRow && fallbackRow.shortenedUrl;
+
+              if (fallbackShorten.ok && fallbackShortenedUrl) {
+                return {
+                  ok: true,
+                  fallbackOnly: true,
+                  shortenedUrl: fallbackShortenedUrl,
+                  originalUrl: fallbackOriginalUrl,
+                  affiliateActivityId: null,
+                  affiliatePartnerId: registerId,
+                  landingDetail: lastLanding
+                };
+              }
+
+              const hardFailure =
+                !lastLanding ||
+                lastLanding.status === 401 ||
+                lastLanding.status === 403 ||
+                lastLanding.status >= 500 ||
+                !!lastLanding.error;
               return {
                 ok: false,
                 step: 'landing',
-                detail: lastLanding
+                detail: lastLanding,
+                fallbackShortenDetail: fallbackShorten,
+                hardFailure
               };
             }
 
@@ -608,9 +643,10 @@ async function main() {
           originalUrl: pack.originalUrl,
           affiliateActivityId: pack.affiliateActivityId,
           affiliatePartnerId: pack.affiliatePartnerId,
-          generatedAt: now
+          generatedAt: now,
+          ...(pack.fallbackOnly ? { note: 'landing data 없음, 기본 affiliate URL 단축 저장' } : {})
         };
-        console.log('  ✅ oy.run + utm');
+        console.log(pack.fallbackOnly ? '  ✅ oy.run fallback' : '  ✅ oy.run + utm');
       } else if (pack.ok && pack.partial) {
         generatedCount += 1;
         links[gn] = {
@@ -624,6 +660,7 @@ async function main() {
         console.log('  ⚠️ landing만 성공 (단축 실패)');
       } else {
         landingFailureCount += 1;
+        if (pack.hardFailure) hardFailureCount += 1;
         console.log('  ❌ landing 실패', JSON.stringify(pack.detail || pack).slice(0, 200));
         if (!links[gn]) {
           links[gn] = {
@@ -645,12 +682,12 @@ async function main() {
     fs.writeFileSync(CURATOR_FILE, JSON.stringify(out, null, 2), 'utf8');
     console.log(`\n저장: ${CURATOR_FILE}`);
     console.log(
-      `요약: 생성 ${generatedCount}건, landing 실패 ${landingFailureCount}건, 예외 ${exceptionFailureCount}건`
+      `요약: 생성 ${generatedCount}건, 스킵 ${skippedCount}건, landing 실패 ${landingFailureCount}건, 예외 ${exceptionFailureCount}건`
     );
 
-    if (generatedCount === 0 && landingFailureCount + exceptionFailureCount > 0) {
+    if (hardFailureCount + exceptionFailureCount > 0) {
       console.error(
-        `큐레이터 생성 전부 실패 (${landingFailureCount + exceptionFailureCount}건). 쿠키/토큰 Secret을 갱신하세요.`
+        `큐레이터 생성 중요 실패 (${hardFailureCount + exceptionFailureCount}건). 쿠키/토큰 Secret을 확인하세요.`
       );
       process.exitCode = 1;
     }
