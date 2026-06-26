@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-26T11:13:04.955Z",
+  "updatedAt": "2026-06-26T11:22:01.843Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -55836,6 +55836,35 @@
       "affiliateActivityId": "c5a0ef3b5e0e4bb5a7d57335705151bf",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-06-26T11:13:04.955Z"
+    },
+    "A000000225378": {
+      "shortenedUrl": "https://oy.run/OjyZPlFl7ZR37F",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000225378&utm_source=shutter&utm_medium=affiliate",
+      "affiliateActivityId": null,
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-06-26T11:22:01.843Z",
+      "note": "landing data 없음, 기본 affiliate URL 단축 저장"
+    },
+    "A000000258878": {
+      "shortenedUrl": "https://oy.run/dWS39A2Wf03Kl0",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000258878&utm_source=shutter&utm_medium=affiliate&utm_content=OY_ed4854a86dad493bb53181b24ae27c82",
+      "affiliateActivityId": "ed4854a86dad493bb53181b24ae27c82",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-06-26T11:22:01.843Z"
+    },
+    "A000000258881": {
+      "shortenedUrl": "https://oy.run/x1lyoSsunivCng",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000258881&utm_source=shutter&utm_medium=affiliate&utm_content=OY_99c3e28f244c4a94aaededee0b383961",
+      "affiliateActivityId": "99c3e28f244c4a94aaededee0b383961",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-06-26T11:22:01.843Z"
+    },
+    "A000000258879": {
+      "shortenedUrl": "https://oy.run/u3yS19qfrd26ni",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000258879&utm_source=shutter&utm_medium=affiliate&utm_content=OY_879398d79c0d4c7897ab0c0fd7f31702",
+      "affiliateActivityId": "879398d79c0d4c7897ab0c0fd7f31702",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-06-26T11:22:01.843Z"
     }
   }
 }
