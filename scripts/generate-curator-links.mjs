@@ -439,8 +439,11 @@ async function main() {
       console.log(`\n📎 ${gn}`);
 
       let pack;
-      try {
-        pack = await page.evaluate(
+      let lastEvaluateError = null;
+      const evaluateAttempts = 2;
+      for (let attempt = 1; attempt <= evaluateAttempts; attempt += 1) {
+        try {
+          pack = await page.evaluate(
           async ({
             goodsNo,
             registerId,
@@ -619,16 +622,49 @@ async function main() {
             placeholderCat: PLACEHOLDER_CATEGORY,
             authJwt: authJwt || ''
           }
-        );
-      } catch (e) {
+          );
+          lastEvaluateError = null;
+          break;
+        } catch (e) {
+          lastEvaluateError = e;
+          const message = e && e.message ? e.message : String(e);
+          console.log(`  ⚠️ 생성 요청 예외 (${attempt}/${evaluateAttempts}) ${message}`);
+          if (attempt < evaluateAttempts) {
+            try {
+              await page.goto(AFFILIATE_REFERER, {
+                waitUntil: 'domcontentloaded',
+                timeout: 60000
+              });
+            } catch (warmupError) {
+              console.log(
+                '  ⚠️ 큐레이터 페이지 재진입 실패',
+                warmupError && warmupError.message
+                  ? warmupError.message
+                  : String(warmupError)
+              );
+            }
+            await sleep(1200 * attempt);
+          }
+        }
+      }
+
+      if (!pack) {
         exceptionFailureCount += 1;
-        console.log('  ❌ 생성 요청 예외', e && e.message ? e.message : String(e));
+        console.log(
+          '  ❌ 생성 요청 예외 최종 실패',
+          lastEvaluateError && lastEvaluateError.message
+            ? lastEvaluateError.message
+            : String(lastEvaluateError)
+        );
         if (!links[gn]) {
           links[gn] = {
             shortenedUrl: null,
             originalUrl: null,
             error: 'request_exception',
-            detail: e && e.message ? e.message : String(e),
+            detail:
+              lastEvaluateError && lastEvaluateError.message
+                ? lastEvaluateError.message
+                : String(lastEvaluateError),
             generatedAt: now
           };
         }
@@ -685,9 +721,19 @@ async function main() {
       `요약: 생성 ${generatedCount}건, 스킵 ${skippedCount}건, landing 실패 ${landingFailureCount}건, 예외 ${exceptionFailureCount}건`
     );
 
-    if (hardFailureCount + exceptionFailureCount > 0) {
+    const successfulOrSkippedCount = generatedCount + skippedCount;
+    const criticalFailureCount =
+      hardFailureCount + (successfulOrSkippedCount === 0 ? exceptionFailureCount : 0);
+
+    if (exceptionFailureCount > 0 && successfulOrSkippedCount > 0) {
+      console.warn(
+        `일부 상품 생성 예외 ${exceptionFailureCount}건은 다음 backfill에서 재시도합니다. 성공분은 저장합니다.`
+      );
+    }
+
+    if (criticalFailureCount > 0) {
       console.error(
-        `큐레이터 생성 중요 실패 (${hardFailureCount + exceptionFailureCount}건). 쿠키/토큰 Secret을 확인하세요.`
+        `큐레이터 생성 중요 실패 (${criticalFailureCount}건). 쿠키/토큰 Secret을 확인하세요.`
       );
       process.exitCode = 1;
     }
