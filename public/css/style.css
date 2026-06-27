@@ -248,6 +248,7 @@ header h1{font-size:21px;line-height:1.1;margin-bottom:3px;color:#16251a;letter-
 .popup-badge{border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;font-weight:700;text-align:center}
 .bg-red-light{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
 .bg-orange-light{background:#fff7ed;border:1px solid #fed7aa;color:#ea580c}
+.popup-badge.bg-blue-light{background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb}
 .popup-price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .popup-price-row .price{font-size:20px}
 .popup-price-row .disc{font-size:18px}

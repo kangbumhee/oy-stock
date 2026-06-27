@@ -2220,6 +2220,9 @@ var UI = {
     if (detail.inventoryScope === 'vendor' || detail.source === 'vendor-delivery')
       statusBadge =
         '<div class="popup-badge bg-purple">업체배송 상품입니다. 매장·올영창고 실시간 재고 조회 대상이 아니며 올리브영 상품 페이지에서 구매 가능 여부를 확인합니다.</div>';
+    else if (detail.source === 'live-online')
+      statusBadge =
+        '<div class="popup-badge bg-blue-light">🛒 온라인 재고 먼저 표시 중 · 주변 매장 재고는 계속 조회됩니다</div>';
     else if (detail.status === 'discontinued')
       statusBadge = '<div class="popup-badge bg-red-light">⛔ 단종/삭제된 상품입니다</div>';
     else if (detail.status === 'soldout')

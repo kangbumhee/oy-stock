@@ -6,6 +6,7 @@ var App = {
   locationName: CONFIG.DEFAULT_LOCATION,
   detailData: null,
   currentTab: 'search',
+  initialized: false,
   hotProducts: [],
   hotUpdatedAt: null,
   hotLastStockRunAt: null,
@@ -37,6 +38,8 @@ var App = {
   autoBuyTriggered: false,
 
   init: function () {
+    if (this.initialized) return;
+    this.initialized = true;
     var self = this;
     var loc = Storage.getLocation();
     if (loc) {
@@ -78,14 +81,20 @@ var App = {
       self._syncStickyTabsOffset();
     });
 
+    function handleSearchSubmit(e) {
+      var target = e && e.target;
+      if (!target || target.id !== 'search-form') return;
+      e.preventDefault();
+      if (e.__oySearchHandled) return;
+      e.__oySearchHandled = true;
+      var input = document.getElementById('search-input');
+      var kw = input && (input.value || '').trim();
+      if (kw) App.doSearch(kw);
+    }
+    document.addEventListener('submit', handleSearchSubmit, true);
     var form = document.getElementById('search-form');
     if (form) {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var input = document.getElementById('search-input');
-        var kw = input && (input.value || '').trim();
-        if (kw) App.doSearch(kw);
-      });
+      form.addEventListener('submit', handleSearchSubmit);
     }
 
     UI.setActiveTab('search');
@@ -1063,7 +1072,7 @@ var App = {
         batch.map(function (item) {
           return self._fetchStockDetail(item, {
             onlineOnly: true,
-            fresh: true,
+            timeoutMs: CONFIG.ONLINE_ENRICH_FETCH_TIMEOUT_MS || 7000,
             batchSignal: batchSignal
           });
         })
@@ -1150,7 +1159,7 @@ var App = {
     var combined = new AbortController();
     var tid = setTimeout(function () {
       combined.abort();
-    }, CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 20000);
+    }, opts.timeoutMs || CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 20000);
     function onBatchAbort() {
       clearTimeout(tid);
       combined.abort();
@@ -1452,6 +1461,108 @@ var App = {
     this._openRankDetail(gn);
   },
 
+  _stockDetailUrl: function (goodsNo, opts) {
+    opts = opts || {};
+    var base = CONFIG.REALTIME_API || '';
+    return (
+      base +
+      (base.indexOf('?') >= 0 ? '&' : '?') +
+      'goodsNo=' +
+      encodeURIComponent(goodsNo) +
+      '&lat=' +
+      encodeURIComponent(String(this.lat)) +
+      '&lng=' +
+      encodeURIComponent(String(this.lng)) +
+      '&withOnline=true' +
+      (opts.onlineOnly ? '&onlineOnly=true' : '')
+    );
+  },
+
+  _fetchJsonWithTimeout: function (url, timeoutMs) {
+    var controller = new AbortController();
+    var tid = setTimeout(function () {
+      controller.abort();
+    }, timeoutMs || 20000);
+    return fetch(url, { signal: controller.signal })
+      .then(function (r) {
+        return r.json();
+      })
+      .finally(function () {
+        clearTimeout(tid);
+      });
+  },
+
+  _popupStillShowingGoods: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    return !!document.querySelector('#popup-root [data-goodsno="' + gn + '"]');
+  },
+
+  _applyRealtimeDetail: function (goodsNo, detail) {
+    if (!this.detailData) this.detailData = { products: {} };
+    if (!this.detailData.products) this.detailData.products = {};
+    this.detailData.products[goodsNo] = detail;
+    var onlineSnapshot = this._rememberOnlineStock(goodsNo, detail);
+    if (onlineSnapshot) UI.updateCardBadge(goodsNo, onlineSnapshot);
+    this._recordVelocitySnapshot(goodsNo, onlineSnapshot || detail, this._productMetaForGoodsNo(goodsNo));
+    UI.showDetailPopup(detail, goodsNo);
+  },
+
+  _loadRealtimeDetailIntoPopup: async function (goodsNo, displayName) {
+    var self = this;
+    var gn = String(goodsNo || '').trim();
+    var onlineShown = false;
+    var fullShown = false;
+    var onlineStarted = false;
+    var onlineTimeout = CONFIG.STOCK_ONLINE_FIRST_TIMEOUT_MS || 3500;
+    var onlineDelay = CONFIG.STOCK_ONLINE_FIRST_DELAY_MS || 1200;
+    var fullTimeout = CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 20000;
+
+    var fullPromise = this._fetchJsonWithTimeout(this._stockDetailUrl(gn), fullTimeout);
+    var fullHandled = fullPromise
+      .then(function (d) {
+        if (d && d.success && d.options && d.options.length > 0) {
+          fullShown = true;
+          if (!onlineShown || self._popupStillShowingGoods(gn)) {
+            self._applyRealtimeDetail(gn, d);
+          }
+          return;
+        }
+        if (!onlineShown) {
+          UI.showPopupError(displayName, (d && (d.message || d.error)) || '조회 실패', gn);
+        }
+      })
+      .catch(function (e) {
+        if (!onlineShown) {
+          UI.showPopupError(displayName, '서버 연결 실패: ' + (e.message || String(e)), gn);
+        } else if (UI.showSyncStatus) {
+          UI.showSyncStatus('주변 매장 조회가 지연되어 온라인 재고 먼저 표시했습니다.', false, 4000);
+        }
+      });
+
+    await new Promise(function (resolve) {
+      setTimeout(resolve, onlineDelay);
+    });
+    if (fullShown) return;
+
+    try {
+      onlineStarted = true;
+      var online = await this._fetchJsonWithTimeout(
+        this._stockDetailUrl(gn, { onlineOnly: true }),
+        onlineTimeout
+      );
+      if (!fullShown && online && online.success && online.options && online.options.length > 0) {
+        onlineShown = true;
+        this._applyRealtimeDetail(gn, online);
+        return;
+      }
+    } catch (e) {
+      /* fall back to full lookup */
+    }
+
+    if (!onlineStarted && fullShown) return;
+    await fullHandled;
+  },
+
   _openDetail: async function (idx) {
     var p = this.products[idx];
     if (!p) return;
@@ -1495,30 +1606,7 @@ var App = {
         imageUrl: p.imageUrl || ''
       });
       try {
-        var r = await fetch(
-          CONFIG.REALTIME_API +
-            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
-            'goodsNo=' +
-            encodeURIComponent(gn) +
-            '&lat=' +
-            encodeURIComponent(String(this.lat)) +
-            '&lng=' +
-            encodeURIComponent(String(this.lng)) +
-            '&withOnline=true' +
-            '&fresh=true'
-        );
-        var d = await r.json();
-        if (d.success && d.options && d.options.length > 0) {
-          if (!this.detailData) this.detailData = { products: {} };
-          if (!this.detailData.products) this.detailData.products = {};
-          this.detailData.products[gn] = d;
-          var onlineSnapshot = this._rememberOnlineStock(gn, d);
-          if (onlineSnapshot) UI.updateCardBadge(gn, onlineSnapshot);
-          this._recordVelocitySnapshot(gn, onlineSnapshot || d, this._productMetaForGoodsNo(gn));
-          UI.showDetailPopup(d, gn);
-          return;
-        }
-        UI.showPopupError(p.goodsName, d.message || d.error || '조회 실패', gn);
+        await this._loadRealtimeDetailIntoPopup(gn, p.goodsName);
         return;
       } catch (e) {
         UI.showPopupError(p.goodsName, '서버 연결 실패: ' + (e.message || String(e)), gn);
@@ -1575,30 +1663,8 @@ var App = {
       });
       var favLookupError = '';
       try {
-        var r = await fetch(
-          CONFIG.REALTIME_API +
-            (CONFIG.REALTIME_API.indexOf('?') >= 0 ? '&' : '?') +
-            'goodsNo=' +
-            encodeURIComponent(gn) +
-            '&lat=' +
-            encodeURIComponent(String(this.lat)) +
-            '&lng=' +
-            encodeURIComponent(String(this.lng)) +
-            '&withOnline=true' +
-            '&fresh=true'
-        );
-        var d = await r.json();
-        if (d.success && d.options && d.options.length > 0) {
-          if (!this.detailData) this.detailData = { products: {} };
-          if (!this.detailData.products) this.detailData.products = {};
-          this.detailData.products[gn] = d;
-          var favOnlineSnapshot = this._rememberOnlineStock(gn, d);
-          if (favOnlineSnapshot) UI.updateCardBadge(gn, favOnlineSnapshot);
-          this._recordVelocitySnapshot(gn, favOnlineSnapshot || d, this._productMetaForGoodsNo(gn));
-          UI.showDetailPopup(d, gn);
-          return;
-        }
-        favLookupError = UI.errorText(d && (d.message || d.error), '');
+        await this._loadRealtimeDetailIntoPopup(gn, name);
+        return;
       } catch (e) {
         favLookupError = e && e.message ? '서버 연결 실패: ' + e.message : '';
       }
@@ -1607,6 +1673,12 @@ var App = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', function () {
+function bootOliveStockApp() {
   App.init();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootOliveStockApp);
+} else {
+  bootOliveStockApp();
+}

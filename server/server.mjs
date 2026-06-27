@@ -16,6 +16,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const onlineCache = new Map();
 const ONLINE_CACHE_TTL = 10 * 60 * 1000;
+const STOCK_STORE_BATCH_CONCURRENCY = Math.max(
+  1,
+  Math.min(6, Number.parseInt(process.env.STOCK_STORE_BATCH_CONCURRENCY || '4', 10) || 4)
+);
+const STOCK_STORE_FETCH_TIMEOUT_MS = Math.max(
+  1500,
+  Number.parseInt(process.env.STOCK_STORE_FETCH_TIMEOUT_MS || '4500', 10) || 4500
+);
+const OY_API_FETCH_TIMEOUT_MS = Math.max(
+  2000,
+  Number.parseInt(process.env.OY_API_FETCH_TIMEOUT_MS || '3500', 10) || 3500
+);
+const STOCK_DETAIL_TOTAL_TIMEOUT_MS = Math.max(
+  6000,
+  Number.parseInt(process.env.STOCK_DETAIL_TOTAL_TIMEOUT_MS || '18000', 10) || 18000
+);
+const STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS = Math.max(
+  3000,
+  Number.parseInt(process.env.STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS || '6500', 10) || 6500
+);
+const STOCK_SESSION_READY_TIMEOUT_MS = Math.max(
+  8000,
+  Number.parseInt(process.env.STOCK_SESSION_READY_TIMEOUT_MS || '16000', 10) || 16000
+);
+const SESSION_HEALTHCHECK_TIMEOUT_MS = Math.max(
+  800,
+  Number.parseInt(process.env.SESSION_HEALTHCHECK_TIMEOUT_MS || '1500', 10) || 1500
+);
 
 /** 팝업 등 동일 상품·위치 반복 조회 시 Playwright 부하 완화 (TTL 짧게 유지) */
 const detailResponseCache = new Map();
@@ -39,6 +67,16 @@ function pruneDetailResponseCache() {
     if (first == null) break;
     detailResponseCache.delete(first);
   }
+}
+
+function withTimeout(promise, ms, label) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(label + ' timeout after ' + ms + 'ms')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 function allRegionsResponseCacheKey(goodsNo, productId) {
@@ -372,7 +410,11 @@ async function ensureSession() {
 
   if (sessionReady && page && Date.now() - sessionCreatedAt < SESSION_MAX_AGE) {
     try {
-      const test = await page.evaluate(() => document.title);
+      const test = await withTimeout(
+        page.evaluate(() => document.title),
+        SESSION_HEALTHCHECK_TIMEOUT_MS,
+        'session health check'
+      );
       if (test) return;
     } catch {
       console.log('세션 만료, 재생성');
@@ -806,25 +848,38 @@ async function oyPost(apiPath, body) {
     await ensureSession();
   }
   return page.evaluate(
-    async ({ url, payload }) => {
-      const r = await fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify(payload)
-      });
-      const t = await r.text();
+    async ({ url, payload, timeoutMs }) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        return { ok: r.ok, status: r.status, data: JSON.parse(t) };
-      } catch {
-        return { ok: false, status: r.status, data: t };
+        const r = await fetch(url, {
+          method: 'POST',
+          credentials: 'include',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload)
+        });
+        const t = await r.text();
+        try {
+          return { ok: r.ok, status: r.status, data: JSON.parse(t) };
+        } catch {
+          return { ok: false, status: r.status, data: t };
+        }
+      } catch (e) {
+        return {
+          ok: false,
+          status: 0,
+          data: { error: e && e.name === 'AbortError' ? 'oy_api_timeout' : e.message || String(e) }
+        };
+      } finally {
+        clearTimeout(timeoutId);
       }
     },
-    { url: OY + '/oystore/api' + apiPath, payload: body }
+    { url: OY + '/oystore/api' + apiPath, payload: body, timeoutMs: OY_API_FETCH_TIMEOUT_MS }
   );
 }
 
@@ -869,6 +924,130 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
   return { ok: false, status: 500, data: { error: 'max retries' } };
 }
 
+async function oyPostStockStoresBatch(requests) {
+  if (!requests || requests.length === 0) return [];
+  if (!page || !sessionReady) {
+    await ensureSession();
+  }
+
+  return page.evaluate(
+    async ({ url, requests: reqs, concurrency, timeoutMs }) => {
+      let index = 0;
+      const results = [];
+
+      async function runOne(req) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const r = await fetch(url, {
+            method: 'POST',
+            credentials: 'include',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(req.payload)
+          });
+          const t = await r.text();
+          let json = null;
+          try {
+            json = JSON.parse(t);
+          } catch {
+            json = t;
+          }
+          return { productId: req.productId, ok: r.ok, status: r.status, data: json };
+        } catch (e) {
+          return {
+            productId: req.productId,
+            ok: false,
+            status: 0,
+            error: e && e.message ? e.message : String(e)
+          };
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      }
+
+      async function worker() {
+        while (index < reqs.length) {
+          const req = reqs[index++];
+          results.push(await runOne(req));
+        }
+      }
+
+      const workers = Array.from(
+        { length: Math.min(concurrency, reqs.length) },
+        () => worker()
+      );
+      await Promise.all(workers);
+      return results;
+    },
+    {
+      url: OY + '/oystore/api/stock/stock-stores',
+      requests,
+      concurrency: STOCK_STORE_BATCH_CONCURRENCY,
+      timeoutMs: STOCK_STORE_FETCH_TIMEOUT_MS
+    }
+  );
+}
+
+async function getNearbyStoresByProductIds(productIds, lat, lng) {
+  const unique = Array.from(
+    new Set(
+      (productIds || [])
+        .map((pid) => String(pid || '').trim())
+        .filter(Boolean)
+    )
+  );
+  if (!unique.length) return {};
+
+  const requests = unique.map((pid) => ({
+    productId: pid,
+    payload: {
+      productId: pid,
+      lat,
+      lon: lng,
+      pageIdx: 1,
+      searchWords: '',
+      mapLat: lat,
+      mapLon: lng
+    }
+  }));
+
+  let rows = [];
+  try {
+    rows = await oyPostStockStoresBatch(requests);
+  } catch (e) {
+    console.error('[매장배치] 예외:', e.message || e);
+    return {};
+  }
+
+  const storesByPid = {};
+  for (const row of rows || []) {
+    const pid = String(row.productId || '').trim();
+    if (!pid) continue;
+    const stInner =
+      row.ok && row.data && row.data.status === 'SUCCESS' ? unwrapPayload(row.data) : {};
+    const storeList = stInner.storeList || [];
+    if (!row.ok) {
+      console.log('[매장배치] 실패:', pid, row.error || compactApiFailure(row));
+    }
+    storesByPid[pid] = storeList.map((s) => ({
+      name: s.storeName,
+      code: s.storeCode,
+      dist: s.distance,
+      qty: s.remainQuantity || 0,
+      o2o: s.o2oRemainQuantity || 0,
+      pickup: yn(s.pickupYn),
+      open: yn(s.openYn),
+      addr: s.address || s.storeAddr || ''
+    }));
+  }
+  return storesByPid;
+}
+
 function isGoodsInfoSuccess(res) {
   if (!res || !res.ok || !res.data || res.data.status !== 'SUCCESS') return false;
   const inner = unwrapPayload(res.data);
@@ -898,24 +1077,42 @@ async function fetchGoodsInfoOnDetailPage(goodsNo) {
       );
       await sleep(700);
 
-      return await page.evaluate(async (gn) => {
-        const r = await fetch('/oystore/api/stock/stock-goods-info-v3', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify({ goodsNo: gn })
-        });
-        const t = await r.text();
-        try {
-          return { ok: r.ok, status: r.status, data: JSON.parse(t) };
-        } catch {
-          return { ok: false, status: r.status, data: t };
-        }
-      }, goodsNo);
+      return await page.evaluate(
+        async ({ gn, timeoutMs }) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+          try {
+            const r = await fetch('/oystore/api/stock/stock-goods-info-v3', {
+              method: 'POST',
+              credentials: 'include',
+              signal: controller.signal,
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: JSON.stringify({ goodsNo: gn })
+            });
+            const t = await r.text();
+            try {
+              return { ok: r.ok, status: r.status, data: JSON.parse(t) };
+            } catch {
+              return { ok: false, status: r.status, data: t };
+            }
+          } catch (e) {
+            return {
+              ok: false,
+              status: 0,
+              data: {
+                error: e && e.name === 'AbortError' ? 'oy_detail_goods_info_timeout' : e.message || String(e)
+              }
+            };
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        },
+        { gn: goodsNo, timeoutMs: OY_API_FETCH_TIMEOUT_MS }
+      );
     } catch (e) {
       console.log('[상품정보] 상세 페이지 재시도 실패:', goodsNo, e.message || e);
       return null;
@@ -926,9 +1123,14 @@ async function fetchGoodsInfoOnDetailPage(goodsNo) {
   });
 }
 
-async function getGoodsInfoResponse(goodsNo) {
+async function getGoodsInfoResponse(goodsNo, opts = {}) {
   const direct = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (isGoodsInfoSuccess(direct)) return direct;
+
+  if (opts.fastOnly) {
+    console.log('[상품정보] fastOnly direct 실패:', goodsNo, compactApiFailure(direct));
+    return direct;
+  }
 
   console.log('[상품정보] direct 실패 → 상세 진입 재시도:', goodsNo, compactApiFailure(direct));
   const pageRetry = await fetchGoodsInfoOnDetailPage(goodsNo);
@@ -959,9 +1161,19 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
       /* fall through */
     }
   }
+  if (!fresh && onlineOnly) {
+    const fullHit = detailResponseCache.get(detailResponseCacheKey(goodsNo, lat, lng, true, false));
+    if (fullHit && Date.now() - fullHit.ts < DETAIL_RESPONSE_TTL_MS) {
+      try {
+        return JSON.parse(JSON.stringify(fullHit.data));
+      } catch {
+        /* fall through */
+      }
+    }
+  }
   try {
     const result = await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
-    if (result && result.success && !fresh) {
+    if (result && result.success) {
       pruneDetailResponseCache();
       detailResponseCache.set(ck, { data: result, ts: Date.now() });
     }
@@ -978,7 +1190,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
 }
 
 async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineOnly = false) {
-  const infoRes = await getGoodsInfoResponse(goodsNo);
+  const infoRes = await getGoodsInfoResponse(goodsNo, { fastOnly: onlineOnly });
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
     return {
       success: false,
@@ -1041,24 +1253,36 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
             );
             await sleep(550);
 
-            const optJson = await page.evaluate(async (gn) => {
-              const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Accept: 'application/json',
-                  'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ goodsNo: gn })
-              });
-              const t = await res.text();
-              try {
-                return JSON.parse(t);
-              } catch {
-                return null;
-              }
-            }, goodsNo);
+            const optJson = await page.evaluate(
+              async ({ gn, timeoutMs }) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                  const res = await fetch('/oystore/api/stock/stock-goods-info-option', {
+                    method: 'POST',
+                    credentials: 'include',
+                    signal: controller.signal,
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Accept: 'application/json',
+                      'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ goodsNo: gn })
+                  });
+                  const t = await res.text();
+                  try {
+                    return JSON.parse(t);
+                  } catch {
+                    return null;
+                  }
+                } catch {
+                  return null;
+                } finally {
+                  clearTimeout(timeoutId);
+                }
+              },
+              { gn: goodsNo, timeoutMs: OY_API_FETCH_TIMEOUT_MS }
+            );
 
             if (optJson && optJson.status === 'SUCCESS') {
               const optInner = unwrapPayload(optJson);
@@ -1147,6 +1371,14 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
 
   console.log('[디버그] onlineMap keys:', Object.keys(onlineMap));
 
+  const storeResultsByPid = !onlineOnly
+    ? await getNearbyStoresByProductIds(
+        options.map((opt) => opt && opt.legacyItemNumber),
+        lat,
+        lng
+      )
+    : {};
+
   const optionResults = [];
   for (const opt of options) {
     const pid = opt.legacyItemNumber;
@@ -1158,31 +1390,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
 
     let stores = [];
     if (!onlineOnly) {
-      const stRes = await oyPostWithRetry('/stock/stock-stores', {
-        productId: String(pid),
-        lat,
-        lon: lng,
-        pageIdx: 1,
-        searchWords: '',
-        mapLat: lat,
-        mapLon: lng
-      });
-
-      const stInner =
-        stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
-          ? unwrapPayload(stRes.data)
-          : {};
-      const storeList = stInner.storeList || [];
-      stores = storeList.map((s) => ({
-        name: s.storeName,
-        code: s.storeCode,
-        dist: s.distance,
-        qty: s.remainQuantity || 0,
-        o2o: s.o2oRemainQuantity || 0,
-        pickup: yn(s.pickupYn),
-        open: yn(s.openYn),
-        addr: s.address || s.storeAddr || ''
-      }));
+      stores = storeResultsByPid[String(pid)] || [];
     }
 
     console.log(
@@ -1214,10 +1422,6 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       presentable: onlineInfo.presentable || !!opt.presentable,
       stores: stores.slice(0, 30)
     });
-
-    if (!onlineOnly) {
-      await sleep(220);
-    }
   }
 
   if (optionResults.length === 0 && (gi.masterGoodsNumber || gi.goodsNumber)) {
@@ -1237,30 +1441,8 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
         stores: []
       });
     } else {
-      const stRes = await oyPost('/stock/stock-stores', {
-        productId: pid,
-        lat,
-        lon: lng,
-        pageIdx: 1,
-        searchWords: '',
-        mapLat: lat,
-        mapLon: lng
-      });
-      const stInner =
-        stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
-          ? unwrapPayload(stRes.data)
-          : {};
-      const storeList = stInner.storeList || [];
-      const stores = storeList.map((s) => ({
-        name: s.storeName,
-        code: s.storeCode,
-        dist: s.distance,
-        qty: s.remainQuantity || 0,
-        o2o: s.o2oRemainQuantity || 0,
-        pickup: yn(s.pickupYn),
-        open: yn(s.openYn),
-        addr: s.address || s.storeAddr || ''
-      }));
+      const singleStoresByPid = await getNearbyStoresByProductIds([pid], lat, lng);
+      const stores = singleStoresByPid[pid] || [];
       optionResults.push({
         name: gi.goodsName,
         productId: pid,
@@ -1644,8 +1826,22 @@ const server = http.createServer(async (req, res) => {
       'Access-Control-Allow-Origin': '*'
     };
 
+    if (onlineOnly && fresh) {
+      res.writeHead(200, stockJsonHdr);
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: true,
+          goodsNo,
+          skipped: true,
+          message: 'background online refresh throttled'
+        })
+      );
+      return;
+    }
+
     try {
-      await ensureSession();
+      await withTimeout(ensureSession(), STOCK_SESSION_READY_TIMEOUT_MS, 'stock session ready');
     } catch (e) {
       console.error('[api/stock] 세션:', e.message);
       sessionReady = false;
@@ -1662,7 +1858,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const result = await getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly, fresh);
+      const result = await withTimeout(
+        getStockDetail(goodsNo, lat, lng, withOnline, onlineOnly, fresh),
+        onlineOnly ? STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS : STOCK_DETAIL_TOTAL_TIMEOUT_MS,
+        onlineOnly ? 'stock online-only lookup' : 'stock detail lookup'
+      );
       const out = result.success
         ? result
         : { ...result, error: true, goodsNo: result.goodsNo || goodsNo };
