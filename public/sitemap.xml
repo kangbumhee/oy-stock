@@ -93,9 +93,15 @@
   <!-- BLOG_URLS_START -->
   <url>
     <loc>https://olivestock.co.kr/blog/</loc>
-    <lastmod>2026-07-01</lastmod>
+    <lastmod>2026-07-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://olivestock.co.kr/blog/banila-co-hot-item-stock-a000000254892/</loc>
+    <lastmod>2026-07-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://olivestock.co.kr/blog/mediheal-sun-serum-stock-a000000259586/</loc>
