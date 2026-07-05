@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-04T04:42:11.521Z",
+  "updatedAt": "2026-07-05T05:03:47.346Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,47 +17,47 @@
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml 기획/단품 (수분 컬크림) (+워터에센스미스트 30ml)",
-      "from": 68,
-      "to": 67,
-      "fromQty": 291,
-      "toQty": 293,
-      "date": "2026-07-04T04:42:11.521Z"
+      "from": 67,
+      "to": 62,
+      "fromQty": 293,
+      "toQty": 274,
+      "date": "2026-07-05T05:03:47.346Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml 기획/단품 (수분 컬크림) (+워터에센스미스트 30ml)",
-      "from": 412,
-      "to": 967,
-      "date": "2026-07-04T04:42:11.521Z"
+      "from": 967,
+      "to": 383,
+      "date": "2026-07-05T05:03:47.346Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000256047",
       "goodsName": "[NEW] 토리든 다이브인 저분자 히알루론산 세럼 50ml 더블 기획 (밸풀 세럼 20ml+선크림 20ml) ",
-      "from": 6,
-      "to": 5,
-      "fromQty": 37,
-      "toQty": 33,
-      "date": "2026-07-04T04:42:11.521Z"
+      "from": 5,
+      "to": 4,
+      "fromQty": 33,
+      "toQty": 30,
+      "date": "2026-07-05T05:03:47.346Z"
     },
     {
-      "type": "back_in_stock",
+      "type": "stock_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[단독기획 8+1매] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 0,
+      "from": 1,
       "to": 1,
-      "fromQty": 0,
-      "toQty": 3,
-      "date": "2026-07-04T04:42:11.521Z"
+      "fromQty": 3,
+      "toQty": 2,
+      "date": "2026-07-05T05:03:47.346Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[단독기획 8+1매] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1657,
-      "to": 5906,
-      "date": "2026-07-04T04:42:11.521Z"
+      "from": 5906,
+      "to": 1431,
+      "date": "2026-07-05T05:03:47.346Z"
     }
   ],
   "products": {
@@ -77,9 +77,9 @@
           "productId": "8809669509624",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/5527419672874344827.png",
           "totalStores": 50,
-          "inStock": 39,
-          "totalQty": 173,
-          "onlineQty": 718,
+          "inStock": 35,
+          "totalQty": 156,
+          "onlineQty": 234,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -108,7 +108,7 @@
               "name": "김포장기점",
               "code": "D300",
               "dist": 1.4,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -118,8 +118,8 @@
               "name": "김포운양점",
               "code": "D573",
               "dist": 1.57,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -168,8 +168,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 17,
-              "o2o": 13,
+              "qty": 16,
+              "o2o": 12,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -178,8 +178,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 25,
-              "o2o": 20,
+              "qty": 24,
+              "o2o": 19,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -228,7 +228,7 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -238,8 +238,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 7,
-              "o2o": 5,
+              "qty": 6,
+              "o2o": 4,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -248,8 +248,8 @@
               "name": "검단아라점",
               "code": "DDD8",
               "dist": 6.69,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 이음대로 479 CS메디컬프라자 101호"
@@ -278,8 +278,8 @@
               "name": "일산주엽점",
               "code": "DE0D",
               "dist": 7.66,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
@@ -308,8 +308,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -328,8 +328,8 @@
               "name": "웨스턴돔중앙점",
               "code": "DCE8",
               "dist": 8.06,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 24"
@@ -358,8 +358,8 @@
               "name": "일산후곡점",
               "code": "D381",
               "dist": 8.57,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 일산로 541 수신빌딩"
@@ -391,9 +391,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 28,
-          "totalQty": 120,
-          "onlineQty": 249,
+          "inStock": 27,
+          "totalQty": 118,
+          "onlineQty": 149,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -701,7 +701,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-04T04:42:11.521Z"
+      "updatedAt": "2026-07-05T05:03:47.346Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -714,7 +714,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-07-04T04:42:11.521Z"
+      "updatedAt": "2026-07-05T05:03:47.346Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -732,8 +732,8 @@
           "productId": "8809784607779",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/6/1864266166800082548.jpg",
           "totalStores": 50,
-          "inStock": 5,
-          "totalQty": 33,
+          "inStock": 4,
+          "totalQty": 30,
           "onlineQty": 0,
           "maxOrderQty": 999,
           "deliveredToday": true,
@@ -843,8 +843,8 @@
               "name": "검단신도시점",
               "code": "D399",
               "dist": 5.11,
-              "qty": 9,
-              "o2o": 7,
+              "qty": 8,
+              "o2o": 6,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 서구 완정로 14"
@@ -943,8 +943,8 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
@@ -1042,7 +1042,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-04T04:42:11.521Z"
+      "updatedAt": "2026-07-05T05:03:47.346Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1055,7 +1055,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-07-04T04:42:11.521Z"
+      "updatedAt": "2026-07-05T05:03:47.346Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1068,7 +1068,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-07-04T04:42:11.521Z"
+      "updatedAt": "2026-07-05T05:03:47.346Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1087,8 +1087,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/6059018786363119327.jpg",
           "totalStores": 50,
           "inStock": 1,
-          "totalQty": 3,
-          "onlineQty": 5036,
+          "totalQty": 2,
+          "onlineQty": 1057,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1247,8 +1247,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -1402,7 +1402,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 490,
+          "onlineQty": 148,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1716,7 +1716,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 241,
+          "onlineQty": 111,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2030,7 +2030,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 139,
+          "onlineQty": 115,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2338,7 +2338,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-04T04:42:11.521Z"
+      "updatedAt": "2026-07-05T05:03:47.346Z"
     }
   }
 }
