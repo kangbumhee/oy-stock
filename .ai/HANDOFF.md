@@ -26,24 +26,22 @@
 
 ### 마지막 작업
 
-- 날짜: 2026-04-22
-- 내용: `scripts/refresh-oy-cookie.mjs` 및 `scripts/lib/*` 추가 — Playwright headed 로그인 후 `OY_REFRESH_COOKIE`(gh)·`OLIVEYOUNG_LINKAGE_STRING`(Vercel API) 갱신, `landing-proxy?check=1` 폴링. `linkageString`은 hex(AES)이므로 만료 비교는 복호화 후 JWT `exp` 사용.
+- 날짜: 2026-07-08
+- 내용: 큐레이터 링크 즉시 생성 장애 점검. Vercel Deploy Hook 배포가 Ignored Build Step(`exit 0`) 때문에 `CANCELED`되어 최신 `OY_REFRESH_COOKIE`가 운영 함수에 반영되지 않았고, Cloud Run 빠른 생성 서버도 오래된 쿠키로 `missing_or_expired_curator_auth`를 반환했다. 운영은 깨끗한 `origin/main` worktree에서 direct production deploy 후 Cloud Run env를 수동 갱신해 복구했고, `refresh-oy-linkage.yml`이 이후 Vercel direct deploy와 Cloud Run env update를 같이 수행하도록 변경했다.
 - 브랜치: `main`
-- 최근 배포 커밋: `a7c1078` (`fix: auto-select valid OliveYoung curator token`)
+- 최근 운영 배포: Vercel `dpl_F9fTNYKdpjJA5FWndL6QCQw7C72y` (`900763e5`, direct deploy, READY), Cloud Run `oy-stock-api-00073-cvs`
 - 작업한 파일:
-  - `scripts/refresh-oy-cookie.mjs`
-  - `scripts/lib/cookie-extractor.mjs`
-  - `scripts/lib/secret-manager.mjs`
-  - `scripts/lib/health-check.mjs`
-  - `scripts/lib/notify.mjs`
-  - `CLAUDE.md`
-  - `.ai/DEPLOY.md`
+  - `.github/workflows/refresh-oy-linkage.yml`
+  - `scripts/refresh-oy-linkage.mjs`
   - `.env.example`
+  - `.ai/DEPLOY.md`
+  - `.ai/TROUBLESHOOTING.md`
+  - `.ai/HANDOFF.md`
 
 ### 다음 작업
 
-- `refresh-oy-cookie.mjs`는 로컬/self-hosted 전용으로 유지하고, GitHub-hosted 단독 워크플로에는 넣지 않는다.
-- GitHub Secrets에 최신 `OY_REFRESH_COOKIE`가 유지되는지 주기적으로 확인한다.
+- `refresh-oy-linkage.yml` 수동 실행 후 Vercel direct deploy와 Cloud Run env update가 둘 다 성공하는지 GitHub Actions 로그로 재확인한다.
+- `curator-redirect`의 `cloudrun_fallback_shortened` 링크는 `affiliateActivityId`가 없으므로 실제 수익 반영 여부를 올리브영 큐레이터 대시보드에서 별도 검증한다.
 - `public/js/config.js`의 하드코딩된 공개 설정을 장기적으로 환경 기반 설정으로 정리할지 검토한다.
 
 ### 주의사항
@@ -53,6 +51,7 @@
 - `utm_content=OY_<affiliateActivityId>` 없는 `oy.run` 링크를 만들면 안 된다.
 - 올리브영 로그인 자동화는 정상 로그인과 사용자 인증 절차 안에서만 구현한다. CAPTCHA, 2FA, Cloudflare 우회는 금지한다.
 - 쿠키, JWT, Vercel/GitHub 토큰은 로그에 원문을 남기지 않는다.
+- Vercel 프로젝트의 Ignored Build Step이 `exit 0`으로 설정되어 있어 Git/Deploy Hook 기반 배포는 취소된다. env 반영이 필요한 운영 배포는 direct deploy 경로를 사용한다.
 
 ### 테스트 현황
 
@@ -61,7 +60,8 @@
 - [x] `node --check scripts/refresh-oy-linkage.mjs`
 - [x] `node --check scripts/refresh-oy-cookie.mjs`
 - [x] `node --check public/js/ui.js`
-- [x] 운영 점검: `https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1`
+- [x] 운영 점검: `https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1` → `jwtValid=true`
+- [x] 운영 점검: `https://oy-stock-api-3596046881.asia-northeast3.run.app/health?curator=1` → `curator=true`
 
 ## 변경 이력
 

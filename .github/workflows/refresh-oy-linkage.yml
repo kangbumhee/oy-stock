@@ -1,4 +1,4 @@
-# 수동 실행 시 linkageString → JWT 검증 후 Vercel PATCH → Deploy Hook으로 재배포.
+# 수동 실행 시 linkageString → JWT 검증 후 Vercel/Cloud Run env 갱신.
 name: Refresh OliveYoung linkageString
 
 on:
@@ -7,6 +7,9 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -29,5 +32,57 @@ jobs:
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
-          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+          SKIP_VERCEL_DEPLOY_HOOK: '1'
         run: node scripts/refresh-oy-linkage.mjs
+
+      - name: Apply Vercel env with direct production deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          mkdir -p .vercel
+          node - <<'NODE'
+          const fs = require('fs');
+          const projectId = process.env.VERCEL_PROJECT_ID;
+          const orgId = process.env.VERCEL_TEAM_ID || 'team_kCYpXTZeNpSxqcelRRUUSUKy';
+          if (!projectId || !orgId) {
+            throw new Error('VERCEL_PROJECT_ID / VERCEL_TEAM_ID missing');
+          }
+          fs.writeFileSync(
+            '.vercel/project.json',
+            JSON.stringify({ projectId, orgId }, null, 2)
+          );
+          NODE
+          npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Refresh Cloud Run curator env
+        env:
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          LINKAGE_HEX="$(node - <<'NODE'
+          const cookie = process.env.OY_REFRESH_COOKIE || '';
+          const m = cookie.match(/(?:^|;\s*)linkageString=([^;]+)/i);
+          if (!m || !m[1]) {
+            throw new Error('linkageString missing from OY_REFRESH_COOKIE');
+          }
+          process.stdout.write(decodeURIComponent(m[1]));
+          NODE
+          )"
+          gcloud run services update oy-stock-api \
+            --region asia-northeast3 \
+            --project "$GCP_PROJECT_ID" \
+            --update-env-vars "^~^OY_REFRESH_COOKIE=${OY_REFRESH_COOKIE}~OLIVEYOUNG_LINKAGE_STRING=${LINKAGE_HEX}" \
+            --quiet
+
+      - name: Health Check
+        run: |
+          curl -fsS "https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1"
+          curl -fsS "https://oy-stock-api-3596046881.asia-northeast3.run.app/health?curator=1"

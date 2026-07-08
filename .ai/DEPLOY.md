@@ -41,7 +41,8 @@
   - 쿠키에서 `linkageString` 추출
   - AES 복호화 후 JWT 만료 확인
   - Vercel `OLIVEYOUNG_LINKAGE_STRING` 갱신
-  - Vercel Deploy Hook 호출
+  - Vercel direct production deploy로 새 환경변수 반영
+  - Cloud Run `OY_REFRESH_COOKIE` / `OLIVEYOUNG_LINKAGE_STRING` 갱신
 
 ### 로컬 - Playwright로 OY_REFRESH_COOKIE 갱신 (Human-in-the-Loop)
 
@@ -78,6 +79,7 @@
 | `VERCEL_PROJECT_ID` | GitHub Secrets | Vercel 프로젝트 ID | `.vercel/project.json` 또는 Vercel |
 | `VERCEL_TEAM_ID` | GitHub Secrets, 선택 | 팀 프로젝트 ID | `.vercel/project.json` |
 | `VERCEL_DEPLOY_HOOK` | GitHub Secrets | env 갱신 후 재배포 트리거 | Vercel Deploy Hook |
+| `SKIP_VERCEL_DEPLOY_HOOK` | GitHub Actions env | Deploy Hook 취소 방지용. refresh workflow는 direct deploy 사용 | `1` 권장 |
 | `ALERT_EMAIL_FROM` | GitHub Secrets, 선택 | 알림 발신 Gmail | Gmail |
 | `ALERT_EMAIL_PASSWORD` | GitHub Secrets, 선택 | Gmail 앱 비밀번호 | Google 계정 |
 | `ALERT_EMAIL_TO` | GitHub Secrets, 선택 | 알림 수신 주소 | 직접 설정 |

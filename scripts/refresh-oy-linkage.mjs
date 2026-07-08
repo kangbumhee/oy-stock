@@ -247,6 +247,11 @@ async function sendLinkageExpiryAlert(p) {
 }
 
 async function triggerVercelRedeploy() {
+  if (process.env.SKIP_VERCEL_DEPLOY_HOOK === '1') {
+    console.log('[재배포] SKIP_VERCEL_DEPLOY_HOOK=1 — Deploy Hook 호출 생략');
+    return false;
+  }
+
   const hookUrl = (process.env.VERCEL_DEPLOY_HOOK || '').trim();
   if (!hookUrl) {
     console.log('[재배포] VERCEL_DEPLOY_HOOK 미설정 — 수동 재배포 필요');

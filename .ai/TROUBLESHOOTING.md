@@ -52,3 +52,18 @@ AI가 에러를 해결할 때마다 아래 형식으로 추가한다.
 - 관련 파일:
   - `api/oliveyoung/landing-proxy.js`
 
+### 쿠키 갱신 후에도 새 큐레이터 링크가 바로 생성되지 않음
+
+- 발생일: 2026-07-08
+- 증상: `/api/oliveyoung/curator-redirect?goodsNo=...`가 "구매 링크 준비 중" 화면에 머물거나 `cloudrun_live_failed`를 반환.
+- 원인:
+  - Vercel 프로젝트의 Ignored Build Step이 `exit 0`이라 Deploy Hook 기반 재배포가 `CANCELED` 처리되어 최신 `OY_REFRESH_COOKIE`가 운영 함수에 반영되지 않았다.
+  - 빠른 생성용 Cloud Run 서비스도 오래된 `OY_REFRESH_COOKIE`를 들고 있어 `missing_or_expired_curator_auth`를 반환했다.
+- 해결법:
+  - `refresh-oy-linkage.yml`에서 Deploy Hook을 생략하고 Vercel CLI direct production deploy를 실행한다.
+  - 같은 워크플로에서 Cloud Run `OY_REFRESH_COOKIE`와 `OLIVEYOUNG_LINKAGE_STRING`을 `gcloud run services update`로 갱신한다.
+  - 확인: `landing-proxy?check=1`의 `jwtValid=true`, Cloud Run `/health?curator=1`의 `curator=true`.
+- 관련 파일:
+  - `.github/workflows/refresh-oy-linkage.yml`
+  - `scripts/refresh-oy-linkage.mjs`
+
