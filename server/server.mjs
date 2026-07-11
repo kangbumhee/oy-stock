@@ -716,24 +716,13 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
           const fallbackShortenedUrl =
             fallbackRow && fallbackRow.shortenedUrl ? String(fallbackRow.shortenedUrl) : '';
 
-          if (fallbackShortened.ok && fallbackShortenedUrl) {
-            return {
-              success: true,
-              shortenedUrl: fallbackShortenedUrl,
-              originalUrl: fallbackOriginalUrl,
-              affiliateActivityId: null,
-              affiliatePartnerId: registerId,
-              shortenStatus: fallbackShortened.status,
-              landingDetail: lastLanding,
-              sourceHint: 'cloudrun_fallback_shortened'
-            };
-          }
-
           return {
             success: false,
-            error: 'landing_failed',
+            error: 'missing_affiliate_activity_id',
             detail: lastLanding,
-            fallbackShortenDetail: fallbackShortened
+            fallbackShortenDetail: fallbackShortened,
+            fallbackShortenedUrl: fallbackShortenedUrl || null,
+            fallbackOriginalUrl
           };
         }
 

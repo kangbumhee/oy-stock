@@ -28,6 +28,12 @@ function mobileUrlBasicAffiliate(goodsNo) {
   );
 }
 
+function hasCuratorAttribution(item) {
+  if (!item) return false;
+  if (item.affiliateActivityId) return true;
+  return /[?&]utm_content=OY_[^&]+/.test(String(item.originalUrl || ''));
+}
+
 function isMobileUserAgent(req) {
   const ua = String((req.headers && req.headers['user-agent']) || '');
   return /Android|iPhone|iPad|iPod|Mobile|NAVER|KAKAOTALK|Instagram|FBAN|FBAV/i.test(ua);
@@ -676,7 +682,9 @@ module.exports = async function handler(req, res) {
     cacheHit
   } = await loadCuratorLinks(req, { forceRefresh });
   const links = (data && data.links) || {};
-  const entry = links[goodsNo];
+  const rawEntry = links[goodsNo];
+  const entry = hasCuratorAttribution(rawEntry) ? rawEntry : null;
+  const ignoredEntry = rawEntry && !entry ? rawEntry : null;
   const shortenedUrl = entry && entry.shortenedUrl;
   const cachedLong =
     entry && entry.originalUrl && String(entry.originalUrl).trim()
@@ -704,24 +712,25 @@ module.exports = async function handler(req, res) {
           error: 'live_generation_timeout'
         })
       : null;
+  const liveCuratorOk = liveLink && liveLink.ok && hasCuratorAttribution(liveLink);
 
   let redirectTarget =
     shortenedUrl ||
     cachedLong ||
-    (liveLink && liveLink.ok && (liveLink.shortenedUrl || liveLink.originalUrl)) ||
+    (liveCuratorOk && (liveLink.shortenedUrl || liveLink.originalUrl)) ||
     basicLong;
   let source = shortenedUrl
     ? 'cache_shortened'
     : cachedLong
       ? 'cache_original'
-      : liveLink && liveLink.ok && liveLink.shortenedUrl
+      : liveCuratorOk && liveLink.shortenedUrl
         ? 'live_shortened'
-        : liveLink && liveLink.ok && liveLink.originalUrl
+        : liveCuratorOk && liveLink.originalUrl
           ? 'live_original'
           : 'fallback_basic_utm';
   const allowWorkflowQueue = workflowQueueEnabled();
   const shouldPersistLiveLink =
-    source !== 'fallback_basic_utm' && !shortenedUrl && !cachedLong && liveLink && liveLink.ok;
+    source !== 'fallback_basic_utm' && !shortenedUrl && !cachedLong && liveCuratorOk;
   const queueRequest =
     allowWorkflowQueue &&
     (source === 'fallback_basic_utm' || shouldPersistLiveLink) &&
@@ -737,7 +746,7 @@ module.exports = async function handler(req, res) {
         : null;
   const appUrl =
     cachedLong ||
-    (liveLink && liveLink.ok && liveLink.originalUrl) ||
+    (liveCuratorOk && liveLink.originalUrl) ||
     basicLong;
   const androidIntentUrl = oliveYoungAndroidIntentUrl(appUrl, redirectTarget);
 
@@ -755,7 +764,9 @@ module.exports = async function handler(req, res) {
         cacheHit: !!cacheHit,
         cacheUpdatedAt: data && data.updatedAt,
         entry: entry || null,
+        ignoredEntry: ignoredEntry || null,
         liveLink,
+        liveCuratorOk: !!liveCuratorOk,
         queueRequest,
         resolvedRedirect: redirectTarget,
         source,
@@ -773,10 +784,10 @@ module.exports = async function handler(req, res) {
       JSON.stringify({
         success: true,
         shortenedUrl:
-          shortenedUrl || (liveLink && liveLink.ok && liveLink.shortenedUrl) || null,
+          shortenedUrl || (liveCuratorOk && liveLink.shortenedUrl) || null,
         longUrl:
           cachedLong ||
-          (liveLink && liveLink.ok && liveLink.originalUrl) ||
+          (liveCuratorOk && liveLink.originalUrl) ||
           basicLong,
         redirectUrl: redirectTarget,
         appUrl,
@@ -800,7 +811,7 @@ module.exports = async function handler(req, res) {
           },
         affiliateActivityId:
           (entry && entry.affiliateActivityId) ||
-          (liveLink && liveLink.ok ? liveLink.affiliateActivityId : undefined),
+          (liveCuratorOk ? liveLink.affiliateActivityId : undefined),
         generatedAt: entry && entry.generatedAt
       })
     );

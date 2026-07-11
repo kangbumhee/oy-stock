@@ -558,18 +558,6 @@ async function main() {
                 fallbackShorten.json.data[0];
               const fallbackShortenedUrl = fallbackRow && fallbackRow.shortenedUrl;
 
-              if (fallbackShorten.ok && fallbackShortenedUrl) {
-                return {
-                  ok: true,
-                  fallbackOnly: true,
-                  shortenedUrl: fallbackShortenedUrl,
-                  originalUrl: fallbackOriginalUrl,
-                  affiliateActivityId: null,
-                  affiliatePartnerId: registerId,
-                  landingDetail: lastLanding
-                };
-              }
-
               const hardFailure =
                 !lastLanding ||
                 lastLanding.status === 401 ||
@@ -578,9 +566,11 @@ async function main() {
                 !!lastLanding.error;
               return {
                 ok: false,
-                step: 'landing',
+                step: 'missing_affiliate_activity_id',
                 detail: lastLanding,
                 fallbackShortenDetail: fallbackShorten,
+                fallbackShortenedUrl: fallbackShortenedUrl || null,
+                fallbackOriginalUrl,
                 hardFailure
               };
             }
@@ -679,10 +669,9 @@ async function main() {
           originalUrl: pack.originalUrl,
           affiliateActivityId: pack.affiliateActivityId,
           affiliatePartnerId: pack.affiliatePartnerId,
-          generatedAt: now,
-          ...(pack.fallbackOnly ? { note: 'landing data 없음, 기본 affiliate URL 단축 저장' } : {})
+          generatedAt: now
         };
-        console.log(pack.fallbackOnly ? '  ✅ oy.run fallback' : '  ✅ oy.run + utm');
+        console.log('  ✅ oy.run + utm');
       } else if (pack.ok && pack.partial) {
         generatedCount += 1;
         links[gn] = {
