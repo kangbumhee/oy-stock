@@ -72,8 +72,9 @@ export function jwtExpFromLinkageHex(hex) {
 /**
  * @param {import('playwright').BrowserContext} context
  * @param {string} domain 예: m.oliveyoung.co.kr
+ * @param {{warnMissing?: boolean}} options
  */
-export async function extractCookies(context, domain) {
+export async function extractCookies(context, domain, { warnMissing = true } = {}) {
   const allCookies = await context.cookies();
   const host = domain.replace(/^\./, '');
   const oyCookies = allCookies.filter((c) => {
@@ -103,9 +104,11 @@ export async function extractCookies(context, domain) {
     .map((c) => `${c.name}=${c.value}`)
     .join('; ');
 
-  for (const name of REQUIRED_NAMES) {
-    const found = oyCookies.some((c) => c.name === name);
-    if (!found) console.warn(`[WARN] '${name}' 쿠키 없음`);
+  if (warnMissing) {
+    for (const name of REQUIRED_NAMES) {
+      const found = oyCookies.some((c) => c.name === name);
+      if (!found) console.warn(`[WARN] '${name}' 쿠키 없음`);
+    }
   }
 
   return result;

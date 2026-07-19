@@ -30,6 +30,9 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const DASHBOARD_URL = 'https://m.oliveyoung.co.kr/m/mtn/affiliate/dashboard';
+const CURATOR_ACTIVATION_TEXT = '큐레이터 활동 시작하기';
+const LINKAGE_WAIT_MS = 25000;
+const LINKAGE_ACTIVATION_ATTEMPTS = 3;
 const PROFILE_DIR =
   (process.env.OY_AUTOMATION_PROFILE_DIR || '').trim() ||
   path.join(repoRoot, '.auth', 'oy-chrome-profile');
@@ -105,7 +108,9 @@ async function collectState(context, page) {
     .locator('body')
     .innerText({ timeout: 5000 })
     .catch(() => '');
-  const cookies = await extractCookies(context, 'm.oliveyoung.co.kr');
+  const cookies = await extractCookies(context, 'm.oliveyoung.co.kr', {
+    warnMissing: false
+  });
   const exp = jwtExpFromLinkageHex(cookies.linkageHex);
 
   return { title, url, text, cookies, exp };
@@ -120,12 +125,135 @@ function logState(state) {
   log(`linkage JWT exp: ${state.exp ? new Date(state.exp * 1000).toISOString() : 'unknown'}`);
 }
 
+function isLoginPage(state) {
+  return (
+    /\/login\//i.test(state.url) ||
+    state.text.includes('올리브영 로그인') ||
+    state.text.includes('카카오로 로그인')
+  );
+}
+
+function hasUsableCookies(state) {
+  const now = Math.floor(Date.now() / 1000);
+  return Boolean(
+    state.cookies.linkageHex &&
+      state.cookies.oySessionId &&
+      state.cookies.raw &&
+      state.exp &&
+      state.exp > now + 60
+  );
+}
+
+async function waitForUsableCookies(context, page, timeoutMs = LINKAGE_WAIT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  let state = await collectState(context, page);
+
+  while (!hasUsableCookies(state) && Date.now() < deadline) {
+    await wait(1000);
+    state = await collectState(context, page);
+  }
+
+  return state;
+}
+
+async function clickCuratorActivation(page) {
+  const candidates = [
+    page.getByRole('button', { name: CURATOR_ACTIVATION_TEXT, exact: true }),
+    page.getByRole('link', { name: CURATOR_ACTIVATION_TEXT, exact: true }),
+    page
+      .locator('button, a, [role="button"], [onclick]')
+      .filter({ hasText: CURATOR_ACTIVATION_TEXT }),
+    page.getByText(CURATOR_ACTIVATION_TEXT, { exact: true })
+  ];
+
+  for (const candidate of candidates) {
+    const target = candidate.first();
+    if (!(await target.isVisible({ timeout: 1500 }).catch(() => false))) continue;
+
+    await target.scrollIntoViewIfNeeded().catch(() => {});
+    const tagName = await target
+      .evaluate((element) => element.tagName.toLowerCase())
+      .catch(() => 'control');
+    let dialogMessage = '';
+    const acceptDialog = async (dialog) => {
+      dialogMessage = dialog.message();
+      log(`curator activation dialog: ${previewText(dialogMessage)}`);
+      await dialog.accept().catch(() => {});
+    };
+
+    page.on('dialog', acceptDialog);
+    try {
+      log(`clicking curator activation <${tagName}>`);
+      await target.click({ timeout: 5000 });
+      await page.waitForTimeout(1000);
+    } finally {
+      page.off('dialog', acceptDialog);
+    }
+    return {
+      clicked: true,
+      requiresLogin: dialogMessage.includes('로그인 후')
+    };
+  }
+
+  return { clicked: false, requiresLogin: false };
+}
+
+async function ensureFreshLinkage(context, page) {
+  let state = await collectState(context, page);
+  if (hasUsableCookies(state)) return state;
+
+  for (let attempt = 1; attempt <= LINKAGE_ACTIVATION_ATTEMPTS; attempt += 1) {
+    if (!state.cookies.oySessionId || isLoginPage(state)) return state;
+
+    const activation = await clickCuratorActivation(page).catch((err) => {
+      log(`curator activation click ${attempt} failed: ${err.message || err}`);
+      return { clicked: false, requiresLogin: false };
+    });
+
+    if (activation.clicked) {
+      log(`curator activation requested (${attempt}/${LINKAGE_ACTIVATION_ATTEMPTS})`);
+    } else {
+      log(`curator activation control not found (${attempt}/${LINKAGE_ACTIVATION_ATTEMPTS})`);
+    }
+
+    if (activation.requiresLogin) {
+      await page.waitForTimeout(1000);
+      return collectState(context, page);
+    }
+
+    state = await waitForUsableCookies(context, page);
+    if (hasUsableCookies(state)) {
+      log('fresh linkageString issued automatically');
+      return state;
+    }
+
+    if (attempt < LINKAGE_ACTIVATION_ATTEMPTS) {
+      await page
+        .goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
+        .catch(() => {});
+      await page.waitForTimeout(3000);
+      state = await collectState(context, page);
+    }
+  }
+
+  const screenshotPath = path.join(repoRoot, '.ai', 'logs', 'oy-cookie-refresh-failure.png');
+  fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
+  log(`refresh failure screenshot: ${screenshotPath}`);
+
+  return state;
+}
+
 function assertUsableCookies(state) {
   if (!state.cookies.linkageHex || !state.cookies.oySessionId || !state.cookies.raw) {
     throw new Error(
       `Automation profile is not logged in or required cookies are missing. ` +
         `Run: npm run setup:oy-cookie-profile`
     );
+  }
+
+  if (!state.exp) {
+    throw new Error('linkageString JWT expiry could not be verified. Run setup/login again.');
   }
 
   if (state.exp && state.exp <= Date.now() / 1000) {
@@ -136,7 +264,8 @@ function assertUsableCookies(state) {
 async function setupProfile(context, page) {
   console.log('');
   console.log('로그인 전용 Chrome 창이 열렸습니다.');
-  console.log('올리브영 큐레이터 로그인을 완료하면 자동으로 쿠키를 확인합니다.');
+  console.log('자동로그인을 체크하고 올리브영 큐레이터 로그인을 완료해 주세요.');
+  console.log('로그인 뒤 큐레이터 활동 시작과 쿠키 발급은 자동으로 진행됩니다.');
   console.log('터미널은 닫지 말고 그대로 두세요. 최대 10분 기다립니다.');
   console.log('');
 
@@ -145,7 +274,14 @@ async function setupProfile(context, page) {
 
   while (Date.now() < deadline) {
     lastState = await collectState(context, page);
-    if (lastState.cookies.linkageHex && lastState.cookies.oySessionId) {
+    if (
+      lastState.cookies.oySessionId &&
+      !isLoginPage(lastState) &&
+      !hasUsableCookies(lastState)
+    ) {
+      lastState = await ensureFreshLinkage(context, page);
+    }
+    if (hasUsableCookies(lastState)) {
       logState(lastState);
       log(`automation profile ready: ${PROFILE_DIR}`);
       return;
@@ -193,7 +329,7 @@ async function main() {
       return;
     }
 
-    const state = await collectState(context, page);
+    const state = await ensureFreshLinkage(context, page);
     logState(state);
     assertUsableCookies(state);
 
