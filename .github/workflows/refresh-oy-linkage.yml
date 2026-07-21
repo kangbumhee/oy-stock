@@ -1,9 +1,15 @@
 # 수동 실행 시 linkageString → JWT 검증 후 Vercel/Cloud Run env 갱신.
-# 비용 방지를 위해 이 workflow에서는 Vercel 프로덕션 배포를 하지 않는다.
+# 기본 실행은 배포하지 않으며, 수동 옵션을 켠 경우에만 Vercel을 한 번 배포한다.
 name: Refresh OliveYoung linkageString
 
 on:
   workflow_dispatch:
+    inputs:
+      deployVercel:
+        description: '환경변수 갱신 후 Vercel을 한 번 배포'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   refresh:
@@ -30,10 +36,11 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
-          SKIP_VERCEL_DEPLOY_HOOK: '1'
+          SKIP_VERCEL_DEPLOY_HOOK: ${{ inputs.deployVercel == true && '0' || '1' }}
         run: node scripts/refresh-oy-linkage.mjs
 
       - uses: google-github-actions/auth@v2

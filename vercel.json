@@ -6,7 +6,13 @@
   "builds": [
     { "src": "public/**", "use": "@vercel/static" },
     { "src": "api/proxy.js", "use": "@vercel/node" },
-    { "src": "api/oliveyoung/search.js", "use": "@vercel/node" },
+    {
+      "src": "api/oliveyoung/search.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 30
+      }
+    },
     { "src": "api/oliveyoung/inventory.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },

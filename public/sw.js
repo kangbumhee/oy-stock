@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260624-2';
+const CACHE_NAME = 'olivestock-app-v20260721-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -11,7 +11,7 @@ const CORE_ASSETS = [
   '/js/config.js?v=20260622-2',
   '/js/pwa.js?v=20260622-2',
   '/js/storage.js?v=20260622-2',
-  '/js/api.js?v=20260622-2',
+  '/js/api.js?v=20260721-1',
   '/js/ui.js?v=20260622-2',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',

@@ -5,9 +5,12 @@ const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_CACHE_MAX = 200;
 const searchCache = new Map();
 
-const PRODUCTS_TIMEOUT_MS = 4500;
+const PRODUCTS_TIMEOUT_MS = 24000;
 const OFFICIAL_SEARCH_TIMEOUT_MS = 3500;
 const OFFICIAL_SEARCH_PAGE_SIZE = 48;
+const PRODUCTS_API_URL =
+  process.env.OLIVEYOUNG_PRODUCTS_API ||
+  'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/search';
 const LOCAL_DETAIL_CACHE_TTL_MS = 60 * 1000;
 const localDetailCache = { ts: 0, data: null };
 const localVendorCache = { ts: 0, data: null };
@@ -98,7 +101,8 @@ function getKeywordCorrection(keyword) {
 
 async function fetchUpstreamProducts(keyword, size) {
   const url =
-    'https://mcp.aka.page/api/oliveyoung/products?keyword=' +
+    PRODUCTS_API_URL +
+    '?keyword=' +
     encodeURIComponent(String(keyword || '')) +
     '&size=' +
     encodeURIComponent(String(parseSize(size)));

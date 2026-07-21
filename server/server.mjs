@@ -1,6 +1,7 @@
 import http from 'http';
 import { chromium } from 'playwright';
 import crypto from 'crypto';
+import { searchOfficialProducts } from './official-search.mjs';
 
 const PORT = Number(process.env.PORT) || 8080;
 const OY = 'https://www.oliveyoung.co.kr';
@@ -27,6 +28,14 @@ const STOCK_STORE_FETCH_TIMEOUT_MS = Math.max(
 const OY_API_FETCH_TIMEOUT_MS = Math.max(
   2000,
   Number.parseInt(process.env.OY_API_FETCH_TIMEOUT_MS || '3500', 10) || 3500
+);
+const OY_SEARCH_FETCH_TIMEOUT_MS = Math.max(
+  4000,
+  Number.parseInt(process.env.OY_SEARCH_FETCH_TIMEOUT_MS || '8000', 10) || 8000
+);
+const OY_SEARCH_TOTAL_TIMEOUT_MS = Math.max(
+  12000,
+  Number.parseInt(process.env.OY_SEARCH_TOTAL_TIMEOUT_MS || '22000', 10) || 22000
 );
 const STOCK_DETAIL_TOTAL_TIMEOUT_MS = Math.max(
   6000,
@@ -870,6 +879,93 @@ async function oyPost(apiPath, body) {
     },
     { url: OY + '/oystore/api' + apiPath, payload: body, timeoutMs: OY_API_FETCH_TIMEOUT_MS }
   );
+}
+
+async function fetchOfficialSearchPage({ keyword, startCount, listnum }) {
+  async function requestFromSession() {
+    if (!page || !sessionReady) await ensureSession();
+    return page.evaluate(
+      async ({ query, start, count, timeoutMs }) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const body = new URLSearchParams({
+          query,
+          reQuery: '',
+          rt: '',
+          collection: 'OLIVE_GOODS,OLIVE_PLAN,OLIVE_EVENT,OLIVE_BRAND,OLIVE_QUICK_LINK',
+          listnum: String(count),
+          startCount: String(start),
+          sort: 'RANK/DESC',
+          goods_sort: 'WEIGHT/DESC,RANK/DESC',
+          disPlayCateId: '',
+          cateId: '',
+          cateId2: '',
+          sale_below_price: '',
+          sale_over_price: '',
+          brandCheck: '',
+          benefitCheck: '',
+          attrCheck0: '',
+          attrCheck1: '',
+          attrCheck2: '',
+          attrCheck3: '',
+          attrCheck4: '',
+          authenticYn: '',
+          typeChk: '',
+          onlyOneBrand: '',
+          quickYn: 'N',
+          displayMediaTypes: '02'
+        });
+
+        try {
+          const response = await fetch('/store/search/NewMainSearchApi.do', {
+            method: 'POST',
+            credentials: 'include',
+            signal: controller.signal,
+            headers: {
+              Accept: 'application/json, text/javascript, */*; q=0.01',
+              'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: body.toString()
+          });
+          const text = await response.text();
+          let data = null;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = null;
+          }
+          return {
+            status: response.status,
+            data,
+            contentType: response.headers.get('content-type') || ''
+          };
+        } catch (error) {
+          return {
+            status: 0,
+            data: null,
+            error: error && error.name === 'AbortError' ? 'search_timeout' : String(error)
+          };
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      {
+        query: String(keyword || ''),
+        start: Math.max(0, Number.parseInt(String(startCount || 0), 10) || 0),
+        count: Math.max(1, Math.min(48, Number.parseInt(String(listnum || 48), 10) || 48)),
+        timeoutMs: OY_SEARCH_FETCH_TIMEOUT_MS
+      }
+    );
+  }
+
+  let result = await requestFromSession();
+  if (!result || result.status === 0 || result.status === 401 || result.status === 403 || !result.data) {
+    sessionReady = false;
+    await ensureSession();
+    result = await requestFromSession();
+  }
+  return result;
 }
 
 async function oyPostWithRetry(apiPath, body, retries = 1) {
@@ -1737,6 +1833,51 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(sessionHealthPayload()));
+    return;
+  }
+
+  if (url.pathname === '/api/search' || url.pathname === '/api/products') {
+    if (req.method !== 'GET') {
+      res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'method_not_allowed' }));
+      return;
+    }
+
+    const keyword = String(url.searchParams.get('keyword') || '').trim();
+    const size = url.searchParams.get('size') || '50';
+    if (!keyword) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'keyword_required' }));
+      return;
+    }
+
+    try {
+      const result = await withTimeout(
+        searchOfficialProducts(keyword, size, { fetchPage: fetchOfficialSearchPage }),
+        OY_SEARCH_TOTAL_TIMEOUT_MS,
+        'official search'
+      );
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=60, s-maxage=300',
+        'X-Search-Source': 'oliveyoung-official-cloud-run',
+        'X-Cache': result.cache || 'MISS'
+      });
+      res.end(JSON.stringify(result));
+    } catch (error) {
+      console.error('[api/search] 실패:', error.message || error);
+      res.writeHead(502, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      });
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: 'official_search_unavailable',
+          message: String(error.message || error)
+        })
+      );
+    }
     return;
   }
 

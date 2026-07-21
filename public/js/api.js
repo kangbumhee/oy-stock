@@ -1,6 +1,6 @@
 var API = {
   SEARCH_CACHE_TTL_MS: 5 * 60 * 1000,
-  DIRECT_PRODUCTS_URL: 'https://mcp.aka.page/api/oliveyoung/products',
+  DIRECT_PRODUCTS_URL: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/search',
   COMMON_KEYWORD_CORRECTIONS: {
     '여뮤즈': '어뮤즈',
     '케일플러스': '케일',
@@ -165,7 +165,7 @@ var API = {
       encodeURIComponent(size || CONFIG.SEARCH_SIZE);
 
     function fetchDirectProducts() {
-      return API._fetchWithTimeout(directUrl, 3000, opts.signal).then(function (r) {
+      return API._fetchWithTimeout(directUrl, 18000, opts.signal).then(function (r) {
         if (r.ok)
           return r.json().then(function (data) {
             return saveAndReturn(data);
