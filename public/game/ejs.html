@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>올리브재고 모바일 게임 플레이어</title>
+<style>
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;background:#000;color:#fff;overflow:hidden;font-family:Arial,sans-serif}
+#game{position:fixed;inset:0;width:100%;height:100%;background:#000}
+.sound-hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:30;max-width:92%;padding:8px 12px;border:1px solid rgba(255,95,191,.7);border-radius:999px;background:rgba(17,8,31,.82);color:#fff;font-size:12px;line-height:1.35;text-align:center;pointer-events:none}
+.sound-hint strong{color:#ff5fbf}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div class="sound-hint" id="soundHint"><strong>게임 화면</strong> 또는 아래 조작 버튼을 누르면 소리가 켜집니다.</div>
+<script>
+(function(){
+  var params=new URLSearchParams(location.search);
+  var id=params.get("id")||"";
+  var cat=params.get("cat")||"sega_genesis_library";
+  var title=params.get("title")||id||"Retro Game";
+  var core=params.get("core")||"segaMD";
+  var lang=(navigator.language||"ko-KR");
+
+  window.EJS_player="#game";
+  window.EJS_core=core;
+  window.EJS_gameUrl="/api/archive-rom?id="+encodeURIComponent(id)+"&cat="+encodeURIComponent(cat);
+  window.EJS_gameName=title;
+  window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/";
+  window.EJS_color="#ff5fbf";
+  window.EJS_backgroundColor="#000";
+  window.EJS_volume=1;
+  window.EJS_startOnLoaded=true;
+  window.EJS_alignStartButton="center";
+  window.EJS_language="en-US";
+  window.EJS_disableAutoLang=true;
+
+  window.__oliveAudioContexts=window.__oliveAudioContexts||[];
+  var NativeAC=window.AudioContext||window.webkitAudioContext;
+  if(NativeAC&&!NativeAC.__oliveEJSWrapped){
+    function remember(ctx){try{if(ctx&&window.__oliveAudioContexts.indexOf(ctx)<0)window.__oliveAudioContexts.push(ctx);}catch(e){}return ctx;}
+    function WrappedAC(){
+      try{return remember(Reflect.construct(NativeAC,Array.prototype.slice.call(arguments)));}
+      catch(e){return remember(new NativeAC());}
+    }
+    WrappedAC.prototype=NativeAC.prototype;
+    try{Object.setPrototypeOf(WrappedAC,NativeAC);}catch(e){}
+    WrappedAC.__oliveEJSWrapped=true;
+    if(window.AudioContext)window.AudioContext=WrappedAC;
+    if(window.webkitAudioContext)window.webkitAudioContext=WrappedAC;
+  }
+
+  function keyEvent(type,d){
+    var key=d.key||" ",code=d.code||"",keyCode=d.keyCode||d.which||0;
+    var ev=new KeyboardEvent(type,{key:key,code:code,bubbles:true,cancelable:true,composed:true});
+    try{Object.defineProperty(ev,"keyCode",{get:function(){return keyCode;}});Object.defineProperty(ev,"which",{get:function(){return keyCode;}});}catch(e){}
+    return ev;
+  }
+
+  function resumeAudio(){
+    try{
+      (window.__oliveAudioContexts||[]).forEach(function(ctx){
+        if(ctx&&ctx.state==="suspended"&&ctx.resume)ctx.resume().catch(function(){});
+      });
+    }catch(e){}
+    try{
+      if(window.EJS_emulator&&window.EJS_emulator.audio){
+        var audio=window.EJS_emulator.audio;
+        if(audio.context&&audio.context.resume)audio.context.resume().catch(function(){});
+      }
+    }catch(e){}
+    try{document.querySelectorAll("audio,video").forEach(function(a){a.muted=false;a.defaultMuted=false;a.volume=1;var p=a.play&&a.play();if(p&&p.catch)p.catch(function(){});});}catch(e){}
+    var hint=document.getElementById("soundHint");
+    if(hint)hint.textContent="사운드 활성화 중입니다. 기기 볼륨도 확인해 주세요.";
+  }
+
+  function resumeEmulator(){
+    try{
+      var em=window.EJS_emulator;
+      if(!em)return;
+      em.muted=false;
+      em.volume=1;
+      if(em.setVolume)em.setVolume(1);
+      if(em.paused&&em.play)em.play();
+      if(em.gameManager&&em.gameManager.Module){
+        var M=em.gameManager.Module;
+        try{if(M.resumeMainLoop)M.resumeMainLoop();}catch(e){}
+        try{if(M.audioContext&&M.audioContext.resume)M.audioContext.resume().catch(function(){});}catch(e){}
+      }
+    }catch(e){}
+  }
+
+  function focusGame(){
+    try{
+      var target=document.querySelector("canvas")||document.querySelector("#game");
+      if(target){target.setAttribute("tabindex","0");target.focus();}
+    }catch(e){}
+  }
+
+  function tapGameSurface(){
+    try{
+      var target=document.querySelector("canvas")||document.querySelector("#game");
+      if(!target)return;
+      var r=target.getBoundingClientRect();
+      var opts={bubbles:true,cancelable:true,view:window,clientX:r.left+r.width/2,clientY:r.top+r.height/2};
+      ["pointerdown","mousedown","mouseup","click"].forEach(function(type){
+        try{target.dispatchEvent(new MouseEvent(type,opts));}catch(e){}
+      });
+    }catch(e){}
+  }
+
+  function clickVisibleStart(){
+    try{
+      var nodes=Array.prototype.slice.call(document.querySelectorAll("button,[role=button],.ejs_start_button,.ejs--start-button,[class*=start],[class*=play]"));
+      for(var i=0;i<nodes.length;i++){
+        var el=nodes[i];
+        var text=((el.textContent||"")+" "+(el.className||"")+" "+(el.id||"")+" "+(el.getAttribute("aria-label")||"")).toLowerCase();
+        if(el.offsetParent!==null&&/(play|start|run|게임|시작)/.test(text)){
+          try{el.click();return true;}catch(e){}
+        }
+      }
+    }catch(e){}
+    return false;
+  }
+
+  function clickResumeOverlay(){
+    try{
+      var nodes=Array.prototype.slice.call(document.querySelectorAll("body *"));
+      for(var i=0;i<nodes.length;i++){
+        var el=nodes[i];
+        var text=((el.textContent||"")+" "+(el.className||"")+" "+(el.id||"")).toLowerCase();
+        if(el.offsetParent!==null&&/click to resume|resume emulator|터치|재개/.test(text)){
+          try{el.click();return true;}catch(e){}
+        }
+      }
+    }catch(e){}
+    return false;
+  }
+
+  window.__oliveEJSUnlock=function(){
+    resumeAudio();
+    resumeEmulator();
+    clickVisibleStart();
+    clickResumeOverlay();
+    tapGameSurface();
+    focusGame();
+    setTimeout(resumeEmulator,80);
+    setTimeout(resumeAudio,80);
+    setTimeout(tapGameSurface,140);
+    setTimeout(resumeEmulator,300);
+    setTimeout(resumeAudio,300);
+    setTimeout(focusGame,350);
+  };
+  window.__oliveUnlockAudio=window.__oliveEJSUnlock;
+
+  window.addEventListener("message",function(e){
+    var d=e.data||{};
+    if(d.source!=="olivestock-touchpad")return;
+    var type=d.type||d.event;
+    window.__oliveEJSUnlock();
+    if(type==="unlock-audio")return;
+    if(type==="keydown"||type==="keyup"){
+      [window,document,document.body,document.querySelector("canvas"),document.querySelector("#game")].filter(Boolean).forEach(function(t){
+        try{t.dispatchEvent(keyEvent(type,d));}catch(x){}
+      });
+    }
+  });
+
+  ["pointerdown","touchstart","mousedown","click","keydown"].forEach(function(type){
+    document.addEventListener(type,function(){window.__oliveEJSUnlock();},{capture:true,passive:true});
+  });
+
+  window.addEventListener("load",function(){
+    setTimeout(focusGame,800);
+    setTimeout(function(){try{if(parent)parent.postMessage({source:"olivestock-ejs",type:"ready"},"*");}catch(e){}},1000);
+  });
+})();
+</script>
+<script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+</body>
+</html>

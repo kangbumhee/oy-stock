@@ -1,0 +1,3 @@
+:root{--bg:#1a0d2e;--bg-2:#26143f;--fg:#ffe6ff;--dim:#b08fd0;--accent:#ff5fbf;--accent-2:#5ce1e6;--border:#3d2960;--radius:30px;--card-min:240px;--cols:6;--sec-scale:0.85;--title-scale:1.2;--meta-scale:1.4;--pat-rgb:255,255,255;--head-font:"Arial Black","Malgun Gothic",system-ui,sans-serif;--body-font:"Malgun Gothic",system-ui,sans-serif;}
+*,*::before,*::after{font-family:var(--body-font) !important;}
+h1,.platform-title,.card-title{font-family:var(--head-font),monospace !important;}

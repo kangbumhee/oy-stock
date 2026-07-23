@@ -1,0 +1,15 @@
+{
+  "name": "올리브재고 미니게임",
+  "short_name": "올리브게임",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1a0d2e",
+  "theme_color": "#ff5fbf",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

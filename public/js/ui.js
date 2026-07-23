@@ -1272,6 +1272,9 @@ var UI = {
   renderProducts: function (products, detailData, opts) {
     opts = opts || {};
     var searchListCacheMode = !!opts.searchListCacheMode;
+    var coupangStockLink =
+      (typeof CONFIG !== 'undefined' && CONFIG.COUPANG_STOCK_LINK) ||
+      'https://link.coupang.com/a/fB5bxHQJ5g';
     var c = document.getElementById('product-list');
     if (!c) return;
     if (!products || !products.length) {
@@ -1284,7 +1287,8 @@ var UI = {
     var bar =
       '<div class="sbar"><span>검색결과 <b>' +
       products.length +
-      '</b>개</span><span class="ok">상품 클릭 → 재고확인 | ⭐ → 즐겨찾기</span></div>';
+      '</b>개</span><span class="ok">상품 이미지 클릭 → 쿠팡 앱 후 재고확인 | ⭐ → 즐겨찾기</span></div>' +
+      '<p class="coupang-affiliate-note">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>';
 
     var cards = products
       .map(function (p, i) {
@@ -1414,10 +1418,15 @@ var UI = {
           cardSoldClass +
           '" data-index="' +
           i +
-          '"><div class="card-img" data-action="showDetail" data-index="' +
+          '"><div class="card-img"><a class="coupang-stock-link" href="' +
+          UI.esc(coupangStockLink) +
+          '" target="_blank" rel="noopener noreferrer sponsored" data-action="showDetail" data-index="' +
           i +
+          '" aria-label="' +
+          UI.esc(p.goodsName + ' - 쿠팡 앱을 연 뒤 재고 확인') +
           '">' +
           imgTag +
+          '</a>' +
           '<div class="badges">' +
           badges +
           onlineBadge +
@@ -1553,7 +1562,7 @@ var UI = {
     var plist = document.getElementById('product-list');
     if (plist && App.products && App.products.length) {
       plist.querySelectorAll('.grid .card').forEach(function (card) {
-        var imgWrap = card.querySelector('.card-img[data-action="showDetail"]');
+        var imgWrap = card.querySelector('.card-img [data-action="showDetail"]');
         if (!imgWrap) return;
         var idx = parseInt(imgWrap.dataset.index, 10);
         if (isNaN(idx) || idx < 0 || !App.products[idx]) return;

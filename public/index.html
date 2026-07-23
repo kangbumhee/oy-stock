@@ -32,7 +32,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="https://olivestock.co.kr/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#193d22">
-  <link rel="stylesheet" href="/css/style.css?v=20260627-1">
+  <link rel="stylesheet" href="/css/style.css?v=20260723-game-coupang-1">
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-W7B566LXQ3"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -126,6 +126,7 @@
       <button type="button" class="main-tab" data-tab="favorites" data-action="tabFavorites">⭐ 즐겨찾기 <span id="fav-count" class="fav-count"></span></button>
       <button type="button" class="main-tab" data-action="showHistory">📋 즐겨찾기 이력</button>
       <a class="main-tab guide-tab" href="#guide-pages">가이드</a>
+      <a class="main-tab arcade-tab" href="/game/">미니게임</a>
       <a class="main-tab guide-tab" href="/blog/">블로그</a>
     </nav>
 
@@ -161,6 +162,14 @@
       </form>
       <div id="search-history"></div>
       <div id="popular-keywords" aria-label="인기 검색어"></div>
+      <section class="mini-game-callout" aria-labelledby="mini-game-title">
+        <div>
+          <span class="home-kicker">WAITING GAME</span>
+          <h2 id="mini-game-title">재고 조회 중 잠깐 즐기는 레트로 아케이드</h2>
+          <p>검색 결과를 기다리는 동안 별도 앱 설치 없이 브라우저에서 바로 플레이할 수 있습니다.</p>
+        </div>
+        <a class="mini-game-link" href="/game/">게임 열기</a>
+      </section>
       <div id="velocity-ranking"></div>
       <div id="product-list">
         <div class="empty-state">
@@ -256,16 +265,17 @@
     <footer class="site-footer">
       <strong>올리브재고</strong>
       <span>올리브영 재고확인 · 인기상품 랭킹 · 검색 가이드</span>
+      <a href="/game/">미니게임</a>
       <a href="/site-map.html">사이트맵</a>
     </footer>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
-  <script src="/js/config.js?v=20260627-2"></script>
+  <script src="/js/config.js?v=20260723-game-coupang-1"></script>
   <script src="/js/pwa.js?v=20260622-2"></script>
   <script src="/js/storage.js?v=20260622-2"></script>
   <script src="/js/api.js?v=20260721-1"></script>
-  <script src="/js/ui.js?v=20260627-1"></script>
+  <script src="/js/ui.js?v=20260723-game-coupang-1"></script>
   <script src="/js/options.js?v=20260531-5"></script>
   <script src="/js/search.js?v=20260609-1"></script>
   <script src="/js/regions.js?v=20260531-5"></script>

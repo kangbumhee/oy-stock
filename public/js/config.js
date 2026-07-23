@@ -66,6 +66,8 @@ var CONFIG = {
   FALLBACK_API: '/api/oliveyoung/stock',
   OY_PRODUCT_URL: 'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=',
   OY_BASE: 'https://www.oliveyoung.co.kr',
+  /** 검색 결과 이미지 클릭 시 여는 쿠팡 파트너스 링크 */
+  COUPANG_STOCK_LINK: 'https://link.coupang.com/a/fB5bxHQJ5g',
   /** GitHub Actions로 갱신되는 큐레이터(utm_content 포함 oy.run) 캐시 — 프론트에서 먼저 조회 */
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 */

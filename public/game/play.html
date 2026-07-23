@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>올리브재고 미니게임 | 레트로 아케이드</title>
+<meta name="robots" content="noindex,follow">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://archive.org" crossorigin>
+<link rel="dns-prefetch" href="https://archive.org">
+<link rel="stylesheet" href="style.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--fg);font-family:var(--body-font);min-height:100vh;padding:24px;}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at top,var(--accent) 0%,transparent 60%);opacity:0.08;pointer-events:none;z-index:0;}
+.bg-scanlines{background-image:repeating-linear-gradient(0deg,rgba(var(--pat-rgb,255,255,255),0.045) 0,rgba(var(--pat-rgb,255,255,255),0.045) 1px,transparent 1px,transparent 3px);}
+.bg-grid{background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;}
+.bg-dots{background-image:radial-gradient(var(--border) 1.2px,transparent 1.2px);background-size:22px 22px;}
+.bg-diagonal{background-image:repeating-linear-gradient(45deg,rgba(var(--pat-rgb,255,255,255),0.04) 0,rgba(var(--pat-rgb,255,255,255),0.04) 2px,transparent 2px,transparent 10px);}
+.bg-crosshatch{background-image:repeating-linear-gradient(45deg,rgba(var(--pat-rgb,255,255,255),0.05) 0,rgba(var(--pat-rgb,255,255,255),0.05) 1px,transparent 1px,transparent 8px),repeating-linear-gradient(-45deg,rgba(var(--pat-rgb,255,255,255),0.05) 0,rgba(var(--pat-rgb,255,255,255),0.05) 1px,transparent 1px,transparent 8px);}
+.bg-stars{background-image:radial-gradient(1px 1px at 20px 30px,rgba(var(--pat-rgb,255,255,255),0.5),transparent),radial-gradient(1px 1px at 80px 120px,rgba(var(--pat-rgb,255,255,255),0.4),transparent),radial-gradient(1.5px 1.5px at 160px 60px,rgba(var(--pat-rgb,255,255,255),0.4),transparent);background-size:200px 200px;}
+.bg-vignette{box-shadow:inset 0 0 220px rgba(0,0,0,0.55);}
+h1.fx-flat{text-shadow:none;}h1.fx-outline{text-shadow:2px 2px 0 var(--accent-2),-1px -1px 0 var(--bg);}h1.fx-shadow{text-shadow:4px 4px 0 rgba(0,0,0,0.5);}
+h1.fx-neon{text-shadow:0 0 4px var(--accent),0 0 12px var(--accent),0 0 26px var(--accent);}
+h1.fx-chrome{background:linear-gradient(180deg,#fff,var(--accent-2) 45%,var(--accent) 55%,#fff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;}
+.wrap{max-width:1100px;margin:0 auto;position:relative;z-index:1;}
+.back{display:inline-block;color:var(--dim);text-decoration:none;font-size:18px;margin-bottom:16px;letter-spacing:1px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);}
+.back:hover{color:var(--accent);border-color:var(--accent);}
+h1{font-family:var(--head-font);font-size:36px;color:var(--accent);letter-spacing:2px;text-shadow:0 0 12px var(--accent);margin-bottom:4px;}
+.meta{color:var(--dim);font-size:18px;margin-bottom:16px;letter-spacing:1px;}
+.game-stage{position:relative;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;}
+.game-frame{position:relative;width:var(--gw,640px);height:var(--gh,480px);border:2px solid var(--accent);background:#000;box-shadow:0 0 40px rgba(255,107,53,0.2);overflow:hidden;transform-origin:top center;}
+.game-frame iframe{position:absolute;top:calc(-1 * var(--gnav,0px));left:0;width:var(--gw,640px);height:var(--gih,480px);border:0;display:block;background:#000;}
+.inline-ejs-player{position:absolute;inset:0;width:100%;height:100%;background:#000;z-index:1;display:none;}
+.inline-ejs-placeholder{position:absolute;inset:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;border:0;background:radial-gradient(circle at 50% 35%,rgba(255,95,191,.20),rgba(0,0,0,.92) 55%),linear-gradient(135deg,rgba(45,20,73,.90),#050208);color:#fff;text-align:center;cursor:pointer;font-family:var(--body-font);}
+.inline-ejs-placeholder strong{font-size:clamp(22px,6vw,34px);color:var(--accent);text-shadow:0 0 18px rgba(255,95,191,.5);}
+.inline-ejs-placeholder span{max-width:420px;font-size:clamp(14px,3.6vw,18px);line-height:1.55;color:var(--dim);}
+.inline-ejs-placeholder .inline-ejs-start{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;margin-top:6px;border:2px solid var(--accent);border-radius:16px;background:var(--accent);color:var(--bg);font-family:"VT323",monospace;font-size:clamp(20px,5vw,28px);letter-spacing:1px;box-shadow:0 0 24px rgba(255,95,191,.35);}
+.inline-ejs-player.is-loading .inline-ejs-placeholder{cursor:wait;}
+.inline-ejs-player.is-loading .inline-ejs-start{opacity:.72;}
+.frame-mask{position:absolute;left:0;right:0;bottom:0;height:var(--gmask,0px);background:#000;z-index:3;pointer-events:none;}
+.fx-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;opacity:var(--fx-i,0.6);}
+.fx-none .fx-overlay{display:none;}
+.fx-scanlines .fx-overlay,.fx-crt .fx-overlay{background:repeating-linear-gradient(0deg,rgba(0,0,0,0.5) 0,rgba(0,0,0,0.5) 1px,transparent 1px,transparent 3px);}
+.fx-crt .fx-overlay{box-shadow:inset 0 0 140px rgba(0,0,0,0.82);}
+.fx-crt .fx-overlay::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(125% 115% at 50% 42%,rgba(255,255,255,0.13) 0,rgba(255,255,255,0) 46%,rgba(0,0,0,0.30) 100%),linear-gradient(125deg,rgba(255,255,255,0.12) 0,rgba(255,255,255,0) 30%);}
+.game-frame.fx-crt{border:0;border-radius:clamp(16px,calc(34px * var(--fx-i,0.6)),46px);box-shadow:0 0 0 12px #15151a,0 0 0 14px #34343e,0 0 0 30px #0c0c0f,0 0 0 31px #000,0 22px 55px 10px rgba(0,0,0,0.75),inset 0 0 calc(30px * var(--fx-i,0.6)) rgba(0,0,0,0.5);}
+.game-frame.fx-crt iframe{transform:scale(1.018);transform-origin:center center;}
+.fx-aperture .fx-overlay{background:repeating-linear-gradient(90deg,rgba(255,0,0,0.16) 0,rgba(0,255,0,0.16) 1px,rgba(0,0,255,0.16) 2px,transparent 3px),repeating-linear-gradient(0deg,rgba(0,0,0,0.32) 0,rgba(0,0,0,0.32) 1px,transparent 1px,transparent 3px);}
+.fx-lcd .fx-overlay{background-image:linear-gradient(rgba(0,0,0,0.22) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.22) 1px,transparent 1px);background-size:3px 3px;}
+.fx-glow .fx-overlay{box-shadow:inset 0 0 90px rgba(130,200,255,0.5);mix-blend-mode:screen;}
+.game-frame.fx-glow{box-shadow:0 0 calc(70px * var(--fx-i,0.6)) rgba(130,200,255,0.6),0 0 40px rgba(255,107,53,0.18);}
+.fx-crtdeluxe .fx-overlay{background:repeating-linear-gradient(0deg,rgba(0,0,0,0.5) 0,rgba(0,0,0,0.5) 1px,transparent 1px,transparent 2px),repeating-linear-gradient(90deg,rgba(255,0,0,0.10) 0,rgba(0,255,0,0.10) 1.5px,rgba(0,0,255,0.10) 3px,transparent 4px);box-shadow:inset 0 0 120px rgba(0,0,0,0.78);}
+.fx-crtdeluxe .fx-overlay::after{content:"";position:absolute;inset:0;background:linear-gradient(125deg,rgba(255,255,255,0.12) 0,rgba(255,255,255,0) 40%),radial-gradient(120% 90% at 50% 0,rgba(180,220,255,0.10),transparent 60%);}
+.game-frame.fx-crtdeluxe{border-radius:calc(20px * var(--fx-i,0.6));box-shadow:0 0 calc(44px * var(--fx-i,0.6)) rgba(120,180,255,0.28);}
+.fx-hlsl .fx-overlay{background:repeating-linear-gradient(0deg,rgba(0,0,0,0.5) 0,rgba(0,0,0,0.5) 1px,transparent 1px,transparent 3px);}
+.fx-hlsl .fx-overlay::after{content:"";position:absolute;inset:0;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.85%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23n)%22/%3E%3C/svg%3E);opacity:0.32;mix-blend-mode:overlay;}
+.game-frame.fx-hlsl{box-shadow:0 0 calc(55px * var(--fx-i,0.6)) rgba(150,200,255,0.45),0 0 30px rgba(255,107,53,0.16);}
+.fx-smooth .fx-overlay{display:none;}
+.game-frame.fx-smooth iframe{filter:blur(0.55px) saturate(1.08) contrast(1.03);image-rendering:auto;}
+.game-frame-wrap{position:relative;display:flex;justify-content:center;align-items:flex-start;width:100%;min-height:var(--gh,480px);}
+.controls{display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap;}
+.controls button{background:var(--bg-2);color:var(--accent);border:1px solid var(--accent);padding:8px 16px;font-family:"VT323",monospace;font-size:16px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.controls button:hover{background:var(--accent);color:var(--bg);}
+.zoom-info{color:var(--dim);font-size:17px;margin-top:6px;letter-spacing:1px;font-family:"JetBrains Mono",monospace;}
+.zoom-info span{color:var(--accent-2);}
+.sound-notice{margin-top:14px;padding:10px 14px;background:rgba(247,201,72,0.08);border-left:3px solid var(--accent-2);font-size:17px;color:var(--accent-2);letter-spacing:0.5px;line-height:1.5;text-align:center;}
+.sound-notice strong{color:var(--accent);}
+.touch-pad{display:none;width:100%;max-width:760px;margin:12px auto 0;grid-template-columns:auto 1fr;gap:16px;touch-action:none;user-select:none;-webkit-user-select:none;}
+.touch-pad button{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.touch-dpad{position:relative;width:196px;height:196px;border:3px solid var(--accent);border-radius:50%;overflow:hidden;background:rgba(38,20,63,0.92);box-shadow:0 0 24px rgba(255,95,191,0.22),inset 0 0 28px rgba(255,95,191,0.10);}
+.touch-dpad::before{content:"";position:absolute;inset:0;background:linear-gradient(45deg,transparent calc(50% - 1.5px),var(--accent) calc(50% - 1.5px) calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),var(--accent) calc(50% - 1.5px) calc(50% + 1.5px),transparent calc(50% + 1.5px));opacity:.85;pointer-events:none;z-index:1;}
+.touch-dpad::after{content:"";position:absolute;left:50%;top:50%;width:30px;height:30px;border:3px solid var(--accent);border-radius:50%;background:var(--bg-2);transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(255,95,191,0.38);pointer-events:none;z-index:4;}
+.touch-actions{display:grid;grid-template-columns:repeat(2,minmax(118px,1fr));grid-template-rows:repeat(3,minmax(92px,1fr));gap:10px;align-content:stretch;}
+.touch-btn{border:2px solid var(--accent);background:rgba(38,20,63,0.92);color:var(--accent);font-family:"VT323",monospace;font-size:24px;letter-spacing:1px;border-radius:16px;min-height:58px;box-shadow:0 6px 0 rgba(255,95,191,0.22);cursor:pointer;}
+.touch-dpad .touch-btn{position:absolute;inset:0;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--accent);font-size:38px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2;}
+.touch-btn:active,.touch-btn.is-pressed{background:var(--accent);color:var(--bg);transform:translateY(3px);box-shadow:0 3px 0 rgba(255,95,191,0.18);}
+.touch-dpad .touch-btn.is-pressed{background:rgba(255,95,191,0.36);color:#fff;transform:none;box-shadow:none;}
+.touch-up{clip-path:polygon(50% 50%,0 0,100% 0);align-items:flex-start!important;padding-top:18px}.touch-left{clip-path:polygon(50% 50%,0 0,0 100%);justify-content:flex-start!important;padding-left:18px}.touch-center{left:50%;top:50%;right:auto;bottom:auto;width:34px;height:34px;min-height:0;border:3px solid var(--accent);border-radius:50%;background:rgba(255,95,191,.18);transform:translate(-50%,-50%);pointer-events:none;opacity:.9;font-size:0;z-index:5}.touch-right{clip-path:polygon(50% 50%,100% 0,100% 100%);justify-content:flex-end!important;padding-right:18px}.touch-down{clip-path:polygon(50% 50%,0 100%,100% 100%);align-items:flex-end!important;padding-bottom:18px}
+.touch-small{font-size:24px;min-height:84px;border-radius:18px;}
+.touch-help{grid-column:1/-1;font-size:14px;line-height:1.45;color:var(--dim);text-align:center;padding:8px 10px;border:1px dashed var(--border);border-radius:14px;background:rgba(0,0,0,0.16);}
+body.is-fullscreen::after{content:"";position:fixed;inset:0;background:#000;z-index:9998;}
+.game-frame.fullscreen{position:fixed;top:50%;left:50%;width:var(--gw,640px);height:var(--gh,480px);max-width:none;border:0;z-index:9999;margin:0;background:#000;transform-origin:center center;}
+.game-frame.fullscreen iframe{position:absolute;top:calc(-1 * var(--gnav,0px));left:0;width:var(--gw,640px);height:var(--gih,480px);transform:none;}
+.fullscreen-exit{position:fixed;top:16px;right:16px;z-index:10000;background:rgba(0,0,0,0.8);color:var(--accent);border:1px solid var(--accent);padding:8px 14px;font-family:"VT323",monospace;font-size:16px;cursor:pointer;display:none;}
+body.is-fullscreen .fullscreen-exit{display:block;}
+body.is-fullscreen .wrap > :not(.game-stage){display:none;}
+footer{margin-top:24px;color:var(--dim);font-size:17px;text-align:center;letter-spacing:1px;}
+footer a{color:var(--accent);text-decoration:none;}
+.ctrl-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10001;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);}
+.ctrl-overlay.show{display:flex;}
+.ctrl-box{background:var(--bg-2);border:2px solid var(--accent);max-width:440px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 0 50px rgba(255,107,53,0.25);}
+.ctrl-box-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-2);}
+.ctrl-box-head h3{font-family:var(--head-font);font-size:20px;color:var(--accent);letter-spacing:2px;}
+.ctrl-close{background:transparent;border:1px solid var(--border);color:var(--dim);width:30px;height:30px;font-size:16px;cursor:pointer;line-height:1;}
+.ctrl-close:hover{color:var(--accent);border-color:var(--accent);}
+.ctrl-body{padding:16px 18px;font-size:13px;line-height:1.85;color:var(--fg);}
+.ctrl-body b{color:var(--accent-2);}
+.ctrl-row{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--border);}
+.ctrl-row:last-child{border-bottom:0;}
+.ctrl-row .cl{flex:0 0 96px;color:var(--dim);}
+.ctrl-row .cv{flex:1;}
+.ck{display:inline-block;min-width:18px;text-align:center;background:var(--bg);border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:1px 6px;margin:1px;font-family:"JetBrains Mono",monospace;font-size:17px;color:var(--accent);}
+.ctrl-note{margin:14px 18px 4px;padding:9px 12px;background:rgba(247,201,72,0.08);border-left:3px solid var(--accent-2);font-size:17px;color:var(--accent-2);line-height:1.6;}
+@media(max-width:640px){
+body{padding:12px;overflow-x:hidden;}
+.wrap{width:100%;max-width:none;}
+.back{font-size:15px;margin-bottom:10px;padding:6px 9px;}
+h1{font-size:clamp(22px,7vw,30px);letter-spacing:0;line-height:1.2;}
+.meta{font-size:14px;margin-bottom:10px;}
+.game-frame-wrap{min-height:0;}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:12px;order:4;}
+.controls button{min-width:0;width:100%;padding:10px 6px;font-size:15px;letter-spacing:0;}
+.game-stage>details{display:none;}
+.zoom-info{font-size:13px;text-align:center;order:7;}
+#frameAdjust{font-size:13px!important;padding:8px!important;gap:8px!important;order:5;}
+#frameAdjust label{width:100%;justify-content:space-between;}
+#frameAdjust input{width:52vw!important;max-width:180px;}
+#fxSel{max-width:155px;}
+#fxI{width:34vw!important;max-width:120px;}
+.screen-tools{order:6;}
+.sound-notice{font-size:14px;padding:9px 10px;margin-top:10px;order:8;}
+.touch-pad{display:grid;grid-template-columns:clamp(154px,40vw,190px) minmax(188px,1fr);align-items:start;gap:10px;margin-top:8px;order:1;}
+.touch-dpad{width:clamp(154px,40vw,190px);height:clamp(154px,40vw,190px);}
+.touch-actions{grid-template-columns:repeat(2,minmax(88px,1fr));grid-template-rows:repeat(3,clamp(82px,22vw,108px));gap:9px;align-content:stretch;}
+.touch-btn{min-height:78px;border-radius:18px;font-size:30px;}
+.touch-dpad .touch-btn{font-size:34px;}
+.touch-actions .touch-btn{min-height:clamp(82px,22vw,108px);font-size:clamp(28px,8vw,38px);}
+.touch-small{min-height:clamp(74px,19vw,96px);font-size:clamp(22px,6vw,30px);}
+.touch-help{font-size:12px;padding:6px 8px;}
+footer,footer div{font-size:13px!important;line-height:1.55!important;}
+.ctrl-overlay{padding:12px;}
+.ctrl-box-head h3{font-size:17px;}
+.ctrl-row{display:block;}
+.ctrl-row .cl{display:block;margin-bottom:4px;}
+}
+</style></head>
+<body class="bg-grid"><div class="wrap">
+<a class="back" id="backLink" href="index.html">← 갤러리로</a>
+<h1 class="fx-glow" id="gTitle"></h1>
+<div class="meta" id="gMeta"></div>
+<div id="ps1notice"></div>
+<div class="game-stage">
+<div class="game-frame-wrap" id="frameWrap">
+<div class="game-frame fx-none" id="gameFrame">
+<div id="inlineEjsPlayer" class="inline-ejs-player"></div>
+<iframe id="gameIframe" src="about:blank" frameborder="0" allow="autoplay; fullscreen; gamepad" webkitallowfullscreen="true" mozallowfullscreen="true" allowfullscreen scrolling="no"></iframe>
+<div class="frame-mask"></div>
+<div class="fx-overlay"></div>
+</div></div>
+<div class="touch-pad" id="touchPad" aria-label="모바일 터치 조작 패널">
+<div class="touch-dpad">
+<button class="touch-btn touch-up" data-key="ArrowUp" aria-label="위">▲</button>
+<button class="touch-btn touch-left" data-key="ArrowLeft" aria-label="왼쪽">◀</button>
+<button class="touch-btn touch-center" tabindex="-1" aria-hidden="true">●</button>
+<button class="touch-btn touch-right" data-key="ArrowRight" aria-label="오른쪽">▶</button>
+<button class="touch-btn touch-down" data-key="ArrowDown" aria-label="아래">▼</button>
+</div>
+<div class="touch-actions">
+<button class="touch-btn" data-key="Alt">B</button>
+<button class="touch-btn" data-key="Control">A</button>
+<button class="touch-btn" data-key="Space">C</button>
+<button class="touch-btn" data-key="Shift">D</button>
+<button class="touch-btn touch-small" data-key="5">동전</button>
+<button class="touch-btn touch-small" data-key="1">시작</button>
+</div>
+<div class="touch-help">시작/방향/버튼을 누르면 게임 화면과 사운드가 함께 활성화됩니다.</div>
+</div>
+<div class="controls">
+<button id="zoomBtn" onclick="cycleZoom()">🔍 ZOOM: <span id="zoomLabel">AUTO</span></button>
+<button onclick="forceSound()">🔊 소리 켜기</button>
+<button onclick="reloadGame()">↻ RELOAD</button>
+<button onclick="toggleFullscreen()">⛶ 전체화면</button>
+<button onclick="openCtrl()">🎮 조작법</button>
+<button onclick="shareGame()">🔗 공유</button>
+<button id="archiveBtn">🌐 ARCHIVE.ORG</button>
+</div>
+<details style="width:100%;margin:12px auto 0;border:1px solid var(--border);padding:8px 12px;font-size:17px;color:var(--dim);"><summary style="cursor:pointer;color:var(--accent-2);">&lt;/&gt; 임베드 코드</summary><textarea id="embedCode" readonly onclick="this.select()" style="width:100%;height:140px;margin-top:8px;background:var(--bg);color:var(--fg);border:1px solid var(--border);font-family:monospace;font-size:17px;"></textarea></details>
+<div class="zoom-info">해상도: <span id="resInfo">-</span> · 배율: <span id="scaleInfo">1.0x</span></div>
+<div id="frameAdjust" style="display:none;max-width:680px;margin:8px auto 0;padding:8px 12px;border:1px solid var(--border);font-size:17px;color:var(--dim);align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;"><span style="color:var(--accent-2);">🖼 화면 맞춤</span><label style="display:flex;align-items:center;gap:6px;">높이 <input id="adjH" type="range" min="380" max="680" step="2" style="width:130px;"><span id="adjHv" style="color:var(--accent-2);min-width:30px;"></span></label><label style="display:flex;align-items:center;gap:6px;">상단 <input id="adjNav" type="range" min="70" max="220" step="2" style="width:110px;"><span id="adjNavv" style="color:var(--accent-2);min-width:28px;"></span></label><button onclick="resetAdjust()" style="background:var(--bg-2);color:var(--accent);border:1px solid var(--accent);padding:3px 10px;font-family:inherit;font-size:17px;cursor:pointer;">초기화</button><span style="opacity:0.7;">상·하가 잘리면 조절하세요 (저장됨)</span></div>
+<div class="screen-tools" style="max-width:680px;margin:8px auto 0;font-size:17px;color:var(--dim);text-align:center;">🖥 화면 효과 <select id="fxSel" style="background:var(--bg-2);color:var(--fg);border:1px solid var(--border);font-family:inherit;font-size:17px;padding:3px 6px;cursor:pointer;"><option value="none">없음</option><option value="scanlines">스캔라인</option><option value="crt">CRT</option><option value="crtdeluxe">CRT 디럭스</option><option value="hlsl">HLSL</option><option value="aperture">애퍼처 그릴</option><option value="lcd">LCD 그리드</option><option value="glow">발광(블룸)</option><option value="smooth">부드럽게(HQ·xBR)</option></select><label style="margin-left:12px;display:inline-flex;align-items:center;gap:6px;">강도 <input id="fxI" type="range" min="0" max="120" step="5" style="width:110px;vertical-align:middle;"><span id="fxIv" style="color:var(--accent-2);min-width:34px;"></span></label></div>
+<div class="sound-notice" id="soundNotice">🔊 모바일에서는 첫 터치 때 사운드를 자동으로 켭니다. 소리가 작으면 기기 볼륨도 확인해 주세요.</div>
+</div>
+<button class="fullscreen-exit" onclick="toggleFullscreen()">✕ EXIT FULLSCREEN (ESC)</button>
+<div class="ctrl-overlay" id="ctrlOverlay" onclick="if(event.target===this)closeCtrl()">
+<div class="ctrl-box">
+<div class="ctrl-box-head"><h3 id="ctrlTitle">🎮 조작법</h3><button class="ctrl-close" onclick="closeCtrl()">✕</button></div>
+<div class="ctrl-body" id="ctrlBody"></div>
+<div class="ctrl-note">⌨ 게임/에뮬 코어마다 키 배치가 다를 수 있습니다. 안 맞으면 위 키들을 차례로 눌러보세요.</div>
+<div class="ctrl-note"><b>두 가지 구동 방식</b><br>① <b>전용 콘솔 코어</b> — 타이틀/게임 화면이 바로 뜹니다.<br>② <b>MAME(아케이드 엔진)</b> — 콘솔 게임도 MAME로 구동될 수 있습니다. 이 경우 첫 화면에 <b>빨강 경고 화면 + 기종·드라이버 정보 화면</b>이 먼저 나오고, 실행 중 <span class="ck">Tab</span> 키로 <b>MAME 메뉴(키 설정 등)</b>가 열립니다.<br>→ <b>첫 화면의 경고/정보 화면 + <span class="ck">Tab</span> 메뉴 = MAME 구동</b> 신호입니다. 전용 코어엔 이 화면·메뉴가 없습니다.</div>
+</div></div>
+<footer>
+Powered by <a href="https://archive.org" target="_blank" id="poweredLink">Internet Archive</a>
+
+<div style="max-width:820px;margin:10px auto 0;font-size:18px;line-height:1.7;opacity:0.8;">면책조항: 본 사이트의 모든 게임은 Internet Archive(archive.org)의 자료를 임베드한 것으로, 게임 보존·교육을 위한 비영리 페이지입니다. 게임·상표·캐릭터의 저작권은 각 권리자에게 있으며, 본 사이트는 어떠한 게임 파일도 직접 호스팅하지 않습니다. 권리자의 요청이 있을 경우 해당 항목을 즉시 삭제합니다.</div>
+</footer></div>
+<script>
+var SITE_TITLE="올리브재고 미니게임";
+var CTRL_DATA={"_default":{"name":"공통 조작","rows":[["이동/방향","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["버튼","<span class=\"ck\">Z</span> <span class=\"ck\">X</span> <span class=\"ck\">C</span> <span class=\"ck\">A</span> <span class=\"ck\">S</span> <span class=\"ck\">D</span>"],["Start","<span class=\"ck\">Enter</span>"],["Select","<span class=\"ck\">Shift</span>"],["안 맞으면","위 키들을 차례로 눌러보세요"]]},"internetarcade":{"name":"아케이드 (MAME)","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["동전 넣기","<span class=\"ck\">5</span>"],["게임 시작","<span class=\"ck\">1</span> (2P <span class=\"ck\">2</span>)"],["버튼 1~4","<span class=\"ck\">Ctrl</span> <span class=\"ck\">Alt</span> <span class=\"ck\">Space</span> <span class=\"ck\">Shift</span>"],["버튼 5~6","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["설정 메뉴","<span class=\"ck\">Tab</span>"],["리셋","<span class=\"ck\">F3</span>"]]},"softwarelibrary_msdos_games":{"name":"MS-DOS","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span> 또는 <span class=\"ck\">W</span> <span class=\"ck\">A</span> <span class=\"ck\">S</span> <span class=\"ck\">D</span>"],["액션","<span class=\"ck\">Ctrl</span> <span class=\"ck\">Alt</span> <span class=\"ck\">Space</span>"],["확인","<span class=\"ck\">Enter</span>"],["마우스 게임","화면을 직접 클릭"],["참고","게임마다 키가 다릅니다"]]},"sega_genesis_library":{"name":"세가 제네시스 / 메가드라이브","rows":[["D-패드","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["A · B · C","<span class=\"ck\">Z</span> <span class=\"ck\">X</span> <span class=\"ck\">C</span>"],["(6버튼) X·Y·Z","<span class=\"ck\">A</span> <span class=\"ck\">S</span> <span class=\"ck\">D</span>"],["Start","<span class=\"ck\">Enter</span>"]]},"sega_sms_library":{"name":"세가 마스터 시스템","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["버튼 1 · 2","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["Start / Pause","<span class=\"ck\">Enter</span>"]]},"gamegear_library":{"name":"게임기어","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["버튼 1 · 2","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["Start","<span class=\"ck\">Enter</span>"]]},"tg16_library":{"name":"PC엔진 / TurboGrafx-16","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["Ⅰ · Ⅱ","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["RUN","<span class=\"ck\">Enter</span>"],["SELECT","<span class=\"ck\">Shift</span>"]]},"atari_2600_library":{"name":"아타리 2600","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["발사(FIRE)","<span class=\"ck\">Space</span> 또는 <span class=\"ck\">Z</span>"],["Reset · Select","<span class=\"ck\">F1</span> <span class=\"ck\">F2</span>"]]},"atari_7800_library":{"name":"아타리 7800","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["버튼","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["Reset · Select","<span class=\"ck\">F1</span> <span class=\"ck\">F2</span>"]]},"atari_5200_library":{"name":"아타리 5200","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["발사","<span class=\"ck\">Space</span> <span class=\"ck\">Z</span>"],["숫자패드","키보드 <span class=\"ck\">0</span>~<span class=\"ck\">9</span>"],["Reset","<span class=\"ck\">F1</span>"]]},"coleco_colecovision_library":{"name":"콜레코비전","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["발사","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["숫자패드","키보드 <span class=\"ck\">1</span>~<span class=\"ck\">9</span> <span class=\"ck\">*</span> <span class=\"ck\">#</span>"]]},"ngp_library":{"name":"네오지오 포켓","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["A · B","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["OPTION","<span class=\"ck\">Enter</span>"]]},"wonderswan-library":{"name":"원더스완","rows":[["이동","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["A · B","<span class=\"ck\">Z</span> <span class=\"ck\">X</span>"],["Start","<span class=\"ck\">Enter</span>"],["참고","세로 화면 게임이 있습니다"]]},"psxgames":{"name":"플레이스테이션 (PS1)","rows":[["D-패드","<span class=\"ck\">←</span> <span class=\"ck\">↑</span> <span class=\"ck\">↓</span> <span class=\"ck\">→</span>"],["✕ ○ □ △","<span class=\"ck\">Z</span> <span class=\"ck\">X</span> <span class=\"ck\">A</span> <span class=\"ck\">S</span>"],["L1 · R1","<span class=\"ck\">Q</span> <span class=\"ck\">W</span>"],["Start · Select","<span class=\"ck\">Enter</span> <span class=\"ck\">Shift</span>"],["참고","로딩이 오래 걸립니다"]]}};
+var CURRENT_CAT="other";
+function renderCtrl(cat){var d=CTRL_DATA[cat]||CTRL_DATA._default;var h="";for(var i=0;i<d.rows.length;i++){h+='<div class="ctrl-row"><span class="cl">'+d.rows[i][0]+'</span><span class="cv">'+d.rows[i][1]+'</span></div>';}document.getElementById("ctrlTitle").innerHTML="🎮 "+d.name;document.getElementById("ctrlBody").innerHTML=h;}
+function openCtrl(){renderCtrl(CURRENT_CAT);document.getElementById("ctrlOverlay").classList.add("show");}
+function closeCtrl(){document.getElementById("ctrlOverlay").classList.remove("show");}
+var THEATER_CATS=["internetarcade","consolelivingroom","sega_genesis_library","atari_2600_library","psxgames","sega_sms_library","tg16_library","coleco_colecovision_library","gamegear_library","atari_7800_library","atari_5200_library","ngp_library","wonderswan-library"];
+var THEATER_NAV=126;
+var THEATER_MASK=0;
+function isTheater(c){return THEATER_CATS.indexOf(c)>=0;}
+function isMobileGame(){
+  var ua=navigator.userAgent||"";
+  var coarse=false;
+  try{coarse=window.matchMedia&&window.matchMedia("(pointer: coarse)").matches;}catch(e){}
+  return window.innerWidth<=900||screen.width<=1024||navigator.maxTouchPoints>0||coarse||/Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+}
+function ejsCoreFor(c){return "";}
+function useEjsPlayer(c){return false;}
+function useTheaterPlayer(c){return isTheater(c)&&!useEjsPlayer(c)&&!isMobileGame();}
+function useProxyPlayer(c){return isTheater(c)&&isMobileGame()&&!useEjsPlayer(c);}
+function sizeFor(c){return useTheaterPlayer(c)?{w:1024,h:540}:{w:640,h:480};}
+function playerUrl(id,c){
+  if(useEjsPlayer(c)){
+    var title=(typeof qp==="function"&&(qp("t")||""))||id;
+    return "ejs.html?id="+encodeURIComponent(id)+"&cat="+encodeURIComponent(c)+"&core="+encodeURIComponent(ejsCoreFor(c))+"&title="+encodeURIComponent(title);
+  }
+  return useProxyPlayer(c)?("/api/archive-embed?id="+encodeURIComponent(id)):(useTheaterPlayer(c)?("https://archive.org/details/"+encodeURIComponent(id)+"?view=theater"):("https://archive.org/embed/"+encodeURIComponent(id)));
+}
+function installInlineEjsAudioHooks(){
+  if(window.__oliveInlineEjsAudioHooks)return;
+  window.__oliveInlineEjsAudioHooks=true;
+  window.__oliveAudioContexts=window.__oliveAudioContexts||[];
+  var NativeAC=window.AudioContext||window.webkitAudioContext;
+  if(!NativeAC||NativeAC.__oliveInlineWrapped)return;
+  function remember(ctx){try{if(ctx&&window.__oliveAudioContexts.indexOf(ctx)<0)window.__oliveAudioContexts.push(ctx);}catch(e){}return ctx;}
+  function WrappedAC(){
+    try{return remember(Reflect.construct(NativeAC,Array.prototype.slice.call(arguments)));}
+    catch(e){return remember(new NativeAC());}
+  }
+  WrappedAC.prototype=NativeAC.prototype;
+  try{Object.setPrototypeOf(WrappedAC,NativeAC);}catch(e){}
+  WrappedAC.__oliveInlineWrapped=true;
+  if(window.AudioContext)window.AudioContext=WrappedAC;
+  if(window.webkitAudioContext)window.webkitAudioContext=WrappedAC;
+}
+function inlineEjsResumeAudio(){
+  try{(window.__oliveAudioContexts||[]).forEach(function(ctx){if(ctx&&ctx.state==="suspended"&&ctx.resume)ctx.resume().catch(function(){});});}catch(e){}
+  try{
+    var em=window.EJS_emulator;
+    if(em){
+      em.muted=false;em.volume=1;
+      if(em.setVolume)em.setVolume(1);
+      if(em.paused&&em.play)em.play();
+      if(em.gameManager&&em.gameManager.Module){
+        var M=em.gameManager.Module;
+        try{if(M.resumeMainLoop)M.resumeMainLoop();}catch(x){}
+        try{if(M.audioContext&&M.audioContext.resume)M.audioContext.resume().catch(function(){});}catch(x){}
+      }
+    }
+  }catch(e){}
+  try{document.querySelectorAll("audio,video").forEach(function(a){a.muted=false;a.defaultMuted=false;a.volume=1;var p=a.play&&a.play();if(p&&p.catch)p.catch(function(){});});}catch(e){}
+}
+function inlineEjsClickStart(){
+  var mount=document.getElementById("inlineEjsPlayer");if(!mount)return false;
+  try{
+    var nodes=Array.prototype.slice.call(mount.querySelectorAll("button,[role=button],.ejs_start_button,.ejs--start-button,[class*=start],[class*=play]"));
+    for(var i=0;i<nodes.length;i++){
+      var el=nodes[i],text=((el.textContent||"")+" "+(el.className||"")+" "+(el.id||"")+" "+(el.getAttribute("aria-label")||"")).toLowerCase();
+      if(el.offsetParent!==null&&/(play|start|run|게임|시작)/.test(text)){try{el.click();return true;}catch(x){}}
+    }
+  }catch(e){}
+  try{
+    var textNodes=Array.prototype.slice.call(mount.querySelectorAll("*"));
+    for(var j=0;j<textNodes.length;j++){
+      var n=textNodes[j],s=((n.textContent||"")+" "+(n.className||"")+" "+(n.id||"")).toLowerCase();
+      if(n.offsetParent!==null&&/(click to resume|resume emulator|play now|start game)/.test(s)){try{n.click();return true;}catch(x){}}
+    }
+  }catch(e){}
+  return false;
+}
+function inlineEjsTapSurface(){
+  try{
+    var target=document.querySelector("#inlineEjsPlayer canvas")||document.getElementById("inlineEjsPlayer");
+    if(!target)return;
+    target.setAttribute("tabindex","0");target.focus();
+    var r=target.getBoundingClientRect();
+    var opts={bubbles:true,cancelable:true,view:window,clientX:r.left+r.width/2,clientY:r.top+r.height/2};
+    ["pointerdown","mousedown","mouseup","click"].forEach(function(type){try{target.dispatchEvent(new MouseEvent(type,opts));}catch(e){}});
+  }catch(e){}
+}
+function inlineEjsUnlock(){
+  if(!window.__oliveInlineEJSActive)return;
+  if(!window.__oliveInlineEJSLoaded){startInlineEjsPlayer();return;}
+  inlineEjsResumeAudio();
+  inlineEjsClickStart();
+  inlineEjsTapSurface();
+  setTimeout(inlineEjsResumeAudio,80);
+  setTimeout(inlineEjsTapSurface,140);
+  setTimeout(inlineEjsResumeAudio,320);
+}
+function loadInlineEjsPlayer(id,c,title){
+  installInlineEjsAudioHooks();
+  window.__oliveInlineEJSActive=true;
+  window.__oliveInlineEJSLoaded=false;
+  window.__oliveInlineEJSLoading=false;
+  window.__oliveInlineEJSConfig={id:id,c:c,title:title||id};
+  var mount=document.getElementById("inlineEjsPlayer");
+  var ifr=document.getElementById("gameIframe");
+  if(!mount)return;
+  mount.style.display="block";mount.classList.remove("is-loading");
+  mount.innerHTML='<button type="button" class="inline-ejs-placeholder" id="inlineEjsStartBtn"><strong>게임 시작</strong><span>모바일에서는 버튼을 누른 뒤 게임과 사운드를 함께 로드합니다. 첫 화면은 가볍게 열고, 실행할 때만 에뮬레이터를 불러옵니다.</span><span class="inline-ejs-start">▶ 게임 시작 / 소리 켜기</span></button>';
+  if(ifr){ifr.style.display="none";ifr.src="about:blank";}
+  var startBtn=document.getElementById("inlineEjsStartBtn");
+  if(startBtn){
+    startBtn.addEventListener("click",function(e){e.preventDefault();startInlineEjsPlayer();});
+    startBtn.addEventListener("touchstart",function(e){e.preventDefault();startInlineEjsPlayer();},{passive:false});
+  }
+}
+function startInlineEjsPlayer(){
+  if(!window.__oliveInlineEJSActive||window.__oliveInlineEJSLoaded||window.__oliveInlineEJSLoading)return;
+  var cfg=window.__oliveInlineEJSConfig||{};
+  var id=cfg.id,c=cfg.c,title=cfg.title||cfg.id;
+  var mount=document.getElementById("inlineEjsPlayer");if(!mount||!id||!c)return;
+  window.__oliveInlineEJSLoading=true;
+  mount.classList.add("is-loading");
+  mount.innerHTML='<div class="inline-ejs-placeholder"><strong>게임 로딩 중</strong><span>에뮬레이터와 ROM을 불러오는 중입니다. 잠시만 기다려 주세요.</span><span class="inline-ejs-start">LOADING...</span></div>';
+  window.EJS_player="#inlineEjsPlayer";
+  window.EJS_core=ejsCoreFor(c);
+  window.EJS_gameUrl="/api/archive-rom?id="+encodeURIComponent(id)+"&cat="+encodeURIComponent(c);
+  window.EJS_gameName=title||id;
+  window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/";
+  window.EJS_color="#ff5fbf";
+  window.EJS_backgroundColor="#000";
+  window.EJS_volume=1;
+  window.EJS_startOnLoaded=true;
+  window.EJS_alignStartButton="center";
+  window.EJS_language="en-US";
+  window.EJS_disableAutoLang=true;
+  window.__oliveInlineEJSUnlock=inlineEjsUnlock;
+  var old=document.getElementById("inlineEjsLoaderScript");if(old)old.remove();
+  var script=document.createElement("script");
+  script.id="inlineEjsLoaderScript";
+  script.src="https://cdn.emulatorjs.org/stable/data/loader.js";
+  script.onload=function(){window.__oliveInlineEJSLoaded=true;window.__oliveInlineEJSLoading=false;mount.classList.remove("is-loading");setTimeout(inlineEjsUnlock,900);};
+  script.onerror=function(){window.__oliveInlineEJSLoading=false;mount.classList.remove("is-loading");mount.innerHTML='<button type="button" class="inline-ejs-placeholder" id="inlineEjsRetryBtn"><strong>로딩 실패</strong><span>네트워크가 불안정합니다. 다시 누르면 게임을 다시 불러옵니다.</span><span class="inline-ejs-start">↻ 다시 시도</span></button>';var retry=document.getElementById("inlineEjsRetryBtn");if(retry)retry.onclick=startInlineEjsPlayer;};
+  document.body.appendChild(script);
+}
+function disableInlineEjsPlayer(){
+  window.__oliveInlineEJSActive=false;window.__oliveInlineEJSLoaded=false;window.__oliveInlineEJSLoading=false;window.__oliveInlineEJSConfig=null;
+  var mount=document.getElementById("inlineEjsPlayer");if(mount){mount.style.display="none";mount.classList.remove("is-loading");mount.innerHTML="";}
+  var ifr=document.getElementById("gameIframe");if(ifr)ifr.style.display="block";
+}
+function qp(n){var m=new RegExp("[?&]"+n+"=([^&]*)").exec(location.search);return m?decodeURIComponent(m[1].replace(/\+/g," ")):"";}
+var GID=qp("game");
+function safeBackTarget(v){if(!v)return "";if(/^[a-z][a-z0-9+.-]*:/i.test(v)||v.indexOf("//")===0||v.charAt(0)==="/")return "";return v;}
+var RETURN_TO=safeBackTarget(qp("from"));
+if(RETURN_TO){document.getElementById("backLink").href=RETURN_TO;}
+var NATIVE_W=640,NATIVE_H=480;
+var frame=document.getElementById("gameFrame");var wrap=document.getElementById("frameWrap");var zoomLabel=document.getElementById("zoomLabel");var scaleInfo=document.getElementById("scaleInfo");
+var zoomMode="auto",zoomModes=["auto","1x","1.5x","2x","fit"];
+function fitScale(extra){var side=window.innerWidth<=640?24:48;var availW=Math.min(window.innerWidth-side,1600);var availH=window.innerHeight-extra;return Math.max(0.25,Math.min(availW/NATIVE_W,availH/NATIVE_H,3));}
+function calcAutoScale(){return fitScale(window.innerWidth<=640?330:260);}
+function layoutFrame(s){var ifr=document.getElementById("gameIframe");var nav=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gnav"))||0;var ih=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gih"))||NATIVE_H;frame.style.transform="none";frame.style.width=(NATIVE_W*s)+"px";frame.style.height=(NATIVE_H*s)+"px";frame.style.maxWidth="100%";wrap.style.height=(NATIVE_H*s)+"px";if(ifr){ifr.style.width=NATIVE_W+"px";ifr.style.height=ih+"px";ifr.style.top=(-(nav*s))+"px";ifr.style.transform="scale("+s+")";ifr.style.transformOrigin="top left";}}
+function applyZoom(){if(document.body.classList.contains("is-fullscreen"))return;var s;if(zoomMode==="auto")s=calcAutoScale();else if(zoomMode==="1x")s=1;else if(zoomMode==="1.5x")s=1.5;else if(zoomMode==="2x")s=2;else{s=fitScale(window.innerWidth<=640?220:280);}layoutFrame(s);scaleInfo.textContent=s.toFixed(2)+"x";zoomLabel.textContent=zoomMode.toUpperCase();}
+function cycleZoom(){var i=zoomModes.indexOf(zoomMode);zoomMode=zoomModes[(i+1)%zoomModes.length];applyZoom();}
+function forceSound(){
+  lastGameWake=0;
+  wakeGameFrame();
+  burstUnlockAudio();
+  setTimeout(burstUnlockAudio,400);
+  setTimeout(burstUnlockAudio,1200);
+}
+function applyFullscreenScale(){var ifr=document.getElementById("gameIframe");var s=Math.min(window.innerWidth/NATIVE_W,window.innerHeight/NATIVE_H);frame.style.width=NATIVE_W+"px";frame.style.height=NATIVE_H+"px";frame.style.maxWidth="none";frame.style.transform="translate(-50%,-50%) scale("+s+")";if(ifr){ifr.style.transform="none";ifr.style.top="calc(-1 * var(--gnav,0px))";}}
+function clearFullscreenScale(){frame.style.transform="";frame.style.maxWidth="100%";}
+function toggleFullscreen(){var isFs=!document.body.classList.contains("is-fullscreen");if(isFs){document.body.classList.add("is-fullscreen");frame.classList.add("fullscreen");applyFullscreenScale();if(frame.requestFullscreen)frame.requestFullscreen().catch(function(){});}else{document.body.classList.remove("is-fullscreen");frame.classList.remove("fullscreen");clearFullscreenScale();if(document.fullscreenElement)document.exitFullscreen().catch(function(){});applyZoom();}}
+function reloadGame(){if(window.__oliveInlineEJSActive){location.reload();return;}var ifr=document.getElementById("gameIframe");ifr.src=ifr.src;}
+function shareGame(){var u=location.href;if(navigator.share){navigator.share({title:document.title,url:u}).catch(function(){});}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){alert("링크가 복사되었습니다:\n"+u);},function(){prompt("이 링크를 복사하세요:",u);});}else{prompt("이 링크를 복사하세요:",u);}}
+var KEY_META={
+  ArrowUp:{key:"ArrowUp",code:"ArrowUp",keyCode:38},
+  ArrowDown:{key:"ArrowDown",code:"ArrowDown",keyCode:40},
+  ArrowLeft:{key:"ArrowLeft",code:"ArrowLeft",keyCode:37},
+  ArrowRight:{key:"ArrowRight",code:"ArrowRight",keyCode:39},
+  Control:{key:"Control",code:"ControlLeft",keyCode:17},
+  Alt:{key:"Alt",code:"AltLeft",keyCode:18},
+  Space:{key:" ",code:"Space",keyCode:32},
+  Shift:{key:"Shift",code:"ShiftLeft",keyCode:16},
+  Enter:{key:"Enter",code:"Enter",keyCode:13},
+  Z:{key:"z",code:"KeyZ",keyCode:90},
+  X:{key:"x",code:"KeyX",keyCode:88},
+  C:{key:"c",code:"KeyC",keyCode:67},
+  A:{key:"a",code:"KeyA",keyCode:65},
+  S:{key:"s",code:"KeyS",keyCode:83},
+  D:{key:"d",code:"KeyD",keyCode:68},
+  Q:{key:"q",code:"KeyQ",keyCode:81},
+  W:{key:"w",code:"KeyW",keyCode:87},
+  F1:{key:"F1",code:"F1",keyCode:112},
+  F2:{key:"F2",code:"F2",keyCode:113},
+  "1":{key:"1",code:"Digit1",keyCode:49},
+  "5":{key:"5",code:"Digit5",keyCode:53}
+};
+var TOUCH_LAYOUTS={
+  internetarcade:[["B","Alt"],["A","Control"],["C","Space"],["D","Shift"],["동전","5"],["시작","1"]],
+  sega_genesis_library:[["B","X"],["A","Z"],["C","C"],["X","A"],["Y","S"],["시작","Enter"]],
+  sega_sms_library:[["1","Z"],["2","X"],["점프","Z"],["공격","X"],["선택","Shift"],["시작","Enter"]],
+  gamegear_library:[["1","Z"],["2","X"],["점프","Z"],["공격","X"],["선택","Shift"],["시작","Enter"]],
+  tg16_library:[["I","Z"],["II","X"],["선택","Shift"],["RUN","Enter"],["I 연사","Z"],["II 연사","X"]],
+  atari_2600_library:[["발사","Space"],["Fire","Z"],["Reset","F1"],["Select","F2"],["시작","Enter"],["옵션","Shift"]],
+  psxgames:[["✕","Z"],["○","X"],["□","A"],["△","S"],["Select","Shift"],["Start","Enter"]],
+  _default:[["B","X"],["A","Z"],["C","C"],["D","Space"],["선택","Shift"],["시작","Enter"]]
+};
+var KEY_ALIASES={
+  sega_genesis_library:{Z:["Control"],X:["Alt"],C:["Space"],A:["Shift"],S:["Z"],D:["X"],Enter:["1"]},
+  sega_sms_library:{Z:["Control"],X:["Alt"],Enter:["1"]},
+  gamegear_library:{Z:["Control"],X:["Alt"],Enter:["1"]},
+  tg16_library:{Z:["Control"],X:["Alt"],Enter:["1"],Shift:["5"]},
+  atari_2600_library:{Space:["Control"],Z:["Control"],Enter:["1"]},
+  _default:{Enter:["1"],Z:["Control"],X:["Alt"],C:["Space"]}
+};
+function mappedKeys(k){
+  var list=[k],alias=(KEY_ALIASES[CURRENT_CAT]&&KEY_ALIASES[CURRENT_CAT][k])||(KEY_ALIASES._default&&KEY_ALIASES._default[k])||[];
+  for(var i=0;i<alias.length;i++){if(list.indexOf(alias[i])<0)list.push(alias[i]);}
+  return list;
+}
+function updateTouchPad(cat){
+  var layout=TOUCH_LAYOUTS[cat]||TOUCH_LAYOUTS._default;
+  var buttons=document.querySelectorAll(".touch-actions button");
+  for(var i=0;i<buttons.length;i++){
+    var item=layout[i]||TOUCH_LAYOUTS._default[i];
+    buttons[i].textContent=item[0];
+    buttons[i].setAttribute("data-key",item[1]);
+    buttons[i].setAttribute("aria-label",item[0]);
+  }
+}
+function keyEvent(type,meta){
+  var ev=new KeyboardEvent(type,{key:meta.key,code:meta.code,bubbles:true,cancelable:true,composed:true});
+  try{Object.defineProperty(ev,"keyCode",{get:function(){return meta.keyCode;}});Object.defineProperty(ev,"which",{get:function(){return meta.keyCode;}});}catch(e){}
+  return ev;
+}
+var lastGameWake=0;
+function unlockGameAudio(){
+  inlineEjsUnlock();
+  var ifr=document.getElementById("gameIframe");if(!ifr)return;
+  window.__oliveLastAudioUnlockAt=Date.now();
+  try{ifr.setAttribute("allow","autoplay; fullscreen; gamepad");}catch(e){}
+  try{if(ifr.contentWindow&&ifr.contentWindow.__oliveUnlockAudio)ifr.contentWindow.__oliveUnlockAudio();}catch(e){}
+  try{if(ifr.contentWindow&&ifr.contentWindow.__oliveEJSUnlock)ifr.contentWindow.__oliveEJSUnlock();}catch(e){}
+  try{
+    var iw=ifr.contentWindow,doc=ifr.contentDocument||iw.document;
+    iw.__oliveParentAudioUnlockAt=Date.now();
+    doc.querySelectorAll("audio,video").forEach(function(a){a.muted=false;a.defaultMuted=false;a.volume=1;try{a.removeAttribute("muted");}catch(x){}var p=a.play&&a.play();if(p&&p.catch)p.catch(function(){});});
+    var ac=(iw.Module&&iw.Module.SDL2&&iw.Module.SDL2.audioContext)||(iw.JSMESS&&iw.JSMESS.audioContext)||(iw.JSMESS&&iw.JSMESS.audio&&iw.JSMESS.audio.context);
+    if(ac&&ac.state==="suspended"&&ac.resume)ac.resume().catch(function(){});
+    try{if(iw.Module){iw.Module.noAudioDecoding=false;iw.Module.audioContext=iw.Module.audioContext||ac;}}catch(x){}
+    var nodes=Array.prototype.slice.call(doc.querySelectorAll("*"));
+    for(var i=0;i<nodes.length;i++){
+      var el=nodes[i];var s=((el.getAttribute("aria-label")||"")+" "+(el.getAttribute("title")||"")+" "+(el.getAttribute("data-original-title")||"")+" "+(el.id||"")+" "+(el.className||"")+" "+(el.textContent||"")).toLowerCase();
+      if(/unmute|muted|volume[-_ ]?(mute|off|none|0)|sound off|audio off|speaker[-_ ]?off|iconochive-volume-mute|js-mute/.test(s)&&!/fullscreen|share|favorite/.test(s)){
+        try{el.__oliveSoundClicked=(el.__oliveSoundClicked||0)+1;if(el.__oliveSoundClicked<4)el.click();}catch(x){}
+      }
+    }
+    doc.querySelectorAll('input[type="range"],input[type="volume"]').forEach(function(inp){try{inp.value=inp.max||1;inp.dispatchEvent(new Event("input",{bubbles:true}));inp.dispatchEvent(new Event("change",{bubbles:true}));}catch(x){}});
+    var cn=doc.getElementById("canvas");if(cn){cn.setAttribute("tabindex","0");cn.focus();}
+  }catch(e){}
+  try{ifr.contentWindow.postMessage({type:"unlock-audio",event:"unlock-audio",source:"olivestock-touchpad"},"*");}catch(e){}
+}
+var audioUnlockTimer=0,audioUnlockUntil=0;
+function burstUnlockAudio(){
+  audioUnlockUntil=Date.now()+18000;
+  unlockGameAudio();
+  if(audioUnlockTimer)return;
+  audioUnlockTimer=setInterval(function(){
+    unlockGameAudio();
+    if(Date.now()>audioUnlockUntil){clearInterval(audioUnlockTimer);audioUnlockTimer=0;}
+  },300);
+}
+function wakeGameFrame(){
+  var now=Date.now();if(now-lastGameWake<900)return;lastGameWake=now;
+  inlineEjsUnlock();
+  var ifr=document.getElementById("gameIframe");
+  try{ifr.focus();}catch(e){}
+  try{
+    var doc=ifr.contentDocument||ifr.contentWindow.document;
+    if(ifr.contentWindow&&ifr.contentWindow.__oliveEJSUnlock)ifr.contentWindow.__oliveEJSUnlock();
+    var start=doc.getElementById("jsmessSS")||doc.querySelector(".js-emulation-emulate");
+    var canvas=doc.getElementById("canvas");
+    if(start&&start.offsetParent!==null)start.click();
+    if(canvas){canvas.setAttribute("tabindex","0");canvas.focus();}
+  }catch(e){}
+  burstUnlockAudio();
+}
+function sendVirtualKey(k,isDown){
+  var meta=KEY_META[k]||KEY_META.Space;
+  var type=isDown?"keydown":"keyup";
+  var ifr=document.getElementById("gameIframe");
+  if(isDown)wakeGameFrame();else burstUnlockAudio();
+  try{ifr.focus();}catch(e){}
+  try{
+    var inline=document.getElementById("inlineEjsPlayer");
+    var inlineCanvas=inline&&inline.querySelector("canvas");
+    [window,document,document.body,inline,inlineCanvas].filter(Boolean).forEach(function(t){
+      try{t.dispatchEvent(keyEvent(type,meta));}catch(x){}
+    });
+    if(inlineCanvas){inlineCanvas.setAttribute("tabindex","0");inlineCanvas.focus();}
+  }catch(e){}
+  try{
+    var iw=ifr.contentWindow,doc=ifr.contentDocument||iw.document;
+    var targets=[iw,doc,doc.getElementById("canvas")].filter(Boolean);
+    for(var i=0;i<targets.length;i++)targets[i].dispatchEvent(keyEvent(type,meta));
+  }catch(e){}
+  try{
+    ifr.contentWindow.postMessage({
+      type:type,
+      event:type,
+      key:meta.key,
+      code:meta.code,
+      keyCode:meta.keyCode,
+      which:meta.keyCode,
+      bubbles:true,
+      source:"olivestock-touchpad"
+    },"*");
+  }catch(e){}
+  if(isDown&&navigator.vibrate){try{navigator.vibrate(12);}catch(e){}}
+}
+function initTouchPad(){
+  var pad=document.getElementById("touchPad");if(!pad)return;
+  var activeKeys={},activeButtons=new Set(),activeDpadBtn=null,activeDpadKey="",pointerMap={},lastTouchAt=0;
+  window.__oliveTouchState={activeKeys:activeKeys,activeButtons:0,lastAction:""};
+  function pressKey(k){
+    var keys=mappedKeys(k);
+    for(var i=0;i<keys.length;i++){
+      var kk=keys[i],first=!activeKeys[kk];activeKeys[kk]=(activeKeys[kk]||0)+1;
+      if(first)sendVirtualKey(kk,true);
+    }
+  }
+  function releaseKey(k){
+    var keys=mappedKeys(k);
+    for(var i=0;i<keys.length;i++){
+      var kk=keys[i];if(!activeKeys[kk])continue;
+      activeKeys[kk]--;
+      if(activeKeys[kk]<=0){delete activeKeys[kk];sendVirtualKey(kk,false);}
+    }
+  }
+  function press(btn){
+    var k=btn&&btn.getAttribute("data-key");if(!k||activeButtons.has(btn))return;
+    activeButtons.add(btn);btn.classList.add("is-pressed");pressKey(k);
+    window.__oliveTouchState.activeButtons=activeButtons.size;window.__oliveTouchState.lastAction="down:"+k;
+  }
+  function release(btn){
+    var k=btn&&btn.getAttribute("data-key");if(!k||!activeButtons.has(btn))return;
+    activeButtons.delete(btn);btn.classList.remove("is-pressed");releaseKey(k);
+    window.__oliveTouchState.activeButtons=activeButtons.size;window.__oliveTouchState.lastAction="up:"+k;
+  }
+  function pressDpad(btn){
+    var k=btn&&btn.getAttribute("data-key");if(!k)return;
+    if(activeDpadKey===k)return;
+    releaseDpad();
+    activeDpadBtn=btn;activeDpadKey=k;btn.classList.add("is-pressed");pressKey(k);btn.classList.add("is-pressed");
+    window.__oliveTouchState.activeDpad=k;window.__oliveTouchState.lastAction="dpad:"+k;
+  }
+  function releaseDpad(){
+    if(!activeDpadKey)return;
+    var k=activeDpadKey,btn=activeDpadBtn;
+    if(btn)btn.classList.remove("is-pressed");
+    activeDpadBtn=null;activeDpadKey="";releaseKey(k);
+    window.__oliveTouchState.activeDpad="";window.__oliveTouchState.lastAction="dpad-up:"+k;
+  }
+  function releaseAll(){Array.from(activeButtons).forEach(release);releaseDpad();pointerMap={};}
+  function dpadHitFromPoint(x,y){
+    var dpad=pad.querySelector(".touch-dpad");if(!dpad)return null;
+    var r=dpad.getBoundingClientRect();
+    if(x<r.left||x>r.right||y<r.top||y>r.bottom)return {inside:false,btn:null};
+    var cx=r.left+r.width/2,cy=r.top+r.height/2,dx=x-cx,dy=y-cy;
+    var dist=Math.sqrt(dx*dx+dy*dy),radius=Math.min(r.width,r.height)/2;
+    if(dist>radius*1.08||dist<radius*0.14)return {inside:true,btn:null};
+    var sel=Math.abs(dx)>Math.abs(dy)?(dx>0?".touch-right":".touch-left"):(dy>0?".touch-down":".touch-up");
+    return {inside:true,btn:dpad.querySelector(sel),dx:dx,dy:dy,dist:dist};
+  }
+  window.__oliveDpadProbe=function(x,y){var h=dpadHitFromPoint(x,y);return h&&h.btn?{inside:h.inside,key:h.btn.dataset.key,label:h.btn.textContent.trim(),dx:h.dx,dy:h.dy,dist:h.dist}:{inside:!!(h&&h.inside),key:null};};
+  function btnFromPoint(x,y){
+    var hit=dpadHitFromPoint(x,y);if(hit&&hit.inside)return hit.btn;
+    var el=document.elementFromPoint(x,y);
+    return el&&el.closest?el.closest("#touchPad button[data-key]"):null;
+  }
+  function reconcileTouches(e){
+    lastTouchAt=Date.now();
+    if(e&&e.preventDefault)e.preventDefault();
+    var touched=new Set(),dpadBtn=null;
+    var touches=(e&&e.touches)?e.touches:[];
+    for(var i=0;i<touches.length;i++){
+      var h=dpadHitFromPoint(touches[i].clientX,touches[i].clientY);
+      if(h&&h.inside){if(h.btn)dpadBtn=h.btn;continue;}
+      var b=btnFromPoint(touches[i].clientX,touches[i].clientY);if(b)touched.add(b);
+    }
+    if(dpadBtn)pressDpad(dpadBtn);else releaseDpad();
+    Array.from(activeButtons).forEach(function(btn){if(!touched.has(btn))release(btn);});
+    touched.forEach(press);
+  }
+  pad.querySelectorAll("button[data-key]").forEach(function(btn){
+    function down(e){if(Date.now()-lastTouchAt<700)return;if(e&&e.preventDefault)e.preventDefault();try{if(e&&e.pointerId!=null&&btn.setPointerCapture)btn.setPointerCapture(e.pointerId);}catch(x){}if(e&&e.pointerId!=null)pointerMap[e.pointerId]=btn;if(btn.closest(".touch-dpad"))pressDpad(btn);else press(btn);}
+    function up(e){if(Date.now()-lastTouchAt<700)return;if(e&&e.preventDefault)e.preventDefault();var b=e&&e.pointerId!=null?pointerMap[e.pointerId]:btn;if((b||btn).closest(".touch-dpad"))releaseDpad();else release(b||btn);if(e&&e.pointerId!=null)delete pointerMap[e.pointerId];}
+    btn.addEventListener("pointerdown",down);
+    btn.addEventListener("pointerup",up);
+    btn.addEventListener("pointercancel",up);
+    btn.addEventListener("pointerleave",function(e){if(e.pointerType==="mouse")up(e);});
+    btn.addEventListener("mousedown",function(e){if(window.PointerEvent)return;down(e);});
+    btn.addEventListener("mouseup",function(e){if(window.PointerEvent)return;up(e);});
+    btn.addEventListener("contextmenu",function(e){e.preventDefault();});
+  });
+  pad.addEventListener("touchstart",reconcileTouches,{passive:false});
+  pad.addEventListener("touchmove",reconcileTouches,{passive:false});
+  pad.addEventListener("touchend",reconcileTouches,{passive:false});
+  pad.addEventListener("touchcancel",reconcileTouches,{passive:false});
+  document.addEventListener("touchend",function(e){if(!e.touches||e.touches.length===0)releaseAll();},{passive:true});
+  document.addEventListener("touchcancel",releaseAll,{passive:true});
+  window.addEventListener("touchend",function(e){if(!e.touches||e.touches.length===0)setTimeout(releaseAll,0);},{capture:true,passive:true});
+  window.addEventListener("touchcancel",function(){setTimeout(releaseAll,0);},{capture:true,passive:true});
+  document.addEventListener("visibilitychange",function(){if(document.hidden)releaseAll();});
+  window.addEventListener("pagehide",releaseAll);
+}
+["pointerdown","touchstart","click"].forEach(function(ev){
+  document.addEventListener(ev,function(e){
+    var t=e.target;if(t&&t.closest&&(t.closest(".game-stage")||t.closest(".touch-pad")))burstUnlockAudio();
+  },{capture:true,passive:true});
+});
+var DEF_H=540;
+function loadAdjust(){try{var h=parseInt(localStorage.getItem("reFrameH"),10);var n=parseInt(localStorage.getItem("reFrameNav"),10);return {h:(h>0?h:0),nav:(isNaN(n)?null:n)};}catch(e){return {h:0,nav:null};}}
+function saveAdjust(h,n){try{localStorage.setItem("reFrameH",h);localStorage.setItem("reFrameNav",n);}catch(e){}}
+function applyAdjust(h,n){var rs=document.documentElement.style;rs.setProperty("--gh",h+"px");rs.setProperty("--gnav",n+"px");rs.setProperty("--gih",(h+n+330)+"px");NATIVE_H=h;var ifr=document.getElementById("gameIframe");if(ifr)ifr.height=(h+n+330);applyZoom();}
+function initAdjust(isT,h,n){var p=document.getElementById("frameAdjust");if(!p)return;if(!isT){p.style.display="none";return;}p.style.display="flex";var sh=document.getElementById("adjH"),sn=document.getElementById("adjNav");sh.value=h;sn.value=n;document.getElementById("adjHv").textContent=h;document.getElementById("adjNavv").textContent=n;sh.oninput=function(){document.getElementById("adjHv").textContent=sh.value;applyAdjust(+sh.value,+sn.value);saveAdjust(sh.value,sn.value);};sn.oninput=function(){document.getElementById("adjNavv").textContent=sn.value;applyAdjust(+sh.value,+sn.value);saveAdjust(sh.value,sn.value);};}
+function resetAdjust(){try{localStorage.removeItem("reFrameH");localStorage.removeItem("reFrameNav");}catch(e){}var h=DEF_H,n=THEATER_NAV;var sh=document.getElementById("adjH"),sn=document.getElementById("adjNav");if(sh){sh.value=h;sn.value=n;document.getElementById("adjHv").textContent=h;document.getElementById("adjNavv").textContent=n;}applyAdjust(h,n);}
+function loadFx(){try{var v=localStorage.getItem("reFx")||"none";var M={mask:"aperture",curve:"crt",vignette:"crt",flicker:"scanlines"};return M[v]||v;}catch(e){return "none";}}
+function loadFxI(){try{var v=parseFloat(localStorage.getItem("reFxI"));return (v>=0&&v<=1.2)?v:0.6;}catch(e){return 0.6;}}
+function applyFx(v){var f=document.getElementById("gameFrame");if(!f)return;f.className=(f.className.replace(/\bfx-\w+/g,"").replace(/\s+/g," ").trim())+" fx-"+v;}
+function applyFxI(v){document.documentElement.style.setProperty("--fx-i",v);var lbl=document.getElementById("fxIv");if(lbl)lbl.textContent=Math.round(v*100)+"%";}
+function initFx(){var v=loadFx(),iv=loadFxI();var sel=document.getElementById("fxSel"),si=document.getElementById("fxI");if(sel){sel.value=v;sel.onchange=function(){applyFx(sel.value);try{localStorage.setItem("reFx",sel.value);}catch(e){}};}if(si){si.value=Math.round(iv*100);si.oninput=function(){var nv=(+si.value)/100;applyFxI(nv);try{localStorage.setItem("reFxI",nv);}catch(e){}};}applyFxI(iv);applyFx(v);}
+function start(g){
+  var cat=g.category||"other";CURRENT_CAT=cat;updateTouchPad(cat);var sz=sizeFor(cat);var isT=useTheaterPlayer(cat);var nav=isT?THEATER_NAV:0;
+  var isEjs=useEjsPlayer(cat);
+  if(isT){var ov=loadAdjust();if(ov.h)sz.h=ov.h;if(ov.nav!=null)nav=ov.nav;}
+  var ih=isT?(sz.h+nav+330):sz.h;var mask=isT?THEATER_MASK:0;
+  NATIVE_W=sz.w;NATIVE_H=sz.h;var rs=document.documentElement.style;
+  rs.setProperty("--gw",sz.w+"px");rs.setProperty("--gh",sz.h+"px");rs.setProperty("--gih",ih+"px");rs.setProperty("--gnav",nav+"px");rs.setProperty("--gmask",mask+"px");
+  document.title=g.title+" · "+SITE_TITLE;
+  document.getElementById("gTitle").textContent=g.title;
+  document.getElementById("gMeta").textContent=(g.year||"????")+" · "+g.identifier;
+  if(cat==="psxgames")document.getElementById("ps1notice").innerHTML="<div style=\"max-width:640px;margin:0 auto 12px;padding:8px 12px;font-size:18px;color:var(--accent-2);border:1px solid var(--accent-2);background:rgba(247,201,72,0.10);text-align:center;line-height:1.5;\">⏳ PS1 게임은 디스크 용량이 커서 로딩까지 시간이 다소 걸립니다. 잠시 기다려 주세요.</div>";
+  var url=playerUrl(g.identifier,cat);
+  var ifr=document.getElementById("gameIframe");ifr.width=sz.w;ifr.height=ih;ifr.setAttribute("allow","autoplay; fullscreen; gamepad");ifr.onload=function(){setTimeout(unlockGameAudio,250);};
+  disableInlineEjsPlayer();
+  ifr.src=url;
+  document.getElementById("resInfo").textContent=sz.w+" × "+sz.h;
+  document.getElementById("embedCode").value='<iframe src="'+url+'" width="'+sz.w+'" height="'+sz.h+'" frameborder="0" allowfullscreen></iframe>';
+  document.getElementById("archiveBtn").onclick=function(){window.open("https://archive.org/details/"+encodeURIComponent(g.identifier),"_blank");};
+  document.getElementById("poweredLink").href="https://archive.org/details/"+encodeURIComponent(g.identifier);
+  initAdjust(isT,sz.h,nav);
+  initFx();
+  applyZoom();
+}
+function enrichMeta(g){if(!g)return;if(g.title){document.title=g.title+" · "+SITE_TITLE;document.getElementById("gTitle").textContent=g.title;}document.getElementById("gMeta").textContent=((g.year||"????")+" · "+g.identifier);}
+var URLCAT=qp("cat");
+if(GID&&URLCAT){
+  var URLTITLE=qp("t"), URLYEAR=qp("y");
+  start({identifier:GID,title:URLTITLE||GID,year:URLYEAR||"",category:URLCAT});
+  if(!URLTITLE||!URLYEAR){
+    fetch("games.json").then(function(r){return r.json();}).then(function(d){var gs=(d&&d.games)||[];for(var i=0;i<gs.length;i++){if(gs[i].identifier===GID){enrichMeta(gs[i]);break;}}}).catch(function(){});
+  }
+}else if(GID){
+  fetch("games.json").then(function(r){return r.json();}).then(function(d){var gs=(d&&d.games)||[];var g=null;for(var i=0;i<gs.length;i++){if(gs[i].identifier===GID){g=gs[i];break;}}start(g||{identifier:GID,title:GID,year:"",category:"other"});}).catch(function(){start({identifier:GID,title:GID,year:"",category:"other"});});
+}else{document.getElementById("gTitle").textContent="게임이 지정되지 않았습니다";}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){var ov=document.getElementById("ctrlOverlay");if(ov&&ov.classList.contains("show"))closeCtrl();else if(document.body.classList.contains("is-fullscreen"))toggleFullscreen();}});
+document.addEventListener("fullscreenchange",function(){if(!document.fullscreenElement&&document.body.classList.contains("is-fullscreen")){document.body.classList.remove("is-fullscreen");frame.classList.remove("fullscreen");clearFullscreenScale();applyZoom();}});
+window.addEventListener("resize",function(){if(document.body.classList.contains("is-fullscreen")){applyFullscreenScale();}else if(zoomMode==="auto"||zoomMode==="fit"){applyZoom();}});
+initTouchPad();
+</script>
+<script src="/js/kakao-open-chrome.js?v=20260623-1" defer></script>
+</body></html>

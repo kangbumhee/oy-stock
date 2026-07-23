@@ -6,6 +6,9 @@
   "builds": [
     { "src": "public/**", "use": "@vercel/static" },
     { "src": "api/proxy.js", "use": "@vercel/node" },
+    { "src": "api/archive-embed.js", "use": "@vercel/node" },
+    { "src": "api/archive-file.js", "use": "@vercel/node" },
+    { "src": "api/archive-rom.js", "use": "@vercel/node" },
     {
       "src": "api/oliveyoung/search.js",
       "use": "@vercel/node",
@@ -49,6 +52,20 @@
     { "src": "/guide/([^/]+)/?", "dest": "/public/guide/$1/index.html" },
     { "src": "/blog/?", "dest": "/public/blog/index.html" },
     { "src": "/blog/([^/]+)/?", "dest": "/public/blog/$1/index.html" },
+    {
+      "src": "/game/?",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "dest": "/public/game/index.html"
+    },
+    {
+      "src": "/game/(.*)",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "dest": "/public/game/$1"
+    },
     { "src": "/site-map/?", "dest": "/public/site-map.html" },
     {
       "src": "/sw.js",
@@ -96,6 +113,9 @@
       "src": "/api/oliveyoung/landing-proxy",
       "dest": "/api/oliveyoung/landing-proxy.js"
     },
+    { "src": "/api/archive-embed", "dest": "/api/archive-embed.js" },
+    { "src": "/api/archive-file", "dest": "/api/archive-file.js" },
+    { "src": "/api/archive-rom", "dest": "/api/archive-rom.js" },
     { "src": "/api/proxy(.*)", "dest": "/api/proxy.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]

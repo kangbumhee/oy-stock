@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260721-1';
+const CACHE_NAME = 'olivestock-app-v20260723-game-coupang-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -7,12 +7,12 @@ const CORE_ASSETS = [
   '/favicon-192x192.png',
   '/favicon-512x512.png',
   '/apple-touch-icon.png',
-  '/css/style.css?v=20260622-2',
-  '/js/config.js?v=20260622-2',
+  '/css/style.css?v=20260723-game-coupang-1',
+  '/js/config.js?v=20260723-game-coupang-1',
   '/js/pwa.js?v=20260622-2',
   '/js/storage.js?v=20260622-2',
   '/js/api.js?v=20260721-1',
-  '/js/ui.js?v=20260622-2',
+  '/js/ui.js?v=20260723-game-coupang-1',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
