@@ -3,7 +3,8 @@ name: Deploy Vercel Production
 on:
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: vercel-production-deploy
@@ -12,13 +13,29 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_kCYpXTZeNpSxqcelRRUUSUKy
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - name: Trigger one production deployment
-        env:
-          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate Vercel credentials
         run: |
-          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
-            echo "::error::VERCEL_DEPLOY_HOOK is not configured"
+          if [ -z "$VERCEL_PROJECT_ID" ] || [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_PROJECT_ID or VERCEL_TOKEN is not configured"
             exit 1
           fi
-          curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK"
+
+      - name: Pull production settings
+        run: npx --yes vercel@50.32.5 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build production bundle
+        run: npx --yes vercel@50.32.5 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy production bundle
+        run: npx --yes vercel@50.32.5 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
