@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260723-game-coupang-1';
+const CACHE_NAME = 'olivestock-app-v20260723-coupang-hour-cap-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -8,7 +8,7 @@ const CORE_ASSETS = [
   '/favicon-512x512.png',
   '/apple-touch-icon.png',
   '/css/style.css?v=20260723-game-coupang-1',
-  '/js/config.js?v=20260723-game-coupang-1',
+  '/js/config.js?v=20260723-coupang-hour-cap-1',
   '/js/pwa.js?v=20260622-2',
   '/js/storage.js?v=20260622-2',
   '/js/api.js?v=20260721-1',
@@ -18,7 +18,7 @@ const CORE_ASSETS = [
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
   '/js/alerts.js?v=20260622-2',
-  '/js/app.js?v=20260622-2'
+  '/js/app.js?v=20260723-coupang-hour-cap-1'
 ];
 
 self.addEventListener('install', function (event) {

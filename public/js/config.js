@@ -68,6 +68,9 @@ var CONFIG = {
   OY_BASE: 'https://www.oliveyoung.co.kr',
   /** 검색 결과 이미지 클릭 시 여는 쿠팡 파트너스 링크 */
   COUPANG_STOCK_LINK: 'https://link.coupang.com/a/fB5bxHQJ5g',
+  /** 같은 브라우저에서 쿠팡 링크는 1시간에 한 번만 연다. */
+  COUPANG_CLICK_COOLDOWN_MS: 60 * 60 * 1000,
+  COUPANG_CLICK_LAST_OPEN_KEY: 'olivestock:coupang-last-open-at',
   /** GitHub Actions로 갱신되는 큐레이터(utm_content 포함 oy.run) 캐시 — 프론트에서 먼저 조회 */
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 */

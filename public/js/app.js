@@ -193,6 +193,32 @@ var App = {
       });
   },
 
+  _allowCoupangLinkOpen: function () {
+    var now = Date.now();
+    var cooldown = Number(CONFIG.COUPANG_CLICK_COOLDOWN_MS) || 60 * 60 * 1000;
+    var key = CONFIG.COUPANG_CLICK_LAST_OPEN_KEY || 'olivestock:coupang-last-open-at';
+
+    try {
+      var lastOpenAt = Number(window.localStorage.getItem(key) || 0);
+      if (lastOpenAt > 0 && now >= lastOpenAt && now - lastOpenAt < cooldown) {
+        return false;
+      }
+      window.localStorage.setItem(key, String(now));
+      return true;
+    } catch (err) {
+      var memoryLastOpenAt = Number(this._lastCoupangOpenAt || 0);
+      if (
+        memoryLastOpenAt > 0 &&
+        now >= memoryLastOpenAt &&
+        now - memoryLastOpenAt < cooldown
+      ) {
+        return false;
+      }
+      this._lastCoupangOpenAt = now;
+      return true;
+    }
+  },
+
   _onClick: function (e) {
     if (e.target.closest && e.target.closest('.hot-chart')) {
       e.preventDefault();
@@ -234,6 +260,13 @@ var App = {
         break;
       }
       case 'showDetail':
+        if (
+          el.classList &&
+          el.classList.contains('coupang-stock-link') &&
+          !this._allowCoupangLinkOpen()
+        ) {
+          e.preventDefault();
+        }
         this._pauseOnlineBatchForPopup();
         this._openDetail(parseInt(el.dataset.index, 10));
         break;
