@@ -1511,14 +1511,54 @@ var App = {
     );
   },
 
+  _stockLookupErrorText: function (value) {
+    var text =
+      value && typeof value === 'object'
+        ? value.message || value.error || ''
+        : String(value || '');
+    if (
+      /timeout|timed out|abort|signal is aborted|failed to fetch|networkerror/i.test(text)
+    ) {
+      return '재고 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.';
+    }
+    return text || '재고 조회를 완료하지 못했습니다.';
+  },
+
   _fetchJsonWithTimeout: function (url, timeoutMs) {
     var controller = new AbortController();
+    var timedOut = false;
     var tid = setTimeout(function () {
+      timedOut = true;
       controller.abort();
     }, timeoutMs || 20000);
     return fetch(url, { signal: controller.signal })
       .then(function (r) {
-        return r.json();
+        return r.text().then(function (text) {
+          var data = null;
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch (e) {}
+          if (!r.ok) {
+            throw new Error(
+              (data && (data.message || data.error)) || '재고 서버 오류 (' + r.status + ')'
+            );
+          }
+          return data || {};
+        });
+      })
+      .catch(function (err) {
+        if (
+          timedOut ||
+          controller.signal.aborted ||
+          (err && err.name === 'AbortError')
+        ) {
+          var timeoutError = new Error(
+            '재고 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.'
+          );
+          timeoutError.code = 'STOCK_TIMEOUT';
+          throw timeoutError;
+        }
+        throw err;
       })
       .finally(function () {
         clearTimeout(tid);
@@ -1541,59 +1581,64 @@ var App = {
   },
 
   _loadRealtimeDetailIntoPopup: async function (goodsNo, displayName) {
-    var self = this;
     var gn = String(goodsNo || '').trim();
     var onlineShown = false;
-    var fullShown = false;
-    var onlineStarted = false;
-    var onlineTimeout = CONFIG.STOCK_ONLINE_FIRST_TIMEOUT_MS || 3500;
-    var onlineDelay = CONFIG.STOCK_ONLINE_FIRST_DELAY_MS || 1200;
-    var fullTimeout = CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 20000;
-
-    var fullPromise = this._fetchJsonWithTimeout(this._stockDetailUrl(gn), fullTimeout);
-    var fullHandled = fullPromise
-      .then(function (d) {
-        if (d && d.success && d.options && d.options.length > 0) {
-          fullShown = true;
-          if (!onlineShown || self._popupStillShowingGoods(gn)) {
-            self._applyRealtimeDetail(gn, d);
-          }
-          return;
-        }
-        if (!onlineShown) {
-          UI.showPopupError(displayName, (d && (d.message || d.error)) || '조회 실패', gn);
-        }
-      })
-      .catch(function (e) {
-        if (!onlineShown) {
-          UI.showPopupError(displayName, '서버 연결 실패: ' + (e.message || String(e)), gn);
-        } else if (UI.showSyncStatus) {
-          UI.showSyncStatus('주변 매장 조회가 지연되어 온라인 재고 먼저 표시했습니다.', false, 4000);
-        }
-      });
-
-    await new Promise(function (resolve) {
-      setTimeout(resolve, onlineDelay);
-    });
-    if (fullShown) return;
+    var onlineTimeout = CONFIG.STOCK_ONLINE_FIRST_TIMEOUT_MS || 10000;
+    var fullTimeout = CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 35000;
 
     try {
-      onlineStarted = true;
       var online = await this._fetchJsonWithTimeout(
         this._stockDetailUrl(gn, { onlineOnly: true }),
         onlineTimeout
       );
-      if (!fullShown && online && online.success && online.options && online.options.length > 0) {
+      if (online && online.success && online.options && online.options.length > 0) {
         onlineShown = true;
-        this._applyRealtimeDetail(gn, online);
-        return;
+        if (this._popupStillShowingGoods(gn)) {
+          this._applyRealtimeDetail(gn, online);
+        }
       }
     } catch (e) {
-      /* fall back to full lookup */
+      /* The full lookup below can still provide both online and nearby-store stock. */
     }
 
-    if (!onlineStarted && fullShown) return;
-    await fullHandled;
+    if (!this._popupStillShowingGoods(gn)) return;
+
+    try {
+      var full = await this._fetchJsonWithTimeout(this._stockDetailUrl(gn), fullTimeout);
+      if (full && full.success && full.options && full.options.length > 0) {
+        if (this._popupStillShowingGoods(gn)) {
+          this._applyRealtimeDetail(gn, full);
+        }
+        return;
+      }
+      if (!onlineShown && this._popupStillShowingGoods(gn)) {
+        UI.showPopupError(
+          displayName,
+          this._stockLookupErrorText(full && (full.message || full.error)),
+          gn
+        );
+      } else if (onlineShown && this._popupStillShowingGoods(gn) && UI.showSyncStatus) {
+        UI.showSyncStatus(
+          '온라인 재고는 확인됐지만 주변 매장 조회가 지연되고 있습니다.',
+          false,
+          5000
+        );
+      }
+    } catch (e) {
+      if (!onlineShown && this._popupStillShowingGoods(gn)) {
+        UI.showPopupError(
+          displayName,
+          this._stockLookupErrorText(e),
+          gn
+        );
+      } else if (onlineShown && this._popupStillShowingGoods(gn) && UI.showSyncStatus) {
+        UI.showSyncStatus(
+          '온라인 재고는 확인됐지만 주변 매장 조회가 지연되고 있습니다.',
+          false,
+          5000
+        );
+      }
+    }
   },
 
   _openDetail: async function (idx) {
@@ -1642,7 +1687,7 @@ var App = {
         await this._loadRealtimeDetailIntoPopup(gn, p.goodsName);
         return;
       } catch (e) {
-        UI.showPopupError(p.goodsName, '서버 연결 실패: ' + (e.message || String(e)), gn);
+        UI.showPopupError(p.goodsName, this._stockLookupErrorText(e), gn);
         return;
       }
     }
@@ -1699,7 +1744,7 @@ var App = {
         await this._loadRealtimeDetailIntoPopup(gn, name);
         return;
       } catch (e) {
-        favLookupError = e && e.message ? '서버 연결 실패: ' + e.message : '';
+        favLookupError = this._stockLookupErrorText(e);
       }
     }
     UI.showPopupError(name, favLookupError || '다음 수집 시 재고가 업데이트됩니다.', gn);

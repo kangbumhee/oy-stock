@@ -39,11 +39,11 @@ const OY_SEARCH_TOTAL_TIMEOUT_MS = Math.max(
 );
 const STOCK_DETAIL_TOTAL_TIMEOUT_MS = Math.max(
   6000,
-  Number.parseInt(process.env.STOCK_DETAIL_TOTAL_TIMEOUT_MS || '18000', 10) || 18000
+  Number.parseInt(process.env.STOCK_DETAIL_TOTAL_TIMEOUT_MS || '35000', 10) || 35000
 );
 const STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS = Math.max(
   3000,
-  Number.parseInt(process.env.STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS || '6500', 10) || 6500
+  Number.parseInt(process.env.STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS || '12000', 10) || 12000
 );
 const STOCK_SESSION_READY_TIMEOUT_MS = Math.max(
   8000,

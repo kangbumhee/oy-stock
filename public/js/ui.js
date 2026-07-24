@@ -2425,7 +2425,10 @@ var UI = {
       '" data-original-label="올리브영에서 구매 →">올리브영에서 구매 →</button></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
-    UI.prefetchAllStockForDetail(detail, goodsNo);
+    // The online-first response must not compete with the nearby-store request.
+    if (detail.source !== 'live-online') {
+      UI.prefetchAllStockForDetail(detail, goodsNo);
+    }
     if (window.RestockAlerts) RestockAlerts.refreshControls();
   },
 
