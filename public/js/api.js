@@ -45,7 +45,12 @@ var API = {
   setCachedSearch: function (keyword, lat, lng, size, data) {
     try {
       var key = API._searchCacheKey(keyword, lat, lng, size);
-      if (!data || data.success === false || API._productCountFromSearchData(data) === 0) {
+      if (
+        !data ||
+        data.success === false ||
+        API._productCountFromSearchData(data) === 0 ||
+        API._isLocalFallbackSearch(data)
+      ) {
         sessionStorage.removeItem(key);
         return;
       }
@@ -86,9 +91,18 @@ var API = {
     return 0;
   },
 
+  _isLocalFallbackSearch: function (data) {
+    var dd = (data && data.data) || {};
+    var source = String((data && data.source) || dd.source || '').toLowerCase();
+    return (
+      source.indexOf('local-stock-detail-cache') >= 0 ||
+      source.indexOf('fallback-local') >= 0
+    );
+  },
+
   _shouldTryDirectAfterProxy: function (data) {
     if (!data || data.success === false) return false;
-    return API._productCountFromSearchData(data) === 0;
+    return API._productCountFromSearchData(data) === 0 || API._isLocalFallbackSearch(data);
   },
 
   _fetchWithTimeout: function (url, timeoutMs, outerSignal) {
