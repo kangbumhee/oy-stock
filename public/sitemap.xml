@@ -93,9 +93,15 @@
   <!-- BLOG_URLS_START -->
   <url>
     <loc>https://olivestock.co.kr/blog/</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://olivestock.co.kr/blog/oliveyoung-hot-item-stock-a000000259474/</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://olivestock.co.kr/blog/oliveyoung-cleanser-stock-a000000247859/</loc>
