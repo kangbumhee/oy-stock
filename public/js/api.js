@@ -10,19 +10,20 @@ var API = {
   _correctKeyword: function (keyword) {
     var raw = String(keyword || '').trim();
     if (!raw) return '';
-    var normalized = raw.normalize ? raw.normalize('NFC') : raw;
-    normalized = normalized.toLowerCase().replace(/\s+/g, '');
+    var canonical = raw.normalize ? raw.normalize('NFC') : raw;
+    canonical = canonical.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+    var normalized = canonical.toLowerCase().replace(/\s+/g, '');
     if (API.COMMON_KEYWORD_CORRECTIONS[normalized]) {
       return API.COMMON_KEYWORD_CORRECTIONS[normalized];
     }
     if (normalized.indexOf('여뮤즈') >= 0) return '어뮤즈';
-    return raw;
+    return canonical;
   },
 
   _searchCacheKey: function (keyword, lat, lng, size) {
     return [
       'oy-search',
-      String(keyword || '').trim().toLowerCase(),
+      API._correctKeyword(keyword).toLowerCase(),
       String(lat || CONFIG.DEFAULT_LAT),
       String(lng || CONFIG.DEFAULT_LNG),
       String(size || CONFIG.SEARCH_SIZE)
@@ -43,8 +44,13 @@ var API = {
 
   setCachedSearch: function (keyword, lat, lng, size, data) {
     try {
+      var key = API._searchCacheKey(keyword, lat, lng, size);
+      if (!data || data.success === false || API._productCountFromSearchData(data) === 0) {
+        sessionStorage.removeItem(key);
+        return;
+      }
       sessionStorage.setItem(
-        API._searchCacheKey(keyword, lat, lng, size),
+        key,
         JSON.stringify({ ts: Date.now(), data: data })
       );
     } catch (e) {}
@@ -82,14 +88,7 @@ var API = {
 
   _shouldTryDirectAfterProxy: function (data) {
     if (!data || data.success === false) return false;
-    var dd = data.data || {};
-    var source = String(data.source || dd.source || '').toLowerCase();
-    var isFallback =
-      data.fallback === true ||
-      source.indexOf('fallback') >= 0 ||
-      source.indexOf('local-stock-detail-cache') >= 0 ||
-      source.indexOf('fallback-local') >= 0;
-    return isFallback && API._productCountFromSearchData(data) === 0;
+    return API._productCountFromSearchData(data) === 0;
   },
 
   _fetchWithTimeout: function (url, timeoutMs, outerSignal) {
@@ -121,9 +120,10 @@ var API = {
 
   search: function (keyword, lat, lng, size, opts) {
     opts = opts || {};
+    var correctedKeyword = API._correctKeyword(keyword);
     var url =
       '/api/oliveyoung/search?keyword=' +
-      encodeURIComponent(keyword) +
+      encodeURIComponent(correctedKeyword) +
       '&lat=' +
       (lat || CONFIG.DEFAULT_LAT) +
       '&lng=' +
@@ -156,7 +156,6 @@ var API = {
       });
     }
 
-    var correctedKeyword = API._correctKeyword(keyword);
     var directUrl =
       API.DIRECT_PRODUCTS_URL +
       '?keyword=' +

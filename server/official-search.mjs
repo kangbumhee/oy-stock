@@ -23,6 +23,14 @@ export function parseSearchSize(value) {
   return Math.max(1, Math.min(200, parsed));
 }
 
+export function normalizeSearchKeyword(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function normalizeOfficialProduct(row) {
   if (!row || typeof row !== 'object') return null;
 
@@ -114,7 +122,7 @@ export async function searchOfficialProducts(
     pageSize = DEFAULT_PAGE_SIZE
   } = {}
 ) {
-  const query = String(keyword || '').trim();
+  const query = normalizeSearchKeyword(keyword);
   if (!query) throw new Error('keyword_required');
   if (typeof fetchPage !== 'function') throw new Error('fetchPage_required');
 

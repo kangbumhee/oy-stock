@@ -93,10 +93,15 @@ function getInventoryCount(payload) {
 function getKeywordCorrection(keyword) {
   const raw = String(keyword || '').trim();
   if (!raw) return '';
-  const normalized = raw.normalize('NFC').toLowerCase().replace(/\s+/g, '');
+  const canonical = raw
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const normalized = canonical.toLowerCase().replace(/\s+/g, '');
   if (COMMON_KEYWORD_CORRECTIONS[normalized]) return COMMON_KEYWORD_CORRECTIONS[normalized];
   if (normalized.includes('여뮤즈')) return '어뮤즈';
-  return '';
+  return canonical;
 }
 
 async function fetchUpstreamProducts(keyword, size) {
@@ -626,10 +631,10 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const correctedKeyword = getKeywordCorrection(keyword);
-  const queryKeyword = correctedKeyword || keyword;
-  if (correctedKeyword) {
-    res.setHeader('X-Search-Corrected', encodeURIComponent(String(correctedKeyword)));
+  const originalKeyword = String(keyword || '').trim();
+  const queryKeyword = getKeywordCorrection(originalKeyword) || originalKeyword;
+  if (queryKeyword !== originalKeyword) {
+    res.setHeader('X-Search-Corrected', encodeURIComponent(String(queryKeyword)));
     res.setHeader('X-Search-Original', encodeURIComponent(String(keyword)));
   }
 

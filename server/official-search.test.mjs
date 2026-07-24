@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   clearOfficialSearchCache,
   normalizeOfficialProduct,
+  normalizeSearchKeyword,
   searchOfficialProducts
 } from './official-search.mjs';
 
@@ -36,6 +37,11 @@ test('normalizes an OliveYoung search row', () => {
   assert.equal(product.discountRate, 20);
   assert.equal(product.todayDelivery, true);
   assert.match(product.imageUrl, /^https:\/\/image\.oliveyoung\.co\.kr\//);
+});
+
+test('normalizes decomposed Korean and invisible characters in search keywords', () => {
+  const decomposed = '어노브'.normalize('NFD');
+  assert.equal(normalizeSearchKeyword('\u200B ' + decomposed + ' \uFEFF'), '어노브');
 });
 
 test('loads additional pages, deduplicates products, and caches the result', async () => {
