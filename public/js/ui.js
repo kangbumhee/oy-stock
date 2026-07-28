@@ -2232,6 +2232,9 @@ var UI = {
     else if (detail.source === 'live-online')
       statusBadge =
         '<div class="popup-badge bg-blue-light">🛒 온라인 재고 먼저 표시 중 · 주변 매장 재고는 계속 조회됩니다</div>';
+    else if (detail.storeLookupStatus === 'unavailable')
+      statusBadge =
+        '<div class="popup-badge bg-orange-light">⚠️ 주변 매장 재고를 불러오지 못했습니다. 품절로 확정하지 않고 다시 조회합니다.</div>';
     else if (detail.status === 'discontinued')
       statusBadge = '<div class="popup-badge bg-red-light">⛔ 단종/삭제된 상품입니다</div>';
     else if (detail.status === 'soldout')
@@ -2274,6 +2277,9 @@ var UI = {
 
     var optPanels = opts
       .map(function (o, i) {
+        var storeLookupUnavailable =
+          detail.storeLookupStatus === 'unavailable' ||
+          o.storeLookupStatus === 'unavailable';
         var optImg = o.image
           ? '<img src="' +
             UI.esc(o.image) +
@@ -2297,7 +2303,9 @@ var UI = {
           '<div class="opt-info"><p class="opt-name">' +
           UI.esc(o.name) +
           '</p><p class="opt-stock">' +
-          (o.inStock > 0
+          (storeLookupUnavailable
+            ? '<span class="stock-pending">⚠️ 주변 매장 재고 다시 조회 중</span>'
+            : o.inStock > 0
             ? '<span class="stock-ok">✅ ' +
               o.inStock +
               '/' +
@@ -2311,7 +2319,9 @@ var UI = {
         var stores = o.stores || [];
         var storeHtml;
         if (stores.length === 0) {
-          storeHtml = '<div class="no-store">매장 정보 없음</div>';
+          storeHtml = storeLookupUnavailable
+            ? '<div class="no-store">매장 재고 응답이 지연되고 있습니다. 잠시 후 상품을 다시 눌러 주세요.</div>'
+            : '<div class="no-store">주변 매장 재고 없음</div>';
         } else {
           storeHtml =
             '<div class="store-list">' +

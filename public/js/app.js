@@ -1580,6 +1580,27 @@ var App = {
     UI.showDetailPopup(detail, goodsNo);
   },
 
+  _hasUsableStoreDetail: function (detail) {
+    if (
+      !detail ||
+      detail.success === false ||
+      detail.inventoryScope === 'online' ||
+      detail.source === 'live-online'
+    ) {
+      return false;
+    }
+    if (detail.storeLookupStatus === 'ok' || detail.storeLookupStatus === 'partial') {
+      return true;
+    }
+    if (detail.storeLookupStatus === 'unavailable') return false;
+    return (detail.options || []).some(function (option) {
+      return (
+        Number(option && option.totalStores) > 0 ||
+        (option && Array.isArray(option.stores) && option.stores.length > 0)
+      );
+    });
+  },
+
   _loadRealtimeDetailIntoPopup: async function (goodsNo, displayName) {
     var gn = String(goodsNo || '').trim();
     var onlineShown = false;
@@ -1605,7 +1626,13 @@ var App = {
 
     try {
       var full = await this._fetchJsonWithTimeout(this._stockDetailUrl(gn), fullTimeout);
-      if (full && full.success && full.options && full.options.length > 0) {
+      if (
+        full &&
+        full.success &&
+        full.options &&
+        full.options.length > 0 &&
+        this._hasUsableStoreDetail(full)
+      ) {
         if (this._popupStillShowingGoods(gn)) {
           this._applyRealtimeDetail(gn, full);
         }

@@ -438,6 +438,23 @@ async function ensureSession() {
   }
 }
 
+function isOliveYoungPageOpen() {
+  if (!page) return false;
+  try {
+    return new URL(page.url()).origin === OY;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureStockPageOrigin() {
+  await ensureSession();
+  if (isOliveYoungPageOpen()) return;
+
+  await page.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await sleep(500);
+}
+
 function sessionAgeSeconds() {
   return sessionCreatedAt ? Math.floor((Date.now() - sessionCreatedAt) / 1000) : 0;
 }
@@ -842,9 +859,7 @@ async function _createSession() {
 }
 
 async function oyPost(apiPath, body) {
-  if (!page || !sessionReady) {
-    await ensureSession();
-  }
+  await ensureStockPageOrigin();
   return page.evaluate(
     async ({ url, payload, timeoutMs }) => {
       const controller = new AbortController();
@@ -1011,9 +1026,7 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
 
 async function oyPostStockStoresBatch(requests) {
   if (!requests || requests.length === 0) return [];
-  if (!page || !sessionReady) {
-    await ensureSession();
-  }
+  await ensureStockPageOrigin();
 
   return page.evaluate(
     async ({ url, requests: reqs, concurrency, timeoutMs }) => {
@@ -1109,16 +1122,27 @@ async function getNearbyStoresByProductIds(productIds, lat, lng) {
     return {};
   }
 
-  const storesByPid = {};
+  const storesByPid = {
+    _meta: {
+      requested: unique.length,
+      succeeded: 0,
+      failed: 0,
+      byProduct: {}
+    }
+  };
   for (const row of rows || []) {
     const pid = String(row.productId || '').trim();
     if (!pid) continue;
-    const stInner =
-      row.ok && row.data && row.data.status === 'SUCCESS' ? unwrapPayload(row.data) : {};
+    const lookupOk = !!(row.ok && row.data && row.data.status === 'SUCCESS');
+    const stInner = lookupOk ? unwrapPayload(row.data) : {};
     const storeList = stInner.storeList || [];
-    if (!row.ok) {
+    if (lookupOk) {
+      storesByPid._meta.succeeded += 1;
+    } else {
+      storesByPid._meta.failed += 1;
       console.log('[매장배치] 실패:', pid, row.error || compactApiFailure(row));
     }
+    storesByPid._meta.byProduct[pid] = lookupOk ? 'ok' : 'unavailable';
     storesByPid[pid] = storeList.map((s) => ({
       name: s.storeName,
       code: s.storeCode,
@@ -1202,7 +1226,6 @@ async function fetchGoodsInfoOnDetailPage(goodsNo) {
       console.log('[상품정보] 상세 페이지 재시도 실패:', goodsNo, e.message || e);
       return null;
     } finally {
-      if (page) await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
       await sleep(250);
     }
   });
@@ -1258,7 +1281,11 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
   }
   try {
     const result = await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
-    if (result && result.success) {
+    if (
+      result &&
+      result.success &&
+      (onlineOnly || result.storeLookupStatus !== 'unavailable')
+    ) {
       pruneDetailResponseCache();
       detailResponseCache.set(ck, { data: result, ts: Date.now() });
     }
@@ -1374,17 +1401,14 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
               const ou = optInner.optionUploadUrl || '';
               const opts = optInner.goodsInfo?.availableItems || [];
               const raw = opts.slice();
-              await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
               await sleep(350);
               return { data: raw, optionUploadUrl: ou };
             }
 
-            await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
             await sleep(350);
             return null;
           } catch (e) {
             console.log('[옵션] page 실패:', e.message);
-            await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
             return null;
           }
         });
@@ -1463,6 +1487,14 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
         lng
       )
     : {};
+  const storeLookupMeta = storeResultsByPid._meta || null;
+  let storeLookupStatus = onlineOnly
+    ? 'skipped'
+    : storeLookupMeta && storeLookupMeta.succeeded > 0
+      ? storeLookupMeta.failed > 0
+        ? 'partial'
+        : 'ok'
+      : 'unavailable';
 
   const optionResults = [];
   for (const opt of options) {
@@ -1505,6 +1537,13 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       maxOrderQty: onlineInfo.maxOrderQty || opt.orderableMaximumQuantity || 0,
       deliveredToday: onlineInfo.deliveredToday || !!opt.deliveredToday,
       presentable: onlineInfo.presentable || !!opt.presentable,
+      storeLookupStatus: onlineOnly
+        ? 'skipped'
+        : storeLookupMeta &&
+            storeLookupMeta.byProduct &&
+            storeLookupMeta.byProduct[String(pid)]
+          ? storeLookupMeta.byProduct[String(pid)]
+          : 'unavailable',
       stores: stores.slice(0, 30)
     });
   }
@@ -1528,6 +1567,13 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
     } else {
       const singleStoresByPid = await getNearbyStoresByProductIds([pid], lat, lng);
       const stores = singleStoresByPid[pid] || [];
+      const singleLookupStatus =
+        singleStoresByPid._meta &&
+        singleStoresByPid._meta.byProduct &&
+        singleStoresByPid._meta.byProduct[pid]
+          ? singleStoresByPid._meta.byProduct[pid]
+          : 'unavailable';
+      storeLookupStatus = singleLookupStatus;
       optionResults.push({
         name: gi.goodsName,
         productId: pid,
@@ -1539,6 +1585,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
         maxOrderQty: gi.orderableMaximumQuantity || 0,
         deliveredToday: !!gi.deliveredToday,
         presentable: !!gi.presentable,
+        storeLookupStatus: singleLookupStatus,
         stores: stores.slice(0, 30)
       });
     }
@@ -1553,6 +1600,9 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
   if (onlineOnly) {
     status = anyOnline ? 'active' : 'soldout';
     statusLabel = anyOnline ? '🛒 온라인 재고' : '🛒 온라인 품절';
+  } else if (storeLookupStatus === 'unavailable') {
+    status = 'unknown';
+    statusLabel = '⚠️ 매장 재고 조회 지연';
   } else {
     status = totalInStock > 0 ? 'active' : 'soldout';
     statusLabel = totalInStock > 0 ? '✅ 재고있음' : '🔴 주변품절';
@@ -1562,6 +1612,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
     success: true,
     source: onlineOnly ? 'live-online' : 'live',
     inventoryScope: onlineOnly ? 'online' : 'store',
+    storeLookupStatus,
     goodsNo,
     goodsName: gName,
     price: gi.priceToPay,

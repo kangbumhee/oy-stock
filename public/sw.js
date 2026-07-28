@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260724-unove-search-2';
+const CACHE_NAME = 'olivestock-app-v20260728-offline-stock-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -12,13 +12,13 @@ const CORE_ASSETS = [
   '/js/pwa.js?v=20260622-2',
   '/js/storage.js?v=20260622-2',
   '/js/api.js?v=20260724-unove-search-2',
-  '/js/ui.js?v=20260724-stock-timeout-1',
+  '/js/ui.js?v=20260728-offline-stock-1',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
   '/js/alerts.js?v=20260622-2',
-  '/js/app.js?v=20260724-stock-timeout-1'
+  '/js/app.js?v=20260728-offline-stock-1'
 ];
 
 self.addEventListener('install', function (event) {
