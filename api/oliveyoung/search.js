@@ -6,6 +6,8 @@ const SEARCH_CACHE_MAX = 200;
 const searchCache = new Map();
 
 const PRODUCTS_TIMEOUT_MS = 24000;
+const PRODUCTS_RETRY_TIMEOUT_MS = 16000;
+const PRODUCTS_RETRY_DELAY_MS = 350;
 const OFFICIAL_SEARCH_TIMEOUT_MS = 3500;
 const OFFICIAL_SEARCH_PAGE_SIZE = 48;
 const PRODUCTS_API_URL =
@@ -111,9 +113,44 @@ async function fetchUpstreamProducts(keyword, size) {
     encodeURIComponent(String(keyword || '')) +
     '&size=' +
     encodeURIComponent(String(parseSize(size)));
-  const result = await fetchUpstreamInventory(url, PRODUCTS_TIMEOUT_MS);
-  const parsed = result ? tryParseJson(result.text) : null;
-  return { status: result ? result.r.status : 500, text: result ? result.text : '', parsed };
+
+  async function attempt(timeoutMs) {
+    try {
+      const result = await fetchUpstreamInventory(url, timeoutMs);
+      return {
+        status: result ? result.r.status : 500,
+        text: result ? result.text : '',
+        parsed: result ? tryParseJson(result.text) : null
+      };
+    } catch (error) {
+      return {
+        status: 0,
+        text: '',
+        parsed: null,
+        error
+      };
+    }
+  }
+
+  function usable(result) {
+    return !!(
+      result &&
+      result.status > 0 &&
+      result.status < 500 &&
+      result.parsed &&
+      result.parsed.success !== false
+    );
+  }
+
+  const first = await attempt(PRODUCTS_TIMEOUT_MS);
+  if (usable(first)) return first;
+
+  // Cloud Run scale-to-zero can finish warming just after the first request times out.
+  // Retry here so a one-item local cache is never mistaken for the full search result.
+  await new Promise((resolve) => setTimeout(resolve, PRODUCTS_RETRY_DELAY_MS));
+  const retried = await attempt(PRODUCTS_RETRY_TIMEOUT_MS);
+  retried.retried = true;
+  return usable(retried) ? retried : first.parsed ? first : retried;
 }
 
 function getOfficialCookieHeader() {

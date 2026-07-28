@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
   const keyword = q.keyword;
   const lat = q.lat || '37.6152';
   const lng = q.lng || '126.7156';
-  const size = q.size || '1';
+  const size = q.size || '120';
 
   if (!keyword) {
     res.statusCode = 400;
@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
       encodeURIComponent(size);
 
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 20000);
+    const t = setTimeout(() => controller.abort(), 45000);
     const r = await fetch(url, {
       headers: { Accept: 'application/json', 'User-Agent': 'OliveyoungStockChecker/1.0' },
       signal: controller.signal

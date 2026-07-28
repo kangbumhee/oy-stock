@@ -35,7 +35,7 @@ const OY_SEARCH_FETCH_TIMEOUT_MS = Math.max(
 );
 const OY_SEARCH_TOTAL_TIMEOUT_MS = Math.max(
   12000,
-  Number.parseInt(process.env.OY_SEARCH_TOTAL_TIMEOUT_MS || '22000', 10) || 22000
+  Number.parseInt(process.env.OY_SEARCH_TOTAL_TIMEOUT_MS || '30000', 10) || 30000
 );
 const STOCK_DETAIL_TOTAL_TIMEOUT_MS = Math.max(
   6000,
@@ -47,7 +47,7 @@ const STOCK_DETAIL_ONLINE_ONLY_TIMEOUT_MS = Math.max(
 );
 const STOCK_SESSION_READY_TIMEOUT_MS = Math.max(
   8000,
-  Number.parseInt(process.env.STOCK_SESSION_READY_TIMEOUT_MS || '16000', 10) || 16000
+  Number.parseInt(process.env.STOCK_SESSION_READY_TIMEOUT_MS || '30000', 10) || 30000
 );
 const SESSION_HEALTHCHECK_TIMEOUT_MS = Math.max(
   800,

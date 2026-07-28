@@ -178,7 +178,11 @@ var API = {
       encodeURIComponent(size || CONFIG.SEARCH_SIZE);
 
     function fetchDirectProducts() {
-      return API._fetchWithTimeout(directUrl, 18000, opts.signal).then(function (r) {
+      return API._fetchWithTimeout(
+        directUrl,
+        CONFIG.SEARCH_DIRECT_FETCH_TIMEOUT_MS || 32000,
+        opts.signal
+      ).then(function (r) {
         if (r.ok)
           return r.json().then(function (data) {
             return saveAndReturn(data);

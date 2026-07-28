@@ -13,10 +13,16 @@
       "src": "api/oliveyoung/search.js",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 30
+        "maxDuration": 60
       }
     },
-    { "src": "api/oliveyoung/inventory.js", "use": "@vercel/node" },
+    {
+      "src": "api/oliveyoung/inventory.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60
+      }
+    },
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/view-ranking.js", "use": "@vercel/node" },
