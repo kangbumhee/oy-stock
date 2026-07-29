@@ -32,6 +32,10 @@ const OY_M = 'https://m.oliveyoung.co.kr';
 const REGISTER_ID_DEFAULT = '4ee076cc92da4447a1b4b42c590e4495';
 const SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
 const PLACEHOLDER_CATEGORY = '1000001000000000000';
+const AFFILIATE_DASHBOARD_URL =
+  'https://m.oliveyoung.co.kr/m/mtn/affiliate/dashboard';
+const CURATOR_ACTIVATION_TEXT = '큐레이터 활동 시작하기';
+const AUTH_REFRESH_WAIT_MS = 25000;
 
 /** curator-links 항목이 이 시간 이내면 landing/shorten 재호출 안 함 */
 const CURATOR_ENTRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -229,6 +233,146 @@ function parseCookieHeader(header, domainHost) {
   return out;
 }
 
+function serializeOliveYoungCookies(cookies) {
+  const byName = new Map();
+  for (const cookie of cookies || []) {
+    const domain = String(cookie.domain || '').replace(/^\./, '');
+    if (!domain.endsWith('oliveyoung.co.kr')) continue;
+    if (
+      cookie.name === 'linkageString' ||
+      cookie.name.startsWith('OY')
+    ) {
+      byName.set(cookie.name, cookie.value);
+    }
+  }
+  return Array.from(byName.entries())
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
+}
+
+async function authCandidateFromContext(context, source) {
+  const cookies = await context.cookies();
+  const linkage = cookies.find((cookie) => cookie.name === 'linkageString');
+  if (!linkage?.value) return null;
+  return authCandidateFromLinkageHex(
+    linkage.value,
+    source,
+    serializeOliveYoungCookies(cookies)
+  );
+}
+
+async function waitForFreshContextAuth(context, timeoutMs = AUTH_REFRESH_WAIT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  let candidate = await authCandidateFromContext(
+    context,
+    'OY_REFRESH_COOKIE 자동 갱신'
+  );
+
+  while ((!candidate || candidate.expired) && Date.now() < deadline) {
+    await sleep(1000);
+    candidate = await authCandidateFromContext(
+      context,
+      'OY_REFRESH_COOKIE 자동 갱신'
+    );
+  }
+
+  return candidate && !candidate.expired ? candidate : null;
+}
+
+async function renewExpiredAuthFromSession(context) {
+  const page = await context.newPage();
+  let loginRequired = false;
+  const acceptDialog = async (dialog) => {
+    if (dialog.message().includes('로그인 후')) loginRequired = true;
+    await dialog.accept().catch(() => {});
+  };
+  page.on('dialog', acceptDialog);
+
+  try {
+    console.log('🔄 저장된 로그인 세션으로 큐레이터 JWT 자동 갱신 시도…');
+    await context.clearCookies({ name: 'linkageString' }).catch(() => {});
+    await page.goto(AFFILIATE_DASHBOARD_URL, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+    await sleep(3000);
+
+    let candidate = await authCandidateFromContext(
+      context,
+      'OY_REFRESH_COOKIE 자동 갱신'
+    );
+    if (candidate && !candidate.expired) {
+      console.log(`✅ 큐레이터 JWT 자동 갱신 완료 | 만료: ${describeExp(candidate)}`);
+      return candidate;
+    }
+
+    const bodyText = await page
+      .locator('body')
+      .innerText({ timeout: 5000 })
+      .catch(() => '');
+    const sessionCookie = (await context.cookies()).find(
+      (cookie) => cookie.name === 'OYSESSIONID'
+    );
+    if (
+      !sessionCookie ||
+      /\/login\//i.test(page.url()) ||
+      bodyText.includes('올리브영 로그인') ||
+      bodyText.includes('카카오로 로그인')
+    ) {
+      console.error('❌ 저장된 올리브영 로그인 세션이 만료되었습니다.');
+      return null;
+    }
+
+    const activationCandidates = [
+      page.getByRole('button', {
+        name: CURATOR_ACTIVATION_TEXT,
+        exact: true
+      }),
+      page.getByRole('link', {
+        name: CURATOR_ACTIVATION_TEXT,
+        exact: true
+      }),
+      page
+        .locator('button, a, [role="button"], [onclick]')
+        .filter({ hasText: CURATOR_ACTIVATION_TEXT }),
+      page.getByText(CURATOR_ACTIVATION_TEXT, { exact: true })
+    ];
+
+    let clicked = false;
+    for (const locator of activationCandidates) {
+      const target = locator.first();
+      if (!(await target.isVisible({ timeout: 1500 }).catch(() => false))) {
+        continue;
+      }
+      await target.scrollIntoViewIfNeeded().catch(() => {});
+      await target.click({ timeout: 5000 });
+      clicked = true;
+      break;
+    }
+
+    if (!clicked) {
+      console.error('❌ 큐레이터 활동 시작 버튼을 찾지 못했습니다.');
+      return null;
+    }
+
+    candidate = await waitForFreshContextAuth(context);
+    if (loginRequired) {
+      console.error('❌ 큐레이터 인증 갱신 중 로그인이 필요하다는 응답을 받았습니다.');
+      return null;
+    }
+    if (candidate) {
+      console.log(`✅ 큐레이터 JWT 자동 갱신 완료 | 만료: ${describeExp(candidate)}`);
+      return candidate;
+    }
+
+    console.error('❌ 새 linkageString이 제한 시간 안에 발급되지 않았습니다.');
+    return null;
+  } finally {
+    page.off('dialog', acceptDialog);
+    await page.close().catch(() => {});
+  }
+}
+
 function addGoodsNo(out, value) {
   const gn = String(value || '').trim();
   if (/^[AB]\d+$/i.test(gn)) out.add(gn.toUpperCase());
@@ -332,14 +476,15 @@ function loadPrevCurator() {
 
 async function main() {
   const authCandidates = collectAuthCandidates();
-  const selectedAuth = selectAuthCandidate(authCandidates);
+  let selectedAuth = selectAuthCandidate(authCandidates);
   const cookieHeader = selectedAuth?.cookieHeader || '';
 
   if (!selectedAuth) {
-    console.log(
-      '큐레이터 인증 후보 없음 → 링크 생성 스킵 (OY_CURATOR_COOKIE / OY_REFRESH_COOKIE / linkageString 계열 Secret 확인)'
+    console.error(
+      '큐레이터 인증 후보 없음 (OY_CURATOR_COOKIE / OY_REFRESH_COOKIE / linkageString 계열 Secret 확인)'
     );
-    process.exit(0);
+    process.exitCode = 1;
+    return;
   }
 
   const goodsList = await collectGoodsNos();
@@ -353,7 +498,6 @@ async function main() {
   goodsList.sort();
   const regId = getRegisterId();
   const now = new Date().toISOString();
-  const authJwt = selectedAuth.jwt;
 
   for (const candidate of authCandidates) {
     if (candidate.expired) {
@@ -363,17 +507,6 @@ async function main() {
     }
   }
 
-  if (selectedAuth.expired) {
-    console.error(
-      `⚠️ 유효한 JWT 후보가 없어 만료된 ${selectedAuth.source} 사용 시도 (${describeExp(selectedAuth)})`
-    );
-    process.exit(1);
-  } else {
-    console.log(
-      `✅ ${selectedAuth.source} 인증 사용 | JWT 만료: ${describeExp(selectedAuth)}`
-    );
-  }
-
   console.log(`대상 상품 ${goodsList.length}개 | registerId ${regId.slice(0, 8)}…\n`);
 
   const browser = await chromium.launch({ headless: true });
@@ -381,13 +514,33 @@ async function main() {
     userAgent:
       'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     locale: 'ko-KR'
-    });
+  });
 
-    try {
-      if (cookieHeader) {
-        await ctx.addCookies(parseCookieHeader(cookieHeader, OY_M));
+  try {
+    if (cookieHeader) {
+      await ctx.addCookies(parseCookieHeader(cookieHeader, OY_M));
     }
 
+    if (selectedAuth.expired) {
+      console.warn(
+        `⚠️ 유효한 JWT가 없어 ${selectedAuth.source} 로그인 세션으로 자동 갱신합니다.`
+      );
+      const renewedAuth = await renewExpiredAuthFromSession(ctx);
+      if (!renewedAuth) {
+        console.error(
+          '❌ 자동 갱신 실패: 전용 로그인 프로필을 다시 로그인한 뒤 OY_REFRESH_COOKIE를 갱신하세요.'
+        );
+        process.exitCode = 1;
+        return;
+      }
+      selectedAuth = renewedAuth;
+    } else {
+      console.log(
+        `✅ ${selectedAuth.source} 인증 사용 | JWT 만료: ${describeExp(selectedAuth)}`
+      );
+    }
+
+    const authJwt = selectedAuth.jwt;
     const page = await ctx.newPage();
     console.log('www 워밍업…');
     await page.goto(OY_WWW + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
