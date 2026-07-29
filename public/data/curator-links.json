@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-29T08:25:30.359Z",
+  "updatedAt": "2026-07-29T08:39:43.561Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -164070,6 +164070,12 @@
       "affiliateActivityId": "a9b62f4a46d046fd9fff726bee625774",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-07-29T06:44:58.465Z"
+    },
+    "B000000201305": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "error": "landing_failed",
+      "generatedAt": "2026-07-29T08:39:43.561Z"
     }
   }
 }
