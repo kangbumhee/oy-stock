@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-01T04:27:21.642Z",
+  "updatedAt": "2026-08-02T04:30:42.828Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -14,100 +14,48 @@
   },
   "recentEvents": [
     {
-      "type": "back_in_stock",
+      "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 0,
+      "from": 34,
       "to": 34,
-      "fromQty": 0,
-      "toQty": 104,
-      "date": "2026-08-01T04:27:21.642Z"
+      "fromQty": 104,
+      "toQty": 103,
+      "date": "2026-08-02T04:30:42.828Z"
     },
     {
-      "type": "online_back",
+      "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 0,
-      "to": 772,
-      "date": "2026-08-01T04:27:21.642Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 0,
-      "to": 7500,
-      "date": "2026-08-01T04:27:21.642Z"
+      "from": 772,
+      "to": 764,
+      "date": "2026-08-02T04:30:42.828Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 56,
-      "to": 36,
-      "fromQty": 202,
-      "toQty": 113,
-      "date": "2026-08-01T04:27:21.642Z"
+      "from": 36,
+      "to": 35,
+      "fromQty": 113,
+      "toQty": 112,
+      "date": "2026-08-02T04:30:42.828Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 88,
-      "to": 1313,
-      "date": "2026-08-01T04:27:21.642Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 14900,
-      "to": 16000,
-      "date": "2026-08-01T04:27:21.642Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000256047",
-      "goodsName": "[NEW] 토리든 다이브인 저분자 히알루론산 세럼 50ml 더블 기획 (밸풀 세럼 20ml+선크림 20ml) ",
-      "from": 2,
-      "to": 1,
-      "fromQty": 6,
-      "toQty": 1,
-      "date": "2026-08-01T04:27:21.642Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000256047",
-      "goodsName": "[NEW] 토리든 다이브인 저분자 히알루론산 세럼 50ml 더블 기획 (밸풀 세럼 20ml+선크림 20ml) ",
-      "from": 28500,
-      "to": 38000,
-      "date": "2026-08-01T04:27:21.642Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 1,
-      "fromQty": 2,
-      "toQty": 3,
-      "date": "2026-08-01T04:27:21.642Z"
+      "from": 1313,
+      "to": 1299,
+      "date": "2026-08-02T04:30:42.828Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 7169,
-      "to": 4942,
-      "date": "2026-08-01T04:27:21.642Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 24900,
-      "to": 25200,
-      "date": "2026-08-01T04:27:21.642Z"
+      "from": 4942,
+      "to": 4849,
+      "date": "2026-08-02T04:30:42.828Z"
     }
   ],
   "products": {
@@ -127,9 +75,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 36,
-          "totalQty": 113,
-          "onlineQty": 1313,
+          "inStock": 35,
+          "totalQty": 112,
+          "onlineQty": 1299,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -308,7 +256,7 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -437,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-01T04:27:21.642Z"
+      "updatedAt": "2026-08-02T04:30:42.828Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -456,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
           "inStock": 26,
-          "totalQty": 64,
-          "onlineQty": 772,
+          "totalQty": 63,
+          "onlineQty": 764,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -736,8 +684,8 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
@@ -1393,7 +1341,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-01T04:27:21.642Z"
+      "updatedAt": "2026-08-02T04:30:42.828Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1721,7 +1669,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-01T04:27:21.642Z"
+      "updatedAt": "2026-08-02T04:30:42.828Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1734,7 +1682,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-08-01T04:27:21.642Z"
+      "updatedAt": "2026-08-02T04:30:42.828Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1747,7 +1695,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-08-01T04:27:21.642Z"
+      "updatedAt": "2026-08-02T04:30:42.828Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1767,7 +1715,7 @@
           "totalStores": 50,
           "inStock": 1,
           "totalQty": 3,
-          "onlineQty": 3545,
+          "onlineQty": 3479,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2081,7 +2029,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 733,
+          "onlineQty": 728,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2395,7 +2343,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 294,
+          "onlineQty": 281,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2709,7 +2657,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 370,
+          "onlineQty": 361,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -3017,7 +2965,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-01T04:27:21.642Z"
+      "updatedAt": "2026-08-02T04:30:42.828Z"
     }
   }
 }
