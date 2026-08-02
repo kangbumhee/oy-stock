@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-02T04:31:11.919Z",
+  "updatedAt": "2026-08-02T04:33:53.861Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -173536,6 +173536,18 @@
       "affiliateActivityId": "46affc44f84a4ae59571e7922cc68a5f",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-02T04:05:24.108Z"
+    },
+    "A000000263605": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "error": "landing_failed",
+      "generatedAt": "2026-08-02T04:33:53.861Z"
+    },
+    "A000000263602": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "error": "landing_failed",
+      "generatedAt": "2026-08-02T04:33:53.861Z"
     }
   }
 }
