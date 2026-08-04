@@ -19,41 +19,29 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      succeeded: ${{ steps.attempt.outcome == 'success' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sparse-checkout: |
+            .github/actions/generate-curator-links
             package.json
             package-lock.json
             scripts
             public/data
           sparse-checkout-cone-mode: false
 
-      - uses: actions/setup-node@v4
+      - name: Generate requested curator links (primary runner)
+        id: attempt
+        continue-on-error: true
+        uses: ./.github/actions/generate-curator-links
         with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci
-
-      - name: Cache Playwright Chromium
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-ms-playwright-
-
-      - run: npx playwright install chromium --with-deps
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-
-      - name: Generate requested curator links
+          goods-nos: ${{ inputs.goodsNos }}
+          max-goods: '260'
+          include-live-ranking: '0'
         env:
-          CURATOR_GOODS_NOS: ${{ inputs.goodsNos }}
-          CURATOR_MAX_GOODS: 260
-          CURATOR_INCLUDE_LIVE_RANKING: 0
           OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
           OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
           OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
@@ -62,18 +50,42 @@ jobs:
           OLIVEYOUNG_LINKAGE_STRING: ${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}
           OLIVEYOUNG_LINKAGE_JWT: ${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}
           OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
-        run: node scripts/generate-curator-links.mjs
 
-      - name: Commit & Push
-        env:
-          CURATOR_GOODS_NOS: ${{ inputs.goodsNos }}
+      - name: Schedule a fresh runner retry
+        if: steps.attempt.outcome != 'success'
+        shell: bash
         run: |
-          cp public/data/curator-links.json /tmp/generated-curator-links.json
-          git fetch origin main
-          git reset --hard origin/main
-          node scripts/merge-curator-links.mjs /tmp/generated-curator-links.json public/data/curator-links.json
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/curator-links.json
-          git diff --staged --quiet || git commit -m "🔗 curator link $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
-          git push
+          echo "::warning::The primary runner was blocked or failed. Retrying on a fresh runner."
+
+  generate-retry:
+    needs: generate
+    if: needs.generate.outputs.succeeded != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: |
+            .github/actions/generate-curator-links
+            package.json
+            package-lock.json
+            scripts
+            public/data
+          sparse-checkout-cone-mode: false
+
+      - name: Generate requested curator links (fresh runner retry)
+        uses: ./.github/actions/generate-curator-links
+        with:
+          goods-nos: ${{ inputs.goodsNos }}
+          max-goods: '260'
+          include-live-ranking: '0'
+        env:
+          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
+          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
+          OY_LINKAGE_JWT: ${{ secrets.OY_LINKAGE_JWT }}
+          OLIVEYOUNG_LINKAGE_STRING: ${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}
+          OLIVEYOUNG_LINKAGE_JWT: ${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}

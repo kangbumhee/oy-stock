@@ -1,0 +1,84 @@
+name: Generate and publish curator links
+description: Generate requested curator links and merge them into the latest main branch.
+
+inputs:
+  goods-nos:
+    description: Comma or whitespace separated OliveYoung goods numbers
+    required: true
+  max-goods:
+    description: Maximum number of goods to process
+    required: false
+    default: '260'
+  include-live-ranking:
+    description: Include live ranking products
+    required: false
+    default: '0'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+
+    - shell: bash
+      run: npm ci
+
+    - name: Cache Playwright Chromium
+      id: playwright-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-ms-playwright-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-ms-playwright-
+
+    - name: Install Playwright Chromium
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install chromium --with-deps
+
+    - name: Generate requested curator links
+      shell: bash
+      env:
+        CURATOR_GOODS_NOS: ${{ inputs.goods-nos }}
+        CURATOR_MAX_GOODS: ${{ inputs.max-goods }}
+        CURATOR_INCLUDE_LIVE_RANKING: ${{ inputs.include-live-ranking }}
+      run: node scripts/generate-curator-links.mjs
+
+    - name: Merge and push curator links
+      shell: bash
+      env:
+        CURATOR_GOODS_NOS: ${{ inputs.goods-nos }}
+      run: |
+        set -euo pipefail
+
+        cp public/data/curator-links.json /tmp/generated-curator-links.json
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        for attempt in 1 2 3; do
+          git fetch origin main
+          git reset --hard origin/main
+          node scripts/merge-curator-links.mjs \
+            /tmp/generated-curator-links.json \
+            public/data/curator-links.json
+          git add public/data/curator-links.json
+
+          if git diff --staged --quiet; then
+            echo "No curator link changes to publish."
+            exit 0
+          fi
+
+          git commit -m "curator link $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
+          if git push origin HEAD:main; then
+            exit 0
+          fi
+
+          echo "::warning::main changed while publishing; retrying merge (${attempt}/3)."
+          sleep $((attempt * 3))
+        done
+
+        echo "::error::Unable to publish curator links after 3 merge attempts."
+        exit 1
