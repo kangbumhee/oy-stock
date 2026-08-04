@@ -864,8 +864,14 @@ async function main() {
     );
 
     const successfulOrSkippedCount = generatedCount + skippedCount;
-    const criticalFailureCount =
-      hardFailureCount + (successfulOrSkippedCount === 0 ? exceptionFailureCount : 0);
+    const noUsableResultFailureCount =
+      successfulOrSkippedCount === 0
+        ? landingFailureCount + exceptionFailureCount
+        : 0;
+    const criticalFailureCount = Math.max(
+      hardFailureCount,
+      noUsableResultFailureCount
+    );
 
     if (exceptionFailureCount > 0 && successfulOrSkippedCount > 0) {
       console.warn(
