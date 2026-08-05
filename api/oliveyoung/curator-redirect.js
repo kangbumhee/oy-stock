@@ -691,15 +691,25 @@ module.exports = async function handler(req, res) {
       ? entry.originalUrl
       : null;
   const cachedGenerationError =
-    entry && !shortenedUrl && !cachedLong && entry.error
-      ? String(entry.error)
+    rawEntry && !shortenedUrl && !cachedLong && rawEntry.error
+      ? String(rawEntry.error)
       : '';
   const cachedGenerationErrorAt =
-    cachedGenerationError && entry.generatedAt ? Date.parse(entry.generatedAt) : NaN;
+    cachedGenerationError && rawEntry.generatedAt
+      ? Date.parse(rawEntry.generatedAt)
+      : NaN;
+  const cachedRetryAfter =
+    cachedGenerationError && rawEntry.retryAfter
+      ? Date.parse(rawEntry.retryAfter)
+      : NaN;
   const suppressQueueForCachedError =
     cachedGenerationError &&
-    !Number.isNaN(cachedGenerationErrorAt) &&
-    Date.now() - cachedGenerationErrorAt < 6 * 60 * 60 * 1000;
+    ((!Number.isNaN(cachedRetryAfter) && Date.now() < cachedRetryAfter) ||
+      (!Number.isNaN(cachedGenerationErrorAt) &&
+        Date.now() - cachedGenerationErrorAt < 6 * 60 * 60 * 1000));
+  const affiliateLinkUnavailable =
+    cachedGenerationError === 'affiliate_link_unavailable' &&
+    suppressQueueForCachedError;
   const basicLong = mobileUrlBasicAffiliate(goodsNo);
 
   const allowLiveLink =
@@ -741,6 +751,8 @@ module.exports = async function handler(req, res) {
   const queueStatus =
     queueRequest && queueRequest.status
       ? queueRequest.status
+      : affiliateLinkUnavailable
+        ? '현재 이 상품은 큐레이터 링크 발급 대상이 아닙니다'
       : source === 'fallback_basic_utm'
         ? '큐레이터 링크 생성 대기 중'
         : null;
@@ -812,13 +824,13 @@ module.exports = async function handler(req, res) {
         affiliateActivityId:
           (entry && entry.affiliateActivityId) ||
           (liveCuratorOk ? liveLink.affiliateActivityId : undefined),
-        generatedAt: entry && entry.generatedAt
+        generatedAt: rawEntry && rawEntry.generatedAt
       })
     );
     return;
   }
 
-  if (source === 'fallback_basic_utm') {
+  if (source === 'fallback_basic_utm' && !affiliateLinkUnavailable) {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');

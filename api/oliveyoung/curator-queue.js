@@ -135,6 +135,8 @@ function shouldGenerate(entry) {
   if (!entry) return true;
   if (entry.shortenedUrl || entry.originalUrl) return false;
   if (!entry.error || !entry.generatedAt) return true;
+  const retryAfter = entry.retryAfter ? Date.parse(entry.retryAfter) : NaN;
+  if (Number.isFinite(retryAfter) && Date.now() < retryAfter) return false;
   const t = Date.parse(entry.generatedAt);
   if (!Number.isFinite(t)) return true;
   return Date.now() - t > RECENT_ERROR_TTL_MS;

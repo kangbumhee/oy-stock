@@ -39,6 +39,7 @@ const AUTH_REFRESH_WAIT_MS = 25000;
 
 /** curator-links 항목이 이 시간 이내면 landing/shorten 재호출 안 함 */
 const CURATOR_ENTRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const CURATOR_UNAVAILABLE_RETRY_MS = 24 * 60 * 60 * 1000;
 const CURATOR_MISSING_ONLY =
   String(process.env.CURATOR_MISSING_ONLY || '').trim().toLowerCase() === '1' ||
   String(process.env.CURATOR_MISSING_ONLY || '').trim().toLowerCase() === 'true';
@@ -466,6 +467,12 @@ function hasUsableCuratorEntry(entry) {
   return !!(entry && (entry.shortenedUrl || entry.originalUrl));
 }
 
+function isDeferredCuratorEntry(entry) {
+  if (!entry || !entry.error || !entry.retryAfter) return false;
+  const retryAfter = Date.parse(entry.retryAfter);
+  return Number.isFinite(retryAfter) && Date.now() < retryAfter;
+}
+
 function loadPrevCurator() {
   try {
     return JSON.parse(fs.readFileSync(CURATOR_FILE, 'utf8'));
@@ -571,11 +578,18 @@ async function main() {
 
     let generatedCount = 0;
     let landingFailureCount = 0;
+    let affiliateUnavailableCount = 0;
     let exceptionFailureCount = 0;
     let hardFailureCount = 0;
     let skippedCount = 0;
 
     for (const gn of goodsList) {
+      if (isDeferredCuratorEntry(links[gn])) {
+        console.log(`\n📎 ${gn} → 발급 불가 재확인 대기 중, 스킵`);
+        skippedCount += 1;
+        continue;
+      }
+
       if (CURATOR_MISSING_ONLY && hasUsableCuratorEntry(links[gn])) {
         console.log(`\n📎 ${gn} → 큐레이터 링크 있음, 스킵`);
         skippedCount += 1;
@@ -838,15 +852,42 @@ async function main() {
         console.log('  ⚠️ landing만 성공 (단축 실패)');
       } else {
         landingFailureCount += 1;
-        if (pack.hardFailure) hardFailureCount += 1;
-        console.log('  ❌ landing 실패', JSON.stringify(pack.detail || pack).slice(0, 200));
-        if (!links[gn]) {
+        const responseCode = Number(
+          pack && pack.detail && pack.detail.json && pack.detail.json.code
+        );
+        const unavailable = !pack.hardFailure && responseCode === 7015;
+
+        if (unavailable) {
+          affiliateUnavailableCount += 1;
           links[gn] = {
             shortenedUrl: null,
             originalUrl: null,
-            error: 'landing_failed',
-            generatedAt: now
+            fallbackShortenedUrl: pack.fallbackShortenedUrl || null,
+            fallbackOriginalUrl: pack.fallbackOriginalUrl || null,
+            error: 'affiliate_link_unavailable',
+            errorCode: responseCode,
+            generatedAt: now,
+            retryAfter: new Date(
+              Date.now() + CURATOR_UNAVAILABLE_RETRY_MS
+            ).toISOString()
           };
+          console.log(
+            '  ℹ️ 이 상품은 현재 큐레이터 링크 발급 불가 (7015). 일반 상품 페이지로 연결합니다.'
+          );
+        } else {
+          if (pack.hardFailure) hardFailureCount += 1;
+          console.log(
+            '  ❌ landing 실패',
+            JSON.stringify(pack.detail || pack).slice(0, 200)
+          );
+          if (!links[gn]) {
+            links[gn] = {
+              shortenedUrl: null,
+              originalUrl: null,
+              error: 'landing_failed',
+              generatedAt: now
+            };
+          }
         }
       }
 
@@ -860,13 +901,17 @@ async function main() {
     fs.writeFileSync(CURATOR_FILE, JSON.stringify(out, null, 2), 'utf8');
     console.log(`\n저장: ${CURATOR_FILE}`);
     console.log(
-      `요약: 생성 ${generatedCount}건, 스킵 ${skippedCount}건, landing 실패 ${landingFailureCount}건, 예외 ${exceptionFailureCount}건`
+      `요약: 생성 ${generatedCount}건, 스킵 ${skippedCount}건, 발급 불가 ${affiliateUnavailableCount}건, landing 실패 ${landingFailureCount - affiliateUnavailableCount}건, 예외 ${exceptionFailureCount}건`
     );
 
     const successfulOrSkippedCount = generatedCount + skippedCount;
+    const unresolvedLandingFailureCount = Math.max(
+      0,
+      landingFailureCount - affiliateUnavailableCount
+    );
     const noUsableResultFailureCount =
       successfulOrSkippedCount === 0
-        ? landingFailureCount + exceptionFailureCount
+        ? unresolvedLandingFailureCount + exceptionFailureCount
         : 0;
     const criticalFailureCount = Math.max(
       hardFailureCount,
