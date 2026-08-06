@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-05T04:18:07.784Z",
+  "updatedAt": "2026-08-06T04:21:04.424Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,45 +17,45 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 34,
+      "from": 35,
       "to": 35,
       "fromQty": 105,
-      "toQty": 105,
-      "date": "2026-08-05T04:18:07.784Z"
+      "toQty": 104,
+      "date": "2026-08-06T04:21:04.424Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 746,
-      "to": 735,
-      "date": "2026-08-05T04:18:07.784Z"
+      "from": 735,
+      "to": 727,
+      "date": "2026-08-06T04:21:04.424Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 38,
-      "to": 39,
-      "fromQty": 118,
-      "toQty": 119,
-      "date": "2026-08-05T04:18:07.784Z"
+      "from": 39,
+      "to": 38,
+      "fromQty": 119,
+      "toQty": 123,
+      "date": "2026-08-06T04:21:04.424Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 20,
-      "to": 833,
-      "date": "2026-08-05T04:18:07.784Z"
+      "from": 833,
+      "to": 672,
+      "date": "2026-08-06T04:21:04.424Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 2415,
-      "to": 3131,
-      "date": "2026-08-05T04:18:07.784Z"
+      "from": 3131,
+      "to": 2583,
+      "date": "2026-08-06T04:21:04.424Z"
     }
   ],
   "products": {
@@ -75,9 +75,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 39,
-          "totalQty": 119,
-          "onlineQty": 833,
+          "inStock": 38,
+          "totalQty": 123,
+          "onlineQty": 672,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -336,7 +336,7 @@
               "name": "마두역점",
               "code": "DB4E",
               "dist": 8.52,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -385,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-05T04:18:07.784Z"
+      "updatedAt": "2026-08-06T04:21:04.424Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -404,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
           "inStock": 27,
-          "totalQty": 65,
-          "onlineQty": 735,
+          "totalQty": 64,
+          "onlineQty": 727,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -1341,7 +1341,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-05T04:18:07.784Z"
+      "updatedAt": "2026-08-06T04:21:04.424Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1669,7 +1669,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-05T04:18:07.784Z"
+      "updatedAt": "2026-08-06T04:21:04.424Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1682,7 +1682,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-08-05T04:18:07.784Z"
+      "updatedAt": "2026-08-06T04:21:04.424Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1695,7 +1695,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-08-05T04:18:07.784Z"
+      "updatedAt": "2026-08-06T04:21:04.424Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1715,7 +1715,7 @@
           "totalStores": 50,
           "inStock": 1,
           "totalQty": 5,
-          "onlineQty": 1627,
+          "onlineQty": 1082,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2029,7 +2029,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 875,
+          "onlineQty": 782,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2343,7 +2343,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 218,
+          "onlineQty": 310,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2657,7 +2657,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 411,
+          "onlineQty": 409,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2965,7 +2965,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-05T04:18:07.784Z"
+      "updatedAt": "2026-08-06T04:21:04.424Z"
     }
   }
 }
