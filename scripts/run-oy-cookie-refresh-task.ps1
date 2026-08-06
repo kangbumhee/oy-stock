@@ -22,6 +22,21 @@ try {
   Write-Log "Starting OliveYoung cookie refresh task"
   Write-Log "StartedAt=$StartedAt"
 
+  $PlaywrightPackage = Join-Path $RepoRoot 'node_modules\playwright\package.json'
+  if (-not (Test-Path -LiteralPath $PlaywrightPackage)) {
+    Write-Log 'Playwright dependency missing; restoring npm dependencies'
+    $installOutput = & npm ci --no-audit --no-fund 2>&1
+    $installExitCode = $LASTEXITCODE
+    foreach ($line in $installOutput) {
+      Write-Log $line
+    }
+
+    if ($installExitCode -ne 0) {
+      Write-Log "Dependency restore failed with exit code $installExitCode"
+      exit $installExitCode
+    }
+  }
+
   $output = & npm run refresh:oy-cookie:chrome 2>&1
   $exitCode = $LASTEXITCODE
   foreach ($line in $output) {

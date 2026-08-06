@@ -12,6 +12,12 @@ import {
 } from './cookie-extractor.mjs';
 
 const ENV_KEY = 'OLIVEYOUNG_LINKAGE_STRING';
+const GITHUB_SECRET_SET_ATTEMPTS = 3;
+const GITHUB_SECRET_SET_TIMEOUT_MS = 30_000;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function readSecrets() {
   const username = (process.env.OY_USERNAME || '').trim();
@@ -54,18 +60,34 @@ export async function updateGitHubSecret(name, value) {
   const args = ['secret', 'set', name];
   args.push(...githubRepoArgs());
 
-  const r = spawnSync('gh', args, {
-    input: value,
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024
-  });
+  let lastError = '';
+  for (let attempt = 1; attempt <= GITHUB_SECRET_SET_ATTEMPTS; attempt += 1) {
+    const r = spawnSync('gh', args, {
+      input: value,
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: GITHUB_SECRET_SET_TIMEOUT_MS,
+      windowsHide: true
+    });
 
-  if (r.status !== 0) {
-    const err = (r.stderr || r.stdout || '').trim() || `exit ${r.status}`;
-    throw new Error(`gh secret set 실패: ${err}`);
+    if (r.status === 0) {
+      console.log(`[INFO] GitHub Secret '${name}' 갱신됨 (값 미출력)`);
+      return;
+    }
+
+    lastError =
+      (r.stderr || r.stdout || '').trim() ||
+      r.error?.message ||
+      `exit ${r.status}`;
+    if (attempt < GITHUB_SECRET_SET_ATTEMPTS) {
+      console.warn(
+        `[WARN] GitHub Secret 갱신 실패 (${attempt}/${GITHUB_SECRET_SET_ATTEMPTS}), 재시도합니다: ${lastError}`
+      );
+      await wait(attempt * 2000);
+    }
   }
 
-  console.log(`[INFO] GitHub Secret '${name}' 갱신됨 (값 미출력)`);
+  throw new Error(`gh secret set 실패: ${lastError}`);
 }
 
 function teamQs(teamId) {
