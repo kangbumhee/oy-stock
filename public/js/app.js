@@ -1356,6 +1356,9 @@ var App = {
       }).then(function (d) {
         if (seq !== self._searchSeq) return null;
         if (d.success === false) throw new Error(d.message || d.error || '실패');
+        if (API._productCountFromSearchData(d) === 0 && self.products && self.products.length) {
+          return { data: d, products: self.products, preserved: true };
+        }
         var products = self._renderSearchResponse(d);
         self._enrichSearchOnline(products);
         return { data: d, products: products };
