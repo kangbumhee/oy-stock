@@ -5,8 +5,8 @@ const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_CACHE_MAX = 200;
 const searchCache = new Map();
 
-const PRODUCTS_TIMEOUT_MS = 24000;
-const PRODUCTS_RETRY_TIMEOUT_MS = 16000;
+const PRODUCTS_TIMEOUT_MS = 15000;
+const PRODUCTS_RETRY_TIMEOUT_MS = 7000;
 const PRODUCTS_RETRY_DELAY_MS = 350;
 const OFFICIAL_SEARCH_TIMEOUT_MS = 3500;
 const OFFICIAL_SEARCH_PAGE_SIZE = 48;
@@ -106,7 +106,7 @@ function getKeywordCorrection(keyword) {
   return canonical;
 }
 
-async function fetchUpstreamProducts(keyword, size) {
+async function fetchUpstreamProducts(keyword, size, outerSignal) {
   const url =
     PRODUCTS_API_URL +
     '?keyword=' +
@@ -116,7 +116,7 @@ async function fetchUpstreamProducts(keyword, size) {
 
   async function attempt(timeoutMs) {
     try {
-      const result = await fetchUpstreamInventory(url, timeoutMs);
+      const result = await fetchUpstreamInventory(url, timeoutMs, outerSignal);
       return {
         status: result ? result.r.status : 500,
         text: result ? result.text : '',
@@ -144,6 +144,7 @@ async function fetchUpstreamProducts(keyword, size) {
 
   const first = await attempt(PRODUCTS_TIMEOUT_MS);
   if (usable(first)) return first;
+  if (outerSignal && outerSignal.aborted) return first;
 
   // Cloud Run scale-to-zero can finish warming just after the first request times out.
   // Retry here so a one-item local cache is never mistaken for the full search result.
@@ -204,7 +205,7 @@ function normalizeOfficialProduct(row) {
   };
 }
 
-async function fetchOfficialSearchPage(keyword, startCount, listnum) {
+async function fetchOfficialSearchPage(keyword, startCount, listnum, outerSignal) {
   const cookieHeader = getOfficialCookieHeader();
   if (!cookieHeader) {
     return { status: 0, parsed: null, text: '', skipped: true };
@@ -240,6 +241,11 @@ async function fetchOfficialSearchPage(keyword, startCount, listnum) {
 
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), OFFICIAL_SEARCH_TIMEOUT_MS);
+  const onOuterAbort = () => controller.abort();
+  if (outerSignal) {
+    if (outerSignal.aborted) controller.abort();
+    else outerSignal.addEventListener('abort', onOuterAbort, { once: true });
+  }
   let r;
   try {
     r = await fetch('https://www.oliveyoung.co.kr/store/search/NewMainSearchApi.do', {
@@ -263,6 +269,7 @@ async function fetchOfficialSearchPage(keyword, startCount, listnum) {
     });
   } finally {
     clearTimeout(t);
+    if (outerSignal) outerSignal.removeEventListener('abort', onOuterAbort);
   }
 
   const text = await r.text();
@@ -274,10 +281,10 @@ function officialGoodsFromPayload(payload) {
   return data.find((item) => item && item.CollName === 'OLIVE_GOODS') || null;
 }
 
-async function fetchOfficialSearchProducts(keyword, size) {
+async function fetchOfficialSearchProducts(keyword, size, outerSignal) {
   const limit = parseSize(size);
   const firstPageSize = Math.min(OFFICIAL_SEARCH_PAGE_SIZE, limit);
-  const first = await fetchOfficialSearchPage(keyword, 0, firstPageSize);
+  const first = await fetchOfficialSearchPage(keyword, 0, firstPageSize, outerSignal);
   const firstGoods = officialGoodsFromPayload(first.parsed);
   const firstRows = firstGoods && Array.isArray(firstGoods.Result) ? firstGoods.Result : [];
   const totalCount = numberFromOfficial(firstGoods && firstGoods.TotalCount);
@@ -302,7 +309,12 @@ async function fetchOfficialSearchProducts(keyword, size) {
   if (starts.length) {
     const pages = await Promise.allSettled(
       starts.map((start) =>
-        fetchOfficialSearchPage(keyword, start, Math.min(OFFICIAL_SEARCH_PAGE_SIZE, wanted - start))
+        fetchOfficialSearchPage(
+          keyword,
+          start,
+          Math.min(OFFICIAL_SEARCH_PAGE_SIZE, wanted - start),
+          outerSignal
+        )
       )
     );
     pages.forEach((page) => {
@@ -613,11 +625,16 @@ function buildFallbackPayloadFromDetail(detail, keyword, size) {
   };
 }
 
-async function fetchUpstreamInventory(url, timeoutMs) {
+async function fetchUpstreamInventory(url, timeoutMs, outerSignal) {
   const effectiveTimeout =
     Number.isFinite(timeoutMs) && Number(timeoutMs) > 0 ? Number(timeoutMs) : PRODUCTS_TIMEOUT_MS;
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), effectiveTimeout);
+  const onOuterAbort = () => controller.abort();
+  if (outerSignal) {
+    if (outerSignal.aborted) controller.abort();
+    else outerSignal.addEventListener('abort', onOuterAbort, { once: true });
+  }
   let r;
   try {
     r = await fetch(url, {
@@ -631,6 +648,7 @@ async function fetchUpstreamInventory(url, timeoutMs) {
     });
   } finally {
     clearTimeout(t);
+    if (outerSignal) outerSignal.removeEventListener('abort', onOuterAbort);
   }
   const text = await r.text();
   return { r, text };
@@ -686,22 +704,57 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const [officialResult, productsResult] = await Promise.allSettled([
-      fetchOfficialSearchProducts(queryKeyword, size),
-      fetchUpstreamProducts(queryKeyword, size)
-    ]).then((results) => [
-      results[0].status === 'fulfilled' ? results[0].value : null,
-      results[1].status === 'fulfilled' ? results[1].value : null
-    ]);
-    const primaryProducts = getProducts(productsResult && productsResult.parsed);
+    let officialResult = null;
+    let productsResult = null;
+    const raceController = new AbortController();
+
+    const officialTask = fetchOfficialSearchProducts(
+      queryKeyword,
+      size,
+      raceController.signal
+    ).then((result) => {
+      officialResult = result;
+      if (
+        result &&
+        result.status < 500 &&
+        Array.isArray(result.products) &&
+        result.products.length > 0
+      ) {
+        return { type: 'official', result };
+      }
+      throw new Error('official search unavailable');
+    });
+    const productsTask = fetchUpstreamProducts(queryKeyword, size, raceController.signal).then((result) => {
+      productsResult = result;
+      const products = getProducts(result && result.parsed);
+      if (
+        result &&
+        result.status < 500 &&
+        result.parsed &&
+        result.parsed.success !== false &&
+        products.length > 0
+      ) {
+        return { type: 'upstream', result, products };
+      }
+      throw new Error('products search unavailable');
+    });
+
+    // Return whichever complete search source succeeds first. Waiting for both made a
+    // cold Cloud Run request turn an otherwise valid official result into a 502.
+    const candidate = await Promise.any([officialTask, productsTask]).catch(() => null);
+    if (candidate) raceController.abort();
+    const primaryProducts =
+      candidate && candidate.type === 'upstream'
+        ? candidate.products
+        : getProducts(productsResult && productsResult.parsed);
     const productCount = primaryProducts.length;
     const supplementProducts = await getVendorSupplementMatches(queryKeyword, requestOrigin(req));
 
     if (
+      candidate &&
+      candidate.type === 'official' &&
       officialResult &&
-      officialResult.status < 500 &&
-      officialResult.products &&
-      officialResult.products.length > productCount
+      officialResult.products
     ) {
       const mergedProducts = mergeSearchProducts(
         officialResult.products,
@@ -738,6 +791,8 @@ module.exports = async function handler(req, res) {
     }
 
     if (
+      candidate &&
+      candidate.type === 'upstream' &&
       productsResult &&
       productsResult.status < 500 &&
       productsResult.parsed &&

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260728-coldstart-2';
+const CACHE_NAME = 'olivestock-app-v20260808-search-502-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -18,7 +18,7 @@ const CORE_ASSETS = [
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
   '/js/alerts.js?v=20260622-2',
-  '/js/app.js?v=20260728-coldstart-2'
+  '/js/app.js?v=20260808-search-502-1'
 ];
 
 self.addEventListener('install', function (event) {
