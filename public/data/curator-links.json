@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-08T02:59:32.269Z",
+  "updatedAt": "2026-08-08T03:52:08.308Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -183072,8 +183072,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000244517&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-06T14:27:03.713Z",
-      "retryAfter": "2026-08-07T14:27:21.404Z"
+      "generatedAt": "2026-08-08T03:52:08.308Z",
+      "retryAfter": "2026-08-09T03:52:28.711Z"
     },
     "B000000251487": {
       "shortenedUrl": "https://oy.run/2yWbrCJK9t9Dyr",
@@ -185170,6 +185170,58 @@
       "affiliateActivityId": "c806b40283024b8bb1b9f719773587c2",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-08T02:59:32.269Z"
+    },
+    "A000000211888": {
+      "shortenedUrl": "https://oy.run/bHPLNxEB7OIj23",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000211888&utm_source=shutter&utm_medium=affiliate&utm_content=OY_bea1733bd86b4b509369d504cd34a285",
+      "affiliateActivityId": "bea1733bd86b4b509369d504cd34a285",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-08T03:52:08.308Z"
+    },
+    "A000000262738": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "fallbackShortenedUrl": "https://oy.run/P6imnjRGBlP6Xd",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000262738&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-08T03:52:08.308Z",
+      "retryAfter": "2026-08-09T03:52:26.112Z"
+    },
+    "B000000263651": {
+      "shortenedUrl": "https://oy.run/Z9MLsbeZTCgSI1",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000263651&utm_source=shutter&utm_medium=affiliate&utm_content=OY_fb25b2d78b1f4df0b3f98d8b3c6fc6ec",
+      "affiliateActivityId": "fb25b2d78b1f4df0b3f98d8b3c6fc6ec",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-08T03:52:08.308Z"
+    },
+    "B000000256889": {
+      "shortenedUrl": "https://oy.run/s5gbmbHDsUlXSl",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000256889&utm_source=shutter&utm_medium=affiliate&utm_content=OY_45aae46f2f75467d86791a1dd74c1113",
+      "affiliateActivityId": "45aae46f2f75467d86791a1dd74c1113",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-08T03:52:08.308Z"
+    },
+    "B000000260669": {
+      "shortenedUrl": "https://oy.run/Ys1wbq1mpCHHaX",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000260669&utm_source=shutter&utm_medium=affiliate&utm_content=OY_ade4432e718e431ba376edfdc72b6ad2",
+      "affiliateActivityId": "ade4432e718e431ba376edfdc72b6ad2",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-08T03:52:08.308Z"
+    },
+    "A000000256029": {
+      "shortenedUrl": "https://oy.run/nl85hwnleFdYfY",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000256029&utm_source=shutter&utm_medium=affiliate&utm_content=OY_a7933787aa6f4e91bc7c758c5bc7910c",
+      "affiliateActivityId": "a7933787aa6f4e91bc7c758c5bc7910c",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-08T03:52:08.308Z"
+    },
+    "B000000243858": {
+      "shortenedUrl": "https://oy.run/g7FNrOLTtUwuwZ",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000243858&utm_source=shutter&utm_medium=affiliate&utm_content=OY_042085e2bba140c2afe646d2352b047a",
+      "affiliateActivityId": "042085e2bba140c2afe646d2352b047a",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-08T03:52:08.308Z"
     }
   }
 }
