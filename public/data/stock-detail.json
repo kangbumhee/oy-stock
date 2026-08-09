@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-08T02:58:16.973Z",
+  "updatedAt": "2026-08-09T03:05:40.758Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,45 +17,45 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 75,
-      "to": 74,
-      "fromQty": 357,
-      "toQty": 353,
-      "date": "2026-08-08T02:58:16.973Z"
+      "from": 74,
+      "to": 73,
+      "fromQty": 353,
+      "toQty": 346,
+      "date": "2026-08-09T03:05:40.758Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 801,
-      "to": 787,
-      "date": "2026-08-08T02:58:16.973Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 39,
-      "to": 39,
-      "fromQty": 125,
-      "toQty": 123,
-      "date": "2026-08-08T02:58:16.973Z"
+      "from": 787,
+      "to": 767,
+      "date": "2026-08-09T03:05:40.758Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 567,
-      "to": 511,
-      "date": "2026-08-08T02:58:16.973Z"
+      "from": 511,
+      "to": 546,
+      "date": "2026-08-09T03:05:40.758Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 1,
+      "to": 1,
+      "fromQty": 4,
+      "toQty": 3,
+      "date": "2026-08-09T03:05:40.758Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 3469,
-      "to": 2397,
-      "date": "2026-08-08T02:58:16.973Z"
+      "from": 2397,
+      "to": 4609,
+      "date": "2026-08-09T03:05:40.758Z"
     }
   ],
   "products": {
@@ -77,7 +77,7 @@
           "totalStores": 50,
           "inStock": 39,
           "totalQty": 123,
-          "onlineQty": 511,
+          "onlineQty": 546,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -385,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-08T02:58:16.973Z"
+      "updatedAt": "2026-08-09T03:05:40.758Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -404,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A00000020782294ko.jpg?l=ko",
           "totalStores": 50,
           "inStock": 43,
-          "totalQty": 275,
-          "onlineQty": 76,
+          "totalQty": 270,
+          "onlineQty": 54,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -484,7 +484,7 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 11,
+              "qty": 10,
               "o2o": 8,
               "pickup": true,
               "open": true,
@@ -604,8 +604,8 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1416 한사랑빌딩 101-1호, 101-2호, 102호"
@@ -684,8 +684,8 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 8,
-              "o2o": 5,
+              "qty": 7,
+              "o2o": 4,
               "pickup": true,
               "open": true,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
@@ -717,9 +717,9 @@
           "productId": "8809714721858",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
-          "inStock": 28,
-          "totalQty": 64,
-          "onlineQty": 711,
+          "inStock": 27,
+          "totalQty": 62,
+          "onlineQty": 713,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -958,8 +958,8 @@
               "name": "웨스턴돔중앙점",
               "code": "DCE8",
               "dist": 8.06,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 24"
@@ -1341,7 +1341,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-08T02:58:16.973Z"
+      "updatedAt": "2026-08-09T03:05:40.758Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1669,7 +1669,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-08T02:58:16.973Z"
+      "updatedAt": "2026-08-09T03:05:40.758Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1682,7 +1682,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-08-08T02:58:16.973Z"
+      "updatedAt": "2026-08-09T03:05:40.758Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1695,7 +1695,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-08-08T02:58:16.973Z"
+      "updatedAt": "2026-08-09T03:05:40.758Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1714,8 +1714,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/6059018786363119327.jpg",
           "totalStores": 50,
           "inStock": 1,
-          "totalQty": 4,
-          "onlineQty": 1484,
+          "totalQty": 3,
+          "onlineQty": 3124,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1864,8 +1864,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -2029,7 +2029,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 454,
+          "onlineQty": 792,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2343,7 +2343,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 207,
+          "onlineQty": 297,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2657,7 +2657,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 252,
+          "onlineQty": 396,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2965,7 +2965,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-08-08T02:58:16.973Z"
+      "updatedAt": "2026-08-09T03:05:40.758Z"
     }
   }
 }
