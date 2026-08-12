@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-12T22:50:46.004Z",
+  "updatedAt": "2026-08-12T23:53:55.109Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -145386,8 +145386,12 @@
     "B000000246121": {
       "shortenedUrl": null,
       "originalUrl": null,
-      "error": "landing_failed",
-      "generatedAt": "2026-07-22T03:33:41.322Z"
+      "fallbackShortenedUrl": "https://oy.run/7Q62WgLAj8LuIl",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000246121&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-12T23:53:55.109Z",
+      "retryAfter": "2026-08-13T23:54:07.897Z"
     },
     "A000000261629": {
       "shortenedUrl": "https://oy.run/RlHX1nJhRmM6cC",
@@ -145406,8 +145410,12 @@
     "B000000246127": {
       "shortenedUrl": null,
       "originalUrl": null,
-      "error": "landing_failed",
-      "generatedAt": "2026-07-22T03:33:41.322Z"
+      "fallbackShortenedUrl": "https://oy.run/JX6ONkp5UJ5ejO",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000246127&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-12T23:53:55.109Z",
+      "retryAfter": "2026-08-13T23:54:11.360Z"
     },
     "A000000218826": {
       "shortenedUrl": "https://oy.run/NwfuP68R6U2Uyr",
@@ -145419,8 +145427,12 @@
     "B000000246125": {
       "shortenedUrl": null,
       "originalUrl": null,
-      "error": "landing_failed",
-      "generatedAt": "2026-07-22T03:33:41.322Z"
+      "fallbackShortenedUrl": "https://oy.run/V3lOkn0EZYAxLu",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000246125&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-12T23:53:55.109Z",
+      "retryAfter": "2026-08-13T23:54:09.549Z"
     },
     "A000000128026": {
       "shortenedUrl": "https://oy.run/nrFJbjzHY1PCNz",
