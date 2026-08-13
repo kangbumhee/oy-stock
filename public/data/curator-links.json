@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-13T00:21:57.922Z",
+  "updatedAt": "2026-08-13T00:22:37.118Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -141836,8 +141836,12 @@
     "A000000235554": {
       "shortenedUrl": null,
       "originalUrl": null,
-      "error": "landing_failed",
-      "generatedAt": "2026-07-20T15:16:08.033Z"
+      "fallbackShortenedUrl": "https://oy.run/lE2TmFQjDlBXpa",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000235554&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-13T00:22:37.118Z",
+      "retryAfter": "2026-08-14T00:22:49.825Z"
     },
     "A000000247071": {
       "shortenedUrl": null,
