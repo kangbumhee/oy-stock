@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-13T05:10:52.093Z",
+  "updatedAt": "2026-08-13T05:21:39.340Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -34934,8 +34934,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000225991&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-11T02:24:45.470Z",
-      "retryAfter": "2026-08-12T02:25:00.058Z"
+      "generatedAt": "2026-08-13T05:21:39.340Z",
+      "retryAfter": "2026-08-14T05:21:52.074Z"
     },
     "A000000176514": {
       "shortenedUrl": "https://oy.run/Qn3zTZ7rkXPMmv",
@@ -133095,8 +133095,12 @@
     "A000000231587": {
       "shortenedUrl": null,
       "originalUrl": null,
-      "error": "landing_failed",
-      "generatedAt": "2026-07-14T17:24:49.730Z"
+      "fallbackShortenedUrl": "https://oy.run/RK7oIfiZZdcVb9",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000231587&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-13T05:21:39.340Z",
+      "retryAfter": "2026-08-14T05:21:54.846Z"
     },
     "A000000243660": {
       "shortenedUrl": "https://oy.run/RMNL2EBzQtys9O",
@@ -138918,8 +138922,12 @@
     "A000000231580": {
       "shortenedUrl": null,
       "originalUrl": null,
-      "error": "landing_failed",
-      "generatedAt": "2026-07-18T02:21:32.561Z"
+      "fallbackShortenedUrl": "https://oy.run/RGJOpdemGoSIyL",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000231580&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-08-13T05:21:39.340Z",
+      "retryAfter": "2026-08-14T05:21:53.469Z"
     },
     "A000000238165": {
       "shortenedUrl": "https://oy.run/hjNUkn9XQ0INjT",
