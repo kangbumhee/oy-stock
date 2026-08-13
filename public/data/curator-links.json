@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-13T13:15:33.364Z",
+  "updatedAt": "2026-08-13T13:59:53.304Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -743,8 +743,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000249659&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-12T13:24:00.995Z",
-      "retryAfter": "2026-08-13T13:24:17.584Z"
+      "generatedAt": "2026-08-13T13:59:53.304Z",
+      "retryAfter": "2026-08-14T14:00:06.694Z"
     },
     "A000000249734": {
       "shortenedUrl": null,
@@ -197105,6 +197105,27 @@
       "affiliateActivityId": "05551660f3e74ea29d143ef9e911c676",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-13T13:15:33.364Z"
+    },
+    "B000000209598": {
+      "shortenedUrl": "https://oy.run/FIs58Mrn8xHnYW",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000209598&utm_source=shutter&utm_medium=affiliate&utm_content=OY_bea0502a804141a8952de9db28169f8f",
+      "affiliateActivityId": "bea0502a804141a8952de9db28169f8f",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-13T13:59:53.304Z"
+    },
+    "B000000138552": {
+      "shortenedUrl": "https://oy.run/b2dslj3jDN2LJt",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000138552&utm_source=shutter&utm_medium=affiliate&utm_content=OY_138704f745f141be9857ba53f7b9d1fe",
+      "affiliateActivityId": "138704f745f141be9857ba53f7b9d1fe",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-13T13:59:53.304Z"
+    },
+    "B000000255037": {
+      "shortenedUrl": "https://oy.run/qzJHb7OAkoVgeY",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000255037&utm_source=shutter&utm_medium=affiliate&utm_content=OY_85c8f1286f2145f3bc3ce682b94aaaf0",
+      "affiliateActivityId": "85c8f1286f2145f3bc3ce682b94aaaf0",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-13T13:59:53.304Z"
     }
   }
 }
