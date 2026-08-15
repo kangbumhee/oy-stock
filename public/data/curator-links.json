@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-15T09:06:10.632Z",
+  "updatedAt": "2026-08-15T09:31:52.897Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -151162,8 +151162,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000242758&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-09T09:24:08.920Z",
-      "retryAfter": "2026-08-10T09:24:57.039Z"
+      "generatedAt": "2026-08-15T09:31:52.897Z",
+      "retryAfter": "2026-08-16T09:32:11.969Z"
     },
     "B000000229013": {
       "shortenedUrl": null,
@@ -198527,8 +198527,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000263546&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-14T07:45:07.115Z",
-      "retryAfter": "2026-08-15T07:45:23.348Z"
+      "generatedAt": "2026-08-15T09:31:52.897Z",
+      "retryAfter": "2026-08-16T09:32:09.473Z"
     },
     "A000000263532": {
       "shortenedUrl": null,
@@ -200560,6 +200560,20 @@
       "affiliateActivityId": "8152ea79ffe6431c863c3795dc9f5587",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-15T09:06:10.632Z"
+    },
+    "A000000225344": {
+      "shortenedUrl": "https://oy.run/HAnnYxI8ZyD7HU",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000225344&utm_source=shutter&utm_medium=affiliate&utm_content=OY_0b896950396f447c8e3dbc65e64b7a52",
+      "affiliateActivityId": "0b896950396f447c8e3dbc65e64b7a52",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-15T09:31:52.897Z"
+    },
+    "B000000221734": {
+      "shortenedUrl": "https://oy.run/IcL4uDDwhLeyJE",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000221734&utm_source=shutter&utm_medium=affiliate&utm_content=OY_d77671d0994c40cc8f757fbd0e0e489d",
+      "affiliateActivityId": "d77671d0994c40cc8f757fbd0e0e489d",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-15T09:31:52.897Z"
     }
   }
 }
