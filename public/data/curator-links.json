@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-15T15:27:08.367Z",
+  "updatedAt": "2026-08-15T15:49:37.824Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -201206,6 +201206,38 @@
       "affiliateActivityId": "55e8a55377f54a5d8512e1e32bd67f7c",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-15T15:27:08.367Z",
+      "note": "shorten 실패, originalUrl만 저장"
+    },
+    "A000000262834": {
+      "shortenedUrl": null,
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000262834&utm_source=shutter&utm_medium=affiliate&utm_content=OY_4a26cda94ea840baba51163fa1cdfbbe",
+      "affiliateActivityId": "4a26cda94ea840baba51163fa1cdfbbe",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-15T15:49:37.824Z",
+      "note": "shorten 실패, originalUrl만 저장"
+    },
+    "B000000259259": {
+      "shortenedUrl": null,
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000259259&utm_source=shutter&utm_medium=affiliate&utm_content=OY_391bbcb55c58495483df5d0dbf786eb9",
+      "affiliateActivityId": "391bbcb55c58495483df5d0dbf786eb9",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-15T15:49:37.824Z",
+      "note": "shorten 실패, originalUrl만 저장"
+    },
+    "B000000233842": {
+      "shortenedUrl": null,
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000233842&utm_source=shutter&utm_medium=affiliate&utm_content=OY_51b9c32c69344a5dae9c7f421801b8ba",
+      "affiliateActivityId": "51b9c32c69344a5dae9c7f421801b8ba",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-15T15:49:37.824Z",
+      "note": "shorten 실패, originalUrl만 저장"
+    },
+    "A000000262672": {
+      "shortenedUrl": null,
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000262672&utm_source=shutter&utm_medium=affiliate&utm_content=OY_ad458542e93e48dba747f254cbff1438",
+      "affiliateActivityId": "ad458542e93e48dba747f254cbff1438",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-15T15:49:37.824Z",
       "note": "shorten 실패, originalUrl만 저장"
     }
   }
