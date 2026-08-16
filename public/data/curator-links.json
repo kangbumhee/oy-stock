@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-16T15:50:27.364Z",
+  "updatedAt": "2026-08-16T16:32:25.319Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -182567,8 +182567,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000231134&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-05T18:06:37.522Z",
-      "retryAfter": "2026-08-06T18:06:55.771Z"
+      "generatedAt": "2026-08-16T16:32:25.319Z",
+      "retryAfter": "2026-08-17T16:32:39.852Z"
     },
     "A000000188462": {
       "shortenedUrl": "https://oy.run/9nYTHImtBsP1Cf",
@@ -202198,6 +202198,27 @@
       "affiliateActivityId": "6826c69cd91a40eda07cd1ad5528625c",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-16T15:34:22.901Z"
+    },
+    "B000000192452": {
+      "shortenedUrl": "https://oy.run/7PKOgWAfqVDS5H",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000192452&utm_source=shutter&utm_medium=affiliate&utm_content=OY_58401474719f4f33886cbefaa7c52252",
+      "affiliateActivityId": "58401474719f4f33886cbefaa7c52252",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-16T16:32:25.319Z"
+    },
+    "B000000138243": {
+      "shortenedUrl": "https://oy.run/6czjNXYMTlxIPo",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000138243&utm_source=shutter&utm_medium=affiliate&utm_content=OY_c0da11b5c99d432a8c9f8be24b64cbb5",
+      "affiliateActivityId": "c0da11b5c99d432a8c9f8be24b64cbb5",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-16T16:32:25.319Z"
+    },
+    "A000000246683": {
+      "shortenedUrl": "https://oy.run/IZ7Bmz9ljGfp7d",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000246683&utm_source=shutter&utm_medium=affiliate&utm_content=OY_b4d53417adda41e5805be6d068c6b072",
+      "affiliateActivityId": "b4d53417adda41e5805be6d068c6b072",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-16T16:32:25.319Z"
     }
   }
 }
