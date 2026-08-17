@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-17T07:42:29.917Z",
+  "updatedAt": "2026-08-17T08:51:32.273Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -191021,8 +191021,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000261613&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-12T11:52:59.977Z",
-      "retryAfter": "2026-08-13T11:53:16.678Z"
+      "generatedAt": "2026-08-17T08:51:32.273Z",
+      "retryAfter": "2026-08-18T08:51:47.346Z"
     },
     "B000000166327": {
       "shortenedUrl": "https://oy.run/j5BDVutVbwtkBj",
@@ -203416,6 +203416,34 @@
       "errorCode": 7015,
       "generatedAt": "2026-08-17T07:42:29.917Z",
       "retryAfter": "2026-08-18T07:43:14.988Z"
+    },
+    "B000000172260": {
+      "shortenedUrl": "https://oy.run/K8xfUE8BVN4rKj",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000172260&utm_source=shutter&utm_medium=affiliate&utm_content=OY_6a1a4741c7974b1d94fff73cce105f53",
+      "affiliateActivityId": "6a1a4741c7974b1d94fff73cce105f53",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-17T08:51:32.273Z"
+    },
+    "B000000223730": {
+      "shortenedUrl": "https://oy.run/nLK0K1v8MohV69",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000223730&utm_source=shutter&utm_medium=affiliate&utm_content=OY_8dbb6e0328044280b4fd9bea4b486965",
+      "affiliateActivityId": "8dbb6e0328044280b4fd9bea4b486965",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-17T08:51:32.273Z"
+    },
+    "B000000158121": {
+      "shortenedUrl": "https://oy.run/IHjeDFBX3PxClA",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000158121&utm_source=shutter&utm_medium=affiliate&utm_content=OY_d5c7661054cd40da95f70d61da00c11c",
+      "affiliateActivityId": "d5c7661054cd40da95f70d61da00c11c",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-17T08:51:32.273Z"
+    },
+    "B000000262144": {
+      "shortenedUrl": "https://oy.run/JDci5bwJCVdVp5",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000262144&utm_source=shutter&utm_medium=affiliate&utm_content=OY_cc482bbfc2cb47e5a11b4d3b62a13533",
+      "affiliateActivityId": "cc482bbfc2cb47e5a11b4d3b62a13533",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-17T08:51:32.273Z"
     }
   }
 }
