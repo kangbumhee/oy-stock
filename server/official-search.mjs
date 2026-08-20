@@ -10,6 +10,14 @@ function numberValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function officialTotalCount(value) {
+  if (value == null) return null;
+  const normalized = String(value).trim().replace(/,/g, '');
+  if (!/^\d+$/.test(normalized)) return null;
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function imageUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -84,6 +92,8 @@ function buildPayload(query, totalCount, products) {
   const normalizedTotal = Math.max(totalCount || 0, products.length);
   return {
     success: true,
+    complete: true,
+    incomplete: false,
     data: {
       keyword: query,
       totalCount: normalizedTotal,
@@ -140,13 +150,26 @@ export async function searchOfficialProducts(
   const firstRows =
     firstCollection && Array.isArray(firstCollection.Result) ? firstCollection.Result : [];
 
-  if (!first || first.status >= 400 || !firstCollection) {
+  const firstStatus = Number(first && first.status);
+  if (
+    !first ||
+    !Number.isFinite(firstStatus) ||
+    firstStatus < 200 ||
+    firstStatus >= 400 ||
+    !firstCollection
+  ) {
     const status = first && first.status ? first.status : 502;
     throw new Error('official_search_failed_' + status);
   }
 
-  const totalCount = numberValue(firstCollection.TotalCount) || firstRows.length;
+  const totalCount = officialTotalCount(firstCollection.TotalCount);
+  if (totalCount == null) {
+    throw new Error('official_search_total_missing_or_invalid');
+  }
   if (!firstRows.length) {
+    if (totalCount > 0) {
+      throw new Error(`official_search_incomplete_0_of_${Math.min(limit, totalCount)}`);
+    }
     const emptyPayload = buildPayload(query, totalCount, []);
     pruneCache(cacheMax, cacheTtlMs);
     searchCache.set(cacheKey, { ts: Date.now(), payload: emptyPayload });
@@ -170,8 +193,23 @@ export async function searchOfficialProducts(
         })
       )
     );
-    for (const page of pages) {
-      if (page.status !== 'fulfilled' || !page.value || page.value.status >= 400) continue;
+    for (let index = 0; index < pages.length; index += 1) {
+      const page = pages[index];
+      const startCount = starts[index];
+      if (
+        page.status !== 'fulfilled' ||
+        !page.value ||
+        !Number.isFinite(Number(page.value.status)) ||
+        Number(page.value.status) < 200 ||
+        page.value.status >= 400 ||
+        !goodsCollection(page.value.data)
+      ) {
+        const status =
+          page.status === 'fulfilled' && page.value && page.value.status
+            ? page.value.status
+            : 502;
+        throw new Error(`official_search_page_failed_${startCount}_${status}`);
+      }
       const collection = goodsCollection(page.value.data);
       const pageRows = collection && Array.isArray(collection.Result) ? collection.Result : [];
       rows.push(...pageRows);
@@ -185,10 +223,13 @@ export async function searchOfficialProducts(
     if (!product || seen.has(product.goodsNo)) continue;
     seen.add(product.goodsNo);
     products.push(product);
-    if (products.length >= limit) break;
+    if (products.length >= wanted) break;
   }
 
   if (!products.length) throw new Error('official_search_empty');
+  if (products.length !== wanted) {
+    throw new Error(`official_search_incomplete_${products.length}_of_${wanted}`);
+  }
 
   const payload = buildPayload(query, totalCount, products);
 

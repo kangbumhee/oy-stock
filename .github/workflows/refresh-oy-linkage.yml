@@ -71,4 +71,108 @@ jobs:
 
       - name: Health Check
         run: |
-          curl -fsS "https://oy-stock-api-3596046881.asia-northeast3.run.app/health?curator=1"
+          curl -fsS --max-time 15 \
+            "https://oy-stock-api-3596046881.asia-northeast3.run.app/health?warm=1&curator=1" \
+            > /dev/null || true
+
+          node - <<'NODE'
+          const SEARCH_TIMEOUT_MS = 45000;
+          const RETRY_DELAY_MS = 4000;
+          const MAX_ATTEMPTS = 3;
+          const baseUrl = 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/search';
+
+          const checks = [
+            {
+              name: 'unove',
+              url: `${baseUrl}?keyword=%EC%96%B4%EB%85%B8%EB%B8%8C&size=48`,
+              limit: 48,
+              validate({ total, count, expected }) {
+                return total >= 15 && count >= 15 && count === expected;
+              }
+            },
+            {
+              name: 'shampoo-pagination',
+              url: `${baseUrl}?keyword=%EC%83%B4%ED%91%B8&size=120`,
+              limit: 120,
+              validate({ total, count, expected }) {
+                return total >= 120 && count === 120 && count === expected;
+              }
+            }
+          ];
+
+          const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function fetchPayload(url) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+            try {
+              const response = await fetch(url, {
+                headers: { Accept: 'application/json' },
+                signal: controller.signal
+              });
+              if (!response.ok) throw new Error(`http_${response.status}`);
+              const text = await response.text();
+              try {
+                return JSON.parse(text);
+              } catch {
+                throw new Error('invalid_json');
+              }
+            } catch (error) {
+              if (error && error.name === 'AbortError') throw new Error('timeout');
+              throw error;
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
+
+          function inspectPayload(payload, limit) {
+            const inventory = payload && payload.data && payload.data.inventory;
+            const products = inventory && Array.isArray(inventory.products) ? inventory.products : [];
+            const total = Number(inventory && inventory.totalCount);
+            const expected = Number.isInteger(total) ? Math.min(total, limit) : -1;
+            const flagsValid =
+              payload &&
+              payload.success === true &&
+              payload.complete === true &&
+              payload.incomplete === false;
+            return {
+              flagsValid,
+              total,
+              count: products.length,
+              expected
+            };
+          }
+
+          async function checkWithRetry(check) {
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+              try {
+                const payload = await fetchPayload(check.url);
+                const state = inspectPayload(payload, check.limit);
+                if (!state.flagsValid || !Number.isInteger(state.total) || !check.validate(state)) {
+                  throw new Error(
+                    `incomplete total=${Number.isInteger(state.total) ? state.total : 'invalid'} ` +
+                      `count=${state.count} expected=${state.expected}`
+                  );
+                }
+                console.log(`[readiness] ${check.name} passed on attempt ${attempt}`);
+                return;
+              } catch (error) {
+                console.error(
+                  `[readiness] ${check.name} attempt ${attempt}/${MAX_ATTEMPTS} failed: ` +
+                    `${error.message || 'unknown_error'}`
+                );
+                if (attempt < MAX_ATTEMPTS) await delay(RETRY_DELAY_MS);
+              }
+            }
+            throw new Error(`${check.name}_readiness_failed`);
+          }
+
+          (async () => {
+            try {
+              for (const check of checks) await checkWithRetry(check);
+            } catch {
+              console.error('::error::Cloud Run search readiness checks failed');
+              process.exitCode = 1;
+            }
+          })();
+          NODE

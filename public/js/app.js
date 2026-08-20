@@ -1356,6 +1356,9 @@ var App = {
       }).then(function (d) {
         if (seq !== self._searchSeq) return null;
         if (d.success === false) throw new Error(d.message || d.error || '실패');
+        if (API._isIncompleteSearch(d, size)) {
+          throw API._searchUnavailableError(d);
+        }
         if (API._productCountFromSearchData(d) === 0 && self.products && self.products.length) {
           return { data: d, products: self.products, preserved: true };
         }
@@ -1390,7 +1393,16 @@ var App = {
       request.catch(function (err) {
         if (err && err.name === 'AbortError') return;
         if (seq !== self._searchSeq) return;
-        if (self.products && self.products.length) return;
+        if (self.products && self.products.length) {
+          UI.showSyncStatus(
+            '전체 검색 결과를 불러오지 못해 확인된 ' +
+              self.products.length +
+              '개를 유지합니다. 검색 버튼으로 다시 시도해 주세요.',
+            true,
+            8000
+          );
+          return;
+        }
         UI.showSearchError(err.message || '검색 실패', kw);
       });
     }

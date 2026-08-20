@@ -32,12 +32,26 @@ var API = {
 
   getCachedSearch: function (keyword, lat, lng, size) {
     try {
-      var raw = sessionStorage.getItem(API._searchCacheKey(keyword, lat, lng, size));
+      var key = API._searchCacheKey(keyword, lat, lng, size);
+      var raw = sessionStorage.getItem(key);
       if (!raw) return null;
       var cached = JSON.parse(raw);
-      if (!cached || Date.now() - cached.ts > API.SEARCH_CACHE_TTL_MS) return null;
+      if (
+        !cached ||
+        Date.now() - cached.ts > API.SEARCH_CACHE_TTL_MS ||
+        !cached.data ||
+        cached.data.success === false ||
+        API._productCountFromSearchData(cached.data) === 0 ||
+        API._isIncompleteSearch(cached.data, size)
+      ) {
+        sessionStorage.removeItem(key);
+        return null;
+      }
       return cached.data || null;
     } catch (e) {
+      try {
+        if (key) sessionStorage.removeItem(key);
+      } catch (ignore) {}
       return null;
     }
   },
@@ -49,7 +63,7 @@ var API = {
         !data ||
         data.success === false ||
         API._productCountFromSearchData(data) === 0 ||
-        API._isLocalFallbackSearch(data)
+        API._isIncompleteSearch(data, size)
       ) {
         sessionStorage.removeItem(key);
         return;
@@ -91,21 +105,105 @@ var API = {
     return 0;
   },
 
-  _isLocalFallbackSearch: function (data) {
+  _searchSource: function (data) {
     var dd = (data && data.data) || {};
-    var source = String((data && data.source) || dd.source || '').toLowerCase();
+    return String((data && data.source) || dd.source || '').toLowerCase().trim();
+  },
+
+  _searchTotalCountFromData: function (data) {
+    var dd = (data && data.data) || {};
+    var inv = dd.inventory != null ? dd.inventory : data && data.inventory;
+    var candidates = [
+      dd.totalCount,
+      inv && !Array.isArray(inv) ? inv.totalCount : null,
+      data && data.totalCount,
+      data && data.meta ? data.meta.total : null,
+      data && data.meta ? data.meta.totalCount : null,
+      dd && dd.meta ? dd.meta.total : null,
+      dd && dd.meta ? dd.meta.totalCount : null
+    ];
+    var found = false;
+    var total = 0;
+    for (var i = 0; i < candidates.length; i++) {
+      if (candidates[i] == null || candidates[i] === '') continue;
+      var n = Number(candidates[i]);
+      if (isFinite(n) && n >= 0) {
+        found = true;
+        total = Math.max(total, n);
+      }
+    }
+    return found ? total : API._productCountFromSearchData(data);
+  },
+
+  _isIncompleteSearch: function (data, requestedSize) {
+    if (!data || data.success === false) return true;
+    var dd = (data && data.data) || {};
+    var inv = dd.inventory != null ? dd.inventory : data && data.inventory;
+    var source = API._searchSource(data);
+    var bareSupplement = source === 'search-supplement' || source === 'vendor-supplement';
+    var flaggedIncomplete =
+      data.fallback === true ||
+      data.partial === true ||
+      data.incomplete === true ||
+      data.complete === false ||
+      dd.fallback === true ||
+      dd.partial === true ||
+      dd.incomplete === true ||
+      dd.complete === false ||
+      (data.meta &&
+        (data.meta.partial === true ||
+          data.meta.incomplete === true ||
+          data.meta.complete === false)) ||
+      (dd.meta &&
+        (dd.meta.partial === true || dd.meta.incomplete === true || dd.meta.complete === false)) ||
+      (!!inv && !Array.isArray(inv) &&
+        (inv.fallback === true ||
+          inv.partial === true ||
+          inv.incomplete === true ||
+          inv.complete === false));
+    var fallbackSource =
+      source === 'local' ||
+      source.indexOf('fallback') >= 0 ||
+      source.indexOf('local-stock-detail-cache') >= 0;
+
+    if (flaggedIncomplete || fallbackSource || bareSupplement) return true;
+
+    var returned = API._productCountFromSearchData(data);
+    var total = API._searchTotalCountFromData(data);
+    var requested = Number(requestedSize);
+    if (!isFinite(requested) || requested < 1) requested = Number(CONFIG.SEARCH_SIZE) || 0;
+    if (total > 0 && requested > 0 && returned < Math.min(total, requested)) return true;
+    return false;
+  },
+
+  _isLocalFallbackSearch: function (data) {
+    var source = API._searchSource(data);
     return (
       source.indexOf('local-stock-detail-cache') >= 0 ||
       source.indexOf('fallback-local') >= 0
     );
   },
 
-  _shouldTryDirectAfterProxy: function (data) {
-    if (!data || data.success === false) return false;
-    return API._productCountFromSearchData(data) === 0 || API._isLocalFallbackSearch(data);
+  _shouldTryDirectAfterProxy: function (data, requestedSize) {
+    if (!data || data.success === false) return true;
+    return (
+      API._productCountFromSearchData(data) === 0 ||
+      API._isIncompleteSearch(data, requestedSize)
+    );
   },
 
-  _fetchWithTimeout: function (url, timeoutMs, outerSignal) {
+  _searchUnavailableError: function (partialData, cause) {
+    var err = new Error(
+      '검색 서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해 주세요.'
+    );
+    err.name = 'SearchUnavailableError';
+    err.searchIncomplete = true;
+    err.partialData = partialData || null;
+    if (cause) err.cause = cause;
+    return err;
+  },
+
+  _fetchWithTimeout: function (url, timeoutMs, outerSignal, consumeResponse) {
     var controller = new AbortController();
     var timedOut = false;
     var tid = setTimeout(function () {
@@ -120,21 +218,27 @@ var API = {
       else outerSignal.addEventListener('abort', onOuterAbort);
     }
     return fetch(url, { signal: controller.signal })
-      .finally(function () {
-        clearTimeout(tid);
-        if (outerSignal) outerSignal.removeEventListener('abort', onOuterAbort);
+      .then(function (response) {
+        return typeof consumeResponse === 'function'
+          ? consumeResponse(response)
+          : response;
       })
       .catch(function (err) {
         if (timedOut && !(outerSignal && outerSignal.aborted)) {
           err.searchTimedOut = true;
         }
         throw err;
+      })
+      .finally(function () {
+        clearTimeout(tid);
+        if (outerSignal) outerSignal.removeEventListener('abort', onOuterAbort);
       });
   },
 
   search: function (keyword, lat, lng, size, opts) {
     opts = opts || {};
     var correctedKeyword = API._correctKeyword(keyword);
+    var requestedSize = size || CONFIG.SEARCH_SIZE;
     var url =
       '/api/oliveyoung/search?keyword=' +
       encodeURIComponent(correctedKeyword) +
@@ -143,7 +247,7 @@ var API = {
       '&lng=' +
       (lng || CONFIG.DEFAULT_LNG) +
       '&size=' +
-      (size || CONFIG.SEARCH_SIZE);
+      requestedSize;
     var init = {};
     if (opts.signal) init.signal = opts.signal;
 
@@ -181,31 +285,51 @@ var API = {
       return API._fetchWithTimeout(
         directUrl,
         CONFIG.SEARCH_DIRECT_FETCH_TIMEOUT_MS || 32000,
-        opts.signal
-      ).then(function (r) {
-        if (r.ok)
-          return r.json().then(function (data) {
-            return saveAndReturn(data);
-          });
-        throw new Error('direct search ' + r.status);
-      });
+        opts.signal,
+        function (r) {
+          if (r.ok)
+            return r.json().then(function (data) {
+              if (
+                data &&
+                data.success !== false &&
+                !API._isIncompleteSearch(data, requestedSize)
+              ) {
+                return saveAndReturn(data);
+              }
+              throw API._searchUnavailableError(data);
+            });
+          throw new Error('direct search ' + r.status);
+        }
+      );
     }
 
-    if (opts.forceProxy) return fetchViaProxy();
+    if (opts.forceProxy)
+      return fetchViaProxy().then(function (data) {
+        if (API._isIncompleteSearch(data, requestedSize)) {
+          throw API._searchUnavailableError(data);
+        }
+        return data;
+      });
 
-    return fetchViaProxy().then(function (data) {
-      if (API._shouldTryDirectAfterProxy(data)) {
-        return fetchDirectProducts().catch(function () {
-          return data;
+    return fetchViaProxy().then(
+      function (data) {
+        if (!API._shouldTryDirectAfterProxy(data, requestedSize)) return data;
+        return fetchDirectProducts().catch(function (directErr) {
+          if (opts.signal && opts.signal.aborted) throw directErr;
+          if (data && data.success !== false && !API._isIncompleteSearch(data, requestedSize)) {
+            return data;
+          }
+          throw API._searchUnavailableError(data, directErr);
+        });
+      },
+      function (proxyErr) {
+        if (opts.signal && opts.signal.aborted) throw proxyErr;
+        return fetchDirectProducts().catch(function (directErr) {
+          if (opts.signal && opts.signal.aborted) throw directErr;
+          throw API._searchUnavailableError(null, proxyErr);
         });
       }
-      return data;
-    }).catch(function (proxyErr) {
-      if (opts.signal && opts.signal.aborted) throw proxyErr;
-      return fetchDirectProducts().catch(function () {
-        throw proxyErr;
-      });
-    });
+    );
   },
 
   viewRanking: function (size, opts) {
