@@ -20,6 +20,11 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  evaluateCuratorBatchFailure,
+  landingFailureStatus,
+  runCuratorRequestWithRetry
+} from './lib/curator-request-policy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -40,6 +45,7 @@ const AUTH_REFRESH_WAIT_MS = 25000;
 /** curator-links 항목이 이 시간 이내면 landing/shorten 재호출 안 함 */
 const CURATOR_ENTRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CURATOR_UNAVAILABLE_RETRY_MS = 24 * 60 * 60 * 1000;
+const CURATOR_TRANSIENT_RETRY_MS = 15 * 60 * 1000;
 const CURATOR_MISSING_ONLY =
   String(process.env.CURATOR_MISSING_ONLY || '').trim().toLowerCase() === '1' ||
   String(process.env.CURATOR_MISSING_ONLY || '').trim().toLowerCase() === 'true';
@@ -581,6 +587,11 @@ async function main() {
     let affiliateUnavailableCount = 0;
     let exceptionFailureCount = 0;
     let hardFailureCount = 0;
+    let authFailureCount = 0;
+    let consecutiveHardFailureCount = 0;
+    let consecutivePolicyFailureCount = 0;
+    let maxConsecutiveHardFailures = 0;
+    let maxConsecutivePolicyFailures = 0;
     let skippedCount = 0;
 
     for (const gn of goodsList) {
@@ -602,15 +613,18 @@ async function main() {
         continue;
       }
 
-      const apiKey = generateApiKey();
+      let apiKey = generateApiKey();
       console.log(`\n📎 ${gn}`);
 
       let pack;
       let lastEvaluateError = null;
-      const evaluateAttempts = 2;
-      for (let attempt = 1; attempt <= evaluateAttempts; attempt += 1) {
-        try {
-          pack = await page.evaluate(
+      const requestOutcome = await runCuratorRequestWithRetry({
+        maxAttempts: 3,
+        retryDelayMs: 1200,
+        sleep,
+        runAttempt: async ({ attempt, maxAttempts }) => {
+          try {
+            const evaluatedPack = await page.evaluate(
           async ({
             goodsNo,
             registerId,
@@ -704,6 +718,14 @@ async function main() {
             for (const body of attempts) {
               const L = await landing(body);
               lastLanding = L;
+              const retryOutsideBodyVariants =
+                L.status === 0 ||
+                L.status === 401 ||
+                L.status === 403 ||
+                L.status === 429 ||
+                L.status >= 500 ||
+                !!L.error;
+              if (retryOutsideBodyVariants) break;
               const id = L.json && L.json.data && L.json.data.affiliateActivityId;
               if (L.ok && id) {
                 affiliateActivityId = id;
@@ -718,19 +740,23 @@ async function main() {
                 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
                 encodeURIComponent(goodsNo) +
                 '&utm_source=shutter&utm_medium=affiliate';
-              const fallbackShorten = await shorten(fallbackOriginalUrl, registerId);
-              const fallbackRow =
-                fallbackShorten.json &&
-                fallbackShorten.json.data &&
-                fallbackShorten.json.data[0];
-              const fallbackShortenedUrl = fallbackRow && fallbackRow.shortenedUrl;
-
               const hardFailure =
                 !lastLanding ||
                 lastLanding.status === 401 ||
                 lastLanding.status === 403 ||
+                lastLanding.status === 429 ||
                 lastLanding.status >= 500 ||
                 !!lastLanding.error;
+              let fallbackShorten = null;
+              let fallbackShortenedUrl = null;
+              if (!hardFailure) {
+                fallbackShorten = await shorten(fallbackOriginalUrl, registerId);
+                const fallbackRow =
+                  fallbackShorten.json &&
+                  fallbackShorten.json.data &&
+                  fallbackShorten.json.data[0];
+                fallbackShortenedUrl = fallbackRow && fallbackRow.shortenedUrl;
+              }
               return {
                 ok: false,
                 step: 'missing_affiliate_activity_id',
@@ -779,41 +805,53 @@ async function main() {
             placeholderCat: PLACEHOLDER_CATEGORY,
             authJwt: authJwt || ''
           }
-          );
-          lastEvaluateError = null;
-          break;
-        } catch (e) {
-          lastEvaluateError = e;
-          const message = e && e.message ? e.message : String(e);
-          console.log(`  ⚠️ 생성 요청 예외 (${attempt}/${evaluateAttempts}) ${message}`);
-          if (attempt < evaluateAttempts) {
-            try {
-              await page.goto(AFFILIATE_REFERER, {
-                waitUntil: 'domcontentloaded',
-                timeout: 60000
-              });
-            } catch (warmupError) {
-              console.log(
-                '  ⚠️ 큐레이터 페이지 재진입 실패',
-                warmupError && warmupError.message
-                  ? warmupError.message
-                  : String(warmupError)
-              );
-            }
-            await sleep(1200 * attempt);
+            );
+            lastEvaluateError = null;
+            return evaluatedPack;
+          } catch (e) {
+            lastEvaluateError = e;
+            const message = e && e.message ? e.message : String(e);
+            console.log(`  ⚠️ 생성 요청 예외 (${attempt}/${maxAttempts}) ${message}`);
+            throw e;
           }
+        },
+        prepareRetry: async ({ attempt, maxAttempts, result, status }) => {
+          if (result) {
+            console.log(
+              `  ⚠️ 일시적 landing 실패 HTTP ${status} (${attempt}/${maxAttempts}) → 재워밍 후 재시도`
+            );
+          }
+          try {
+            await page.goto(AFFILIATE_REFERER, {
+              waitUntil: 'domcontentloaded',
+              timeout: 60000
+            });
+          } catch (warmupError) {
+            console.log(
+              '  ⚠️ 큐레이터 페이지 재진입 실패',
+              warmupError && warmupError.message
+                ? warmupError.message
+                : String(warmupError)
+            );
+          }
+          apiKey = generateApiKey();
         }
+      });
+      pack = requestOutcome.result;
+      if (requestOutcome.lastError) {
+        lastEvaluateError = requestOutcome.lastError;
       }
 
       if (!pack) {
         exceptionFailureCount += 1;
+        consecutiveHardFailureCount = 0;
         console.log(
           '  ❌ 생성 요청 예외 최종 실패',
           lastEvaluateError && lastEvaluateError.message
             ? lastEvaluateError.message
             : String(lastEvaluateError)
         );
-        if (!links[gn]) {
+        if (!hasUsableCuratorEntry(links[gn])) {
           links[gn] = {
             shortenedUrl: null,
             originalUrl: null,
@@ -822,7 +860,10 @@ async function main() {
               lastEvaluateError && lastEvaluateError.message
                 ? lastEvaluateError.message
                 : String(lastEvaluateError),
-            generatedAt: now
+            generatedAt: now,
+            retryAfter: new Date(
+              Date.now() + CURATOR_TRANSIENT_RETRY_MS
+            ).toISOString()
           };
         }
         await sleep(1000);
@@ -831,6 +872,8 @@ async function main() {
 
       if (pack.ok && !pack.partial) {
         generatedCount += 1;
+        consecutiveHardFailureCount = 0;
+        consecutivePolicyFailureCount = 0;
         links[gn] = {
           shortenedUrl: pack.shortenedUrl,
           originalUrl: pack.originalUrl,
@@ -841,6 +884,8 @@ async function main() {
         console.log('  ✅ oy.run + utm');
       } else if (pack.ok && pack.partial) {
         generatedCount += 1;
+        consecutiveHardFailureCount = 0;
+        consecutivePolicyFailureCount = 0;
         links[gn] = {
           shortenedUrl: null,
           originalUrl: pack.originalUrl,
@@ -852,6 +897,7 @@ async function main() {
         console.log('  ⚠️ landing만 성공 (단축 실패)');
       } else {
         landingFailureCount += 1;
+        const failureStatus = landingFailureStatus(pack);
         const responseCode = Number(
           pack && pack.detail && pack.detail.json && pack.detail.json.code
         );
@@ -859,6 +905,8 @@ async function main() {
 
         if (unavailable) {
           affiliateUnavailableCount += 1;
+          consecutiveHardFailureCount = 0;
+          consecutivePolicyFailureCount = 0;
           links[gn] = {
             shortenedUrl: null,
             originalUrl: null,
@@ -875,18 +923,55 @@ async function main() {
             '  ℹ️ 이 상품은 현재 큐레이터 링크 발급 불가 (7015). 일반 상품 페이지로 연결합니다.'
           );
         } else {
-          if (pack.hardFailure) hardFailureCount += 1;
+          if (pack.hardFailure) {
+            hardFailureCount += 1;
+            if (failureStatus === 401) authFailureCount += 1;
+            consecutiveHardFailureCount += 1;
+            consecutivePolicyFailureCount = 0;
+            maxConsecutiveHardFailures = Math.max(
+              maxConsecutiveHardFailures,
+              consecutiveHardFailureCount
+            );
+          } else {
+            consecutiveHardFailureCount = 0;
+            consecutivePolicyFailureCount =
+              responseCode === 7016
+                ? consecutivePolicyFailureCount + 1
+                : 0;
+            maxConsecutivePolicyFailures = Math.max(
+              maxConsecutivePolicyFailures,
+              consecutivePolicyFailureCount
+            );
+          }
           console.log(
             '  ❌ landing 실패',
             JSON.stringify(pack.detail || pack).slice(0, 200)
           );
-          if (!links[gn]) {
+          if (!hasUsableCuratorEntry(links[gn])) {
             links[gn] = {
               shortenedUrl: null,
               originalUrl: null,
+              fallbackShortenedUrl: pack.fallbackShortenedUrl || null,
+              fallbackOriginalUrl: pack.fallbackOriginalUrl || null,
               error: 'landing_failed',
-              generatedAt: now
+              errorCode: failureStatus,
+              generatedAt: now,
+              retryAfter: new Date(
+                Date.now() + CURATOR_TRANSIENT_RETRY_MS
+              ).toISOString()
             };
+          }
+          if (failureStatus === 401) {
+            console.error('  ❌ 인증 HTTP 401 감지 → 남은 상품 처리를 중단합니다.');
+            break;
+          }
+          if (consecutiveHardFailureCount >= 3) {
+            console.error('  ❌ landing hard failure 3건 연속 → 남은 상품 처리를 중단합니다.');
+            break;
+          }
+          if (consecutivePolicyFailureCount >= 3) {
+            console.error('  ❌ 큐레이터 정책 오류 7016 3건 연속 → 동의/활동 상태 확인이 필요합니다.');
+            break;
           }
         }
       }
@@ -904,23 +989,33 @@ async function main() {
       `요약: 생성 ${generatedCount}건, 스킵 ${skippedCount}건, 발급 불가 ${affiliateUnavailableCount}건, landing 실패 ${landingFailureCount - affiliateUnavailableCount}건, 예외 ${exceptionFailureCount}건`
     );
 
-    const successfulOrSkippedCount = generatedCount + skippedCount;
-    const unresolvedLandingFailureCount = Math.max(
-      0,
-      landingFailureCount - affiliateUnavailableCount
-    );
-    const noUsableResultFailureCount =
-      successfulOrSkippedCount === 0
-        ? unresolvedLandingFailureCount + exceptionFailureCount
-        : 0;
-    const criticalFailureCount = Math.max(
+    const persistableOutcomeCount =
+      generatedCount + affiliateUnavailableCount + skippedCount;
+    const failureEvaluation = evaluateCuratorBatchFailure({
+      generatedCount,
+      landingFailureCount,
+      affiliateUnavailableCount,
+      exceptionFailureCount,
       hardFailureCount,
-      noUsableResultFailureCount
-    );
+      authFailureCount,
+      maxConsecutiveHardFailures,
+      maxConsecutivePolicyFailures
+    });
+    const { systemicHardFailure, criticalFailureCount } = failureEvaluation;
 
-    if (exceptionFailureCount > 0 && successfulOrSkippedCount > 0) {
+    if (exceptionFailureCount > 0 && persistableOutcomeCount > 0) {
       console.warn(
         `일부 상품 생성 예외 ${exceptionFailureCount}건은 다음 backfill에서 재시도합니다. 성공분은 저장합니다.`
+      );
+    }
+
+    if (
+      hardFailureCount > 0 &&
+      !systemicHardFailure &&
+      criticalFailureCount === 0
+    ) {
+      console.warn(
+        `고립된 landing hard failure ${hardFailureCount}건은 다음 backfill에서 재시도합니다. 정상 처리분은 저장합니다.`
       );
     }
 

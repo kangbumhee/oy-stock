@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { shouldRetryCuratorError } from './lib/curator-request-policy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -125,14 +126,17 @@ function hasUsableCuratorLink(entry) {
 }
 
 function shouldRetryError(entry) {
-  if (!entry || !entry.error || !entry.generatedAt) return true;
-  const retryAfter = Number.parseInt(
+  const configuredRetryAfter = Number.parseInt(
     String(process.env.CURATOR_RETRY_ERROR_AFTER_MS || DEFAULT_RETRY_ERROR_AFTER_MS),
     10
   );
-  const ts = Date.parse(entry.generatedAt);
-  if (!Number.isFinite(ts)) return true;
-  return Date.now() - ts > retryAfter;
+  const retryAfter =
+    Number.isFinite(configuredRetryAfter) && configuredRetryAfter >= 0
+      ? configuredRetryAfter
+      : DEFAULT_RETRY_ERROR_AFTER_MS;
+  return shouldRetryCuratorError(entry, {
+    retryErrorAfterMs: retryAfter
+  });
 }
 
 function githubOutput(values) {

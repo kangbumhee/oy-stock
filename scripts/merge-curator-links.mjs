@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { shouldReplaceCuratorEntry } from './lib/curator-request-policy.mjs';
 
 const generatedFile = process.argv[2];
 const targetFile = process.argv[3];
@@ -35,6 +36,10 @@ const keys = requested.size ? Array.from(requested) : Object.keys(generatedLinks
 let mergedCount = 0;
 for (const key of keys) {
   if (!generatedLinks[key]) continue;
+  if (!shouldReplaceCuratorEntry(targetLinks[key], generatedLinks[key])) {
+    console.log(`Preserved newer or usable curator entry for ${key}`);
+    continue;
+  }
   targetLinks[key] = generatedLinks[key];
   mergedCount += 1;
 }

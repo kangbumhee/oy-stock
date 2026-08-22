@@ -85,15 +85,36 @@ jobs:
         env:
           CURATOR_GOODS_NOS: ${{ steps.batch.outputs.goodsNos }}
         run: |
+          set -euo pipefail
+
           cp public/data/curator-links.json /tmp/generated-curator-links.json
-          git fetch origin main
-          git reset --hard origin/main
-          node scripts/merge-curator-links.mjs /tmp/generated-curator-links.json public/data/curator-links.json
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/curator-links.json
-          git diff --staged --quiet || git commit -m "🔗 curator backfill $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
-          git push
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            node scripts/merge-curator-links.mjs \
+              /tmp/generated-curator-links.json \
+              public/data/curator-links.json
+            git add public/data/curator-links.json
+
+            if git diff --staged --quiet; then
+              echo "No curator link changes to publish."
+              exit 0
+            fi
+
+            git commit -m "🔗 curator backfill $(TZ=Asia/Seoul date +%m/%d\ %H:%M)"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "::warning::main changed while publishing; retrying merge (${attempt}/3)."
+            sleep $((attempt * 3))
+          done
+
+          echo "::error::Unable to publish curator links after 3 merge attempts."
+          exit 1
 
       - name: Continue backfill when more missing links remain
         if: steps.batch.outputs.hasGoods == 'true' && fromJSON(steps.batch.outputs.missingCount) > fromJSON(steps.batch.outputs.batchCount)
