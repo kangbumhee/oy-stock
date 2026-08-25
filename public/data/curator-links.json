@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-25T00:38:20.135Z",
+  "updatedAt": "2026-08-25T01:39:52.358Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -163695,8 +163695,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000112692&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-20T17:02:29.168Z",
-      "retryAfter": "2026-08-21T17:02:42.625Z"
+      "generatedAt": "2026-08-25T01:39:52.358Z",
+      "retryAfter": "2026-08-26T01:40:06.183Z"
     },
     "A000000233450": {
       "shortenedUrl": null,
@@ -182816,8 +182816,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000231134&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-16T16:32:25.319Z",
-      "retryAfter": "2026-08-17T16:32:39.852Z"
+      "generatedAt": "2026-08-25T01:39:52.358Z",
+      "retryAfter": "2026-08-26T01:40:08.682Z"
     },
     "A000000188462": {
       "shortenedUrl": "https://oy.run/9nYTHImtBsP1Cf",
@@ -211681,6 +211681,20 @@
       "affiliateActivityId": "0d9dc7cd87604a56b7544310b1e228bb",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-08-24T17:07:13.311Z"
+    },
+    "A000000261535": {
+      "shortenedUrl": "https://oy.run/0Dx2mAWFCkKzdh",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000261535&utm_source=shutter&utm_medium=affiliate&utm_content=OY_ff8cb3c5e79b47fab33fab28407da813",
+      "affiliateActivityId": "ff8cb3c5e79b47fab33fab28407da813",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-25T01:39:52.358Z"
+    },
+    "A000000264136": {
+      "shortenedUrl": "https://oy.run/V5CoByMAR1ykAR",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000264136&utm_source=shutter&utm_medium=affiliate&utm_content=OY_94054c85740640c68dbd89523fa94522",
+      "affiliateActivityId": "94054c85740640c68dbd89523fa94522",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-08-25T01:39:52.358Z"
     }
   }
 }
