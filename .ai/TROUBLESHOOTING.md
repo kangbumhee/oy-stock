@@ -67,3 +67,20 @@ AI가 에러를 해결할 때마다 아래 형식으로 추가한다.
   - `.github/workflows/refresh-oy-linkage.yml`
   - `scripts/refresh-oy-linkage.mjs`
 
+### 검색 API가 간헐적으로 503을 반환하고 상품이 일부만 보임
+
+- 발생일: 2026-08-26
+- 에러 메시지: 브라우저 `/api/oliveyoung/search` HTTP 503, Cloud Run `official_search_unavailable`; Cloud Run 로그의 `memory limit exceeded`, `Execution context was destroyed`, `Target page ... has been closed`.
+- 원인:
+  - 검색과 재고 상세 조회가 같은 Playwright page를 공유해 `/api/stock`의 navigation이 `/api/search`의 실행 컨텍스트를 파괴했다.
+  - Cloud Run 단일 인스턴스가 2GiB, concurrency 80, maxScale 1이라 요청이 몰릴 때 OOM 재시작과 연쇄 실패가 발생했다.
+  - 검색 캐시는 인스턴스 메모리에만 있어 재시작 직후 동일 검색이 한꺼번에 업스트림을 다시 호출했다.
+- 해결법:
+  - 검색·가격 조회를 재고 navigation page와 분리하고, 동일 검색 singleflight, 제한된 동시성/대기열, 완전한 결과만 저장하는 캐시를 적용한다.
+  - Cloud Run을 memory 4GiB, concurrency 4, max instances 3으로 배포한다.
+  - 검색 결과는 `complete=true`, `data.totalCount === data.products.length`인지 확인한다. 불완전 결과를 빈 성공으로 바꾸지 않는다.
+- 관련 파일:
+  - `server/server.mjs`
+  - `server/official-search.mjs`
+  - `api/oliveyoung/search.js`
+

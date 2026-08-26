@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 
 import {
   clearOfficialSearchCache,
+  createBoundedSearchRunner,
+  normalizeOfficialPrice,
   normalizeOfficialProduct,
   normalizeSearchKeyword,
+  parsePriceGoodsNos,
   searchOfficialProducts
 } from './official-search.mjs';
 
@@ -42,6 +45,121 @@ test('normalizes an OliveYoung search row', () => {
 test('normalizes decomposed Korean and invisible characters in search keywords', () => {
   const decomposed = '어노브'.normalize('NFD');
   assert.equal(normalizeSearchKeyword('\u200B ' + decomposed + ' \uFEFF'), '어노브');
+});
+
+test('normalizes only complete positive public prices', () => {
+  assert.deepEqual(
+    normalizeOfficialPrice('a000000123456', {
+      priceToPay: '12,000',
+      originalPrice: '15,000'
+    }),
+    {
+      goodsNo: 'A000000123456',
+      priceToPay: 12000,
+      originalPrice: 15000
+    }
+  );
+  assert.equal(
+    normalizeOfficialPrice('A000000123456', { priceToPay: 0, originalPrice: 15000 }),
+    null
+  );
+  assert.equal(
+    normalizeOfficialPrice('A000000123456', { priceToPay: 12000, originalPrice: 0 }),
+    null
+  );
+});
+
+test('validates, normalizes and deduplicates at most 50 price goods numbers', () => {
+  assert.deepEqual(
+    parsePriceGoodsNos([' a000000000001 ', 'A000000000001', 'B000000000002']),
+    ['A000000000001', 'B000000000002']
+  );
+  assert.throws(() => parsePriceGoodsNos([]), /goodsNos_required/);
+  assert.throws(() => parsePriceGoodsNos(['A1']), /goodsNos_invalid/);
+  assert.throws(() => parsePriceGoodsNos(['invalid']), /goodsNos_invalid/);
+  assert.throws(
+    () => parsePriceGoodsNos(Array.from({ length: 51 }, (_, index) => 'A' + index)),
+    /goodsNos_limit_exceeded/
+  );
+});
+
+test('coalesces concurrent searches for the same normalized keyword and size', async () => {
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  const run = createBoundedSearchRunner(
+    async (keyword, size) => {
+      calls += 1;
+      await gate;
+      return { keyword, size };
+    },
+    { maxConcurrent: 1, maxQueue: 1, maxWaitMs: 1000 }
+  );
+
+  const first = run(' 어노브 ', 48);
+  const second = run('어노브', '48');
+  assert.equal(first, second);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 1);
+
+  release();
+  assert.deepEqual(await first, { keyword: '어노브', size: 48 });
+  assert.deepEqual(await second, { keyword: '어노브', size: 48 });
+  assert.equal(run.stats().flights, 0);
+});
+
+test('bounds unique search queue and returns a stable overload error', async () => {
+  let releaseFirst;
+  const firstGate = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  const run = createBoundedSearchRunner(
+    async (keyword) => {
+      if (keyword === '첫검색') await firstGate;
+      return keyword;
+    },
+    { maxConcurrent: 1, maxQueue: 1, maxWaitMs: 1000 }
+  );
+
+  const first = run('첫검색', 48);
+  const queued = run('둘째검색', 48);
+  await assert.rejects(
+    run('셋째검색', 48),
+    (error) =>
+      error.code === 'OFFICIAL_SEARCH_OVERLOADED' &&
+      error.httpStatus === 429 &&
+      error.message === 'official_search_queue_full'
+  );
+
+  releaseFirst();
+  assert.equal(await first, '첫검색');
+  assert.equal(await queued, '둘째검색');
+});
+
+test('expires a queued search after its bounded wait', { timeout: 1000 }, async () => {
+  let releaseFirst;
+  const firstGate = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  const run = createBoundedSearchRunner(
+    async (keyword) => {
+      if (keyword === '진행중') await firstGate;
+      return keyword;
+    },
+    { maxConcurrent: 1, maxQueue: 1, maxWaitMs: 15 }
+  );
+
+  const first = run('진행중', 48);
+  await assert.rejects(
+    run('대기중', 48),
+    (error) =>
+      error.code === 'OFFICIAL_SEARCH_OVERLOADED' &&
+      error.message === 'official_search_queue_timeout'
+  );
+  releaseFirst();
+  assert.equal(await first, '진행중');
 });
 
 test('loads all expected pages and caches only the complete result', async () => {

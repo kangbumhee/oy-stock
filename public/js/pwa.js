@@ -2,6 +2,7 @@ var PWA = {
   deferredPrompt: null,
   installed: false,
   serviceWorkerReady: false,
+  registration: null,
 
   init: function () {
     this.installed =
@@ -31,8 +32,9 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20260622-2')
+      .register('/sw.js?v=20260826-price-access-3')
       .then(function (registration) {
+        self.registration = registration;
         if (registration && registration.update) {
           try {
             registration.update();
@@ -40,15 +42,29 @@ var PWA = {
         }
         return navigator.serviceWorker.ready;
       })
-      .then(function () {
+      .then(function (registration) {
+        self.registration = registration || self.registration;
         self.serviceWorkerReady = true;
         self._syncInstallButton();
+        if (window.PriceAlerts) PriceAlerts.syncServiceWorkerAuth();
       })
       .catch(function (e) {
         console.warn('service worker registration failed', e);
         self.serviceWorkerReady = false;
         self._syncInstallButton();
       });
+  },
+
+  readyRegistration: function () {
+    if (!('serviceWorker' in navigator)) {
+      return Promise.reject(new Error('service worker unavailable'));
+    }
+    if (this.registration && this.serviceWorkerReady) return Promise.resolve(this.registration);
+    return navigator.serviceWorker.ready.then(function (registration) {
+      PWA.registration = registration;
+      PWA.serviceWorkerReady = true;
+      return registration;
+    });
   },
 
   _bindInstallPrompt: function () {

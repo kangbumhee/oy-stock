@@ -371,83 +371,194 @@ var Storage = {
     return { favs: this.addFavorite(Object.assign({}, product, { goodsNo: gn })), added: true };
   },
 
-  isRestockAlertUnlocked: function () {
-    return localStorage.getItem(this._key('restock_alert_unlocked')) === '1';
+  _randomBase64Url: function (byteCount) {
+    var bytes = new Uint8Array(byteCount);
+    window.crypto.getRandomValues(bytes);
+    var binary = '';
+    bytes.forEach(function (byte) {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   },
-  setRestockAlertUnlocked: function () {
-    localStorage.setItem(this._key('restock_alert_unlocked'), '1');
-  },
-  getRestockAlertStore: function () {
+
+  getPriceAlertDevice: function () {
+    var key = this._key('price_alert_device_v1');
+    var device = null;
     try {
-      return JSON.parse(localStorage.getItem(this._key('restock_alerts'))) || { items: {} };
+      device = JSON.parse(localStorage.getItem(key));
+    } catch (e) {}
+    var idOk =
+      device &&
+      /^[A-Za-z0-9_-]{16,80}$/.test(String(device.deviceId || '').replace(/-/g, '_'));
+    var secretOk = device && /^[A-Za-z0-9_-]{32,128}$/.test(String(device.deviceSecret || ''));
+    if (idOk && secretOk) return device;
+    var deviceId =
+      window.crypto && typeof window.crypto.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : this._randomBase64Url(18);
+    device = {
+      deviceId: deviceId,
+      deviceSecret: this._randomBase64Url(32),
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem(key, JSON.stringify(device));
+    return device;
+  },
+
+  getPriceAlertStore: function () {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(this._key('price_alerts_v1'))) || {};
+      return {
+        items: parsed.items && typeof parsed.items === 'object' ? parsed.items : {},
+        subscribed: parsed.subscribed === true,
+        updatedAt: parsed.updatedAt || ''
+      };
     } catch (e) {
-      return { items: {} };
+      return { items: {}, subscribed: false, updatedAt: '' };
     }
   },
-  setRestockAlertStore: function (store) {
+
+  setPriceAlertStore: function (store) {
+    store = store || {};
     localStorage.setItem(
-      this._key('restock_alerts'),
-      JSON.stringify({ items: (store && store.items) || {}, updatedAt: new Date().toISOString() })
+      this._key('price_alerts_v1'),
+      JSON.stringify({
+        items: store.items && typeof store.items === 'object' ? store.items : {},
+        subscribed: store.subscribed === true,
+        updatedAt: new Date().toISOString()
+      })
     );
   },
-  getRestockAlerts: function () {
-    var items = this.getRestockAlertStore().items || {};
-    return Object.keys(items)
-      .map(function (id) {
-        return items[id];
-      })
-      .filter(function (item) {
-        return item && item.enabled !== false;
+
+  getPriceAlertItems: function () {
+    var items = this.getPriceAlertStore().items;
+    return Object.keys(items).map(function (alertId) {
+      return items[alertId];
+    });
+  },
+
+  priceAlertKey: function (goodsNo, optionNumber) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return '';
+    var option = String(optionNumber == null ? '' : optionNumber).trim();
+    return option ? gn + '::' + option : gn;
+  },
+
+  getPriceAlert: function (goodsNo, optionNumber) {
+    var key = this.priceAlertKey(goodsNo, optionNumber);
+    if (!key) return null;
+    return this.getPriceAlertStore().items[key] || null;
+  },
+
+  getPriceAlertsForGoods: function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn) return [];
+    return this.getPriceAlertItems().filter(function (alert) {
+      return alert && String(alert.goodsNo || '').trim() === gn;
+    });
+  },
+
+  upsertPriceAlert: function (alert) {
+    if (!alert) return null;
+    var goodsNo = String(alert.goodsNo || '').trim();
+    if (!goodsNo) return null;
+    var optionNumber = String(alert.optionNumber == null ? '' : alert.optionNumber).trim();
+    var alertId = this.priceAlertKey(goodsNo, optionNumber);
+    var store = this.getPriceAlertStore();
+    var previous = store.items[alertId] || {};
+    store.items[alertId] = Object.assign({}, previous, alert, {
+      id: alertId,
+      alertId: alertId,
+      goodsNo: goodsNo,
+      optionNumber: optionNumber || null,
+      enabled: alert.enabled !== false,
+      updatedAt: alert.updatedAt || new Date().toISOString()
+    });
+    this.setPriceAlertStore(store);
+    return store.items[alertId];
+  },
+
+  replacePriceAlerts: function (alerts) {
+    var previous = this.getPriceAlertStore();
+    var nextItems = {};
+    (alerts || []).forEach(function (alert) {
+      var goodsNo = String((alert && alert.goodsNo) || '').trim();
+      if (!goodsNo) return;
+      var optionNumber = String((alert && alert.optionNumber) || '').trim();
+      var alertId = Storage.priceAlertKey(goodsNo, optionNumber);
+      var local = previous.items[alertId] || {};
+      nextItems[alertId] = Object.assign({}, local, alert, {
+        id: alertId,
+        alertId: alertId,
+        goodsNo: goodsNo,
+        optionNumber: optionNumber || null,
+        enabled: alert.enabled !== false,
+        displayCurrentPrice: local.displayCurrentPrice || alert.currentPrice || 0
       });
-  },
-  getRestockAlertItems: function () {
-    var items = this.getRestockAlertStore().items || {};
-    return Object.keys(items).map(function (id) {
-      return items[id];
     });
-  },
-  getRestockAlert: function (id) {
-    var items = this.getRestockAlertStore().items || {};
-    return items[String(id || '')] || null;
-  },
-  upsertRestockAlert: function (alert) {
-    if (!alert || !alert.id) return null;
-    var store = this.getRestockAlertStore();
-    if (!store.items) store.items = {};
-    var prev = store.items[alert.id] || {};
-    store.items[alert.id] = Object.assign({}, prev, alert, {
-      enabled: true,
-      updatedAt: new Date().toISOString()
+    this.setPriceAlertStore({
+      items: nextItems,
+      subscribed: previous.subscribed === true
     });
-    this.setRestockAlertStore(store);
-    return store.items[alert.id];
+    return nextItems;
   },
-  setRestockAlertEnabled: function (id, enabled) {
-    var store = this.getRestockAlertStore();
-    if (!store.items || !store.items[id]) return null;
-    store.items[id].enabled = enabled !== false;
-    store.items[id].updatedAt = new Date().toISOString();
-    this.setRestockAlertStore(store);
-    return store.items[id];
-  },
-  removeRestockAlert: function (id) {
-    var store = this.getRestockAlertStore();
-    if (store.items && store.items[id]) {
-      delete store.items[id];
-      this.setRestockAlertStore(store);
+
+  removePriceAlert: function (goodsNo, optionNumber) {
+    var alertId = this.priceAlertKey(goodsNo, optionNumber);
+    if (!alertId) return;
+    var store = this.getPriceAlertStore();
+    if (store.items[alertId]) {
+      delete store.items[alertId];
+      this.setPriceAlertStore(store);
     }
   },
-  removeRestockAlertsForGoodsNo: function (goodsNo) {
-    var gn = String(goodsNo || '').trim();
-    if (!gn) return;
-    var store = this.getRestockAlertStore();
-    var changed = false;
-    Object.keys(store.items || {}).forEach(function (id) {
-      if (String((store.items[id] && store.items[id].goodsNo) || '') === gn) {
-        delete store.items[id];
-        changed = true;
-      }
-    });
-    if (changed) this.setRestockAlertStore(store);
+
+  setPriceAlertSubscribed: function (subscribed) {
+    var store = this.getPriceAlertStore();
+    store.subscribed = subscribed === true;
+    this.setPriceAlertStore(store);
+  },
+
+  isPriceAlertSubscribed: function () {
+    return this.getPriceAlertStore().subscribed === true;
+  },
+
+  getPriceAlertPaymentAttempt: function () {
+    var attempt = null;
+    try {
+      attempt = JSON.parse(localStorage.getItem(this._key('price_alert_payment_attempt_v1')));
+    } catch (e) {}
+    if (!attempt || typeof attempt !== 'object') return null;
+    var idempotencyKey = String(attempt.idempotencyKey || '');
+    var paymentId = String(attempt.paymentId || '');
+    if (!/^[\x21-\x7e]{20,160}$/.test(idempotencyKey)) return null;
+    if (paymentId && !/^oypa_[A-Za-z0-9_-]{20,96}$/.test(paymentId)) return null;
+    return {
+      idempotencyKey: idempotencyKey,
+      paymentId: paymentId,
+      providerInvoked: attempt.providerInvoked === true
+    };
+  },
+
+  setPriceAlertPaymentAttempt: function (attempt) {
+    if (!attempt) return this.clearPriceAlertPaymentAttempt();
+    var idempotencyKey = String(attempt.idempotencyKey || '');
+    var paymentId = String(attempt.paymentId || '');
+    if (!/^[\x21-\x7e]{20,160}$/.test(idempotencyKey)) return false;
+    if (paymentId && !/^oypa_[A-Za-z0-9_-]{20,96}$/.test(paymentId)) return false;
+    localStorage.setItem(
+      this._key('price_alert_payment_attempt_v1'),
+      JSON.stringify({
+        idempotencyKey: idempotencyKey,
+        paymentId: paymentId,
+        providerInvoked: attempt.providerInvoked === true
+      })
+    );
+    return true;
+  },
+
+  clearPriceAlertPaymentAttempt: function () {
+    localStorage.removeItem(this._key('price_alert_payment_attempt_v1'));
+    return true;
   }
 };

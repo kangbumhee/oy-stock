@@ -69,6 +69,50 @@ export function normalizeOfficialProduct(row) {
   };
 }
 
+export function normalizeOfficialPrice(goodsNoValue, row) {
+  const goodsNo = String(goodsNoValue || '').trim().toUpperCase();
+  if (!/^[AB]\d{6,20}$/i.test(goodsNo) || !row || typeof row !== 'object') return null;
+
+  const saleValue = row.priceToPay ?? row.SALE_PRC ?? row.salePrice;
+  const originalValue =
+    row.originalPrice ?? row.NORM_PRC ?? row.SUP_PRC ?? row.normalPrice ?? saleValue;
+  const priceToPay = numberValue(saleValue);
+  const originalPrice = numberValue(originalValue);
+  if (priceToPay <= 0 || originalPrice <= 0) return null;
+
+  return { goodsNo, priceToPay, originalPrice };
+}
+
+export function parsePriceGoodsNos(value, max = 50) {
+  if (!Array.isArray(value) || value.length < 1) {
+    const error = new Error('goodsNos_required');
+    error.code = 'INVALID_GOODS_NOS';
+    throw error;
+  }
+
+  const normalizedMax = Math.max(1, Math.min(50, Number.parseInt(String(max), 10) || 50));
+  if (value.length > normalizedMax) {
+    const error = new Error('goodsNos_limit_exceeded');
+    error.code = 'GOODS_NOS_LIMIT_EXCEEDED';
+    throw error;
+  }
+
+  const goodsNos = [];
+  const seen = new Set();
+  for (const raw of value) {
+    const goodsNo = String(raw || '').trim().toUpperCase();
+    if (!/^[AB]\d{6,20}$/i.test(goodsNo)) {
+      const error = new Error('goodsNos_invalid');
+      error.code = 'INVALID_GOODS_NOS';
+      throw error;
+    }
+    if (seen.has(goodsNo)) continue;
+    seen.add(goodsNo);
+    goodsNos.push(goodsNo);
+  }
+  return goodsNos;
+}
+
 function goodsCollection(payload) {
   const data = payload && Array.isArray(payload.Data) ? payload.Data : [];
   return data.find((item) => item && item.CollName === 'OLIVE_GOODS') || null;
@@ -120,6 +164,118 @@ function buildPayload(query, totalCount, products) {
 
 export function clearOfficialSearchCache() {
   searchCache.clear();
+}
+
+function searchOverloadedError(reason) {
+  const error = new Error(reason || 'official_search_overloaded');
+  error.code = 'OFFICIAL_SEARCH_OVERLOADED';
+  error.httpStatus = 429;
+  error.retryAfterSeconds = 5;
+  return error;
+}
+
+/**
+ * Limits unique searches while coalescing requests for the same keyword and size.
+ * The queue is bounded so Cloud Run does not retain an unbounded number of requests.
+ */
+export function createBoundedSearchRunner(
+  search,
+  { maxConcurrent = 2, maxQueue = 12, maxWaitMs = 5000 } = {}
+) {
+  if (typeof search !== 'function') throw new Error('search_required');
+
+  const concurrentLimit = Math.max(1, Number.parseInt(String(maxConcurrent), 10) || 2);
+  const queueLimit = Math.max(0, Number.parseInt(String(maxQueue), 10) || 0);
+  const waitLimitMs = Math.max(1, Number.parseInt(String(maxWaitMs), 10) || 5000);
+  const flights = new Map();
+  const queue = [];
+  let active = 0;
+
+  function finishFlight(key, promise) {
+    if (flights.get(key) === promise) flights.delete(key);
+  }
+
+  function start(item) {
+    if (item.settled) return;
+    item.started = true;
+    if (item.timer) clearTimeout(item.timer);
+    active += 1;
+
+    Promise.resolve()
+      .then(() => search(item.keyword, item.size))
+      .then(item.resolve, item.reject)
+      .finally(() => {
+        item.settled = true;
+        active = Math.max(0, active - 1);
+        finishFlight(item.key, item.promise);
+        pump();
+      });
+  }
+
+  function pump() {
+    while (active < concurrentLimit && queue.length) {
+      const item = queue.shift();
+      if (!item || item.settled) continue;
+      start(item);
+    }
+  }
+
+  function run(keyword, size) {
+    const query = normalizeSearchKeyword(keyword);
+    const limit = parseSearchSize(size);
+    const key = query.toLowerCase() + '|' + limit;
+    const existing = flights.get(key);
+    if (existing) return existing;
+
+    if (active >= concurrentLimit && queue.length >= queueLimit) {
+      return Promise.reject(searchOverloadedError('official_search_queue_full'));
+    }
+
+    let resolveTask;
+    let rejectTask;
+    const promise = new Promise((resolve, reject) => {
+      resolveTask = resolve;
+      rejectTask = reject;
+    });
+    const item = {
+      key,
+      keyword: query,
+      size: limit,
+      promise,
+      resolve: resolveTask,
+      reject: rejectTask,
+      timer: null,
+      started: false,
+      settled: false
+    };
+
+    flights.set(key, promise);
+    if (active < concurrentLimit) {
+      start(item);
+    } else {
+      queue.push(item);
+      item.timer = setTimeout(() => {
+        if (item.started || item.settled) return;
+        item.settled = true;
+        const index = queue.indexOf(item);
+        if (index >= 0) queue.splice(index, 1);
+        finishFlight(key, promise);
+        rejectTask(searchOverloadedError('official_search_queue_timeout'));
+      }, waitLimitMs);
+      if (item.timer.unref) item.timer.unref();
+    }
+
+    return promise;
+  }
+
+  run.stats = () => ({
+    active,
+    queued: queue.filter((item) => item && !item.settled).length,
+    flights: flights.size,
+    maxConcurrent: concurrentLimit,
+    maxQueue: queueLimit
+  });
+  return run;
 }
 
 export async function searchOfficialProducts(

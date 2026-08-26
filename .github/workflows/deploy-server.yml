@@ -28,19 +28,31 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
+      - name: Validate required deployment secrets
+        env:
+          PRICE_ALERT_SERVICE_SECRET: '${{ secrets.PRICE_ALERT_SERVICE_SECRET }}'
+        run: |
+          if [ -z "$PRICE_ALERT_SERVICE_SECRET" ]; then
+            echo '::error::PRICE_ALERT_SERVICE_SECRET is not configured'
+            exit 1
+          fi
+
       - name: Deploy to Cloud Run
+        env:
+          PRICE_ALERT_SERVICE_SECRET: '${{ secrets.PRICE_ALERT_SERVICE_SECRET }}'
         run: |
           gcloud run deploy oy-stock-api \
             --source . \
             --region asia-northeast3 \
             --allow-unauthenticated \
-            --memory 2Gi \
+            --memory 4Gi \
             --cpu 1 \
+            --concurrency 4 \
             --min-instances 0 \
-            --max-instances 1 \
-            --timeout 120 \
+            --max-instances 3 \
+            --timeout 240 \
             --cpu-throttling \
-            --set-env-vars "^~^PLAYWRIGHT_BROWSERS_PATH=/ms-playwright~OY_CURATOR_COOKIE=${{ secrets.OY_CURATOR_COOKIE }}~OY_REFRESH_COOKIE=${{ secrets.OY_REFRESH_COOKIE }}~OY_SESSION_ID=${{ secrets.OY_SESSION_ID }}~OY_LINKAGE_STRING=${{ secrets.OY_LINKAGE_STRING }}~OY_LINKAGE_JWT=${{ secrets.OY_LINKAGE_JWT }}~OLIVEYOUNG_LINKAGE_STRING=${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}~OLIVEYOUNG_LINKAGE_JWT=${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}~OLIVEYOUNG_AFFILIATE_REGISTER_ID=${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}~CURATOR_LIVE_SECRET=${{ secrets.CURATOR_LIVE_SECRET }}" \
+            --update-env-vars "^~^PLAYWRIGHT_BROWSERS_PATH=/ms-playwright~OY_CURATOR_COOKIE=${{ secrets.OY_CURATOR_COOKIE }}~OY_REFRESH_COOKIE=${{ secrets.OY_REFRESH_COOKIE }}~OY_SESSION_ID=${{ secrets.OY_SESSION_ID }}~OY_LINKAGE_STRING=${{ secrets.OY_LINKAGE_STRING }}~OY_LINKAGE_JWT=${{ secrets.OY_LINKAGE_JWT }}~OLIVEYOUNG_LINKAGE_STRING=${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}~OLIVEYOUNG_LINKAGE_JWT=${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}~OLIVEYOUNG_AFFILIATE_REGISTER_ID=${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}~CURATOR_LIVE_SECRET=${{ secrets.CURATOR_LIVE_SECRET }}~PRICE_ALERT_SERVICE_SECRET=${PRICE_ALERT_SERVICE_SECRET}~PRICE_LOOKUP_CONCURRENCY=1~PRICE_LOOKUP_PACE_MS=1000~PRICE_LOOKUP_WINDOW_MAX=20~PRICE_LOOKUP_WINDOW_MS=60000~PRICE_LOOKUP_TOTAL_TIMEOUT_MS=180000" \
             --clear-base-image \
             --project ${{ secrets.GCP_PROJECT_ID }}
 

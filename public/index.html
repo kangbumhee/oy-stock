@@ -32,7 +32,27 @@
   <link rel="apple-touch-icon" sizes="180x180" href="https://olivestock.co.kr/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#193d22">
-  <link rel="stylesheet" href="/css/style.css?v=20260723-game-coupang-1">
+  <link rel="stylesheet" href="/css/style.css?v=20260826-price-access-3">
+  <script>
+    (function () {
+      try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.has('priceAlertPayment') && !url.searchParams.has('paymentId')) return;
+        var marker = url.searchParams.get('priceAlertPayment');
+        var paymentId = url.searchParams.get('paymentId') || '';
+        url.searchParams.delete('priceAlertPayment');
+        url.searchParams.delete('paymentId');
+        history.replaceState({}, '', url.pathname + url.search + url.hash);
+        sessionStorage.removeItem('oy_price_alert_payment_return_v1');
+        if (marker === 'complete' && /^oypa_[A-Za-z0-9_-]{20,96}$/.test(paymentId)) {
+          sessionStorage.setItem(
+            'oy_price_alert_payment_return_v1',
+            JSON.stringify({ paymentId: paymentId })
+          );
+        }
+      } catch (e) {}
+    })();
+  </script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-W7B566LXQ3"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -270,18 +290,18 @@
     </footer>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
-  <script src="/js/config.js?v=20260820-search-completeness-1"></script>
-  <script src="/js/pwa.js?v=20260622-2"></script>
-  <script src="/js/storage.js?v=20260622-2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="/js/config.js?v=20260826-price-access-3"></script>
+  <script src="/js/pwa.js?v=20260826-price-access-3"></script>
+  <script src="/js/storage.js?v=20260826-price-access-3"></script>
   <script src="/js/api.js?v=20260820-search-completeness-1"></script>
-  <script src="/js/ui.js?v=20260728-coldstart-2"></script>
+  <script src="/js/ui.js?v=20260826-price-access-3"></script>
   <script src="/js/options.js?v=20260531-5"></script>
   <script src="/js/search.js?v=20260609-1"></script>
   <script src="/js/regions.js?v=20260531-5"></script>
   <script src="/js/inventory.js?v=20260531-5"></script>
-  <script src="/js/alerts.js?v=20260622-2"></script>
-  <script src="/js/app.js?v=20260820-search-completeness-1"></script>
+  <script src="/js/alerts.js?v=20260826-price-access-3"></script>
+  <script src="/js/app.js?v=20260826-price-access-3"></script>
   <script>
     function bootOliveStockStaticHelpers() {
       Regions.renderSelector();

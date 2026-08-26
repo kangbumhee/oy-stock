@@ -45,12 +45,31 @@
     { "src": "api/oliveyoung/shorten-proxy.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/landing-proxy.js", "use": "@vercel/node" },
     { "src": "api/favorites/sync.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/public-key.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/subscription.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/alerts.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/entitlement.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/promotion.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/payment-create.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/payment-complete.js", "use": "@vercel/node" },
+    { "src": "api/price-alerts/payment-webhook.js", "use": "@vercel/node" },
+    {
+      "src": "api/price-alerts/hourly.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 800
+      }
+    },
     { "src": "api/kakao/geo.js", "use": "@vercel/node" }
   ],
   "crons": [
     {
       "path": "/api/oliveyoung/hot-ranking-cron",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/price-alerts/hourly",
+      "schedule": "7 * * * *"
     }
   ],
   "routes": [
@@ -89,6 +108,21 @@
       "dest": "/public/data/$1"
     },
     { "src": "/api/favorites/sync", "dest": "/api/favorites/sync.js" },
+    {
+      "src": "/api/price-alerts/public-key",
+      "dest": "/api/price-alerts/public-key.js"
+    },
+    {
+      "src": "/api/price-alerts/subscription",
+      "dest": "/api/price-alerts/subscription.js"
+    },
+    { "src": "/api/price-alerts/alerts", "dest": "/api/price-alerts/alerts.js" },
+    { "src": "/api/price-alerts/entitlement", "dest": "/api/price-alerts/entitlement.js" },
+    { "src": "/api/price-alerts/promotion", "dest": "/api/price-alerts/promotion.js" },
+    { "src": "/api/price-alerts/payment/create", "dest": "/api/price-alerts/payment-create.js" },
+    { "src": "/api/price-alerts/payment/complete", "dest": "/api/price-alerts/payment-complete.js" },
+    { "src": "/api/price-alerts/payment/webhook", "dest": "/api/price-alerts/payment-webhook.js" },
+    { "src": "/api/price-alerts/hourly", "dest": "/api/price-alerts/hourly.js" },
     { "src": "/api/kakao/geo", "dest": "/api/kakao/geo.js" },
     { "src": "/api/oliveyoung/stock", "dest": "/api/oliveyoung/stock.js" },
     { "src": "/api/oliveyoung/view-ranking", "dest": "/api/oliveyoung/view-ranking.js" },

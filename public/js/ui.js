@@ -331,6 +331,7 @@ var UI = {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
       .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
   },
@@ -1412,6 +1413,17 @@ var UI = {
           '" data-category="' +
           UI.esc(catHint) +
           '" data-original-label="바로구매">바로구매</button>' +
+          (window.PriceAlerts
+            ? PriceAlerts.productControlHtml(
+                gn,
+                {
+                  goodsName: p.goodsName || '',
+                  imageUrl: img,
+                  currentPrice: p.priceToPay || 0
+                },
+                'card-price-alert'
+              )
+            : '') +
           '</div>';
         return (
           '<div class="card' +
@@ -1589,6 +1601,7 @@ var UI = {
     if (!c) return;
     if (!favorites || !favorites.length) {
       c.innerHTML =
+        (window.PriceAlerts ? PriceAlerts.managerHtml() : '') +
         '<div class="empty-state"><p>즐겨찾기한 상품이 없습니다</p><p class="sub">검색 결과에서 ⭐ 버튼을 눌러 추가하세요</p></div>';
       return;
     }
@@ -1611,16 +1624,13 @@ var UI = {
       (timeStr
         ? '<span class="ok">📦 공개 캐시 ' + timeStr + '</span>'
         : '<span class="ok">매장·온라인 재고는 실시간 조회</span>') +
-      '<button type="button" class="alert-check-btn" data-action="checkRestockAlerts">알림확인</button>' +
       '</div>';
-    var alertPanel = window.RestockAlerts ? RestockAlerts.managerHtml() : '';
     var cards = favorites
       .map(function (f) {
         var gid = String(f.goodsNo || f.goodsNumber || '');
         var detail = detailMap[gid];
         var displayName = detail ? detail.goodsName : f.goodsName;
         var displayImage = (detail ? detail.thumbnail : '') || f.imageUrl || '';
-        var alertMeta = { goodsName: displayName || '', imageUrl: displayImage || '' };
         var listOnlineOnlyF = UI.inventoryOnlineOnly(detail);
         var vendorDeliveryF = UI.isVendorDeliveryProduct(f) || UI.isVendorDeliveryProduct(detail);
         var favCat =
@@ -1697,10 +1707,6 @@ var UI = {
                 var stockColF = listOnlineOnlyF
                   ? onlineInfo
                   : storeInfo + ' | ' + onlineInfo;
-                var optionAlert =
-                  window.RestockAlerts
-                    ? RestockAlerts.optionControlHtml(gid, o, alertMeta, optIdx, true)
-                    : '';
                 return (
                   '<div class="card-opt-row">' +
                   '<span class="card-opt-name">' +
@@ -1709,7 +1715,6 @@ var UI = {
                   '<span class="card-opt-stock">' +
                   stockColF +
                   '</span>' +
-                  optionAlert +
                   '</div>'
                 );
               })
@@ -1724,6 +1729,11 @@ var UI = {
         var price = detail ? detail.price : f.price || f.priceToPay || 0;
         var disc = (detail ? detail.discountRate : f.discountRate) || 0;
         var origPrice = (detail ? detail.originalPrice : f.originalPrice) || 0;
+        var alertMeta = {
+          goodsName: displayName || '',
+          imageUrl: displayImage || '',
+          currentPrice: price
+        };
         var favSoldClass =
           detail && detail.status === 'discontinued'
             ? ' soldout'
@@ -1737,8 +1747,8 @@ var UI = {
           '" data-category="' +
           UI.esc(favCat) +
           '" data-original-label="바로구매">바로구매</button>' +
-          (window.RestockAlerts
-            ? RestockAlerts.productControlHtml(gid, alertMeta, 'card-restock-alert')
+          (window.PriceAlerts
+            ? PriceAlerts.productControlHtml(gid, alertMeta, 'card-price-alert')
             : '') +
           '</div>';
         return (
@@ -1772,6 +1782,7 @@ var UI = {
         );
       })
       .join('');
+    var alertPanel = window.PriceAlerts ? PriceAlerts.managerHtml() : '';
     c.innerHTML = bar + alertPanel + '<div class="grid">' + cards + '</div>';
   },
 
@@ -2120,6 +2131,14 @@ var UI = {
       '">' +
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
+    var alertBtn =
+      window.PriceAlerts && gn
+        ? PriceAlerts.productControlHtml(
+            gn,
+            { goodsName: name, imageUrl: imgUrl, currentPrice: price },
+            'popup-price-alert'
+          )
+        : '';
     root.innerHTML =
       '<div class="popup-overlay">' +
       '<div class="popup-backdrop" data-action="closePopup" style="position:absolute;inset:0;z-index:0"></div>' +
@@ -2132,7 +2151,10 @@ var UI = {
       thumb +
       '<div class="popup-skel-meta-text">' +
       priceRow +
+      '<div class="popup-share-actions">' +
       favBtn +
+      alertBtn +
+      '</div>' +
       '</div></div>' +
       '<div class="popup-stock-loading">' +
       '<div class="spinner popup-stock-loading-spinner"></div>' +
@@ -2251,7 +2273,11 @@ var UI = {
       '</div>';
 
     var opts = detail.options || [];
-    var alertMeta = { goodsName: detail.goodsName || '', imageUrl: detail.thumbnail || '' };
+    var alertMeta = {
+      goodsName: detail.goodsName || '',
+      imageUrl: detail.thumbnail || '',
+      currentPrice: detail.price || detail.priceToPay || 0
+    };
     var optTabs = '';
     if (opts.length > 1) {
       optTabs =
@@ -2363,10 +2389,6 @@ var UI = {
               UI.esc(pidStr) +
               '">🗺️ 이 옵션 전국 재고 보기</button>'
             : '';
-        var alertBtnPerOpt =
-          isFav && window.RestockAlerts
-            ? RestockAlerts.optionControlHtml(goodsNo, o, alertMeta, i, false)
-            : '';
         return (
           '<div class="opt-panel' +
           (i === 0 ? ' active' : '') +
@@ -2376,7 +2398,6 @@ var UI = {
           summary +
           storeHtml +
           allBtnPerOpt +
-          alertBtnPerOpt +
           '</div>'
         );
       })
@@ -2395,8 +2416,8 @@ var UI = {
       (isFav ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가') +
       '</button>';
     var alertBtn =
-      isFav && window.RestockAlerts
-        ? RestockAlerts.productControlHtml(goodsNo, alertMeta, 'popup-restock-alert')
+      window.PriceAlerts
+        ? PriceAlerts.productControlHtml(goodsNo, alertMeta, 'popup-price-alert')
         : '';
     var shareBtn =
       '<button type="button" class="popup-share-btn" data-action="shareStockSnapshot" data-goodsno="' +
@@ -2439,7 +2460,7 @@ var UI = {
     if (detail.source !== 'live-online') {
       UI.prefetchAllStockForDetail(detail, goodsNo);
     }
-    if (window.RestockAlerts) RestockAlerts.refreshControls();
+    if (window.PriceAlerts) PriceAlerts.refreshControls();
   },
 
   showAllStockPanel: function (detail) {

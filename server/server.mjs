@@ -1,7 +1,12 @@
 import http from 'http';
 import { chromium } from 'playwright';
 import crypto from 'crypto';
-import { searchOfficialProducts } from './official-search.mjs';
+import {
+  createBoundedSearchRunner,
+  normalizeOfficialPrice,
+  parsePriceGoodsNos,
+  searchOfficialProducts
+} from './official-search.mjs';
 
 const PORT = Number(process.env.PORT) || 8080;
 const OY = 'https://www.oliveyoung.co.kr';
@@ -37,6 +42,18 @@ const OY_SEARCH_TOTAL_TIMEOUT_MS = Math.max(
   12000,
   Number.parseInt(process.env.OY_SEARCH_TOTAL_TIMEOUT_MS || '30000', 10) || 30000
 );
+const OY_SEARCH_MAX_CONCURRENT = Math.max(
+  1,
+  Math.min(4, Number.parseInt(process.env.OY_SEARCH_MAX_CONCURRENT || '2', 10) || 2)
+);
+const OY_SEARCH_QUEUE_MAX = Math.max(
+  0,
+  Math.min(50, Number.parseInt(process.env.OY_SEARCH_QUEUE_MAX || '12', 10) || 12)
+);
+const OY_SEARCH_QUEUE_WAIT_MS = Math.max(
+  500,
+  Number.parseInt(process.env.OY_SEARCH_QUEUE_WAIT_MS || '5000', 10) || 5000
+);
 const STOCK_DETAIL_TOTAL_TIMEOUT_MS = Math.max(
   6000,
   Number.parseInt(process.env.STOCK_DETAIL_TOTAL_TIMEOUT_MS || '35000', 10) || 35000
@@ -49,10 +66,36 @@ const STOCK_SESSION_READY_TIMEOUT_MS = Math.max(
   8000,
   Number.parseInt(process.env.STOCK_SESSION_READY_TIMEOUT_MS || '30000', 10) || 30000
 );
-const SESSION_HEALTHCHECK_TIMEOUT_MS = Math.max(
-  800,
-  Number.parseInt(process.env.SESSION_HEALTHCHECK_TIMEOUT_MS || '1500', 10) || 1500
+const PRICE_LOOKUP_CONCURRENCY = Math.max(
+  1,
+  Math.min(4, Number.parseInt(process.env.PRICE_LOOKUP_CONCURRENCY || '1', 10) || 1)
 );
+const PRICE_LOOKUP_RETRIES = 1;
+const PRICE_LOOKUP_PACE_MS = Math.max(
+  0,
+  Number.parseInt(process.env.PRICE_LOOKUP_PACE_MS || '1000', 10) || 1000
+);
+const PRICE_LOOKUP_WINDOW_MAX = Math.max(
+  1,
+  Number.parseInt(process.env.PRICE_LOOKUP_WINDOW_MAX || '20', 10) || 20
+);
+const PRICE_LOOKUP_WINDOW_MS = Math.max(
+  1000,
+  Number.parseInt(process.env.PRICE_LOOKUP_WINDOW_MS || '60000', 10) || 60000
+);
+const PRICE_DETAIL_FETCH_TIMEOUT_MS = Math.max(
+  1500,
+  Number.parseInt(process.env.PRICE_DETAIL_FETCH_TIMEOUT_MS || '5000', 10) || 5000
+);
+const PRICE_LOOKUP_TOTAL_TIMEOUT_MS = Math.max(
+  10000,
+  Number.parseInt(process.env.PRICE_LOOKUP_TOTAL_TIMEOUT_MS || '180000', 10) || 180000
+);
+const PRICE_CACHE_TTL_MS = Math.max(
+  10000,
+  Number.parseInt(process.env.PRICE_CACHE_TTL_MS || '300000', 10) || 300000
+);
+const PRICE_CACHE_MAX = 1000;
 
 /** 팝업 등 동일 상품·위치 반복 조회 시 Playwright 부하 완화 (TTL 짧게 유지) */
 const detailResponseCache = new Map();
@@ -141,9 +184,15 @@ async function withCuratorSlot(fn) {
 }
 
 let browser = null;
+let browserContext = null;
 let page = null;
+let searchPage = null;
+let searchPageInitPromise = null;
+let pricePage = null;
+let pricePageInitPromise = null;
 let sessionReady = false;
 let sessionCreatedAt = 0;
+let sessionGeneration = 0;
 let initPromise = null;
 let keepAliveTimer = null;
 let keepAliveRunning = false;
@@ -159,6 +208,10 @@ let curatorCreatedAt = 0;
 const curatorLinkCache = new Map();
 const CURATOR_LINK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CURATOR_LINK_CACHE_MAX = 500;
+const priceCache = new Map();
+const priceFlights = new Map();
+let priceNextStartAt = 0;
+let priceScheduledStarts = [];
 
 const SESSION_MAX_AGE = Number(process.env.SESSION_MAX_AGE_MS || 55 * 60 * 1000);
 const SESSION_KEEPALIVE_MS = Number(process.env.SESSION_KEEPALIVE_MS || 5 * 60 * 1000);
@@ -417,18 +470,19 @@ function clearCuratorSession() {
 async function ensureSession() {
   if (initPromise) return initPromise;
 
-  if (sessionReady && page && Date.now() - sessionCreatedAt < SESSION_MAX_AGE) {
-    try {
-      const test = await withTimeout(
-        page.evaluate(() => document.title),
-        SESSION_HEALTHCHECK_TIMEOUT_MS,
-        'session health check'
-      );
-      if (test) return;
-    } catch {
-      console.log('세션 만료, 재생성');
-    }
+  if (
+    sessionReady &&
+    browser &&
+    browser.isConnected() &&
+    browserContext &&
+    page &&
+    !page.isClosed() &&
+    Date.now() - sessionCreatedAt < SESSION_MAX_AGE
+  ) {
+    return;
   }
+
+  console.log('세션 만료 또는 종료, 재생성');
 
   initPromise = _createSession();
   try {
@@ -438,10 +492,10 @@ async function ensureSession() {
   }
 }
 
-function isOliveYoungPageOpen() {
-  if (!page) return false;
+function isOliveYoungPageOpen(pageRef = page) {
+  if (!pageRef || pageRef.isClosed()) return false;
   try {
-    return new URL(page.url()).origin === OY;
+    return new URL(pageRef.url()).origin === OY;
   } catch {
     return false;
   }
@@ -449,10 +503,103 @@ function isOliveYoungPageOpen() {
 
 async function ensureStockPageOrigin() {
   await ensureSession();
-  if (isOliveYoungPageOpen()) return;
+  const pageRef = page;
+  const generation = sessionGeneration;
+  if (!pageRef || pageRef.isClosed()) throw new Error('stock_page_unavailable');
+  if (isOliveYoungPageOpen(pageRef)) return { page: pageRef, generation };
 
-  await page.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await pageRef.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await sleep(500);
+  if (generation !== sessionGeneration || pageRef !== page) {
+    throw new Error('stock_session_replaced');
+  }
+  return { page: pageRef, generation };
+}
+
+async function ensureSearchPage() {
+  await ensureSession();
+  if (searchPage && !searchPage.isClosed()) {
+    return { page: searchPage, generation: sessionGeneration };
+  }
+  if (searchPageInitPromise) return searchPageInitPromise;
+
+  const contextRef = browserContext;
+  const generation = sessionGeneration;
+  if (!contextRef) throw new Error('search_context_unavailable');
+
+  const nextInitPromise = (async () => {
+    const nextPage = await contextRef.newPage();
+    await nextPage.route('**/*', (route) => {
+      const type = route.request().resourceType();
+      if (type === 'image' || type === 'media' || type === 'font') {
+        return route.abort();
+      }
+      return route.continue();
+    });
+    try {
+      await nextPage.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      if (generation !== sessionGeneration || contextRef !== browserContext) {
+        throw new Error('search_session_replaced');
+      }
+      searchPage = nextPage;
+      return { page: nextPage, generation };
+    } catch (error) {
+      try {
+        await nextPage.close();
+      } catch {}
+      throw error;
+    }
+  })();
+  searchPageInitPromise = nextInitPromise;
+
+  try {
+    return await nextInitPromise;
+  } finally {
+    if (searchPageInitPromise === nextInitPromise) searchPageInitPromise = null;
+  }
+}
+
+async function ensurePricePage() {
+  await ensureSession();
+  if (pricePage && !pricePage.isClosed()) {
+    return { page: pricePage, generation: sessionGeneration };
+  }
+  if (pricePageInitPromise) return pricePageInitPromise;
+
+  const contextRef = browserContext;
+  const generation = sessionGeneration;
+  if (!contextRef) throw new Error('price_context_unavailable');
+
+  const nextInitPromise = (async () => {
+    const nextPage = await contextRef.newPage();
+    await nextPage.route('**/*', (route) => {
+      const type = route.request().resourceType();
+      if (type === 'image' || type === 'media' || type === 'font') {
+        return route.abort();
+      }
+      return route.continue();
+    });
+    try {
+      await nextPage.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      if (generation !== sessionGeneration || contextRef !== browserContext) {
+        throw new Error('price_session_replaced');
+      }
+      pricePage = nextPage;
+      return { page: nextPage, generation };
+    } catch (error) {
+      try {
+        await nextPage.close();
+      } catch {}
+      throw error;
+    }
+  })();
+  pricePageInitPromise = nextInitPromise;
+
+  try {
+    return await nextInitPromise;
+  } finally {
+    if (pricePageInitPromise === nextInitPromise) pricePageInitPromise = null;
+  }
 }
 
 function sessionAgeSeconds() {
@@ -468,6 +615,9 @@ function sessionHealthPayload() {
     curatorCacheSize: curatorLinkCache.size,
     curatorActiveCount,
     curatorMaxConcurrent: CURATOR_MAX_CONCURRENT,
+    sessionGeneration,
+    pricePageReady: !!(pricePage && !pricePage.isClosed()),
+    search: runOfficialSearch.stats(),
     warming: !!initPromise || keepAliveRunning,
     uptime: process.uptime(),
     age: sessionAgeSeconds(),
@@ -804,13 +954,19 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
 async function _createSession() {
   console.log('🔄 브라우저 세션 생성 중...');
   const start = Date.now();
+  sessionGeneration += 1;
 
+  searchPage = null;
+  searchPageInitPromise = null;
+  pricePage = null;
+  pricePageInitPromise = null;
   if (page) {
     try {
       await page.close();
     } catch {}
     page = null;
   }
+  browserContext = null;
   if (browser) {
     try {
       await browser.close();
@@ -825,13 +981,13 @@ async function _createSession() {
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
 
-  const ctx = await browser.newContext({
+  browserContext = await browser.newContext({
     userAgent:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     locale: 'ko-KR'
   });
 
-  page = await ctx.newPage();
+  page = await browserContext.newPage();
   await page.goto(OY + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(5000);
 
@@ -859,8 +1015,8 @@ async function _createSession() {
 }
 
 async function oyPost(apiPath, body) {
-  await ensureStockPageOrigin();
-  return page.evaluate(
+  const work = await ensureStockPageOrigin();
+  const result = await work.page.evaluate(
     async ({ url, payload, timeoutMs }) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -894,94 +1050,144 @@ async function oyPost(apiPath, body) {
     },
     { url: OY + '/oystore/api' + apiPath, payload: body, timeoutMs: OY_API_FETCH_TIMEOUT_MS }
   );
+  if (work.generation !== sessionGeneration || work.page !== page) {
+    throw new Error('stock_session_replaced');
+  }
+  return result;
 }
 
 async function fetchOfficialSearchPage({ keyword, startCount, listnum }) {
   async function requestFromSession() {
-    if (!page || !sessionReady) await ensureSession();
-    return page.evaluate(
-      async ({ query, start, count, timeoutMs }) => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        const body = new URLSearchParams({
-          query,
-          reQuery: '',
-          rt: '',
-          collection: 'OLIVE_GOODS,OLIVE_PLAN,OLIVE_EVENT,OLIVE_BRAND,OLIVE_QUICK_LINK',
-          listnum: String(count),
-          startCount: String(start),
-          sort: 'RANK/DESC',
-          goods_sort: 'WEIGHT/DESC,RANK/DESC',
-          disPlayCateId: '',
-          cateId: '',
-          cateId2: '',
-          sale_below_price: '',
-          sale_over_price: '',
-          brandCheck: '',
-          benefitCheck: '',
-          attrCheck0: '',
-          attrCheck1: '',
-          attrCheck2: '',
-          attrCheck3: '',
-          attrCheck4: '',
-          authenticYn: '',
-          typeChk: '',
-          onlyOneBrand: '',
-          quickYn: 'N',
-          displayMediaTypes: '02'
-        });
-
-        try {
-          const response = await fetch('/store/search/NewMainSearchApi.do', {
-            method: 'POST',
-            credentials: 'include',
-            signal: controller.signal,
-            headers: {
-              Accept: 'application/json, text/javascript, */*; q=0.01',
-              'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: body.toString()
+    const work = await ensureSearchPage();
+    let result;
+    try {
+      result = await work.page.evaluate(
+        async ({ query, start, count, timeoutMs }) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+          const body = new URLSearchParams({
+            query,
+            reQuery: '',
+            rt: '',
+            collection: 'OLIVE_GOODS,OLIVE_PLAN,OLIVE_EVENT,OLIVE_BRAND,OLIVE_QUICK_LINK',
+            listnum: String(count),
+            startCount: String(start),
+            sort: 'RANK/DESC',
+            goods_sort: 'WEIGHT/DESC,RANK/DESC',
+            disPlayCateId: '',
+            cateId: '',
+            cateId2: '',
+            sale_below_price: '',
+            sale_over_price: '',
+            brandCheck: '',
+            benefitCheck: '',
+            attrCheck0: '',
+            attrCheck1: '',
+            attrCheck2: '',
+            attrCheck3: '',
+            attrCheck4: '',
+            authenticYn: '',
+            typeChk: '',
+            onlyOneBrand: '',
+            quickYn: 'N',
+            displayMediaTypes: '02'
           });
-          const text = await response.text();
-          let data = null;
+
           try {
-            data = JSON.parse(text);
-          } catch {
-            data = null;
+            const response = await fetch('/store/search/NewMainSearchApi.do', {
+              method: 'POST',
+              credentials: 'include',
+              signal: controller.signal,
+              headers: {
+                Accept: 'application/json, text/javascript, */*; q=0.01',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: body.toString()
+            });
+            const text = await response.text();
+            let data = null;
+            try {
+              data = JSON.parse(text);
+            } catch {
+              data = null;
+            }
+            return {
+              status: response.status,
+              data,
+              contentType: response.headers.get('content-type') || ''
+            };
+          } catch (error) {
+            return {
+              status: 0,
+              data: null,
+              error: error && error.name === 'AbortError' ? 'search_timeout' : String(error)
+            };
+          } finally {
+            clearTimeout(timeoutId);
           }
-          return {
-            status: response.status,
-            data,
-            contentType: response.headers.get('content-type') || ''
-          };
-        } catch (error) {
-          return {
-            status: 0,
-            data: null,
-            error: error && error.name === 'AbortError' ? 'search_timeout' : String(error)
-          };
-        } finally {
-          clearTimeout(timeoutId);
+        },
+        {
+          query: String(keyword || ''),
+          start: Math.max(0, Number.parseInt(String(startCount || 0), 10) || 0),
+          count: Math.max(1, Math.min(48, Number.parseInt(String(listnum || 48), 10) || 48)),
+          timeoutMs: OY_SEARCH_FETCH_TIMEOUT_MS
         }
-      },
-      {
-        query: String(keyword || ''),
-        start: Math.max(0, Number.parseInt(String(startCount || 0), 10) || 0),
-        count: Math.max(1, Math.min(48, Number.parseInt(String(listnum || 48), 10) || 48)),
-        timeoutMs: OY_SEARCH_FETCH_TIMEOUT_MS
-      }
-    );
+      );
+    } catch (error) {
+      return {
+        status: 0,
+        data: null,
+        error: String(error.message || error),
+        generation: work.generation
+      };
+    }
+    if (work.generation !== sessionGeneration || work.page !== searchPage) {
+      return {
+        status: 0,
+        data: null,
+        error: 'search_session_replaced',
+        generation: work.generation
+      };
+    }
+    return { ...result, generation: work.generation };
   }
 
   let result = await requestFromSession();
-  if (!result || result.status === 0 || result.status === 401 || result.status === 403 || !result.data) {
-    sessionReady = false;
-    await ensureSession();
+  const authFailure = result && (result.status === 401 || result.status === 403);
+  const pageFailure =
+    !result ||
+    (result.status === 0 &&
+      /target page|context or browser|execution context|session_replaced|search_context/i.test(
+        String(result.error || '')
+      ));
+  if (authFailure || pageFailure) {
+    if (authFailure && (!result || result.generation === sessionGeneration)) {
+      sessionReady = false;
+      await ensureSession();
+    } else if (pageFailure && (!result || result.generation === sessionGeneration)) {
+      const failedPage = searchPage;
+      searchPage = null;
+      if (failedPage && !failedPage.isClosed()) {
+        try {
+          await failedPage.close();
+        } catch {}
+      }
+    }
     result = await requestFromSession();
   }
   return result;
 }
+
+const runOfficialSearch = createBoundedSearchRunner(
+  (keyword, size) =>
+    searchOfficialProducts(keyword, size, { fetchPage: fetchOfficialSearchPage }),
+  {
+    maxConcurrent: OY_SEARCH_MAX_CONCURRENT,
+    maxQueue: OY_SEARCH_QUEUE_MAX,
+    maxWaitMs: OY_SEARCH_QUEUE_WAIT_MS
+  }
+);
 
 async function oyPostWithRetry(apiPath, body, retries = 1) {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -1026,9 +1232,9 @@ async function oyPostWithRetry(apiPath, body, retries = 1) {
 
 async function oyPostStockStoresBatch(requests) {
   if (!requests || requests.length === 0) return [];
-  await ensureStockPageOrigin();
+  const work = await ensureStockPageOrigin();
 
-  return page.evaluate(
+  const result = await work.page.evaluate(
     async ({ url, requests: reqs, concurrency, timeoutMs }) => {
       let index = 0;
       const results = [];
@@ -1089,6 +1295,10 @@ async function oyPostStockStoresBatch(requests) {
       timeoutMs: STOCK_STORE_FETCH_TIMEOUT_MS
     }
   );
+  if (work.generation !== sessionGeneration || work.page !== page) {
+    throw new Error('stock_session_replaced');
+  }
+  return result;
 }
 
 async function getNearbyStoresByProductIds(productIds, lat, lng) {
@@ -1257,6 +1467,297 @@ async function getGoodsInfoResponse(goodsNo, opts = {}) {
 
   console.log('[상품정보] 최종 실패:', goodsNo, compactApiFailure(resetRetry));
   return resetRetry || pageRetry || direct;
+}
+
+function prunePriceCache() {
+  const now = Date.now();
+  for (const [key, value] of priceCache) {
+    if (now - value.ts > PRICE_CACHE_TTL_MS) priceCache.delete(key);
+  }
+  while (priceCache.size > PRICE_CACHE_MAX) {
+    const first = priceCache.keys().next().value;
+    if (first == null) break;
+    priceCache.delete(first);
+  }
+}
+
+function strictPositivePrice(value) {
+  if (typeof value === 'number') {
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  }
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().replace(/,/g, '');
+  if (!/^\d+$/.test(normalized)) return null;
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeOfficialPriceOption(row) {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+
+  const optionNumberValue = row.optionNumber;
+  if (typeof optionNumberValue !== 'string' && typeof optionNumberValue !== 'number') {
+    return null;
+  }
+  if (typeof optionNumberValue === 'number' && !Number.isSafeInteger(optionNumberValue)) {
+    return null;
+  }
+  const optionNumber = String(optionNumberValue).trim();
+  const optionName = typeof row.optionName === 'string' ? row.optionName.trim() : '';
+  const priceToPay = strictPositivePrice(row.finalPrice);
+  const originalPrice = strictPositivePrice(row.salePrice);
+  if (!optionNumber || !optionName || priceToPay == null || originalPrice == null) return null;
+  if (typeof row.soldOut !== 'boolean') return null;
+
+  return {
+    optionNumber,
+    optionName,
+    priceToPay,
+    originalPrice,
+    soldOut: row.soldOut
+  };
+}
+
+function publicFieldsFromStockOption(row) {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return {};
+  const fields = {};
+  const optionNumberValue = row.itemNumber;
+  if (
+    (typeof optionNumberValue === 'string' || typeof optionNumberValue === 'number') &&
+    String(optionNumberValue).trim()
+  ) {
+    fields.optionNumber = String(optionNumberValue).trim();
+  }
+
+  const priceToPay = strictPositivePrice(row.priceToPay ?? row.finalPrice);
+  const originalPrice = strictPositivePrice(row.originalPrice ?? row.salePrice);
+  if (priceToPay != null) fields.priceToPay = priceToPay;
+  if (originalPrice != null) fields.originalPrice = originalPrice;
+
+  if (typeof row.soldOut === 'boolean') {
+    fields.soldOut = row.soldOut;
+  } else if (row.soldOutYn === 'Y' || row.soldOutYn === 'N') {
+    fields.soldOut = row.soldOutYn === 'Y';
+  }
+  return fields;
+}
+
+function priceFromOfficialDetail(goodsNo, payload) {
+  const detail = payload && payload.data && typeof payload.data === 'object'
+    ? payload.data
+    : null;
+  if (!detail) return null;
+  const price = normalizeOfficialPrice(goodsNo, {
+    priceToPay: detail.finalPrice,
+    originalPrice: detail.salePrice == null ? 0 : detail.salePrice
+  });
+  if (!price) return null;
+
+  let options = [];
+  if (detail.options != null) {
+    if (!Array.isArray(detail.options)) return null;
+    const seen = new Set();
+    for (const row of detail.options) {
+      const option = normalizeOfficialPriceOption(row);
+      if (!option || seen.has(option.optionNumber)) return null;
+      seen.add(option.optionNumber);
+      options.push(option);
+    }
+  }
+
+  return { ...price, options };
+}
+
+function shouldRetryPriceDetailResult(result, attempt) {
+  if (attempt >= PRICE_LOOKUP_RETRIES) return false;
+  const status = Number(result && result.status);
+  return !result || status === 0 || status >= 500;
+}
+
+function calculatePriceStartAt(
+  now,
+  previousStarts,
+  paceMs = PRICE_LOOKUP_PACE_MS,
+  windowMax = PRICE_LOOKUP_WINDOW_MAX,
+  windowMs = PRICE_LOOKUP_WINDOW_MS
+) {
+  let scheduledAt = Math.max(now, previousStarts.at(-1) + paceMs || now);
+  if (previousStarts.length >= windowMax) {
+    scheduledAt = Math.max(
+      scheduledAt,
+      previousStarts[previousStarts.length - windowMax] + windowMs
+    );
+  }
+  return scheduledAt;
+}
+
+async function waitForPricePace() {
+  const now = Date.now();
+  priceScheduledStarts = priceScheduledStarts.filter(
+    (startAt) => startAt > now - PRICE_LOOKUP_WINDOW_MS
+  );
+  const scheduledAt = calculatePriceStartAt(now, priceScheduledStarts);
+  priceScheduledStarts.push(scheduledAt);
+  priceNextStartAt = scheduledAt + PRICE_LOOKUP_PACE_MS;
+  if (scheduledAt > now) await sleep(scheduledAt - now);
+}
+
+async function fetchOfficialPriceDetailOnce(goodsNo) {
+  const work = await ensurePricePage();
+  await waitForPricePace();
+  let result;
+  try {
+    result = await work.page.evaluate(
+      async ({ goodsNo: targetGoodsNo, timeoutMs }) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const response = await fetch(
+            '/goods/api/v1/detail?goodsNo=' + encodeURIComponent(targetGoodsNo),
+            {
+              method: 'GET',
+              credentials: 'include',
+              signal: controller.signal,
+              headers: { Accept: 'application/json' }
+            }
+          );
+          const text = await response.text();
+          let payload = null;
+          try {
+            payload = JSON.parse(text);
+          } catch {}
+          return {
+            ok: response.ok,
+            status: response.status,
+            payload
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            status: 0,
+            payload: null,
+            error:
+              error && error.name === 'AbortError'
+                ? 'price_detail_timeout'
+                : String(error.message || error)
+          };
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      { goodsNo, timeoutMs: PRICE_DETAIL_FETCH_TIMEOUT_MS }
+    );
+  } catch (error) {
+    result = {
+      ok: false,
+      status: 0,
+      payload: null,
+      error: String(error.message || error)
+    };
+  }
+
+  if (work.generation !== sessionGeneration || work.page !== pricePage) {
+    return {
+      ok: false,
+      status: 0,
+      payload: null,
+      error: 'price_session_replaced',
+      generation: work.generation
+    };
+  }
+  return { ...result, generation: work.generation };
+}
+
+async function fetchOfficialPriceDetail(goodsNo) {
+  let result = null;
+  for (let attempt = 0; attempt <= PRICE_LOOKUP_RETRIES; attempt += 1) {
+    result = await fetchOfficialPriceDetailOnce(goodsNo);
+    if (!shouldRetryPriceDetailResult(result, attempt)) return result;
+
+    if (
+      result.status === 0 &&
+      result.generation === sessionGeneration &&
+      /target page|context or browser|execution context|session_replaced|price_context/i.test(
+        String(result.error || '')
+      )
+    ) {
+      const failedPage = pricePage;
+      pricePage = null;
+      if (failedPage && !failedPage.isClosed()) {
+        try {
+          await failedPage.close();
+        } catch {}
+      }
+    }
+    await sleep(400);
+  }
+  return result;
+}
+
+async function getPublicPrice(goodsNo) {
+  const cached = priceCache.get(goodsNo);
+  if (cached && Date.now() - cached.ts < PRICE_CACHE_TTL_MS) {
+    return { ...cached.price };
+  }
+
+  const existing = priceFlights.get(goodsNo);
+  if (existing) return existing;
+
+  const task = (async () => {
+    const result = await fetchOfficialPriceDetail(goodsNo);
+    if (!result || !result.ok) {
+      throw new Error('price_detail_failed_' + Number(result && result.status));
+    }
+    const price = priceFromOfficialDetail(goodsNo, result.payload);
+    if (!price) throw new Error('price_missing_or_zero');
+
+    prunePriceCache();
+    priceCache.set(goodsNo, { price, ts: Date.now() });
+    return { ...price };
+  })();
+
+  priceFlights.set(goodsNo, task);
+  try {
+    return await task;
+  } finally {
+    if (priceFlights.get(goodsNo) === task) priceFlights.delete(goodsNo);
+  }
+}
+
+async function lookupPublicPrices(goodsNos) {
+  const prices = new Array(goodsNos.length);
+  const failed = new Set();
+  let index = 0;
+
+  async function worker() {
+    while (index < goodsNos.length) {
+      const current = index;
+      index += 1;
+      const goodsNo = goodsNos[current];
+      try {
+        prices[current] = await getPublicPrice(goodsNo);
+      } catch (error) {
+        failed.add(goodsNo);
+        console.error('[api/prices] 상품 조회 실패:', goodsNo, error.message || error);
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(PRICE_LOOKUP_CONCURRENCY, goodsNos.length) },
+      () => worker()
+    )
+  );
+
+  if (failed.size) {
+    const error = new Error('price_lookup_incomplete');
+    error.code = 'PRICE_LOOKUP_INCOMPLETE';
+    error.failedGoodsNos = goodsNos.filter((goodsNo) => failed.has(goodsNo));
+    throw error;
+  }
+
+  return prices;
 }
 
 async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false, fresh = false) {
@@ -1529,6 +2030,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
     optionResults.push({
       name: opt.itemName,
       productId: pid,
+      ...publicFieldsFromStockOption(opt),
       image: optImage,
       totalStores: stores.length,
       inStock: stores.filter((s) => s.qty > 0).length,
@@ -1554,6 +2056,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       optionResults.push({
         name: gi.goodsName,
         productId: pid,
+        ...publicFieldsFromStockOption(gi),
         image: uploadUrl + (gi.goodsThumbnailPath || ''),
         totalStores: 0,
         inStock: 0,
@@ -1577,6 +2080,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       optionResults.push({
         name: gi.goodsName,
         productId: pid,
+        ...publicFieldsFromStockOption(gi),
         image: uploadUrl + (gi.goodsThumbnailPath || ''),
         totalStores: stores.length,
         inStock: stores.filter((s) => s.qty > 0).length,
@@ -1762,6 +2266,7 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     optionResults.push({
       name: opt.itemName,
       productId: pid,
+      ...publicFieldsFromStockOption(opt),
       image: optImage,
       onlineQty: opt.quantity ?? 0,
       totalStores: allStores.length,
@@ -1792,6 +2297,7 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     optionResults.push({
       name: gi.goodsName,
       productId: pid,
+      ...publicFieldsFromStockOption(gi),
       image: optImage,
       onlineQty: gi.quantity ?? 0,
       totalStores: allStores.length,
@@ -1835,6 +2341,10 @@ function expectedCuratorLiveSecret() {
   return String(process.env.CURATOR_LIVE_SECRET || process.env.CRON_SECRET || '').trim();
 }
 
+function expectedPriceAlertSecret() {
+  return String(process.env.PRICE_ALERT_SERVICE_SECRET || '').trim();
+}
+
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a || ''));
   const bb = Buffer.from(String(b || ''));
@@ -1850,9 +2360,26 @@ function isCuratorRequestAuthorized(req, url) {
   return safeEqual(bearer, expected) || safeEqual(querySecret, expected);
 }
 
-async function readJsonBody(req) {
+function isPriceRequestAuthorized(req) {
+  const expected = expectedPriceAlertSecret();
+  if (!expected) return false;
+  const auth = String(req.headers.authorization || '').trim();
+  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+  return !!bearer && safeEqual(bearer, expected);
+}
+
+async function readJsonBody(req, maxBytes = 256 * 1024) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let total = 0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > maxBytes) {
+      const error = new Error('request_body_too_large');
+      error.code = 'REQUEST_BODY_TOO_LARGE';
+      throw error;
+    }
+    chunks.push(chunk);
+  }
   if (!chunks.length) return {};
   const raw = Buffer.concat(chunks).toString('utf8').trim();
   if (!raw) return {};
@@ -1904,7 +2431,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const result = await withTimeout(
-        searchOfficialProducts(keyword, size, { fetchPage: fetchOfficialSearchPage }),
+        runOfficialSearch(keyword, size),
         OY_SEARCH_TOTAL_TIMEOUT_MS,
         'official search'
       );
@@ -1917,6 +2444,104 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (error) {
       console.error('[api/search] 실패:', error.message || error);
+      const overloaded = error && error.code === 'OFFICIAL_SEARCH_OVERLOADED';
+      const timedOut = /official search timeout/i.test(String(error.message || error));
+      const status = overloaded ? 429 : timedOut ? 504 : 502;
+      const headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      };
+      if (overloaded) headers['Retry-After'] = String(error.retryAfterSeconds || 5);
+      res.writeHead(status, headers);
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: overloaded ? 'official_search_overloaded' : 'official_search_unavailable',
+          message: String(error.message || error)
+        })
+      );
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/prices') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'method_not_allowed' }));
+      return;
+    }
+
+    if (!expectedPriceAlertSecret()) {
+      res.writeHead(503, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      });
+      res.end(JSON.stringify({ success: false, error: 'price_service_not_configured' }));
+      return;
+    }
+
+    if (!isPriceRequestAuthorized(req)) {
+      res.writeHead(401, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      });
+      res.end(JSON.stringify({ success: false, error: 'unauthorized' }));
+      return;
+    }
+
+    let body;
+    try {
+      body = await readJsonBody(req, 32 * 1024);
+    } catch (error) {
+      const status = error && error.code === 'REQUEST_BODY_TOO_LARGE' ? 413 : 400;
+      res.writeHead(status, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      });
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: status === 413 ? 'request_body_too_large' : 'invalid_json'
+        })
+      );
+      return;
+    }
+
+    let goodsNos;
+    try {
+      goodsNos = parsePriceGoodsNos(body && body.goodsNos, 50);
+    } catch (error) {
+      res.writeHead(400, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      });
+      res.end(JSON.stringify({ success: false, error: String(error.message || error) }));
+      return;
+    }
+
+    try {
+      const prices = await withTimeout(
+        lookupPublicPrices(goodsNos),
+        PRICE_LOOKUP_TOTAL_TIMEOUT_MS,
+        'price lookup'
+      );
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      });
+      res.end(
+        JSON.stringify({
+          success: true,
+          complete: true,
+          count: prices.length,
+          prices
+        })
+      );
+    } catch (error) {
+      const failedGoodsNos = Array.isArray(error.failedGoodsNos)
+        ? error.failedGoodsNos
+        : goodsNos;
+      console.error('[api/prices] 요청 실패:', error.message || error);
       res.writeHead(502, {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store, max-age=0'
@@ -1924,8 +2549,9 @@ const server = http.createServer(async (req, res) => {
       res.end(
         JSON.stringify({
           success: false,
-          error: 'official_search_unavailable',
-          message: String(error.message || error)
+          complete: false,
+          error: 'price_lookup_incomplete',
+          failedGoodsNos
         })
       );
     }
@@ -2103,7 +2729,17 @@ async function startServer() {
   });
 }
 
-void startServer();
+if (String(process.env.OY_SERVER_DISABLE_START || '') !== '1') {
+  void startServer();
+}
+
+export {
+  calculatePriceStartAt,
+  priceFromOfficialDetail,
+  publicFieldsFromStockOption,
+  server,
+  shouldRetryPriceDetailResult
+};
 
 process.on('SIGTERM', async () => {
   console.log('종료 중...');

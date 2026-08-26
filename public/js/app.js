@@ -68,14 +68,14 @@ var App = {
             '📦 ' + t + ' 수집 | ' + (d.summary ? d.summary.total + '개 상품' : '');
       }
       self._syncStickyTabsOffset();
-      if (window.RestockAlerts) RestockAlerts.refreshControls();
+      if (window.PriceAlerts) PriceAlerts.refreshControls();
     });
 
     this._updateFavCount();
     UI._bindPopupEvents();
     document.addEventListener('click', this._onClick.bind(this));
     if (window.PWA) PWA.init();
-    if (window.RestockAlerts) RestockAlerts.init(this);
+    if (window.PriceAlerts) PriceAlerts.init(this);
     this._syncStickyTabsOffset();
     window.addEventListener('resize', function () {
       self._syncStickyTabsOffset();
@@ -240,15 +240,25 @@ var App = {
           alert('앱 설치 파일을 불러오지 못했습니다. 새로고침 후 다시 눌러 주세요.');
         }
         break;
-      case 'toggleRestockAlert':
+      case 'openPriceAlert':
         e.preventDefault();
         e.stopPropagation();
-        if (window.RestockAlerts) RestockAlerts.toggleFromElement(el);
+        if (window.PriceAlerts) PriceAlerts.openFromElement(el);
         break;
-      case 'checkRestockAlerts':
+      case 'closePriceAlert':
         e.preventDefault();
         e.stopPropagation();
-        if (window.RestockAlerts) RestockAlerts.checkNow({ userInitiated: true });
+        if (window.PriceAlerts) PriceAlerts.closeModal();
+        break;
+      case 'disablePriceAlert':
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.PriceAlerts) PriceAlerts.disableFromModal();
+        break;
+      case 'refreshPriceAlerts':
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.PriceAlerts) PriceAlerts.refreshFromServer({ silent: false });
         break;
       case 'buyNow': {
         e.preventDefault();
@@ -1411,7 +1421,7 @@ var App = {
   _renderFavorites: function () {
     var favs = Storage.getFavorites();
     UI.renderFavorites(favs, this.detailData);
-    if (window.RestockAlerts) RestockAlerts.refreshControls();
+    if (window.PriceAlerts) PriceAlerts.refreshControls();
     this._queueCuratorLinks(favs, 'favorites', CONFIG.CURATOR_QUEUE_FAVORITES_LIMIT || 50);
     void this._enrichFavorites(favs);
   },
@@ -1432,7 +1442,6 @@ var App = {
       stockStatus: p.stockStatus || ''
     };
     var result = Storage.toggleFavorite(product);
-    if (!result.added && window.RestockAlerts) RestockAlerts.removeForGoodsNo(product.goodsNo);
     this._updateFavCount();
     var btn = document.querySelector('[data-action="toggleFav"][data-index="' + idx + '"]');
     if (btn) {
@@ -1444,7 +1453,6 @@ var App = {
 
   _removeFav: function (goodsNo) {
     Storage.removeFavorite(goodsNo);
-    if (window.RestockAlerts) RestockAlerts.removeForGoodsNo(goodsNo);
     this._updateFavCount();
     this._renderFavorites();
     UI.showSyncStatus('즐겨찾기 해제', false);
@@ -1470,13 +1478,12 @@ var App = {
       product.price = product.price || searchP.priceToPay;
     }
     var result = Storage.toggleFavorite(product);
-    if (!result.added && window.RestockAlerts) RestockAlerts.removeForGoodsNo(goodsNo);
     this._updateFavCount();
     if (btnEl) {
       btnEl.textContent = result.added ? '★ 즐겨찾기 됨' : '☆ 즐겨찾기 추가';
       btnEl.classList.toggle('active', result.added);
     }
-    if (window.RestockAlerts) RestockAlerts.refreshControls();
+    if (window.PriceAlerts) PriceAlerts.refreshControls();
   },
 
   _syncFavorites: function () {
