@@ -1,0 +1,19 @@
+# Cloud Run builds only the Node service image defined by Dockerfile.
+# Static/API assets are deployed separately by Vercel and would add ~2.4 GB.
+.gcloudignore
+.git
+.github
+.ai
+.auth
+.vercel
+api
+public
+scripts
+tests
+node_modules
+.env
+.env.*
+*.log
+CLAUDE.md
+README.md
+vercel.json
