@@ -336,7 +336,7 @@ def main():
         print("e2e: unpaid gate precedes permission", flush=True)
 
         page.locator("#price-alert-promo-input").fill("E2E-DUMMY-CODE-NOT-A-REAL-SECRET")
-        page.locator("#price-alert-promo-button").click()
+        page.locator("#price-alert-promo-input").press("Enter")
         page.locator("#price-alert-setup:visible").wait_for(state="visible", timeout=10000)
         assert "평생 이용권 활성" in page.locator("#price-alert-entitlement-status").inner_text()
         assert state["promotion_count"] == 1

@@ -6,7 +6,7 @@
 - 정적 데이터: `public/data/*.json`, Vercel static route
 - 실시간 재고 서버: Google Cloud Run (`server/`)
 - 자동 수집/갱신: GitHub Actions
-- 사용자 가격 알림 상태: Vercel Blob. 공개 Blob에는 AES-256-GCM 암호문만 저장하며, 고정 기기 레코드의 ETag 조건부 쓰기와 충돌 재시도로 동시 갱신을 직렬화한다.
+- 사용자 가격 알림 상태: 기존 Vercel 비공개 Blob 저장소. 기기·인덱스·요청률 카운터·결제의도는 모두 `access:'private'`로 읽고 쓰며 AES-256-GCM 암호문만 저장한다. 고정 기기 레코드의 ETag 조건부 쓰기와 충돌 재시도로 동시 갱신을 직렬화한다.
 
 ## 배포 트리거
 
@@ -141,6 +141,7 @@ node scripts/generate-curator-links.mjs
 - 큐레이터 링크 관련 배포 후 `landing-proxy?check=1`에서 `jwtValid`, `selectedSource`, `candidateSources`를 확인한다.
 - Vercel env 변경 후 실제 적용에는 재배포가 필요하다.
 - `PRICE_ALERT_DATA_KEY`를 잃거나 교체하면 기존 암호화 알림 레코드를 읽을 수 없다. 백업 없이 회전하지 않는다.
+- 기존 Blob 연결이 비공개 저장소이므로 가격알림 모듈을 `access:'public'`으로 배포하면 프로모션 첫 단계의 요청률 카운터부터 `503 rate_limit_unavailable`로 중단된다. `_limits`, `_registry`, `_store`, `_payment-store`의 접근 유형을 모두 `private`로 유지한다.
 - VAPID private key를 교체하면 기존 브라우저 구독이 더 이상 유효하지 않을 수 있으므로 재구독 안내가 필요하다.
 - Blob MVP는 활성 기기 기본 20개, 기기당 상품·옵션 합계 10개 알림을 상한으로 둔다. Cron은 옵션 알림도 `goodsNo`로 중복 제거해 같은 상품을 한 번만 조회하므로 시간당 최악 200개 고유 상품이고, 옵션 비교 작업만 알림 수만큼 수행한다. 이 값을 올리기 전 Cloud Run/Vercel 최대 실행시간을 부하 검증해야 한다. 수천 활성 기기로 확장할 때는 Blob 인덱스 한도를 무작정 올리지 말고 트랜잭션·상품 역색인이 가능한 DB/queue로 이전한다.
 - 결제 생성은 PortOne 사전등록보다 먼저 활성 인덱스 슬롯을 실제 예약한다. 동일 기기·동일 idempotency 재시도는 같은 예약을 사용하고, 의도 만료·비재시도 실패·abandoned·전액취소는 최신 device revision과 인덱스 revision을 대조해 안전하게 해제한다. PAID 권한이나 활성 알림 사용 중에는 슬롯을 유지한다. 여러 기기의 동시 예약은 초과 시 생성한 인덱스를 조건부 롤백해 상한을 넘기지 않지만, 활성 기기 수를 크게 늘릴 때는 목록 기반 Blob 인덱스 대신 트랜잭션 좌석 카운터가 있는 DB로 이전한다.

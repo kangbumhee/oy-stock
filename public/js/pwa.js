@@ -32,7 +32,7 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20260826-price-access-3')
+      .register('/sw.js?v=20260827-price-access-4')
       .then(function (registration) {
         self.registration = registration;
         if (registration && registration.update) {

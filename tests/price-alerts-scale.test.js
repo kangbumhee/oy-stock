@@ -58,7 +58,9 @@ function memoryBlob() {
   let etagSequence = 0;
   return {
     objects,
-    async get(pathname) {
+    async get(pathname, options) {
+      assert.equal(options.access, 'private');
+      assert.equal(options.useCache, false);
       const row = objects.get(pathname);
       if (!row) return null;
       return {
@@ -67,6 +69,7 @@ function memoryBlob() {
       };
     },
     async put(pathname, body, options) {
+      assert.equal(options.access, 'private');
       const existing = objects.get(pathname);
       if (!options.allowOverwrite && existing) {
         const error = new Error('conflict');

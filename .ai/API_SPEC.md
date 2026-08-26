@@ -73,7 +73,7 @@
 - 인증: `X-Price-Alert-Device-Id`, `X-Price-Alert-Device-Secret` 필수.
 - POST Body: 브라우저 `PushSubscription.toJSON()` 결과 또는 `{ "subscription": ... }`.
 - 보안: HTTPS 표준 포트의 Chrome/FCM, Firefox/Mozilla, Safari/Apple, Edge/WNS Push 서비스 endpoint만 허용한다. IP literal, localhost, 사용자정보 포함 URL, 비표준 포트, 임의 호스트는 거부한다.
-- 저장: 기기 자격증명 해시와 구독 전체를 AES-256-GCM으로 암호화한 뒤 Vercel Blob에 저장한다.
+- 저장: 기기 자격증명 해시와 구독 전체를 AES-256-GCM으로 암호화한 뒤 기존 Vercel 비공개 Blob 저장소에 저장한다.
 - 동시성: 기기 레코드는 ETag 조건부 쓰기와 최신 상태 재적용으로 갱신해 Cron과 사용자 편집/삭제/구독 요청이 겹쳐도 변경을 잃지 않는다.
 - 남용 방지: 동일 IP 대역·호스트의 생성/변경은 HMAC 처리된 Blob CAS 카운터로 제한한다. 초과 시 `429`, 저장소 확인 실패나 전체 기기 한도 초과 시 `503`과 `Retry-After`를 반환한다. 원 IP는 Blob에 저장하지 않는다.
 - 이용권: POST 활성화는 유효한 가격알림 이용권이 필요하다. GET은 없고 DELETE 구독 해제는 이용권 만료 후에도 허용한다.
@@ -82,6 +82,7 @@
 
 - 설명: 현재 브라우저의 상품 또는 옵션별 목표가격 알림을 조회·저장·삭제한다. 알림 식별자 `alertId`는 상품 알림이면 `goodsNo`, 옵션 알림이면 `goodsNo::optionNumber`이다.
 - 인증: `X-Price-Alert-Device-Id`, `X-Price-Alert-Device-Secret` 필수.
+- 최초 조회: 형식이 올바른 신규 기기는 서버 레코드를 만들거나 등록 슬롯을 소비하지 않고 `200`, 빈 `alerts`, `subscribed:false`를 반환한다. 이미 저장된 기기의 secret이 일치하지 않으면 `401 device_auth_failed`다.
 - POST Body: `goodsNo`, `goodsName`, `imageUrl`, `targetPrice`와 옵션 알림일 때 `optionNumber`, `optionName`, 선택적 `legacyItemNumber`. 같은 상품의 옵션은 각각 독립적으로 upsert한다.
 - DELETE Query: `goodsNo`와 옵션 알림일 때 `optionNumber`. 옵션이 없으면 상품 단위 알림만 삭제하며 같은 상품의 옵션 알림은 유지한다.
 - 응답: 공개 알림과 가격변동 알림에는 `alertId`, `optionNumber`, `optionName`, `legacyItemNumber`가 포함된다. 상품 단위 알림의 옵션 필드는 `null` 또는 빈 문자열이다.

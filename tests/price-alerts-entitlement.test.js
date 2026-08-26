@@ -330,6 +330,7 @@ test('encrypted canonical payment intent Blob hides ownership and uses ETag CAS'
     };
     await writeIntent(intent, { etag: '' }, {
       async put(pathname, body, options) {
+        assert.equal(options.access, 'private');
         stored = { pathname, body: String(body), options, etag: 'etag-1' };
         return { pathname, etag: 'etag-1' };
       }
@@ -338,8 +339,10 @@ test('encrypted canonical payment intent Blob hides ownership and uses ETag CAS'
     assert.equal(stored.body.includes(PAYMENT_ONE), false);
     assert.equal(stored.pathname.includes(PAYMENT_ONE), false);
     const loaded = await readIntent(PAYMENT_ONE, {
-      async get(pathname) {
+      async get(pathname, options) {
         assert.equal(pathname, stored.pathname);
+        assert.equal(options.access, 'private');
+        assert.equal(options.useCache, false);
         return { stream: Readable.from([stored.body]), blob: { etag: 'etag-1' } };
       }
     });

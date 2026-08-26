@@ -84,3 +84,23 @@ AI가 에러를 해결할 때마다 아래 형식으로 추가한다.
   - `server/official-search.mjs`
   - `api/oliveyoung/search.js`
 
+### 평생 프로모션이 503이고 Enter 입력 시 숨겨진 가격 필드 오류가 남
+
+- 발생일: 2026-08-27
+- 에러 메시지: `POST /api/price-alerts/promotion`의 `503 rate_limit_unavailable`, `An invalid form control with name='targetPrice' is not focusable`, 신규 브라우저 `GET /api/price-alerts/alerts`의 `401`.
+- 원인:
+  - 운영 Blob 연결은 비공개 저장소인데 가격알림 저장 모듈이 `access:'public'`으로 읽고 써서 첫 요청률 카운터 저장부터 실패했다.
+  - 프로모션 입력과 숨겨진 `required targetPrice`가 같은 form에 있어 Enter 제출의 네이티브 검증이 프로모션 핸들러보다 먼저 중단됐다.
+  - 아직 레코드가 없는 신규 기기의 읽기 전용 알림 목록 조회가 생성 허용 없이 인증됐다.
+- 해결법:
+  - `_limits`, `_registry`, `_store`, `_payment-store`를 모두 비공개 Blob 계약으로 통일하고 비공개 `get(..., { useCache:false })`으로 암호문을 읽는다.
+  - 이용권이 비활성일 때 목표가격 입력을 `disabled`, `required:false`로 만들고 프로모션 입력의 Enter를 전용 핸들러에서 처리한다.
+  - 신규 기기의 GET은 임시 빈 레코드로 `200`을 반환하되 저장하거나 등록 슬롯을 소비하지 않는다.
+- 관련 파일:
+  - `api/price-alerts/_limits.js`
+  - `api/price-alerts/_registry.js`
+  - `api/price-alerts/_store.js`
+  - `api/price-alerts/_payment-store.js`
+  - `api/price-alerts/alerts.js`
+  - `public/js/alerts.js`
+

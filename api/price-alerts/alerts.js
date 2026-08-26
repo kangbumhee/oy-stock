@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method !== 'GET') assertSameOrigin(req);
     if (req.method === 'GET') {
-      const loaded = await authenticateDevice(req);
+      const loaded = await authenticateDevice(req, { allowCreate: true });
       const alerts = Array.isArray(loaded.record.alerts) ? loaded.record.alerts : [];
       return sendJson(res, 200, {
         success: true,

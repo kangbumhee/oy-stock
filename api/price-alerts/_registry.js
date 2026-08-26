@@ -169,7 +169,8 @@ async function streamText(stream) {
 async function readIndexPath(pathname, dependencies) {
   const read = (dependencies && dependencies.get) || get;
   const result = await read(pathname, {
-    access: 'public',
+    access: 'private',
+    useCache: false,
     headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
   });
   if (!result) return null;
@@ -199,7 +200,7 @@ async function putIndex(record, kind, dependencies, extra) {
     try {
       const body = encryptedIndexBody(record, kind, null, extra);
       return await write(pathname, body, {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
         allowOverwrite: Boolean(current),
         ...(current && current.etag ? { ifMatch: current.etag } : {}),
@@ -374,7 +375,7 @@ async function reserveIndexSlot(record, kind, maximum, capacityError, dependenci
         configuredDataKey()
       ),
       {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
         allowOverwrite: false,
         contentType: 'application/octet-stream',

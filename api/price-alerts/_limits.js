@@ -132,7 +132,8 @@ function isConflict(error) {
 async function readCounter(pathname, dependencies) {
   const read = (dependencies && dependencies.get) || get;
   const result = await read(pathname, {
-    access: 'public',
+    access: 'private',
+    useCache: false,
     headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
   });
   if (!result) return null;
@@ -151,7 +152,7 @@ async function readCounter(pathname, dependencies) {
 async function writeCounter(pathname, body, etag, dependencies) {
   const write = (dependencies && dependencies.put) || put;
   return write(pathname, JSON.stringify(body), {
-    access: 'public',
+    access: 'private',
     addRandomSuffix: false,
     allowOverwrite: Boolean(etag),
     ...(etag ? { ifMatch: etag } : {}),

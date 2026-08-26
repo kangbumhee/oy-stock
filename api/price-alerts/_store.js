@@ -2,6 +2,7 @@ const {
   BlobPreconditionFailedError,
   BlobUnknownError,
   del,
+  get,
   list,
   put
 } = require('@vercel/blob');
@@ -68,22 +69,22 @@ function authoritativeBlob(blobs, prefix) {
 }
 
 async function fetchBlobText(blob) {
-  const sourceUrl = blob && (blob.downloadUrl || blob.url);
-  if (!sourceUrl) throw new Error('price alert blob URL missing');
+  const pathname = String((blob && blob.pathname) || '').trim();
+  if (!pathname) throw new Error('price alert blob pathname missing');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const separator = sourceUrl.includes('?') ? '&' : '?';
-    const response = await fetch(
-      `${sourceUrl}${separator}version=${encodeURIComponent(String(blob.etag || blob.uploadedAt || ''))}`,
-      {
-        signal: controller.signal,
-        cache: 'no-store',
-        headers: { Accept: 'application/octet-stream' }
-      }
-    );
-    if (!response.ok) throw new Error('price alert blob read failed');
-    return await response.text();
+    const result = await get(pathname, {
+      access: 'private',
+      useCache: false,
+      abortSignal: controller.signal
+    });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      throw new Error('price alert blob read failed');
+    }
+    const chunks = [];
+    for await (const chunk of result.stream) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks).toString('utf8');
   } finally {
     clearTimeout(timeout);
   }
@@ -134,7 +135,7 @@ async function writeDevice(record, previousBlobs) {
     throw new Error('price alert blob ETag missing');
   }
   const options = {
-    access: 'public',
+    access: 'private',
     addRandomSuffix: false,
     allowOverwrite: Boolean(previousIsCurrent),
     contentType: 'application/octet-stream',

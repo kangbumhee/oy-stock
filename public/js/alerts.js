@@ -95,6 +95,7 @@ var PriceAlerts = {
     var setup = document.getElementById('price-alert-setup');
     var payButton = document.getElementById('price-alert-pay-button');
     var promoButton = document.getElementById('price-alert-promo-button');
+    var targetInput = document.getElementById('price-alert-target-input');
     var active = this._hasActiveEntitlement();
 
     if (status) {
@@ -105,6 +106,10 @@ var PriceAlerts = {
     }
     if (paywall) paywall.classList.toggle('hidden', active);
     if (setup) setup.classList.toggle('hidden', !active);
+    if (targetInput) {
+      targetInput.disabled = !active;
+      targetInput.required = active;
+    }
 
     var configured = this.entitlementEnabled !== false;
     var controlsDisabled = this.entitlementLoading || this.paymentBusy || !configured;
@@ -731,6 +736,12 @@ var PriceAlerts = {
     });
     var promoButton = document.getElementById('price-alert-promo-button');
     if (promoButton) promoButton.addEventListener('click', function () {
+      PriceAlerts.applyPromotion();
+    });
+    var promoInput = document.getElementById('price-alert-promo-input');
+    if (promoInput) promoInput.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
       PriceAlerts.applyPromotion();
     });
     var refreshButton = document.getElementById('price-alert-entitlement-refresh');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260826-price-access-3';
+const CACHE_NAME = 'olivestock-app-v20260827-price-access-4';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -9,18 +9,18 @@ const CORE_ASSETS = [
   '/apple-touch-icon.png',
   '/payment-info.html',
   '/privacy.html',
-  '/css/style.css?v=20260826-price-access-3',
-  '/js/config.js?v=20260826-price-access-3',
-  '/js/pwa.js?v=20260826-price-access-3',
-  '/js/storage.js?v=20260826-price-access-3',
+  '/css/style.css?v=20260827-price-access-4',
+  '/js/config.js?v=20260827-price-access-4',
+  '/js/pwa.js?v=20260827-price-access-4',
+  '/js/storage.js?v=20260827-price-access-4',
   '/js/api.js?v=20260820-search-completeness-1',
-  '/js/ui.js?v=20260826-price-access-3',
+  '/js/ui.js?v=20260827-price-access-4',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/alerts.js?v=20260826-price-access-3',
-  '/js/app.js?v=20260826-price-access-3'
+  '/js/alerts.js?v=20260827-price-access-4',
+  '/js/app.js?v=20260827-price-access-4'
 ];
 
 self.addEventListener('install', function (event) {

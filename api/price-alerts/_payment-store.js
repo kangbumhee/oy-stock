@@ -52,7 +52,8 @@ async function readIntent(paymentId, dependencies) {
   const pathname = intentPath(paymentId);
   const read = (dependencies && dependencies.get) || get;
   const result = await read(pathname, {
-    access: 'public',
+    access: 'private',
+    useCache: false,
     headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
   });
   if (!result) return { intent: null, pathname, etag: '' };
@@ -80,7 +81,7 @@ async function writeIntent(intent, previous, dependencies) {
   const etag = String((previous && previous.etag) || '');
   try {
     return await write(pathname, encryptJson(intent, configuredDataKey()), {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       allowOverwrite: Boolean(etag),
       ...(etag ? { ifMatch: etag } : {}),
