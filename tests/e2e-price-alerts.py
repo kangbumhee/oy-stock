@@ -1,5 +1,8 @@
+import atexit
 import json
 import tempfile
+import threading
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -10,6 +13,28 @@ BASE_URL = "http://127.0.0.1:4191"
 GOODS_NO = "A000000154189"
 PAYMENT_ID = "oypa_" + "p" * 24
 RETURN_PAYMENT_ID = "oypa_" + "r" * 24
+
+
+class QuietStaticHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        public_dir = Path(__file__).resolve().parents[1] / "public"
+        super().__init__(*args, directory=str(public_dir), **kwargs)
+
+    def log_message(self, _format, *_args):
+        pass
+
+
+def start_static_server():
+    server = ThreadingHTTPServer(("127.0.0.1", 0), QuietStaticHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    def close_server():
+        server.shutdown()
+        server.server_close()
+
+    atexit.register(close_server)
+    return server, close_server
 
 
 def inactive_entitlement():
@@ -54,6 +79,9 @@ def payment_contract(payment_id, mismatch=False):
 
 
 def main():
+    global BASE_URL
+    static_server, close_static_server = start_static_server()
+    BASE_URL = f"http://127.0.0.1:{static_server.server_port}"
     calls = []
     alert_bodies = []
     stored_alerts = []
@@ -94,6 +122,18 @@ def main():
                 content_type="text/javascript",
                 body="window.__analyticsObservedLocation = window.location.href;",
             )
+            return
+        if parsed.netloc == urlparse(BASE_URL).netloc and path == "/":
+            index_html = (Path(__file__).resolve().parents[1] / "public" / "index.html").read_text(
+                encoding="utf-8"
+            )
+            # html2canvas is unrelated to these alert scenarios. Remove SRI only
+            # from the test document so the empty, fully intercepted CDN stub is accepted.
+            index_html = index_html.replace(
+                ' integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"',
+                "",
+            )
+            route.fulfill(status=200, content_type="text/html", body=index_html)
             return
         if request.url.startswith("https://cdn.portone.io/"):
             sdk_network_calls.append(request.url)
@@ -200,7 +240,7 @@ def main():
         if path.startswith("/api/"):
             json_response(route, {"success": True, "data": {"products": []}})
             return
-        if parsed.netloc != "127.0.0.1:4191":
+        if parsed.netloc != urlparse(BASE_URL).netloc:
             unexpected_external_calls.append(request.url)
             route.fulfill(
                 status=200,
@@ -462,6 +502,7 @@ def main():
         assert not console_errors, console_errors
         browser.close()
 
+    close_static_server()
     print(json.dumps({"ok": True, "viewport": "516x862", "screenshot": str(screenshot), "paymentScenarios": 8, "apiCalls": calls}, ensure_ascii=False))
 
 
