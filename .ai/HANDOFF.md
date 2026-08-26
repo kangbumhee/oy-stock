@@ -27,10 +27,10 @@
 ### 마지막 작업
 
 - 날짜: 2026-08-27
-- 내용: 검색 503을 Cloud Run 단일 실행·대기열 제한과 자원 설정으로 안정화하고, 60분 가격 변동 Web Push 알림을 추가했다. 상품과 `goodsNo::optionNumber` 옵션을 각각 추적하며 상승·하락을 모두 알리고, 목표가 하향 돌파는 같은 하락 알림에 합친다. 알림 등록은 30,000원/30일 단건 이용권 또는 HMAC 검증 평생 프로모션 권한으로 제한한다. PortOne V2 카카오페이 결제 코드는 구현했지만, 사업자 표시·환불 조건과 운영 PortOne 설정이 아직 없으므로 실제 결제만 fail-closed 상태로 배포했다.
+- 내용: 검색 503을 Cloud Run 단일 실행·대기열 제한과 자원 설정으로 안정화하고, 60분 가격 변동 Web Push 알림을 추가했다. 이어서 운영 비공개 Blob과 가격알림 코드의 `public` 접근 불일치로 발생한 프로모션 `503 rate_limit_unavailable`, 프로모션 Enter 입력의 숨은 `required targetPrice` 오류, 신규 기기 알림 목록 `401`을 수정했다. 알림 등록은 30,000원/30일 단건 이용권 또는 HMAC 검증 평생 프로모션 권한으로 제한한다. PortOne V2 카카오페이 결제 코드는 구현했지만, 사업자 표시·환불 조건과 이 서비스 전용 PortOne 설정이 아직 없으므로 실제 결제만 fail-closed 상태다.
 - 브랜치: `main`
-- 운영 소스 커밋: `55c51277df7fefa444f3c1729ce7cc196a720903`
-- 최근 운영 배포: Vercel `dpl_44wUcsNZ9x5VG5aZhRLXV3QfMadG` (`READY`, `olivestock.co.kr`), Cloud Run `oy-stock-api-00178-nrz`(트래픽 100%, 4Gi/1 CPU/concurrency 4/timeout 240초)
+- 운영 소스 커밋: `7792f92d5918ea4a042abb70923cd47fe1b1fff1`
+- 최근 운영 배포: Vercel `dpl_GHXPMkBBTnn48yfkr1da69thKunN` (`READY`, `olivestock.co.kr`), Cloud Run `oy-stock-api-00178-nrz`(트래픽 100%, 4Gi/1 CPU/concurrency 4/timeout 240초)
 - 작업한 파일:
   - `api/price-alerts/*`
   - `public/js/alerts.js`, `public/js/storage.js`, `public/sw.js`
@@ -62,13 +62,13 @@
 
 ### 테스트 현황
 
-- [x] `npm.cmd run test:price-alerts` → 64/64
+- [x] `npm.cmd run test:price-alerts` → 66/66
 - [x] `npm.cmd run test:server` → 30/30
 - [x] Playwright E2E → 결제 8경로, 프로모션, 옵션 2개 시나리오 통과(실결제·PortOne 네트워크 호출 없음)
 - [x] `npm audit --omit=dev` → 취약점 0
 - [x] 운영 검색: `어노브` → HTTP 200, `complete=true`, 22/22
 - [x] 운영 옵션: `A000000180872` → 옵션 `001`, `003`, 가격 양수
-- [x] 운영 알림 설정: 60분, 기기당 10개, 프로모션 활성, 실제 결제 비활성
+- [x] 운영 알림 설정: 60분, 기기당 10개, `promotionAvailable=true`, 신규 기기 목록 200, 잘못된 프로모션은 400, 실제 결제 비활성
 - [x] 운영 Cron: `/api/price-alerts/hourly` → `7 * * * *`, 무인증 요청 401
 - [x] 운영 인증: `/api/oliveyoung/landing-proxy?check=1` → `jwtValid=true`
 - [x] Cloud Run `/api/prices` 무인증 요청 → 401
@@ -77,6 +77,7 @@
 
 | 날짜 | 작업 내용 | 변경 파일 |
 |---|---|---|
+| 2026-08-27 | 프로모션 Blob 503·Enter 폼 검증·신규 기기 401 수정 및 운영 재배포 | `api/price-alerts/*`, `public/*`, `tests/*`, `.ai/*` |
 | 2026-08-27 | 검색 503 안정화, 옵션별 60분 가격 변동 알림, 30일 이용권·평생 프로모션, 운영 배포 | `server/*`, `api/price-alerts/*`, `public/*`, `tests/*`, 배포·문서 설정 |
 | 2026-04-22 | AI 인수인계 문서 세트 추가 | `CLAUDE.md`, `.ai/*`, `.env.example` |
 | 2026-04-22 | 큐레이터 토큰 후보 자동 선택, 무수익 링크 생성 차단, 배포 완료 | `.github/workflows/*`, `api/oliveyoung/landing-proxy.js`, `public/js/ui.js`, `scripts/*` |
