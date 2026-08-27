@@ -508,6 +508,14 @@ body.price-alert-modal-open{overflow:hidden}
 .blog-link-card strong{font-size:14px;line-height:1.35;color:#193d22}
 .blog-link-card small{font-size:12px;color:#64748b;font-weight:800}
 .blog-more-link{display:inline-flex;margin-top:14px;color:#193d22;font-size:13px;font-weight:900;text-decoration:none;border-bottom:1px solid #8cc63f}
+.price-alert-offer{display:grid;grid-template-columns:72px minmax(0,1fr) 170px;gap:18px;align-items:center;padding:24px 28px;border-top:1px solid #dfead8;background:linear-gradient(115deg,#f0f9e9 0%,#fbfdf8 58%,#eef8ee 100%)}
+.price-alert-offer-mark{display:grid;place-content:center;width:64px;height:64px;border:1px solid #9bcf66;border-radius:50%;background:#193d22;color:#d7ff52;text-align:center;box-shadow:0 10px 24px rgba(25,61,34,.15)}
+.price-alert-offer-mark b{font-size:24px;line-height:.9}.price-alert-offer-mark span{margin-top:5px;font-size:9px;font-weight:900;letter-spacing:.18em}
+.price-alert-offer-copy h2{margin:4px 0 7px;color:#193d22;font-size:22px}.price-alert-offer-copy p{margin:0;color:#475569;font-size:13px;line-height:1.55}
+.price-alert-offer-copy ul{display:flex;flex-wrap:wrap;gap:5px 14px;margin:10px 0 0;padding:0;list-style:none;color:#315b3b;font-size:11px;font-weight:800}.price-alert-offer-copy li::before{content:'✓';margin-right:5px;color:#16a34a}
+.price-alert-offer-buy{display:grid;gap:7px;justify-items:stretch}.price-alert-offer-buy small{color:#64748b;font-size:10px;font-weight:800}.price-alert-offer-buy strong{color:#172018;font-size:26px;line-height:1}
+.price-alert-offer-primary,.price-alert-offer-detail{display:flex;justify-content:center;border-radius:8px;padding:9px 10px;font-size:11px;font-weight:900;text-decoration:none}.price-alert-offer-primary{background:#193d22;color:#d7ff52}.price-alert-offer-detail{border:1px solid #8bbf8e;background:#fff;color:#166534}
+.price-alert-offer a:focus-visible{outline:3px solid rgba(22,163,74,.3);outline-offset:3px}
 .faq-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .faq-grid article{padding:16px;border:1px solid #dfead8;border-radius:12px;background:#fbfdf8}
 .faq-grid h3{font-size:15px;color:#193d22;margin-bottom:6px}
@@ -552,6 +560,7 @@ body.price-alert-modal-open{overflow:hidden}
   .guide-link-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .guide-link-grid a{min-height:50px;font-size:12px;padding:10px}
   .blog-link-grid{grid-template-columns:1fr;gap:10px}
+  .price-alert-offer{grid-template-columns:52px minmax(0,1fr);gap:12px;padding:22px 16px}.price-alert-offer-mark{width:50px;height:50px}.price-alert-offer-mark b{font-size:20px}.price-alert-offer-copy h2{font-size:19px}.price-alert-offer-copy ul{display:grid;gap:4px}.price-alert-offer-buy{grid-column:1/-1;grid-template-columns:1fr auto;align-items:center;padding-top:4px}.price-alert-offer-buy small{grid-column:1}.price-alert-offer-buy strong{grid-column:1;font-size:24px}.price-alert-offer-primary,.price-alert-offer-detail{grid-row:1/3;min-height:42px;align-items:center}.price-alert-offer-detail{grid-column:2;grid-row:3}.price-alert-offer-primary{grid-column:2}
   .mini-game-callout{grid-template-columns:1fr;padding:13px}
   .mini-game-link{width:100%}
   .faq-grid{grid-template-columns:1fr}

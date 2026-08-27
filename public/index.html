@@ -32,7 +32,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="https://olivestock.co.kr/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#193d22">
-  <link rel="stylesheet" href="/css/style.css?v=20260827-payment-readiness-1">
+  <link rel="stylesheet" href="/css/style.css?v=20260827-payment-readiness-2">
   <script>
     (function () {
       try {
@@ -94,6 +94,24 @@
           "온라인 재고 확인",
           "인기상품 랭킹 확인"
         ]
+      },
+      {
+        "@type": "Service",
+        "@id": "https://olivestock.co.kr/#price-alert-30d",
+        "name": "올리브재고 가격 알림 30일 이용권",
+        "url": "https://olivestock.co.kr/payment-info.html",
+        "description": "등록한 상품 또는 옵션의 공개 표시가격을 약 60분 주기로 확인하고 가격 변동과 목표가격 도달을 Web Push로 알리는 30일 서비스입니다.",
+        "provider": {
+          "@type": "Organization",
+          "name": "뷰티강",
+          "taxID": "525-08-01159"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "30000",
+          "priceCurrency": "KRW",
+          "url": "https://olivestock.co.kr/payment-info.html"
+        }
       },
       {
         "@type": "FAQPage",
@@ -261,6 +279,26 @@
       <a class="blog-more-link" href="/blog/">재고 블로그 전체 보기</a>
     </section>
     <!-- BLOG_POSTS_END -->
+    <section class="price-alert-offer" aria-labelledby="price-alert-offer-title">
+      <div class="price-alert-offer-mark" aria-hidden="true"><b>60</b><span>MIN</span></div>
+      <div class="price-alert-offer-copy">
+        <span class="home-kicker">PRICE WATCH PASS</span>
+        <h2 id="price-alert-offer-title">가격 알림 30일 이용권</h2>
+        <p>상품 또는 옵션별 공개 표시가격을 약 60분 주기로 확인해 가격 상승·하락과 목표가격 도달을 Web Push로 알려드립니다.</p>
+        <ul>
+          <li>이용기간: 결제일부터 30일간</li>
+          <li>1회 결제 · 자동결제·자동연장 없음</li>
+          <li>쿠폰·회원·카드·장바구니 할인가는 가격 기준에서 제외</li>
+        </ul>
+      </div>
+      <div class="price-alert-offer-buy">
+        <small>판매가격</small>
+        <strong>30,000원</strong>
+        <a class="price-alert-offer-primary" href="#search-input">상품 검색 후 알림 설정</a>
+        <a class="price-alert-offer-detail" href="/payment-info.html">상품 상세·결제·환불 안내</a>
+      </div>
+    </section>
+
     <section class="seo-faq" aria-labelledby="seo-faq-title">
       <div class="seo-section-head">
         <span class="home-kicker">FAQ</span>
@@ -307,17 +345,17 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
-  <script src="/js/config.js?v=20260827-payment-readiness-1"></script>
-  <script src="/js/pwa.js?v=20260827-payment-readiness-1"></script>
-  <script src="/js/storage.js?v=20260827-payment-readiness-1"></script>
+  <script src="/js/config.js?v=20260827-payment-readiness-2"></script>
+  <script src="/js/pwa.js?v=20260827-payment-readiness-2"></script>
+  <script src="/js/storage.js?v=20260827-payment-readiness-2"></script>
   <script src="/js/api.js?v=20260820-search-completeness-1"></script>
-  <script src="/js/ui.js?v=20260827-payment-readiness-1"></script>
+  <script src="/js/ui.js?v=20260827-payment-readiness-2"></script>
   <script src="/js/options.js?v=20260531-5"></script>
   <script src="/js/search.js?v=20260609-1"></script>
   <script src="/js/regions.js?v=20260531-5"></script>
   <script src="/js/inventory.js?v=20260531-5"></script>
-  <script src="/js/alerts.js?v=20260827-payment-readiness-1"></script>
-  <script src="/js/app.js?v=20260827-payment-readiness-1"></script>
+  <script src="/js/alerts.js?v=20260827-payment-readiness-2"></script>
+  <script src="/js/app.js?v=20260827-payment-readiness-2"></script>
   <script>
     function bootOliveStockStaticHelpers() {
       Regions.renderSelector();

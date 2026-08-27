@@ -26,6 +26,7 @@ test('payment review pages expose the verified seller identity and customer cont
 });
 
 test('one-time pass policies publish price, term, refund, privacy, and no-auto-renew terms', () => {
+  const home = page('index.html');
   const payment = page('payment-info.html');
   const terms = page('terms.html');
   const privacy = page('privacy.html');
@@ -38,6 +39,13 @@ test('one-time pass policies publish price, term, refund, privacy, and no-auto-r
   assert.match(terms, /자동결제·자동연장되지 않습니다/);
   assert.match(privacy, /계약·청약철회[^<]*5년/);
   assert.match(privacy, /소비자 불만[^<]*3년/);
+  assert.match(home, /가격 알림 30일 이용권/);
+  assert.match(home, /판매가격/);
+  assert.match(home, /30,000원/);
+  assert.match(home, /결제일부터 30일간/);
+  assert.match(home, /자동결제·자동연장 없음/);
+  assert.match(home, /"price": "30000"/);
+  assert.match(home, /20260827-payment-readiness-2/);
 });
 
 test('checkout modal links all customer policies and the service worker caches them', () => {
