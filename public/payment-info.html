@@ -8,15 +8,22 @@
   <style>
     :root{font-family:Pretendard,"Noto Sans KR",Arial,sans-serif;color:#172018;background:#f5faf6}
     *{box-sizing:border-box}body{margin:0}main{width:min(720px,calc(100% - 28px));margin:28px auto;padding:26px;border:1px solid #d8eadc;border-radius:18px;background:#fff;box-shadow:0 16px 45px rgba(20,83,45,.08)}
-    a{color:#166534;font-weight:800}h1{margin:0 0 8px;font-size:25px}h2{margin:24px 0 8px;font-size:16px}p,li{color:#475569;font-size:14px;line-height:1.7}.plan{display:flex;justify-content:space-between;gap:18px;margin:20px 0;padding:16px;border:1px dashed #16a34a;border-radius:12px;background:#f0fdf4}.plan strong{color:#14532d;font-size:20px}.plan span{padding:4px 8px;border-radius:999px;background:#172018;color:#fff;font-size:11px;font-weight:900;white-space:nowrap}.back{display:inline-block;margin-top:24px}
+    a{color:#166534;font-weight:800}h1{margin:0 0 8px;font-size:25px}h2{margin:24px 0 8px;font-size:16px}p,li,dt,dd{color:#475569;font-size:14px;line-height:1.7}.plan{display:flex;justify-content:space-between;gap:18px;margin:20px 0;padding:16px;border:1px dashed #16a34a;border-radius:12px;background:#f0fdf4}.plan strong{color:#14532d;font-size:20px}.plan span{padding:4px 8px;border-radius:999px;background:#172018;color:#fff;font-size:11px;font-weight:900;white-space:nowrap}.notice{padding:13px;border-radius:10px;background:#fff7ed;color:#9a3412;font-weight:800}.business{display:grid;grid-template-columns:150px minmax(0,1fr);gap:5px 12px;padding:16px;border:1px solid #d8eadc;border-radius:12px;background:#f8fbf8}.business dt{font-weight:900;color:#315b3b}.business dd{margin:0;overflow-wrap:anywhere}.policy-links{display:flex;flex-wrap:wrap;gap:8px 16px}.back{display:inline-block;margin-top:24px}
     @media(max-width:520px){main{margin:14px auto;padding:20px}.plan{align-items:flex-start;flex-direction:column}}
   </style>
 </head>
 <body>
   <main>
     <h1>가격 알림 결제·환불 안내</h1>
-    <p>올리브재고의 가격 알림 이용권과 결제 처리 방식을 안내합니다. 이 페이지는 서비스의 현재 구현 내용을 설명하며 법률 검토를 받았다는 의미는 아닙니다.</p>
+    <p>뷰티강이 운영하는 올리브재고 가격 알림 이용권의 상품 내용, 결제 및 환불 기준을 안내합니다.</p>
     <div class="plan"><div><b>가격 알림 30일 이용권</b><br><strong>30,000원</strong></div><span>자동결제 아님</span></div>
+    <h2>제공 내용</h2>
+    <ul>
+      <li>등록한 상품 또는 제공되는 옵션 식별자별 공개 표시가격을 약 60분 주기로 확인합니다.</li>
+      <li>가격 상승·하락과 설정한 목표가격 도달을 Web Push로 안내합니다.</li>
+      <li>가격 기준은 올리브영 공개 상품 페이지의 표시 판매가이며 쿠폰·회원등급·카드·장바구니 할인가는 포함하지 않습니다.</li>
+      <li>외부 사이트 장애, 상품 삭제, 품절, 가격정보 누락 또는 브라우저 Push 제한으로 확인·알림이 늦거나 제공되지 않을 수 있습니다.</li>
+    </ul>
     <h2>결제 방식</h2>
     <ul>
       <li>결제창과 결제 처리는 PortOne을 통해 연결된 카카오페이에서 진행됩니다.</li>
@@ -26,9 +33,26 @@
     </ul>
     <h2>익명 브라우저 이용권</h2>
     <p>이용권은 현재 브라우저의 익명 기기 식별자에 연결됩니다. 사이트 데이터 삭제, 시크릿 모드, 브라우저·기기 변경 후에는 자동으로 기존 이용권을 찾지 못할 수 있습니다. 카카오페이 결제 기록과 결제시각을 보관해 주세요.</p>
-    <h2>취소·환불 및 결제 확인</h2>
-    <p>결제 취소·환불 또는 이용권이 보이지 않는 문제는 <a href="mailto:kbhjjan@gmail.com">kbhjjan@gmail.com</a>으로 문의해 주세요. 확인 가능한 결제시각과 PortOne/카카오페이 결제 식별정보를 함께 보내면 서버 결제 상태와 대조합니다. 부분취소나 계약 정보 불일치는 자동 처리하지 않고 별도 확인합니다.</p>
-    <p><a href="/privacy.html">결제·알림 관련 개인정보 안내 보기</a></p>
+    <h2>청약철회·해지·환불</h2>
+    <ul>
+      <li>결제일 또는 서비스 제공 시작일 중 늦은 날부터 7일 이내에 요청하면 결제금액 전액을 환불합니다.</li>
+      <li>7일이 지난 뒤 이용기간 중 해지를 요청하면 요청일까지의 이용일수에 해당하는 금액과 잔여기간 이용요금의 10%를 공제한 뒤 환불합니다. 환불이 승인되면 해당 이용권은 종료됩니다.</li>
+      <li>서비스의 중대한 장애나 운영자 귀책으로 계약 목적을 달성할 수 없는 경우에는 관계 법령과 소비자분쟁해결기준에 따라 환불합니다.</li>
+      <li>환불 승인 후 3영업일 이내에 원 결제수단으로 환급하며, 결제수단 사정으로 동일한 방법이 불가능하면 별도로 안내합니다.</li>
+      <li>무료 평생 프로모션 이용권은 결제대금이 없어 환불 대상이 아닙니다.</li>
+    </ul>
+    <p class="notice">결제 취소·환불 또는 이용권 복구는 결제시각과 PortOne/카카오페이 결제 식별정보를 적어 <a href="mailto:kbhjjan@naver.com">kbhjjan@naver.com</a>으로 요청해 주세요.</p>
+    <h2>판매자 정보</h2>
+    <dl class="business">
+      <dt>상호</dt><dd>뷰티강</dd>
+      <dt>대표자</dt><dd>강범희</dd>
+      <dt>사업자등록번호</dt><dd>525-08-01159</dd>
+      <dt>통신판매업 신고번호</dt><dd>제2022-경기김포-1917호</dd>
+      <dt>사업장 주소</dt><dd>경기도 김포시 태장로 755, 3층 318,319호 (장기동, 김포 한강신도시 G Tower지식산업센터)</dd>
+      <dt>고객센터</dt><dd><a href="tel:0319971999">031-997-1999</a> · 평일 09:00~18:00</dd>
+      <dt>이메일</dt><dd><a href="mailto:kbhjjan@naver.com">kbhjjan@naver.com</a></dd>
+    </dl>
+    <p class="policy-links"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a></p>
     <a class="back" href="/">← 올리브재고로 돌아가기</a>
   </main>
 </body>

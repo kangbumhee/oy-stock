@@ -71,7 +71,7 @@ def payment_contract(payment_id, mismatch=False):
             "payMethod": "EASY_PAY",
             "easyPay": {"easyPayProvider": "KAKAOPAY"},
             "redirectUrl": BASE_URL + "/?priceAlertPayment=complete",
-            "noticeUrls": [BASE_URL + "/api/price-alerts/payment-webhook"],
+            "noticeUrls": [BASE_URL + "/api/price-alerts/payment/webhook"],
             "products": [{"id": "price_alert_30d", "name": "올리브재고 가격 알림 30일 이용권", "amount": 30000, "quantity": 1}],
         },
         "plan": {"amount": 30000, "currency": "KRW", "durationDays": 30, "autoRenew": False},

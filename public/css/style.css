@@ -450,6 +450,7 @@ button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px
 .price-alert-browser-warning a{color:#166534;font-weight:900}
 .price-alert-policy-links{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:9px}
 .price-alert-policy-links a,.price-alert-policy-links button{border:0;background:transparent;color:#166534;padding:2px 0;font-family:inherit;font-size:10px;font-weight:900;text-decoration:underline;cursor:pointer}
+.price-alert-seller-info{margin:8px 0 0;color:#64748b;font-size:9px;line-height:1.5}
 .price-alert-paywall button:focus-visible,.price-alert-paywall input:focus-visible,.price-alert-policy-links a:focus-visible{outline:3px solid rgba(22,163,74,.28);outline-offset:2px}
 .price-alert-current{display:flex;align-items:center;justify-content:space-between;margin:16px 0 12px;padding:12px 14px;border-radius:10px;background:#f0fdf4;color:#166534}
 .price-alert-current span{font-size:12px;font-weight:800}
@@ -511,9 +512,16 @@ body.price-alert-modal-open{overflow:hidden}
 .faq-grid article{padding:16px;border:1px solid #dfead8;border-radius:12px;background:#fbfdf8}
 .faq-grid h3{font-size:15px;color:#193d22;margin-bottom:6px}
 .faq-grid p{font-size:13px;color:#475569}
-.site-footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:24px 16px;background:#16251a;color:#d9ead3;font-size:13px}
-.site-footer strong{color:#d7ff52}
+.site-footer{display:grid;gap:16px;padding:26px 22px;background:#16251a;color:#d9ead3;font-size:12px;line-height:1.55}
+.site-footer-summary{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.site-footer-summary strong{color:#d7ff52;font-size:15px}
+.site-footer-business{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 20px;margin:0;padding:14px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.04)}
+.site-footer-business div{display:grid;grid-template-columns:108px minmax(0,1fr);gap:8px}
+.site-footer-business dt{color:#a7c4aa;font-weight:800}
+.site-footer-business dd{margin:0;color:#fff;overflow-wrap:anywhere}
+.site-footer-links{display:flex;flex-wrap:wrap;gap:8px 14px}
 .site-footer a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.5)}
+.site-footer-disclaimer{margin:0;color:#a7c4aa;font-size:11px}
 
 @media(min-width:600px){
   .grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
@@ -533,6 +541,9 @@ body.price-alert-modal-open{overflow:hidden}
   .home-intro h2{font-size:20px}
   .home-proof{grid-template-columns:repeat(3,1fr);gap:6px}
   .home-proof div{padding:9px 8px}
+  .site-footer{padding:22px 16px}
+  .site-footer-business{grid-template-columns:1fr}
+  .site-footer-business div{grid-template-columns:94px minmax(0,1fr)}
   .home-proof dt{font-size:10px}
   .home-proof dd{font-size:12px}
   .seo-guide-index,.seo-faq,.seo-blog-latest{padding:26px 10px}

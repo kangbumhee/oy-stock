@@ -88,7 +88,7 @@ function requestPaymentPayload(intent, config) {
     payMethod: 'EASY_PAY',
     easyPay: { easyPayProvider: 'KAKAOPAY' },
     redirectUrl: `${config.publicSiteUrl}/?priceAlertPayment=complete`,
-    noticeUrls: [`${config.publicSiteUrl}/api/price-alerts/payment-webhook`],
+    noticeUrls: [`${config.publicSiteUrl}/api/price-alerts/payment/webhook`],
     products: [product]
   };
 }

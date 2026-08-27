@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { Readable } = require('node:stream');
 
 const {
@@ -185,7 +187,7 @@ test('payment creation fixes the one-time 30-day contract and replays one pendin
       payMethod: 'EASY_PAY',
       easyPay: { easyPayProvider: 'KAKAOPAY' },
       redirectUrl: 'https://olivestock.example/?priceAlertPayment=complete',
-      noticeUrls: ['https://olivestock.example/api/price-alerts/payment-webhook'],
+      noticeUrls: ['https://olivestock.example/api/price-alerts/payment/webhook'],
       products: [
         {
           id: 'price_alert_30d',
@@ -195,6 +197,18 @@ test('payment creation fixes the one-time 30-day contract and replays one pendin
         }
       ]
     });
+    const noticePath = new URL(created.requestPayment.noticeUrls[0]).pathname;
+    const vercelConfig = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8')
+    );
+    assert.ok(
+      vercelConfig.routes.some(
+        (route) =>
+          route.src === noticePath &&
+          route.dest === '/api/price-alerts/payment-webhook.js'
+      ),
+      `PortOne notice URL must resolve through vercel.json: ${noticePath}`
+    );
     assert.equal(memory.getIntent(PAYMENT_ONE).status, 'prepared');
     assert.deepEqual(
       memory.getIntent(PAYMENT_ONE).events.map((event) => event.type),

@@ -304,7 +304,7 @@ var PriceAlerts = {
         notice.origin !== location.origin ||
         notice.username ||
         notice.password ||
-        notice.pathname !== '/api/price-alerts/payment-webhook' ||
+        notice.pathname !== '/api/price-alerts/payment/webhook' ||
         notice.search ||
         notice.hash
       ) {
@@ -690,8 +690,9 @@ var PriceAlerts = {
       '<p id="price-alert-paywall-message" class="price-alert-paywall-message">이용권 상태를 확인하고 있습니다.</p>' +
       '<button type="button" id="price-alert-pay-button" class="price-alert-pay-button" disabled>카카오페이로 30일 이용권 결제</button>' +
       '<div class="price-alert-promo"><label for="price-alert-promo-input">평생 이용 프로모션 코드</label><div><input id="price-alert-promo-input" type="password" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="코드 입력"><button type="button" id="price-alert-promo-button">적용</button></div></div>' +
-      '<p class="price-alert-browser-warning"><strong>이 브라우저 전용 이용권입니다.</strong> 사이트 데이터 삭제·시크릿 모드·기기 변경 시 자동 이용권 확인이 어려울 수 있습니다. 결제 기록을 보관하고 <a href="mailto:kbhjjan@gmail.com">kbhjjan@gmail.com</a>으로 문의해 주세요.</p>' +
-      '<div class="price-alert-policy-links"><a href="/payment-info.html" target="_blank" rel="noopener">결제·환불 안내</a><a href="/privacy.html" target="_blank" rel="noopener">개인정보 안내</a><button type="button" id="price-alert-entitlement-refresh">이용권 새로고침</button></div>' +
+      '<p class="price-alert-browser-warning"><strong>이 브라우저 전용 이용권입니다.</strong> 사이트 데이터 삭제·시크릿 모드·기기 변경 시 자동 이용권 확인이 어려울 수 있습니다. 결제 기록을 보관하고 <a href="mailto:kbhjjan@naver.com">kbhjjan@naver.com</a>으로 문의해 주세요.</p>' +
+      '<div class="price-alert-policy-links"><a href="/payment-info.html" target="_blank" rel="noopener">결제·환불 안내</a><a href="/terms.html" target="_blank" rel="noopener">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener">개인정보 안내</a><button type="button" id="price-alert-entitlement-refresh">이용권 새로고침</button></div>' +
+      '<p class="price-alert-seller-info">판매자 뷰티강 · 대표 강범희 · 사업자등록번호 525-08-01159 · 통신판매업 제2022-경기김포-1917호 · 고객센터 031-997-1999</p>' +
       '</section>' +
       '<div id="price-alert-setup" class="price-alert-setup hidden">' +
       '<fieldset id="price-alert-option-section" class="price-alert-options hidden" aria-describedby="price-alert-option-help"><legend>알림을 설정할 옵션</legend>' +

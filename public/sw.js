@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260827-price-access-4';
+const CACHE_NAME = 'olivestock-app-v20260827-payment-readiness-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -8,19 +8,20 @@ const CORE_ASSETS = [
   '/favicon-512x512.png',
   '/apple-touch-icon.png',
   '/payment-info.html',
+  '/terms.html',
   '/privacy.html',
-  '/css/style.css?v=20260827-price-access-4',
-  '/js/config.js?v=20260827-price-access-4',
-  '/js/pwa.js?v=20260827-price-access-4',
-  '/js/storage.js?v=20260827-price-access-4',
+  '/css/style.css?v=20260827-payment-readiness-1',
+  '/js/config.js?v=20260827-payment-readiness-1',
+  '/js/pwa.js?v=20260827-payment-readiness-1',
+  '/js/storage.js?v=20260827-payment-readiness-1',
   '/js/api.js?v=20260820-search-completeness-1',
-  '/js/ui.js?v=20260827-price-access-4',
+  '/js/ui.js?v=20260827-payment-readiness-1',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/alerts.js?v=20260827-price-access-4',
-  '/js/app.js?v=20260827-price-access-4'
+  '/js/alerts.js?v=20260827-payment-readiness-1',
+  '/js/app.js?v=20260827-payment-readiness-1'
 ];
 
 self.addEventListener('install', function (event) {
