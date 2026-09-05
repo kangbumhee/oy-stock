@@ -32,7 +32,7 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20260827-payment-readiness-2')
+      .register('/sw.js?v=20260906-affiliate-popup-1')
       .then(function (registration) {
         self.registration = registration;
         if (registration && registration.update) {

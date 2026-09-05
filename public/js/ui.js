@@ -109,16 +109,27 @@ var UI = {
     });
 
     function tryOpenCuratorRedirect(url) {
-      var newTab = window.open(url, '_blank', 'noopener,noreferrer');
-      if (newTab != null) return false;
-      var a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      // `noopener`를 window.open 특성 문자열로 넘기면 Chromium은 탭을
+      // 정상적으로 열고도 null을 반환한다. 먼저 빈 탭을 한 번만 확보한 뒤
+      // opener를 끊고 이동해야 실제 팝업 차단 여부를 구분할 수 있다.
+      var newTab = window.open('about:blank', '_blank');
+      if (newTab != null) {
+        try {
+          newTab.opener = null;
+          var link = newTab.document.createElement('a');
+          link.href = url;
+          link.target = '_self';
+          link.rel = 'noopener noreferrer';
+          link.style.display = 'none';
+          newTab.document.body.appendChild(link);
+          link.click();
+          return false;
+        } catch (e) {
+          try {
+            newTab.close();
+          } catch (closeError) {}
+        }
+      }
       el.removeAttribute('data-action');
       el.disabled = false;
       el.textContent = '여기를 클릭해서 열기 →';

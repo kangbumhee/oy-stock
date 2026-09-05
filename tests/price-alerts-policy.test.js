@@ -45,7 +45,7 @@ test('one-time pass policies publish price, term, refund, privacy, and no-auto-r
   assert.match(home, /결제일부터 30일간/);
   assert.match(home, /자동결제·자동연장 없음/);
   assert.match(home, /"price": "30000"/);
-  assert.match(home, /20260827-payment-readiness-2/);
+  assert.match(home, /20260906-affiliate-popup-1/);
 });
 
 test('checkout modal links all customer policies and the service worker caches them', () => {

@@ -7,6 +7,7 @@
     "gcp-build": "PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium",
     "setup:oy-cookie-profile": "node scripts/refresh-oy-cookie-from-profile.mjs --setup",
     "refresh:oy-cookie:chrome": "node scripts/refresh-oy-cookie-from-profile.mjs",
+    "test:affiliate-link": "node --test tests/affiliate-link.test.js",
     "test:price-alerts": "node --test tests/price-alerts*.test.js",
     "test:server": "node --test server/*.test.mjs",
     "build:blog": "node scripts/build-blog-pages.js",
