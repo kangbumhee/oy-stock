@@ -9,8 +9,13 @@ const AFFILIATE_URL =
   'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
   GOODS_NO +
   '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_ec8215be736040eca84d84e54ea125ef';
+const SHORT_URL = 'https://oy.run/Ce4LgyvwPAnGaa';
+const REDIRECT_URL =
+  'https://olivestock.co.kr/api/oliveyoung/curator-redirect?goodsNo=' +
+  GOODS_NO +
+  '&direct=1';
 
-function loadUi(openImpl) {
+function loadUi(openImpl, entry) {
   const timers = [];
   const openCalls = [];
   const window = {
@@ -27,6 +32,7 @@ function loadUi(openImpl) {
   };
   const context = {
     window,
+    URL,
     console: { log: function () {}, error: function () {} },
     document: {},
     CONFIG: {
@@ -36,7 +42,8 @@ function loadUi(openImpl) {
   };
   const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'ui.js'), 'utf8');
   vm.runInNewContext(source + '\nthis.__ui = UI;', context, { filename: 'public/js/ui.js' });
-  context.__ui._curatorLinksIndex[GOODS_NO] = { originalUrl: AFFILIATE_URL };
+  context.__ui._curatorLinksIndex[GOODS_NO] =
+    entry || { shortenedUrl: SHORT_URL, originalUrl: AFFILIATE_URL };
   return { UI: context.__ui, openCalls, timers };
 }
 
@@ -56,7 +63,7 @@ function purchaseButton() {
   };
 }
 
-test('successful purchase click opens exactly one isolated tab with the cached affiliate URL', function () {
+test('successful purchase click opens exactly one isolated tab with the cached oy.run URL', function () {
   const clickedLinks = [];
   const popup = {
     opener: { unsafe: true },
@@ -95,7 +102,7 @@ test('successful purchase click opens exactly one isolated tab with the cached a
   assert.deepEqual(harness.openCalls[0], ['about:blank', '_blank']);
   assert.equal(popup.opener, null);
   assert.deepEqual(clickedLinks, [
-    { href: AFFILIATE_URL, target: '_self', rel: 'noopener noreferrer', display: 'none' }
+    { href: SHORT_URL, target: '_self', rel: 'noopener noreferrer', display: 'none' }
   ]);
   assert.equal(button.dataset.action, 'buyNow');
   assert.equal(button.textContent, '사이트여는중');
@@ -104,6 +111,43 @@ test('successful purchase click opens exactly one isolated tab with the cached a
   harness.timers[0]();
   assert.equal(button.disabled, false);
   assert.equal(button.textContent, '바로구매');
+});
+
+test('an original-only cache entry opens the server generator instead of the long URL', function () {
+  const clickedLinks = [];
+  const popup = {
+    opener: { unsafe: true },
+    document: {
+      createElement: function () {
+        const link = {
+          style: {},
+          click: function () {
+            clickedLinks.push({ href: link.href, target: link.target, rel: link.rel });
+          }
+        };
+        return link;
+      },
+      body: { appendChild: function () {} }
+    },
+    close: function () {
+      assert.fail('successful popup must not be closed');
+    }
+  };
+  const harness = loadUi(
+    function () {
+      return popup;
+    },
+    { shortenedUrl: null, originalUrl: AFFILIATE_URL }
+  );
+
+  harness.UI.openOliveYoungProduct(purchaseButton());
+
+  assert.equal(harness.openCalls.length, 1);
+  assert.deepEqual(harness.openCalls[0], ['about:blank', '_blank']);
+  assert.deepEqual(clickedLinks, [
+    { href: REDIRECT_URL, target: '_self', rel: 'noopener noreferrer' }
+  ]);
+  assert.notEqual(clickedLinks[0].href, AFFILIATE_URL);
 });
 
 test('a genuinely blocked popup changes to one manual retry without a duplicate anchor click', function () {

@@ -32,7 +32,7 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20260906-affiliate-popup-1')
+      .register('/sw.js?v=20260906-curator-shortlink-2')
       .then(function (registration) {
         self.registration = registration;
         if (registration && registration.update) {

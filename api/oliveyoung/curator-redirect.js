@@ -30,8 +30,23 @@ function mobileUrlBasicAffiliate(goodsNo) {
 
 function hasCuratorAttribution(item) {
   if (!item) return false;
+  if (readyCuratorShortUrl(item.shortenedUrl)) return true;
   if (item.affiliateActivityId) return true;
   return /[?&]utm_content=OY_[^&]+/.test(String(item.originalUrl || ''));
+}
+
+function readyCuratorShortUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.hostname !== 'oy.run' || url.pathname === '/') {
+      return null;
+    }
+    return raw;
+  } catch {
+    return null;
+  }
 }
 
 function isMobileUserAgent(req) {
@@ -171,7 +186,7 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
   const checkUrl =
     '/api/oliveyoung/curator-redirect?goodsNo=' +
     encodeURIComponent(goodsNo) +
-    '&format=json&refresh=1&noTrigger=1';
+    '&format=json&refresh=1&noTrigger=1&noLive=1';
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -226,8 +241,16 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
       }
 
       function readyUrl(data) {
-        if (!data || data.source === 'fallback_basic_utm') return '';
-        return data.redirectUrl || data.shortenedUrl || data.longUrl || '';
+        if (!data || data.ready !== true) return '';
+        var raw = String(data.shortenedUrl || '').trim();
+        try {
+          var url = new URL(raw);
+          return url.protocol === 'https:' && url.hostname === 'oy.run' && url.pathname !== '/'
+            ? raw
+            : '';
+        } catch (e) {
+          return '';
+        }
       }
 
       function check() {
@@ -240,6 +263,14 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
             if (url) {
               setStatus('준비 완료. 이동합니다.');
               window.location.replace(url);
+              return;
+            }
+            if (data && data.unavailable === true) {
+              setStatus(data.queueStatus || '현재 이 상품은 큐레이터 링크 발급 대상이 아닙니다.');
+              if (retryBtn) {
+                retryBtn.disabled = true;
+                retryBtn.textContent = '발급 대상 아님';
+              }
               return;
             }
             schedule(tries < 12 ? 5000 : 10000);
@@ -258,6 +289,36 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
       schedule(3000);
     })();
   </script>
+</body>
+</html>`;
+}
+
+function unavailableCuratorHtml({ goodsNo, reason }) {
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>구매 링크 발급 확인 필요</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:#fff8ed;color:#322111}
+    main{width:100%;max-width:440px;padding:28px;border:1px solid #f1d2a8;border-radius:14px;background:#fff;text-align:center;box-shadow:0 18px 56px rgba(110,66,15,.1)}
+    h1{font-size:22px;line-height:1.35;margin-bottom:10px}
+    p{font-size:14px;line-height:1.7;color:#6c5137;margin-bottom:18px}
+    .actions{display:grid;gap:8px;margin-top:12px}
+    a{min-height:44px;border-radius:8px;border:1px solid #d97706;text-decoration:none;font:inherit;font-weight:900;display:flex;align-items:center;justify-content:center;background:#fffbeb;color:#9a4d05}
+    small{display:block;margin-top:14px;color:#8c7965;font-size:12px}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>큐레이터 링크를 만들 수 없습니다</h1>
+    <p>상품번호 ${htmlEscape(goodsNo)}는 현재 올리브영에서 큐레이터 링크 발급 대상이 아닌 것으로 확인됩니다.</p>
+    <div class="actions"><a href="/">재고 검색으로 돌아가기</a></div>
+    <small>${htmlEscape(reason || '잠시 후 다시 시도해 주세요.')}</small>
+  </main>
 </body>
 </html>`;
 }
@@ -685,13 +746,13 @@ module.exports = async function handler(req, res) {
   const rawEntry = links[goodsNo];
   const entry = hasCuratorAttribution(rawEntry) ? rawEntry : null;
   const ignoredEntry = rawEntry && !entry ? rawEntry : null;
-  const shortenedUrl = entry && entry.shortenedUrl;
+  const shortenedUrl = readyCuratorShortUrl(entry && entry.shortenedUrl);
   const cachedLong =
     entry && entry.originalUrl && String(entry.originalUrl).trim()
       ? entry.originalUrl
       : null;
   const cachedGenerationError =
-    rawEntry && !shortenedUrl && !cachedLong && rawEntry.error
+    rawEntry && !shortenedUrl && rawEntry.error
       ? String(rawEntry.error)
       : '';
   const cachedGenerationErrorAt =
@@ -712,38 +773,37 @@ module.exports = async function handler(req, res) {
     suppressQueueForCachedError;
   const basicLong = mobileUrlBasicAffiliate(goodsNo);
 
+  const allowWorkflowQueue = workflowQueueEnabled();
   const allowLiveLink =
     process.env.ENABLE_LIVE_CURATOR_LINKS !== '0' &&
     process.env.DISABLE_LIVE_CURATOR_LINKS !== '1';
+  const workflowOwnsGeneration = allowWorkflowQueue && !!githubToken();
   const liveLink =
-    allowLiveLink && !noLive && !shortenedUrl && !cachedLong
+    allowLiveLink && !noLive && !shortenedUrl && !workflowOwnsGeneration
       ? await withTimeout(createLiveCuratorLink(req, goodsNo, categoryNumber), LIVE_CURATOR_TIMEOUT_MS, {
           ok: false,
           error: 'live_generation_timeout'
         })
       : null;
   const liveCuratorOk = liveLink && liveLink.ok && hasCuratorAttribution(liveLink);
+  const liveShortenedUrl = readyCuratorShortUrl(
+    liveCuratorOk && liveLink.shortenedUrl
+  );
+  const readyShortenedUrl = shortenedUrl || liveShortenedUrl;
 
-  let redirectTarget =
-    shortenedUrl ||
-    cachedLong ||
-    (liveCuratorOk && (liveLink.shortenedUrl || liveLink.originalUrl)) ||
-    basicLong;
-  let source = shortenedUrl
+  const redirectTarget = readyShortenedUrl || null;
+  const source = shortenedUrl
     ? 'cache_shortened'
-    : cachedLong
-      ? 'cache_original'
-      : liveCuratorOk && liveLink.shortenedUrl
-        ? 'live_shortened'
+    : liveShortenedUrl
+      ? 'live_shortened'
+      : cachedLong
+        ? 'cache_original'
         : liveCuratorOk && liveLink.originalUrl
           ? 'live_original'
           : 'fallback_basic_utm';
-  const allowWorkflowQueue = workflowQueueEnabled();
-  const shouldPersistLiveLink =
-    source !== 'fallback_basic_utm' && !shortenedUrl && !cachedLong && liveCuratorOk;
   const queueRequest =
     allowWorkflowQueue &&
-    (source === 'fallback_basic_utm' || shouldPersistLiveLink) &&
+    !readyShortenedUrl &&
     !noTrigger &&
     !suppressQueueForCachedError
       ? await triggerCuratorGeneration(goodsNo)
@@ -753,14 +813,16 @@ module.exports = async function handler(req, res) {
       ? queueRequest.status
       : affiliateLinkUnavailable
         ? '현재 이 상품은 큐레이터 링크 발급 대상이 아닙니다'
-      : source === 'fallback_basic_utm'
-        ? '큐레이터 링크 생성 대기 중'
-        : null;
+        : !readyShortenedUrl
+          ? '큐레이터 링크 생성 대기 중'
+          : null;
   const appUrl =
     cachedLong ||
     (liveCuratorOk && liveLink.originalUrl) ||
     basicLong;
-  const androidIntentUrl = oliveYoungAndroidIntentUrl(appUrl, redirectTarget);
+  const androidIntentUrl = redirectTarget
+    ? oliveYoungAndroidIntentUrl(appUrl, redirectTarget)
+    : '';
 
   if (debugMode) {
     res.statusCode = 200;
@@ -779,6 +841,8 @@ module.exports = async function handler(req, res) {
         ignoredEntry: ignoredEntry || null,
         liveLink,
         liveCuratorOk: !!liveCuratorOk,
+        ready: !!readyShortenedUrl,
+        pending: !readyShortenedUrl && !affiliateLinkUnavailable,
         queueRequest,
         resolvedRedirect: redirectTarget,
         source,
@@ -795,8 +859,10 @@ module.exports = async function handler(req, res) {
     res.end(
       JSON.stringify({
         success: true,
-        shortenedUrl:
-          shortenedUrl || (liveCuratorOk && liveLink.shortenedUrl) || null,
+        ready: !!readyShortenedUrl,
+        pending: !readyShortenedUrl && !affiliateLinkUnavailable,
+        unavailable: !!affiliateLinkUnavailable,
+        shortenedUrl: readyShortenedUrl,
         longUrl:
           cachedLong ||
           (liveCuratorOk && liveLink.originalUrl) ||
@@ -830,7 +896,20 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (source === 'fallback_basic_utm' && !affiliateLinkUnavailable) {
+  if (!readyShortenedUrl && affiliateLinkUnavailable) {
+    res.statusCode = 409;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(
+      unavailableCuratorHtml({
+        goodsNo,
+        reason: queueStatus
+      })
+    );
+    return;
+  }
+
+  if (!readyShortenedUrl) {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');

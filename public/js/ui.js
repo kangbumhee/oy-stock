@@ -42,7 +42,15 @@ var UI = {
     if (!gn || !UI._curatorLinksIndex) return '';
     var entry = UI._curatorLinksIndex[gn] || UI._curatorLinksIndex[gn.toUpperCase()];
     if (!entry) return '';
-    return String(entry.shortenedUrl || entry.originalUrl || '').trim();
+    var shortenedUrl = String(entry.shortenedUrl || '').trim();
+    try {
+      var parsed = new URL(shortenedUrl);
+      return parsed.protocol === 'https:' && parsed.hostname === 'oy.run' && parsed.pathname !== '/'
+        ? shortenedUrl
+        : '';
+    } catch (e) {
+      return '';
+    }
   },
 
   curatorRedirectUrl: function (goodsNo) {

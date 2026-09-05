@@ -133,7 +133,12 @@ async function loadCuratorLinks(req) {
 
 function shouldGenerate(entry) {
   if (!entry) return true;
-  if (entry.shortenedUrl || entry.originalUrl) return false;
+  try {
+    const url = new URL(String(entry.shortenedUrl || '').trim());
+    if (url.protocol === 'https:' && url.hostname === 'oy.run' && url.pathname !== '/') {
+      return false;
+    }
+  } catch {}
   if (!entry.error || !entry.generatedAt) return true;
   const retryAfter = entry.retryAfter ? Date.parse(entry.retryAfter) : NaN;
   if (Number.isFinite(retryAfter) && Date.now() < retryAfter) return false;

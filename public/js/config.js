@@ -80,8 +80,8 @@ var CONFIG = {
   CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
   /** JSON/debug용 서버 리다이렉트 */
   CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
-  /** 검색/인기템/즐겨찾기 목록에 뜬 상품은 없는 큐레이터 링크만 백그라운드 자동 생성 */
-  ENABLE_CURATOR_AUTO_QUEUE: true,
+  /** 실제 구매 클릭을 큐레이터 링크 생성 요청의 단일 진입점으로 사용한다. */
+  ENABLE_CURATOR_AUTO_QUEUE: false,
   CURATOR_QUEUE_PATH: '/api/oliveyoung/curator-queue',
   CURATOR_QUEUE_SEARCH_LIMIT: 120,
   CURATOR_QUEUE_HOT_LIMIT: 128,

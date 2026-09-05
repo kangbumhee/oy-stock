@@ -39,20 +39,58 @@ export function shouldRetryCuratorError(
   return nowMs - generatedAt >= nonNegativeInteger(retryErrorAfterMs);
 }
 
-function hasUsableCuratorLink(entry) {
-  return !!(entry && (entry.shortenedUrl || entry.originalUrl));
+export function isReadyCuratorShortUrl(value) {
+  const shortenedUrl = String(value || '').trim();
+  try {
+    const url = new URL(shortenedUrl);
+    if (url.protocol === 'https:' && url.hostname === 'oy.run' && url.pathname !== '/') {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+function curatorLinkQuality(entry) {
+  if (!entry) return 0;
+  if (isReadyCuratorShortUrl(entry.shortenedUrl)) return 2;
+  return entry.originalUrl ? 1 : 0;
 }
 
 export function shouldReplaceCuratorEntry(currentEntry, incomingEntry) {
   if (!incomingEntry) return false;
   if (!currentEntry) return true;
 
-  const currentUsable = hasUsableCuratorLink(currentEntry);
-  const incomingUsable = hasUsableCuratorLink(incomingEntry);
-  if (currentUsable !== incomingUsable) return incomingUsable;
-
+  const currentQuality = curatorLinkQuality(currentEntry);
+  const incomingQuality = curatorLinkQuality(incomingEntry);
   const currentTime = Date.parse(String(currentEntry.generatedAt || ''));
   const incomingTime = Date.parse(String(incomingEntry.generatedAt || ''));
+
+  if (
+    currentQuality === 1 &&
+    incomingQuality === 0 &&
+    incomingEntry.error === 'affiliate_link_unavailable'
+  ) {
+    return !(
+      Number.isFinite(currentTime) &&
+      Number.isFinite(incomingTime) &&
+      currentTime > incomingTime
+    );
+  }
+
+  if (
+    currentQuality === 0 &&
+    currentEntry.error === 'affiliate_link_unavailable' &&
+    incomingQuality === 1
+  ) {
+    return !(
+      Number.isFinite(currentTime) &&
+      Number.isFinite(incomingTime) &&
+      currentTime >= incomingTime
+    );
+  }
+
+  if (currentQuality !== incomingQuality) return incomingQuality > currentQuality;
+
   if (
     Number.isFinite(currentTime) &&
     Number.isFinite(incomingTime) &&
@@ -152,6 +190,7 @@ export function isSystemicLandingHardFailure({
 
 export function evaluateCuratorBatchFailure({
   generatedCount,
+  shortenFailureCount,
   landingFailureCount,
   affiliateUnavailableCount,
   exceptionFailureCount,
@@ -161,25 +200,27 @@ export function evaluateCuratorBatchFailure({
   maxConsecutivePolicyFailures
 }) {
   const generated = nonNegativeInteger(generatedCount);
+  const shortenFailures = nonNegativeInteger(shortenFailureCount);
   const landing = nonNegativeInteger(landingFailureCount);
   const unavailable = nonNegativeInteger(affiliateUnavailableCount);
   const exceptions = nonNegativeInteger(exceptionFailureCount);
   const hard = nonNegativeInteger(hardFailureCount);
   const auth = nonNegativeInteger(authFailureCount);
   const consecutivePolicy = nonNegativeInteger(maxConsecutivePolicyFailures);
-  const attemptedRequestCount = generated + landing + exceptions;
+  const attemptedRequestCount = generated + shortenFailures + landing + exceptions;
   const healthyRequestOutcomeCount = generated + unavailable;
   const unresolvedLandingFailureCount = Math.max(0, landing - unavailable);
   const unresolvedRequestFailureCount =
-    unresolvedLandingFailureCount + exceptions;
+    shortenFailures + unresolvedLandingFailureCount + exceptions;
   const noUsableResultFailureCount =
     attemptedRequestCount > 0 && healthyRequestOutcomeCount === 0
-      ? unresolvedLandingFailureCount + exceptions
+      ? shortenFailures + unresolvedLandingFailureCount + exceptions
       : 0;
   const systemicHardFailure = isSystemicLandingHardFailure({
     hardFailureCount: hard,
     landingFailureCount: landing,
     generatedCount: generated,
+    shortenFailureCount: shortenFailures,
     affiliateUnavailableCount: unavailable,
     maxConsecutiveHardFailures
   });
@@ -194,6 +235,7 @@ export function evaluateCuratorBatchFailure({
   return {
     attemptedRequestCount,
     healthyRequestOutcomeCount,
+    shortenFailureCount: shortenFailures,
     unresolvedLandingFailureCount,
     unresolvedRequestFailureCount,
     noUsableResultFailureCount,

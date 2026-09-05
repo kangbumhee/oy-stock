@@ -3,12 +3,20 @@ import assert from 'node:assert/strict';
 
 import {
   evaluateCuratorBatchFailure,
+  isReadyCuratorShortUrl,
   isSystemicLandingHardFailure,
   isTransientLandingHardFailure,
   runCuratorRequestWithRetry,
   shouldReplaceCuratorEntry,
   shouldRetryCuratorError
 } from './curator-request-policy.mjs';
+
+test('accepts only non-root HTTPS oy.run curator links as ready', () => {
+  assert.equal(isReadyCuratorShortUrl('https://oy.run/ready'), true);
+  assert.equal(isReadyCuratorShortUrl('http://oy.run/ready'), false);
+  assert.equal(isReadyCuratorShortUrl('https://example.com/ready'), false);
+  assert.equal(isReadyCuratorShortUrl('https://oy.run/'), false);
+});
 
 function hard(status) {
   return { ok: false, hardFailure: true, detail: { status } };
@@ -188,6 +196,22 @@ test('keeps partial successes when one final 403 is isolated', () => {
   assert.equal(result.criticalFailureCount, 0);
 });
 
+test('fails a one-product on-demand batch when shortening never produced oy.run', () => {
+  const result = evaluateCuratorBatchFailure({
+    generatedCount: 0,
+    shortenFailureCount: 1,
+    landingFailureCount: 0,
+    affiliateUnavailableCount: 0,
+    exceptionFailureCount: 0,
+    hardFailureCount: 0,
+    maxConsecutiveHardFailures: 0
+  });
+
+  assert.equal(result.shortenFailureCount, 1);
+  assert.equal(result.noUsableResultFailureCount, 1);
+  assert.equal(result.criticalFailureCount, 1);
+});
+
 test('fails a batch when every attempted item returns non-usable 7016', () => {
   const result = evaluateCuratorBatchFailure({
     generatedCount: 0,
@@ -288,6 +312,65 @@ test('keeps the newer entry when both merge candidates have equal usability', ()
 
   assert.equal(shouldReplaceCuratorEntry(current, incoming), false);
   assert.equal(shouldReplaceCuratorEntry(incoming, current), true);
+});
+
+test('never replaces an oy.run link with a newer original-only entry', () => {
+  const current = {
+    shortenedUrl: 'https://oy.run/ready',
+    originalUrl: 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A1',
+    generatedAt: '2026-08-22T08:10:00.000Z'
+  };
+  const incoming = {
+    shortenedUrl: null,
+    originalUrl: 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A1',
+    generatedAt: '2026-08-22T08:15:00.000Z'
+  };
+
+  assert.equal(shouldReplaceCuratorEntry(current, incoming), false);
+});
+
+test('an oy.run link replaces a newer original-only entry', () => {
+  const current = {
+    shortenedUrl: null,
+    originalUrl: 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A1',
+    generatedAt: '2026-08-22T08:15:00.000Z'
+  };
+  const incoming = {
+    shortenedUrl: 'https://oy.run/ready',
+    originalUrl: 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A1',
+    generatedAt: '2026-08-22T08:10:00.000Z'
+  };
+
+  assert.equal(shouldReplaceCuratorEntry(current, incoming), true);
+});
+
+test('a newer affiliate-unavailable result replaces an original-only entry', () => {
+  const current = {
+    shortenedUrl: null,
+    originalUrl: 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A1',
+    generatedAt: '2026-08-22T08:10:00.000Z'
+  };
+  const incoming = {
+    error: 'affiliate_link_unavailable',
+    generatedAt: '2026-08-22T08:15:00.000Z',
+    retryAfter: '2026-08-23T08:15:00.000Z'
+  };
+
+  assert.equal(shouldReplaceCuratorEntry(current, incoming), true);
+  assert.equal(shouldReplaceCuratorEntry(incoming, current), false);
+});
+
+test('a transient error does not erase an attributed original URL', () => {
+  const current = {
+    originalUrl: 'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A1',
+    generatedAt: '2026-08-22T08:10:00.000Z'
+  };
+  const incoming = {
+    error: 'landing_failed',
+    generatedAt: '2026-08-22T08:15:00.000Z'
+  };
+
+  assert.equal(shouldReplaceCuratorEntry(current, incoming), false);
 });
 
 test('allows a usable incoming link to replace a newer error entry', () => {

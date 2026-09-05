@@ -22,6 +22,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   evaluateCuratorBatchFailure,
+  isReadyCuratorShortUrl,
   landingFailureStatus,
   runCuratorRequestWithRetry
 } from './lib/curator-request-policy.mjs';
@@ -463,10 +464,14 @@ async function collectGoodsNos() {
 }
 
 function isFreshCuratorEntry(entry) {
-  if (!entry || !entry.shortenedUrl || !entry.generatedAt) return false;
+  if (!hasReadyCuratorShortLink(entry) || !entry.generatedAt) return false;
   const t = Date.parse(entry.generatedAt);
   if (Number.isNaN(t)) return false;
   return Date.now() - t < CURATOR_ENTRY_MAX_AGE_MS;
+}
+
+function hasReadyCuratorShortLink(entry) {
+  return isReadyCuratorShortUrl(entry && entry.shortenedUrl);
 }
 
 function hasUsableCuratorEntry(entry) {
@@ -583,6 +588,7 @@ async function main() {
     await sleep(2000);
 
     let generatedCount = 0;
+    let shortenFailureCount = 0;
     let landingFailureCount = 0;
     let affiliateUnavailableCount = 0;
     let exceptionFailureCount = 0;
@@ -601,8 +607,8 @@ async function main() {
         continue;
       }
 
-      if (CURATOR_MISSING_ONLY && hasUsableCuratorEntry(links[gn])) {
-        console.log(`\n📎 ${gn} → 큐레이터 링크 있음, 스킵`);
+      if (CURATOR_MISSING_ONLY && hasReadyCuratorShortLink(links[gn])) {
+        console.log(`\n📎 ${gn} → 유효한 oy.run 링크 있음, 스킵`);
         skippedCount += 1;
         continue;
       }
@@ -777,11 +783,22 @@ async function main() {
             const S = await shorten(originalUrl, affiliatePartnerId);
             const row = S.json && S.json.data && S.json.data[0];
             const shortenedUrl = row && row.shortenedUrl;
+            let readyShortenedUrl = null;
+            try {
+              const parsedShortUrl = new URL(String(shortenedUrl || '').trim());
+              if (
+                parsedShortUrl.protocol === 'https:' &&
+                parsedShortUrl.hostname === 'oy.run' &&
+                parsedShortUrl.pathname !== '/'
+              ) {
+                readyShortenedUrl = String(shortenedUrl).trim();
+              }
+            } catch {}
 
-            if (S.ok && shortenedUrl) {
+            if (S.ok && readyShortenedUrl) {
               return {
                 ok: true,
-                shortenedUrl,
+                shortenedUrl: readyShortenedUrl,
                 originalUrl,
                 affiliateActivityId,
                 affiliatePartnerId
@@ -883,7 +900,7 @@ async function main() {
         };
         console.log('  ✅ oy.run + utm');
       } else if (pack.ok && pack.partial) {
-        generatedCount += 1;
+        shortenFailureCount += 1;
         consecutiveHardFailureCount = 0;
         consecutivePolicyFailureCount = 0;
         links[gn] = {
@@ -986,13 +1003,14 @@ async function main() {
     fs.writeFileSync(CURATOR_FILE, JSON.stringify(out, null, 2), 'utf8');
     console.log(`\n저장: ${CURATOR_FILE}`);
     console.log(
-      `요약: 생성 ${generatedCount}건, 스킵 ${skippedCount}건, 발급 불가 ${affiliateUnavailableCount}건, landing 실패 ${landingFailureCount - affiliateUnavailableCount}건, 예외 ${exceptionFailureCount}건`
+      `요약: 생성 ${generatedCount}건, 단축 실패 ${shortenFailureCount}건, 스킵 ${skippedCount}건, 발급 불가 ${affiliateUnavailableCount}건, landing 실패 ${landingFailureCount - affiliateUnavailableCount}건, 예외 ${exceptionFailureCount}건`
     );
 
     const persistableOutcomeCount =
-      generatedCount + affiliateUnavailableCount + skippedCount;
+      generatedCount + shortenFailureCount + affiliateUnavailableCount + skippedCount;
     const failureEvaluation = evaluateCuratorBatchFailure({
       generatedCount,
+      shortenFailureCount,
       landingFailureCount,
       affiliateUnavailableCount,
       exceptionFailureCount,
@@ -1006,6 +1024,12 @@ async function main() {
     if (exceptionFailureCount > 0 && persistableOutcomeCount > 0) {
       console.warn(
         `일부 상품 생성 예외 ${exceptionFailureCount}건은 다음 backfill에서 재시도합니다. 성공분은 저장합니다.`
+      );
+    }
+
+    if (shortenFailureCount > 0 && criticalFailureCount === 0) {
+      console.warn(
+        `단축 링크 실패 ${shortenFailureCount}건은 다음 backfill에서 재시도합니다. 성공분은 저장합니다.`
       );
     }
 
