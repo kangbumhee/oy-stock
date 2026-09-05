@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-05T04:54:19.202Z",
+  "updatedAt": "2026-09-05T05:12:40.840Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -228867,6 +228867,16 @@
       "affiliateActivityId": "4255249e17854abdaf3f40da4e829880",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-09-05T04:54:19.202Z"
+    },
+    "A000000267514": {
+      "shortenedUrl": null,
+      "originalUrl": null,
+      "fallbackShortenedUrl": "https://oy.run/JBVqdTEtGQ2Frf",
+      "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000267514&utm_source=shutter&utm_medium=affiliate",
+      "error": "affiliate_link_unavailable",
+      "errorCode": 7015,
+      "generatedAt": "2026-09-05T05:12:40.840Z",
+      "retryAfter": "2026-09-06T05:12:55.302Z"
     }
   }
 }
