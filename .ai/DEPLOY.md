@@ -46,7 +46,23 @@
   - Vercel direct production deploy로 새 환경변수 반영
   - Cloud Run `OY_REFRESH_COOKIE` / `OLIVEYOUNG_LINKAGE_STRING` 갱신
 
-### 로컬 - Playwright로 OY_REFRESH_COOKIE 갱신 (Human-in-the-Loop)
+### 로컬 - 24시간 자동 로그인/갱신 및 재연결 메일 (2026-09-06)
+
+- 실행 PC: Windows 로그인 계정, 설치된 Chrome/Node.js, 기존 `gh auth login` 권한이 필요하다. Windows 자동 로그인이나 OS 비밀번호 저장은 설정하지 않는다.
+- 최초 1회 `npm.cmd run setup:oy-login-secrets`: ID/비밀번호/선택 2Captcha API 키와 유료 API 사용 여부를 저장한다. `.auth/oy-login-secrets.json`에는 현재 Windows 사용자 DPAPI 암호문만 기록한다. GitHub에 계정 비밀번호/API 키를 올리지 않는다.
+- 명령 입력 없이 실행하려면 `scripts/oy-login-settings.cmd`를 연다. 설정창은 최초 저장할 때만 필요하다.
+- `npm.cmd run status:oy-login-secrets`는 설정 여부만 출력한다. `npm.cmd run install:oy-login-task`로 현재 저장소에 작업을 등록한다.
+- `OY Refresh Cookie Daily`: PC 현지 시각 매일 00:10 (24시간 주기), Windows 로그인 후 추가 시작. 창 없이 프로필 재사용/필요 시 자동 로그인 → GitHub `OY_REFRESH_COOKIE` 갱신 → 기존 `refresh-oy-linkage.yml` 실행. 정상 등록을 검증한 뒤 기존 4시간 작업은 삭제하지 않고 비활성화한다.
+- 다음 24시간 안에 만료될 linkage는 해당 쿠키만 재발급하고 만료시각 증가를 확인한다. 서버가 짧은 유효기간만 발급하거나 재발급이 실패하면 24시간 유지가 보장되지는 않으며, 실패 시 아직 유효한 이전 linkage를 복원하고 재연결을 알린다.
+- `OY Login Health Every 15 Minutes`: 별도 상태 점검. 로그인 제출·유료 CAPTCHA·Secret 갱신은 하지 않는다. 명확한 연결 만료는 즉시, 네트워크/점검 오류는 연속 3회일 때 알린다. 다른 갱신/설정 작업 중이면 건너뛴다.
+- `oy-login-alert.yml`을 기본 브랜치에 반영해야 메일이 동작한다. 기존 `ALERT_EMAIL_FROM/PASSWORD/TO`를 사용하며 연결 오류를 실패한 GitHub Action으로도 표시한다. 동일 장애는 복구가 확인될 때까지 한 번만 알리고, 전송 요청 실패 시 다음 점검에서 재시도한다.
+- 발송 요청 접수와 메일 발송 성공은 구분한다. 다음 점검에서 실제 메일 단계 성공을 확인하며, 메일 단계 실패는 같은 실행을 최대 3회까지 재시도한다. 완료 뒤 의도적으로 표시되는 Action 실패는 메일을 재발송하지 않는다.
+- 재연결: 저장 정보/키 잔액을 확인하고 필요하면 설정 명령을 다시 실행한 뒤 `npm.cmd run refresh:oy-cookie:chrome`을 실행한다. 자동 실행에서 로그인 창을 띄우거나 사용자의 CAPTCHA 응답을 기다리지 않는다.
+- 유료 CAPTCHA는 같은 도전 최대 3개/프로세스 최대 12개, 응답 적용과 로그인 성공은 별도 검증한다. 2FA/계정 잠금/서비스 장애/키 잔액 부족까지 365일 성공을 보장하지 않는다.
+- 테스트: `npm.cmd run test:oy-login`. `--check-only`는 읽기 전용이고 `--no-dispatch`는 워크플로만 생략한다(Secret 갱신은 수행하므로 완전한 dry-run이 아니다).
+- PC가 꺼져 있거나 Windows에 로그인하지 않으면 로컬 점검/메일 요청도 실행되지 않는다. 로그는 `.ai/logs/`, 알림 상태는 `.auth/`에만 저장한다.
+
+### 로컬 - 기존 수동 로그인 도구 (명시적 실행만)
 
 - 파일: `scripts/refresh-oy-cookie.mjs`
 - 용도: 모바일 로그인 페이지에서 ID/PW 입력 후, CAPTCHA·2FA 등은 사용자가 브라우저에서 직접 처리. 우회 자동화 없음.

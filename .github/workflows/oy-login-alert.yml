@@ -1,0 +1,50 @@
+name: OliveYoung Login Reconnect Alert
+run-name: OY login alert ${{ inputs.detectedAt }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Sanitized login failure category'
+        required: true
+        type: choice
+        options: [reconnect_required, check_failed]
+      source:
+        description: 'Source of the local check'
+        required: true
+        type: choice
+        options: [periodic_check, daily_refresh]
+      detectedAt:
+        description: 'Detection time in UTC ISO format; no account information'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install email dependency
+        run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Send reconnect email
+        env:
+          ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
+          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+          OY_LOGIN_ALERT_REASON: ${{ inputs.reason }}
+          OY_LOGIN_ALERT_SOURCE: ${{ inputs.source }}
+          OY_LOGIN_ALERT_DETECTED_AT: ${{ inputs.detectedAt }}
+        run: node scripts/send-oy-login-alert.mjs
+      - name: Mark login attention required for GitHub failure notifications
+        if: always()
+        run: |
+          echo "::error::OliveYoung login reconnect or health check requires attention."
+          exit 1
