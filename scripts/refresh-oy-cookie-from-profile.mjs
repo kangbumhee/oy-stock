@@ -306,6 +306,17 @@ function humanLoginRequired(message) {
   return error;
 }
 
+// A submitted login may navigate while its read-only outcome check is running.
+// Confirm the protected dashboard instead of submitting the password again.
+export async function recoverConfirmedLogin(result, probeDashboard) {
+  if (!(result?.submits > 0) || !['LOGIN_FAILED', 'LOGIN_NOT_CONFIRMED'].includes(result.reason)) return null;
+  try {
+    const snapshot = await probeDashboard();
+    assertUsableCookies(snapshot);
+    return snapshot;
+  } catch { return null; }
+}
+
 export function assertUsableCookies(state) {
   assertLoginHost(state.url);
   if (/general\s*error|access\s*denied|service\s*unavailable/i.test(state.title || '')) {
@@ -490,13 +501,24 @@ async function main() {
             !isLoginPage(snapshot) && !needsHumanVerification(snapshot) && hasUsableCookies(snapshot) && !needsCuratorActivation(snapshot);
         }
       });
-      if (result.status !== 'authenticated') {
+      const recoveredState = result.status === 'authenticated' ? null : await recoverConfirmedLogin(result, async () => {
+        await restoreUserAgent(page);
+        await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await wait(3000);
+        return collectState(context, page);
+      });
+      if (result.status !== 'authenticated' && !recoveredState) {
         throw humanLoginRequired(`Automatic login did not complete (${result.reason}). No interactive window is opened; next scheduled run will retry.`);
       }
       await restoreUserAgent(page);
-      await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await wait(3000);
-      state = await ensureFreshLinkage(context, page);
+      if (recoveredState) {
+        state = recoveredState;
+        log('submitted login confirmed on protected curator dashboard');
+      } else {
+        await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await wait(3000);
+        state = await ensureFreshLinkage(context, page);
+      }
       log('automatic login complete; curator cookie validation resumed');
     }
     logState(state);

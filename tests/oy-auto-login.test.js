@@ -190,3 +190,155 @@ test('abort before login rejects immediately and removes dialog handler', async 
     assert.equal(page.listenerCount('dialog'), 0);
   } finally { await context.close(); }
 });
+
+test('post-submit navigation races retry only authentication and outcome reads without duplicate writes', async () => {
+  for (const operation of ['authentication', 'outcome']) {
+    const { page, context } = await fixture(`${form()}<script>
+      window.fills = { loginId: 0, password: 0 };
+      for (const input of document.querySelectorAll('input')) input.addEventListener('input', () => window.fills[input.name]++);
+    </script>`);
+    try {
+      let submitCalls = 0, readCalls = 0, solverCalls = 0;
+      let outcomeReady = false;
+      const sleeps = [];
+      const result = await login(page, {
+        outcomePolls: 2,
+        sleep: async ms => { sleeps.push(ms); },
+        handleCaptcha: async () => { solverCalls++; return clear(); },
+        submit: async () => { submitCalls++; },
+        isAuthenticated: async () => {
+          if (!submitCalls) return false;
+          if (operation === 'outcome') return outcomeReady;
+          if (++readCalls <= 2) throw new Error('page.evaluate: Execution context was destroyed, most likely because of a navigation.');
+          return true;
+        },
+        inspectOutcome: async () => {
+          if (submitCalls && operation === 'outcome') {
+            if (++readCalls <= 2) throw new Error('page.evaluate: Protocol error (Runtime.callFunctionOn): Cannot find context with specified id');
+            outcomeReady = true;
+          }
+          return { credentialsRejected: false, additionalVerification: false, signedIn: false };
+        },
+      });
+      assert.deepEqual(result, { status: 'authenticated', submits: 1 });
+      assert.equal(submitCalls, 1);
+      assert.equal(solverCalls, 1);
+      assert.equal(readCalls, 3);
+      assert.equal(sleeps.filter(ms => ms === 250).length, 2);
+      assert.deepEqual(await page.evaluate(() => window.fills), { loginId: 1, password: 1 });
+      assert.equal(page.listenerCount('dialog'), 0);
+    } finally { await context.close(); }
+  }
+});
+
+test('persistent navigation observation errors stop after three retries and remain sanitized', async () => {
+  const { page, context } = await fixture(form());
+  try {
+    let submitCalls = 0, readCalls = 0;
+    const sleeps = [], events = [];
+    const result = await login(page, {
+      sleep: async ms => { sleeps.push(ms); },
+      submit: async () => { submitCalls++; },
+      isAuthenticated: async () => {
+        if (!submitCalls) return false;
+        readCalls++;
+        throw new Error(`page.evaluate: Execution context was destroyed, most likely because of a navigation. ${credentials.password}`);
+      },
+      onEvent: event => events.push(event),
+    });
+    assert.deepEqual(result, { status: 'manual', reason: 'LOGIN_FAILED', submits: 1 });
+    assert.equal(submitCalls, 1);
+    assert.equal(readCalls, 4);
+    assert.equal(sleeps.filter(ms => ms === 250).length, 3);
+    assert.equal(JSON.stringify({ result, events }).includes(credentials.password), false);
+    assert.equal(page.listenerCount('dialog'), 0);
+  } finally { await context.close(); }
+});
+
+test('navigation observation failures after foreign redirects stop without retrying', async () => {
+  const { page, context } = await fixture(form());
+  try {
+    let submitCalls = 0, readCalls = 0;
+    const sleeps = [];
+    const result = await login(page, {
+      sleep: async ms => { sleeps.push(ms); },
+      submit: async () => { submitCalls++; },
+      isAuthenticated: async () => {
+        if (!submitCalls) return false;
+        readCalls++;
+        await page.goto('https://foreign.test/login');
+        throw new Error('page.evaluate: Execution context was destroyed, most likely because of a navigation.');
+      },
+    });
+    assert.deepEqual(result, { status: 'manual', reason: 'UNTRUSTED_HOST', submits: 1 });
+    assert.equal(submitCalls, 1);
+    assert.equal(readCalls, 1);
+    assert.equal(sleeps.filter(ms => ms === 250).length, 0);
+    assert.equal(await page.locator('#password').inputValue(), '');
+  } finally { await context.close(); }
+});
+
+test('navigation retries preserve post-submit OTP and credential-rejection stops', async () => {
+  for (const reason of ['ADDITIONAL_VERIFICATION', 'CREDENTIALS_REJECTED']) {
+    const { page, context } = await fixture(form());
+    try {
+      let submitCalls = 0, readCalls = 0;
+      const result = await login(page, {
+        submit: async () => { submitCalls++; },
+        isAuthenticated: async () => false,
+        inspectOutcome: async () => {
+          if (submitCalls && ++readCalls === 1) throw new Error('Execution context was destroyed, most likely because of a navigation.');
+          return {
+            credentialsRejected: !!submitCalls && reason === 'CREDENTIALS_REJECTED',
+            additionalVerification: !!submitCalls && reason === 'ADDITIONAL_VERIFICATION',
+            signedIn: false,
+          };
+        },
+      });
+      assert.deepEqual(result, { status: 'manual', reason, submits: 1 });
+      assert.equal(submitCalls, 1);
+      assert.equal(readCalls, 2);
+    } finally { await context.close(); }
+  }
+});
+
+test('navigation-like fill or submit failures are never retried', async () => {
+  for (const operation of ['fill', 'submit']) {
+    const { page, context } = await fixture(form());
+    try {
+      let calls = 0;
+      const sleeps = [];
+      const result = await login(page, {
+        sleep: async ms => { sleeps.push(ms); },
+        [operation]: async () => {
+          calls++;
+          throw new Error(`Execution context was destroyed, most likely because of a navigation. ${credentials.password}`);
+        },
+      });
+      assert.equal(result.reason, 'LOGIN_FAILED');
+      assert.equal(result.submits, operation === 'submit' ? 1 : 0);
+      assert.equal(calls, 1);
+      assert.deepEqual(sleeps, []);
+      assert.equal(JSON.stringify(result).includes(credentials.password), false);
+    } finally { await context.close(); }
+  }
+});
+
+test('non-navigation read errors are sanitized and not retried', async () => {
+  const { page, context } = await fixture(form());
+  try {
+    let reads = 0;
+    const sleeps = [];
+    const result = await login(page, {
+      sleep: async ms => { sleeps.push(ms); },
+      isAuthenticated: async () => {
+        reads++;
+        throw new Error(`page.evaluate: Target page, context or browser has been closed. ${credentials.password}`);
+      },
+    });
+    assert.deepEqual(result, { status: 'manual', reason: 'LOGIN_FAILED', submits: 0 });
+    assert.equal(reads, 1);
+    assert.deepEqual(sleeps, []);
+    assert.equal(JSON.stringify(result).includes(credentials.password), false);
+  } finally { await context.close(); }
+});

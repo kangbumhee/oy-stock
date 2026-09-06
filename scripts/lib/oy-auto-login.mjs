@@ -26,6 +26,14 @@ function throwIfAborted(signal) {
   if (signal?.aborted) throw new AutoLoginError('ABORTED');
 }
 
+function isNavigationObservationError(error) {
+  if (error instanceof AutoLoginError) return false;
+  // Match only known read-side navigation races, never generic timeouts or a
+  // closed browser. The message is inspected locally and never returned/logged.
+  const message = typeof error?.message === 'string' ? error.message : '';
+  return /Execution context was destroyed|Cannot find context with specified id|Unable to retrieve content because the page is navigating and changing the content/i.test(message);
+}
+
 export async function findCredentialForm(page) {
   assertLoginHost(page.url());
   const forms = await page.locator('form').all();
@@ -116,6 +124,25 @@ export async function runAutoLogin(page, credentials, {
   let submits = 0;
   let challengeSeen = false;
   let dialogOutcome = '';
+  const observe = async read => {
+    for (let retry = 0; ; retry++) {
+      assertLoginHost(page.url());
+      throwIfAborted(signal);
+      try {
+        const result = await read();
+        assertLoginHost(page.url());
+        throwIfAborted(signal);
+        return result;
+      } catch (error) {
+        // Recheck the destination even when the read failed during navigation.
+        // Never delay an untrusted redirect or replay credential writes/submits.
+        assertLoginHost(page.url());
+        throwIfAborted(signal);
+        if (!isNavigationObservationError(error) || retry >= 3) throw error;
+        await sleep(250, signal);
+      }
+    }
+  };
   const dialogHandler = async dialog => {
     const message = dialog.message();
     if (/아이디.{0,35}비밀번호|비밀번호.{0,30}(?:잘못|틀렸|불일치)|계정.{0,20}잠금/.test(message)) dialogOutcome = 'CREDENTIALS_REJECTED';
@@ -129,8 +156,8 @@ export async function runAutoLogin(page, credentials, {
   try {
     assertLoginHost(page.url());
     throwIfAborted(signal);
-    if (await isAuthenticated()) return { status: 'authenticated', submits };
-    const initialOutcome = await inspectOutcome(page);
+    if (await observe(isAuthenticated)) return { status: 'authenticated', submits };
+    const initialOutcome = await observe(() => inspectOutcome(page));
     if (initialOutcome.credentialsRejected) return { status: 'manual', reason: 'CREDENTIALS_REJECTED', submits };
     if (initialOutcome.additionalVerification) return { status: 'manual', reason: 'ADDITIONAL_VERIFICATION', submits };
     // Fill BEFORE solving: input handlers may invalidate a freshly solved token.
@@ -145,9 +172,9 @@ export async function runAutoLogin(page, credentials, {
       const captcha = await handleCaptcha();
       challengeSeen ||= !!captcha.detected;
       if (captcha.status === 'manual') return { status: 'manual', reason: captcha.reason, submits };
-      if (await isAuthenticated()) return { status: 'authenticated', submits };
+      if (await observe(isAuthenticated)) return { status: 'authenticated', submits };
       if (submits > 0 && !challengeSeen) break;
-      const outcome = await inspectOutcome(page);
+      const outcome = await observe(() => inspectOutcome(page));
       if (outcome.credentialsRejected || dialogOutcome === 'CREDENTIALS_REJECTED') return { status: 'manual', reason: 'CREDENTIALS_REJECTED', submits };
       if (outcome.additionalVerification) return { status: 'manual', reason: 'ADDITIONAL_VERIFICATION', submits };
       if (submits > 0) {
@@ -164,8 +191,8 @@ export async function runAutoLogin(page, credentials, {
       for (let poll = 0; poll < outcomePolls; poll += 1) {
         await sleep(pollMs, signal);
         assertLoginHost(page.url());
-        if (await isAuthenticated()) return { status: 'authenticated', submits };
-        const state = await inspectOutcome(page);
+        if (await observe(isAuthenticated)) return { status: 'authenticated', submits };
+        const state = await observe(() => inspectOutcome(page));
         if (state.credentialsRejected || dialogOutcome === 'CREDENTIALS_REJECTED') return { status: 'manual', reason: 'CREDENTIALS_REJECTED', submits };
         if (state.additionalVerification) return { status: 'manual', reason: 'ADDITIONAL_VERIFICATION', submits };
         if (dialogOutcome === 'CAPTCHA_REQUIRED') { challengeSeen = true; break; }
