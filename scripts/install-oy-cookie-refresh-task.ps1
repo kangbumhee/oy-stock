@@ -39,6 +39,23 @@ function Get-OyTask {
   return Get-ScheduledTask -TaskName $Name -TaskPath $TaskPath -ErrorAction SilentlyContinue
 }
 
+function Test-TaskEnabled {
+  param([System.Xml.XmlElement]$Parent)
+  $enabled = Get-TaskChild $Parent 'Enabled'
+  # Task Scheduler omits this XML element when its schema default is true.
+  return -not $enabled -or $enabled.InnerText -eq 'true'
+}
+
+function Test-CurrentTaskUser {
+  param([string]$UserId)
+  if ([string]::IsNullOrWhiteSpace($UserId)) { return $false }
+  if ($UserId -eq $CurrentUserSid) { return $true }
+  try {
+    $account = [Security.Principal.NTAccount]::new($UserId)
+    return $account.Translate([Security.Principal.SecurityIdentifier]).Value -eq $CurrentUserSid
+  } catch { return $false }
+}
+
 function Get-ActionArguments {
   param([string]$Wrapper, [string]$Kind)
   # -File receives a literal quoted path; no shell expansion or -Command is used.
@@ -55,14 +72,14 @@ function Get-TaskSummary {
   $periodicTriggers = @($triggers.ChildNodes | Where-Object { $_.LocalName -in @('CalendarTrigger', 'TimeTrigger') })
   $startup = $false
   if ($logons.Count -eq 1) {
-    $startup = (Get-TaskChild $logons[0] 'UserId').InnerText -eq $CurrentUserSid -and
+    $startup = (Test-CurrentTaskUser (Get-TaskChild $logons[0] 'UserId').InnerText) -and
       (Get-TaskChild $logons[0] 'Delay').InnerText -eq $(if ($Kind -eq 'refresh') { 'PT1M' } else { 'PT2M' }) -and
-      (Get-TaskChild $logons[0] 'Enabled').InnerText -eq 'true'
+      (Test-TaskEnabled $logons[0])
   }
   $periodic = $false
   if ($periodicTriggers.Count -eq 1) {
     $periodicTrigger = $periodicTriggers[0]
-    $enabled = (Get-TaskChild $periodicTrigger 'Enabled').InnerText -eq 'true'
+    $enabled = Test-TaskEnabled $periodicTrigger
     if ($Kind -eq 'refresh') {
       $schedule = Get-TaskChild $periodicTrigger 'ScheduleByDay'
       $periodic = $enabled -and $periodicTrigger.LocalName -eq 'CalendarTrigger' -and
@@ -93,9 +110,11 @@ function Get-TaskSummary {
       (Get-TaskChild $matchingActions[0] 'WorkingDirectory').InnerText -eq $ResolvedRepoRoot
   }
   $principal = (Get-TaskChild $task 'Principals').SelectSingleNode('*[local-name()="Principal"]')
-  $currentUserOnly = (Get-TaskChild $principal 'UserId').InnerText -eq $CurrentUserSid -and
+  $runLevel = Get-TaskChild $principal 'RunLevel'
+  # LeastPrivilege is also omitted by Export-ScheduledTask after registration.
+  $currentUserOnly = (Test-CurrentTaskUser (Get-TaskChild $principal 'UserId').InnerText) -and
     (Get-TaskChild $principal 'LogonType').InnerText -eq 'InteractiveToken' -and
-    (Get-TaskChild $principal 'RunLevel').InnerText -eq 'LeastPrivilege'
+    (-not $runLevel -or $runLevel.InnerText -eq 'LeastPrivilege')
   $settings = Get-TaskChild $task 'Settings'
   $restart = Get-TaskChild $settings 'RestartOnFailure'
   $settingsReady = (Get-TaskChild $settings 'StartWhenAvailable').InnerText -eq 'true' -and
@@ -109,7 +128,7 @@ function Get-TaskSummary {
     startup = [bool]$startup; periodic = [bool]$periodic; hidden = [bool]$hidden
     actionMatches = [bool]$actionMatches; currentUserOnly = [bool]$currentUserOnly
     settingsReady = [bool]$settingsReady
-    ready = (($State -in @('Ready', 'Running')) -and (Get-TaskChild $settings 'Enabled').InnerText -ne 'false')
+    ready = (($State -in @('Ready', 'Running')) -and (Test-TaskEnabled $settings))
   }
 }
 

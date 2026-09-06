@@ -15,7 +15,7 @@ function psLiteral(value) { return `'${value.replace(/'/g, "''")}'`; }
 const oldTriggers = [0, 4, 8, 12, 16, 20].map(hour => `<CalendarTrigger><StartBoundary>2026-08-24T${String(hour).padStart(2, '0')}:10:00+09:00</StartBoundary><ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay></CalendarTrigger>`).join('');
 const fixtureXml = `<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><RegistrationInfo><Description>fixture</Description><URI>\\${LEGACY}</URI></RegistrationInfo><Principals><Principal id="Author"><UserId>fixture-old-user</UserId><LogonType>InteractiveToken</LogonType></Principal></Principals><Settings><Priority>7</Priority><Hidden>false</Hidden></Settings><Triggers>${oldTriggers}</Triggers><Actions Context="Author"><Exec><Command>powershell.exe</Command><Arguments>-File &quot;C:\\old\\run-oy-cookie-refresh-task.ps1&quot;</Arguments><WorkingDirectory>C:\\old</WorkingDirectory></Exec><Exec><Command>fixture-unused-helper.exe</Command></Exec></Actions></Task>`;
 
-function runMocked({ flags = '', twice = false, verificationFailure = false, unknownAction = false } = {}) {
+function runMocked({ flags = '', twice = false, verificationFailure = false, unknownAction = false, normalizeExport = false, wrongUser = false } = {}) {
   const xml = unknownAction ? fixtureXml.replace('run-oy-cookie-refresh-task.ps1', 'unknown-action.ps1') : fixtureXml;
   const command = `
 $ErrorActionPreference = 'Stop'
@@ -37,6 +37,17 @@ function Export-ScheduledTask {
 function Register-ScheduledTask {
   param($TaskName, $TaskPath, $Xml, [switch]$Force)
   $global:operations.Add('register:' + $TaskName)
+  ${normalizeExport ? `
+  [xml]$normalized = $Xml
+  foreach ($default in @($normalized.SelectNodes('//*[local-name()="Enabled" and text()="true"] | //*[local-name()="RunLevel" and text()="LeastPrivilege"]'))) { [void]$default.ParentNode.RemoveChild($default) }
+  foreach ($logonUser in @($normalized.SelectNodes('//*[local-name()="LogonTrigger"]/*[local-name()="UserId"]'))) { $logonUser.InnerText = [Security.Principal.WindowsIdentity]::GetCurrent().Name }
+  $Xml = $normalized.OuterXml
+  ` : ''}
+  ${wrongUser ? `
+  [xml]$normalized = $Xml
+  foreach ($logonUser in @($normalized.SelectNodes('//*[local-name()="LogonTrigger"]/*[local-name()="UserId"]'))) { $logonUser.InnerText = 'S-1-5-18' }
+  $Xml = $normalized.OuterXml
+  ` : ''}
   $global:tasks[$TaskName] = $Xml
   $global:taskStates[$TaskName] = 'Ready'
   ${verificationFailure ? `if ($TaskName -eq ${psLiteral(HEALTH)}) { $global:taskStates[$TaskName] = 'Disabled' }` : ''}
@@ -146,4 +157,27 @@ test('unrecognized existing action is never overwritten or registered', { skip: 
   const result = runMocked({ unknownAction: true });
   assert.equal(result.errorCode, 'TASK_ACTION_NOT_RECOGNIZED');
   assert.deepEqual(result.operations, []);
+});
+
+test('Windows export normalization retains default-enabled/default-least-privilege semantics and resolves logon account to SID', { skip: process.platform !== 'win32' }, () => {
+  const result = runMocked({ normalizeExport: true, twice: true });
+  assert.equal(result.errorCode, null);
+  assert.equal(result.reports.length, 2);
+  for (const report of result.reports) {
+    for (const task of report.tasks) {
+      assert.equal(task.status.startup, true);
+      assert.equal(task.status.periodic, true);
+      assert.equal(task.status.currentUserOnly, true);
+      assert.equal(task.status.ready, true);
+    }
+  }
+  assert.doesNotMatch(result.definitions[DAILY], /<Enabled>true<\/Enabled>|<RunLevel>LeastPrivilege<\/RunLevel>/);
+  assert.equal(result.states[LEGACY], 'Disabled');
+});
+
+test('normalization does not accept another Windows user for the startup trigger', { skip: process.platform !== 'win32' }, () => {
+  const result = runMocked({ normalizeExport: true, wrongUser: true });
+  assert.equal(result.errorCode, 'TASK_VERIFICATION_FAILED');
+  assert.ok(!result.operations.includes(`disable:${LEGACY}`));
+  assert.equal(result.states[LEGACY], 'Ready');
 });

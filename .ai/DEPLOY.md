@@ -50,7 +50,7 @@
 
 - 실행 PC: Windows 로그인 계정, 설치된 Chrome/Node.js, 기존 `gh auth login` 권한이 필요하다. Windows 자동 로그인이나 OS 비밀번호 저장은 설정하지 않는다.
 - 최초 1회 `npm.cmd run setup:oy-login-secrets`: ID/비밀번호/선택 2Captcha API 키와 유료 API 사용 여부를 저장한다. `.auth/oy-login-secrets.json`에는 현재 Windows 사용자 DPAPI 암호문만 기록한다. GitHub에 계정 비밀번호/API 키를 올리지 않는다.
-- 명령 입력 없이 실행하려면 `scripts/oy-login-settings.cmd`를 연다. 설정창은 최초 저장할 때만 필요하다.
+- 명령 입력 없이 실행하려면 `scripts/oy-login-settings.cmd`를 연다. 설정창은 최초 저장할 때만 필요하며, 저장 성공 후 등록된 갱신 작업을 즉시 한 번 시작한다.
 - `npm.cmd run status:oy-login-secrets`는 설정 여부만 출력한다. `npm.cmd run install:oy-login-task`로 현재 저장소에 작업을 등록한다.
 - `OY Refresh Cookie Daily`: PC 현지 시각 매일 00:10 (24시간 주기), Windows 로그인 후 추가 시작. 창 없이 프로필 재사용/필요 시 자동 로그인 → GitHub `OY_REFRESH_COOKIE` 갱신 → 기존 `refresh-oy-linkage.yml` 실행. 정상 등록을 검증한 뒤 기존 4시간 작업은 삭제하지 않고 비활성화한다.
 - 다음 24시간 안에 만료될 linkage는 해당 쿠키만 재발급하고 만료시각 증가를 확인한다. 서버가 짧은 유효기간만 발급하거나 재발급이 실패하면 24시간 유지가 보장되지는 않으며, 실패 시 아직 유효한 이전 linkage를 복원하고 재연결을 알린다.
