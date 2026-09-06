@@ -56,7 +56,9 @@ function Set-PrivateFileAcl([string]$Path) {
   $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
   $acl = [Security.AccessControl.FileSecurity]::new()
   $acl.SetAccessRuleProtection($true, $false)
-  $acl.SetOwner($sid)
+  # The newly created file already belongs to this user. Changing its owner
+  # would also require WRITE_OWNER, which ordinary project folders do not grant.
+  # Persist only the private access rules; keep ownership unchanged.
   $rule = [Security.AccessControl.FileSystemAccessRule]::new(
     $sid, [Security.AccessControl.FileSystemRights]::FullControl,
     [Security.AccessControl.AccessControlType]::Allow

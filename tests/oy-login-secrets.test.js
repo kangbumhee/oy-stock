@@ -23,6 +23,47 @@ test('default vault path works through relative -File on Windows without explici
 });
 const FAKE = { username: 'fake-test-account', password: '  fake-test-password  ', captchaApiKey: 'fake-captcha-key', captchaEnabled: true };
 
+test('default Setup vault path supports Korean spaces and an unrelated working directory', { skip: !isWindows }, async t => {
+  const { repoRoot: containerRoot } = await fixture(t);
+  const repoRoot = path.join(containerRoot, '한글 공백 저장소');
+  const scriptsDirectory = path.join(repoRoot, 'scripts');
+  await fs.mkdir(scriptsDirectory, { recursive: true });
+  const copiedScript = path.join(scriptsDirectory, 'oy-login-secrets.ps1');
+  await fs.copyFile(scriptPath, copiedScript);
+  await fs.copyFile(path.join(path.dirname(scriptPath), 'oy-refresh-mutex.ps1'), path.join(scriptsDirectory, 'oy-refresh-mutex.ps1'));
+  const command = `
+$fixture = [Console]::In.ReadToEnd() | ConvertFrom-Json
+$global:fakeAnswers = [Collections.Generic.Queue[string]]::new()
+foreach ($value in $fixture.answers) { $global:fakeAnswers.Enqueue([string]$value) }
+function global:Read-Host {
+  param([string]$Prompt, [switch]$AsSecureString)
+  $value = $global:fakeAnswers.Dequeue()
+  if ($AsSecureString) {
+    $secure = [Security.SecureString]::new()
+    foreach ($character in $value.ToCharArray()) { $secure.AppendChar($character) }
+    return $secure
+  }
+  return $value
+}
+& $env:OY_TEST_VAULT_SCRIPT -Action Setup
+`;
+  const saved = spawnSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+    cwd: containerRoot,
+    input: JSON.stringify({ answers: [FAKE.username, FAKE.password, FAKE.captchaApiKey, 'y'] }),
+    env: {
+      ...process.env, OY_TEST_VAULT_SCRIPT: copiedScript, OY_LOGIN_SECRETS_INTERNAL_READ: '',
+      OLIVEYOUNG_2CAPTCHA_ENABLED: '', KOREA_TOP_2CAPTCHA_ENABLED: '',
+    },
+    encoding: 'utf8', windowsHide: true, timeout: 15000,
+  });
+  assert.equal(saved.status, 0, saved.stderr);
+  assert.deepEqual(JSON.parse(saved.stdout), { configured: true, captchaConfigured: true, captchaEnabled: true });
+  assert.deepEqual(await fs.readdir(path.join(repoRoot, '.auth')), ['oy-login-secrets.json']);
+  assert.deepEqual(await fs.readdir(path.join(containerRoot, '.auth')), []);
+  const { loadLoginSecrets } = await import(modulePath);
+  assert.deepEqual(await loadLoginSecrets({ repoRoot, env: {} }), { ...FAKE, source: 'saved', configured: true });
+});
+
 async function fixture(t) {
   const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'oy-login-vault-test-'));
   t.after(() => fs.rm(repoRoot, { recursive: true, force: true }));
@@ -39,7 +80,7 @@ function ps(action, vault, extra = {}) {
   });
 }
 
-function setup(vault, record = FAKE, engine = 'powershell.exe') {
+function setup(vault, record = FAKE, engine = 'powershell.exe', targetScript = scriptPath) {
   // Stub only Read-Host in a disposable child process. No test-only write path exists in the vault.
   const command = `
 $fixture = [Console]::In.ReadToEnd() | ConvertFrom-Json
@@ -58,11 +99,82 @@ function global:Read-Host {
 & $fixture.script -Action Setup -VaultPath $fixture.vault
 `;
   return spawnSync(engine, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], {
-    input: JSON.stringify({ script: scriptPath, vault, answers: [record.username, record.password, record.captchaApiKey, record.captchaEnabled ? 'y' : 'n'] }),
+    input: JSON.stringify({ script: targetScript, vault, answers: [record.username, record.password, record.captchaApiKey, record.captchaEnabled ? 'y' : 'n'] }),
     env: { ...process.env, OLIVEYOUNG_2CAPTCHA_ENABLED: '', KOREA_TOP_2CAPTCHA_ENABLED: '' },
     encoding: 'utf8', windowsHide: true,
   });
 }
+
+test('vault saves and replaces with inherited Modify rights without changing ownership', { skip: !isWindows }, async t => {
+  const { repoRoot, auth, vault } = await fixture(t);
+  const permissionFixture = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `
+$ErrorActionPreference = 'Stop'
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$acl = [Security.AccessControl.DirectorySecurity]::new()
+$acl.SetAccessRuleProtection($true, $false)
+$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
+  $sid, [Security.AccessControl.FileSystemRights]::Modify,
+  [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit',
+  [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow
+))
+[IO.Directory]::SetAccessControl($env:OY_TEST_AUTH_DIRECTORY, $acl)
+$actual = [IO.Directory]::GetAccessControl($env:OY_TEST_AUTH_DIRECTORY)
+$rules = @($actual.Access)
+[ordered]@{
+  ownerIsCurrentUser = $actual.GetOwner([Security.Principal.SecurityIdentifier]).Value -eq $sid.Value
+  protected = $actual.AreAccessRulesProtected
+  ruleCount = $rules.Count
+  grantsWriteOwner = [bool]($rules[0].FileSystemRights -band [Security.AccessControl.FileSystemRights]::TakeOwnership)
+  grantsChangePermissions = [bool]($rules[0].FileSystemRights -band [Security.AccessControl.FileSystemRights]::ChangePermissions)
+} | ConvertTo-Json -Compress
+`], { env: { ...process.env, OY_TEST_AUTH_DIRECTORY: auth }, encoding: 'utf8', windowsHide: true, timeout: 15000 });
+  assert.equal(permissionFixture.status, 0, permissionFixture.stderr);
+  assert.deepEqual(JSON.parse(permissionFixture.stdout), {
+    ownerIsCurrentUser: true, protected: true, ruleCount: 1, grantsWriteOwner: false, grantsChangePermissions: false,
+  });
+
+  // Reintroduce the former ownership reset only in a disposable copy to prove
+  // this permission fixture catches the production failure before testing its fix.
+  const oldScripts = path.join(repoRoot, 'old-behavior');
+  await fs.mkdir(oldScripts);
+  const oldScript = path.join(oldScripts, 'oy-login-secrets.ps1');
+  const source = await fs.readFile(scriptPath, 'utf8');
+  const aclMarker = '$acl.SetAccessRuleProtection($true, $false)';
+  assert.equal(source.includes(aclMarker), true);
+  await fs.writeFile(oldScript, source.replace(aclMarker, `${aclMarker}\n  $acl.SetOwner($sid)`));
+  await fs.copyFile(path.join(path.dirname(scriptPath), 'oy-refresh-mutex.ps1'), path.join(oldScripts, 'oy-refresh-mutex.ps1'));
+  const previous = setup(vault, FAKE, 'powershell.exe', oldScript);
+  assert.notEqual(previous.status, 0);
+  assert.equal(previous.stderr.trim(), 'OY_LOGIN_VAULT_OPERATION_FAILED');
+  assert.deepEqual(await fs.readdir(auth), []);
+
+  const saved = setup(vault);
+  assert.equal(saved.status, 0, saved.stderr);
+  assert.deepEqual(JSON.parse(saved.stdout), { configured: true, captchaConfigured: true, captchaEnabled: true });
+  const encrypted = await fs.readFile(vault, 'utf8');
+  for (const value of Object.values(FAKE).filter(value => typeof value === 'string')) assert.equal(encrypted.includes(value), false);
+  const replacementRecord = { ...FAKE, password: 'replacement-fake-password' };
+  const replacement = setup(vault, replacementRecord);
+  assert.equal(replacement.status, 0, replacement.stderr);
+  const { loadLoginSecrets } = await import(modulePath);
+  assert.deepEqual(await loadLoginSecrets({ repoRoot, env: {} }), { ...replacementRecord, source: 'saved', configured: true });
+  const status = ps('Status', vault);
+  assert.equal(status.status, 0, status.stderr);
+  assert.deepEqual(JSON.parse(status.stdout), { configured: true, captchaConfigured: true, captchaEnabled: true });
+  const finalAcl = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `
+$ErrorActionPreference = 'Stop'
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$acl = [IO.File]::GetAccessControl($env:OY_TEST_VAULT)
+$directoryAcl = [IO.Directory]::GetAccessControl($env:OY_TEST_AUTH_DIRECTORY)
+[ordered]@{
+  ownerUnchanged = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -eq $directoryAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+  ownerIsCurrentUser = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -eq $sid.Value
+  private = [bool]($acl.AreAccessRulesProtected -and @($acl.Access | Where-Object { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value }).Count -eq 0)
+} | ConvertTo-Json -Compress
+`], { env: { ...process.env, OY_TEST_AUTH_DIRECTORY: auth, OY_TEST_VAULT: vault }, encoding: 'utf8', windowsHide: true, timeout: 15000 });
+  assert.equal(finalAcl.status, 0, finalAcl.stderr);
+  assert.deepEqual(JSON.parse(finalAcl.stdout), { ownerUnchanged: true, ownerIsCurrentUser: true, private: true });
+});
 
 test('empty vault uses environment credentials, preserves password whitespace and supports key aliases', async (t) => {
   const { repoRoot } = await fixture(t);
