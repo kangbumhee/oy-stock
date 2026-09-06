@@ -1,0 +1,49 @@
+name: Private Purchase Connection Alert
+run-name: OY purchase alert ${{ inputs.incidentId }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      incidentId:
+        description: 'Random incident UUID; no account information'
+        required: true
+        type: string
+      reason:
+        description: 'Sanitized attention category'
+        required: true
+        type: choice
+        options: [reconnect_required, check_failed]
+      detectedAt:
+        description: 'Detection time in UTC ISO format'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install email dependency
+        run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Send purchase reconnect email
+        env:
+          ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
+          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+          OY_PURCHASE_ALERT_ID: ${{ inputs.incidentId }}
+          OY_PURCHASE_ALERT_REASON: ${{ inputs.reason }}
+          OY_PURCHASE_ALERT_DETECTED_AT: ${{ inputs.detectedAt }}
+        run: node private-orders/lib/order-alerts.mjs --send-email
+      - name: Mark purchase attention required for GitHub failure notifications
+        if: always()
+        run: |
+          echo "::error::Private purchase connection or collection requires attention."
+          exit 1
