@@ -127,6 +127,28 @@ export async function installCapture(page, { enabled = false } = {}) {
   await page.addInitScript(captureInit, { enabled: !!enabled, bridgeName: BRIDGE, nativeFlag: NATIVE_FLAG });
 }
 
+// Diagnostic flags only: never include response values, credentials or challenge metadata.
+export async function inspectChallengeDiagnostics(page) {
+  assertHost(page);
+  return page.evaluate(bridgeName => {
+    const bridge = window[bridgeName];
+    const visible = e => e.isConnected && e.getClientRects().length > 0 &&
+      getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
+    const forms = [...document.forms].filter(f => [...f.querySelectorAll('input[type="password"]')].some(visible));
+    const captures = bridge?.captures || [];
+    return {
+      bridgeReady: !!bridge, credentialForms: forms.length, captures: captures.length,
+      connectedCaptures: captures.filter(c => c.element.isConnected).length,
+      validKeyCaptures: captures.filter(c => /^[A-Za-z0-9_-]{20,100}$/.test(c.websiteKey || '')).length,
+      managedCaptures: captures.filter(c => c.managed).length,
+      visibleWidgetContainer: [...document.querySelectorAll('#cloudflare-captcha, .cf-turnstile')].some(visible),
+      responseFields: forms.reduce((n, f) => n + f.querySelectorAll('[name="cf-turnstile-response"]').length, 0),
+      providerReady: typeof window.turnstile?.render === 'function',
+      captureFormAssociated: captures.some(c => forms.some(f => c.element.closest('form') === f)),
+    };
+  }, BRIDGE);
+}
+
 // Inspection and token writes use the SAME selector policy, recomputed atomically in the page.
 function domOperation({ operation = 'inspect', expectedSignature, token, answer, bridgeName }) {
   const currentURL = new URL(location.href);
@@ -164,13 +186,15 @@ function domOperation({ operation = 'inspect', expectedSignature, token, answer,
   let imagePair = null;
   if (form) {
     const images = [...form.querySelectorAll('img, canvas, [role="img"]')].filter(visible).slice(0, 12);
-    const inputs = [...form.querySelectorAll('input:not([type]), input[type="text"], input[type="search"], input[type="tel"]')]
+    const inputs = [...form.querySelectorAll('input:not([type]), input[type="text"], input[type="search"], input[type="tel"], input[type="number"]')]
       .filter((element) => editable(element) && !responseName.test(element.name)).slice(0, 12);
     const pairs = [];
     for (const image of images) {
       for (const input of inputs) {
         let parent = image.parentElement;
-        for (let depth = 0; parent && depth < 4 && form.contains(parent); depth++, parent = parent.parentElement) {
+        // Mobile login nests the image five levels below its answer's container.
+        // Stay inside this one credential form and retain the unique-pair checks.
+        for (let depth = 0; parent && depth < 8 && form.contains(parent); depth++, parent = parent.parentElement) {
           if (!parent.contains(input)) continue;
           const marked = captchaMarker.test(marker(image)) && captchaMarker.test(marker(input));
           const prompt = captchaMarker.test(`${marker(parent)} ${parent.innerText || ''}`);

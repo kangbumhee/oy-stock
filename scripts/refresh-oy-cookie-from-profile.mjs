@@ -24,7 +24,7 @@ import { spawnSync } from 'child_process';
 import { chromium } from 'playwright';
 import { loadLoginSecrets } from './lib/oy-login-secrets.mjs';
 import { readCaptchaConfig, TwoCaptchaClient, createCaptchaBudget, abortableSleep } from './lib/oy-captcha-client.mjs';
-import { installCapture, inspectChallenge, restoreUserAgent } from './lib/oy-captcha-dom.mjs';
+import { installCapture, inspectChallenge, inspectChallengeDiagnostics, restoreUserAgent } from './lib/oy-captcha-dom.mjs';
 import { createCaptchaHandler } from './lib/oy-captcha-flow.mjs';
 import { OY_LOGIN_URL, runAutoLogin, assertLoginHost, isLoginUrl, inspectLoginOutcome } from './lib/oy-auto-login.mjs';
 import { acquireRefreshLock } from './lib/oy-refresh-lock.mjs';
@@ -439,6 +439,9 @@ async function main() {
     // Health checks never activate curator membership, submit login, solve challenges,
     // or update GitHub. Only the daily refresh may perform those operations.
     let state = checkOnly ? await collectState(context, page) : await ensureFreshLinkage(context, page);
+    if (checkOnly && process.env.OY_LOGIN_DIAGNOSTICS === '1') {
+      log(`login diagnostics: ${JSON.stringify(await inspectChallengeDiagnostics(page))}`);
+    }
     let previousExpiry = null;
     if (!checkOnly && hasUsableCookies(state) && !isLoginPage(state) && !needsHumanVerification(state) &&
         !needsCuratorActivation(state) && state.exp < Date.now() / 1000 + DAILY_REFRESH_SECONDS) {
@@ -467,8 +470,10 @@ async function main() {
         if (descriptions[event.type]) log(descriptions[event.type]);
       };
       const handleCaptcha = createCaptchaHandler(page, { config: captchaConfig, client, budget, signal, onEvent });
-      // Resolve a managed page before navigating so one-use metadata is not discarded.
-      if (needsHumanVerification(state)) {
+      // Preserve one-use managed metadata, but let ordinary login forms fill their
+      // credentials before solving an image/standalone widget (input can reset it).
+      const initialChallenge = await inspectChallenge(page, { signal });
+      if (initialChallenge.managed && initialChallenge.pending) {
         const checkpoint = await handleCaptcha();
         if (checkpoint.status === 'manual') throw humanLoginRequired(`Automatic CAPTCHA did not complete (${checkpoint.reason}). Next scheduled run will retry.`);
       }

@@ -139,6 +139,103 @@ test('render capture leaves standalone native rendering active and executes exac
   } finally { await context.close(); }
 });
 
+async function oliveYoungLoginFixture() {
+  const html = `<form id="formLogin">
+    <input type="hidden" id="captchaYn" name="captchaYn">
+    <input id="loginId" name="loginId">
+    <input type="password" id="password" name="password" placeholder="8~12자">
+    <p>정보 보호를 위해 아래 인증 절차를 진행해주세요.</p>
+    <div id="cloudflare-captcha" class="auto-info-cloudflare" style="width:300px;height:65px"></div>
+    <input type="hidden" id="cf-chl-widget-synthetic-login_response" name="cf-turnstile-response">
+    <div id="captcha" class="img-brake-box" hidden>
+      <canvas id="captchaImage" width="100" height="40"></canvas>
+      <input id="autoBlockText" name="answer" disabled placeholder="자동입력방지문자를 입력해주세요">
+    </div>
+    <input type="checkbox" id="chk01" name="saveLoginIdYn">
+    <button type="button">로그인</button>
+  </form><script>
+    window.nativeCount = 0;
+    window.turnstile = { render(target) {
+      window.nativeCount++;
+      target.attachShadow({ mode: 'closed' }).appendChild(document.createElement('span'));
+      return 'synthetic-login';
+    } };
+    setTimeout(() => window.turnstile.render(document.querySelector('#cloudflare-captcha'), {
+      sitekey: '${KEY}', action: 'synthetic-private-action', cData: 'synthetic-private-challenge-data',
+    }), 50);
+  </script>`;
+  const result = await fixture(html);
+  await result.page.waitForFunction(() => window.nativeCount === 1);
+  return result;
+}
+
+test('realistic formLogin associates captured closed-shadow widget despite disabled hidden image answer', async () => {
+  const { page, context } = await oliveYoungLoginFixture();
+  try {
+    assert.deepEqual(await page.locator('#loginId').evaluate(input => ({ attribute: input.getAttribute('type'), type: input.type })), {
+      attribute: null, type: 'text',
+    });
+    assert.equal(await page.locator('#autoBlockText').isEditable(), false);
+    assert.equal(await page.locator('#autoBlockText').isVisible(), false);
+    assert.equal(await page.locator('#cloudflare-captcha').getAttribute('data-sitekey'), null);
+    assert.equal(await page.locator('#cloudflare-captcha').evaluate(element => element.shadowRoot === null), true);
+    assert.equal(await page.locator('#formLogin iframe').count(), 0);
+
+    const current = await api.inspectChallenge(page);
+    assert.equal(current.type, 'turnstile');
+    assert.equal(current.pending, true);
+    assert.equal(current.managed, false);
+    assert.equal(current.image, null);
+    assert.equal(current.descriptor.websiteKey, KEY);
+    assert.equal(current.descriptor.widgetId, 'synthetic-login');
+    assert.ok(current.descriptor.formId);
+    assert.ok(current.descriptor.elementId);
+    assert.ok(current.descriptor.fieldId);
+
+    const client = provider();
+    const result = await solve(page, client);
+    assert.equal(result.clear, true);
+    assert.equal(result.providerApplied, true);
+    assert.equal(client.calls.length, 1);
+    assert.equal(await page.locator('#formLogin [name="cf-turnstile-response"]').inputValue(), TOKEN);
+    assert.equal(await page.locator('#autoBlockText').inputValue(), '');
+    assert.equal(await page.evaluate(() => window.nativeCount), 1);
+  } finally { await context.close(); }
+});
+
+test('challenge diagnostics expose only counts and flags, never credentials, token or descriptor data', async () => {
+  const { page, context } = await oliveYoungLoginFixture();
+  try {
+    const username = 'synthetic-private-login-user';
+    const password = 'synthetic-private-login-password';
+    await page.locator('#loginId').fill(username);
+    await page.locator('#password').fill(password);
+    await page.locator('[name="cf-turnstile-response"]').evaluate((input, value) => { input.value = value; }, TOKEN);
+
+    const diagnostics = await api.inspectChallengeDiagnostics(page);
+    assert.deepEqual(diagnostics, {
+      bridgeReady: true,
+      credentialForms: 1,
+      captures: 1,
+      connectedCaptures: 1,
+      validKeyCaptures: 1,
+      managedCaptures: 0,
+      visibleWidgetContainer: true,
+      responseFields: 1,
+      providerReady: true,
+      captureFormAssociated: true,
+    });
+    assert.ok(Object.values(diagnostics).every(value => typeof value === 'number' || typeof value === 'boolean'));
+    const serialized = JSON.stringify(diagnostics);
+    for (const sensitive of [username, password, TOKEN, KEY, URL, 'synthetic-private-action', 'synthetic-private-challenge-data']) {
+      assert.equal(serialized.includes(sensitive), false);
+    }
+    for (const field of ['descriptor', 'image', 'signature', 'response', 'token', 'websiteKey', 'data', 'pagedata']) {
+      assert.equal(Object.hasOwn(diagnostics, field), false);
+    }
+  } finally { await context.close(); }
+});
+
 async function managedFixture() {
   const html = `<h1>Just a moment</h1><div id="challenge" style="width:150px;height:60px"></div><script>
     window.nativeCount = 0; window.callbackUA = '';
@@ -250,6 +347,56 @@ test('image orchestration validates PNG, pairs current form, fills answer withou
     assert.equal(await api.isProviderApplicationCurrent(page, result.identity), true);
     await page.locator('[name="answer"]').fill('');
     assert.equal(await api.isProviderApplicationCurrent(page, result.identity), false);
+  } finally { await context.close(); }
+});
+
+test('mobile formLogin pairs numeric CAPTCHA answer and preserves email login and password inputs', async () => {
+  const html = `<form id="formLogin">
+    <input type="email" id="loginId" name="loginId">
+    <input type="password" id="password" name="password">
+    <section class="auto-info">
+      <p>자동입력 방지문자를 입력해주세요.</p>
+      <div class="img-brake-box">
+        <div class="mobile-wrapper"><div class="image-layout"><div class="image-content"><div class="image-wrapper"><canvas id="captchaImage" width="140" height="40"></canvas></div></div></div></div>
+        <div class="answer-wrapper"><input type="number" id="autoBlockText" name="answer" placeholder="자동입력방지문자를 입력해주세요"></div>
+      </div>
+    </section>
+    <input type="number" id="unrelatedNumber" name="unrelatedNumber" value="77">
+    <button type="submit">로그인</button>
+  </form><script>
+    window.submits = 0;
+    document.querySelector('form').onsubmit = event => { event.preventDefault(); window.submits++; };
+    const ctx = document.querySelector('canvas').getContext('2d');
+    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 140, 40);
+    ctx.fillStyle = 'black'; ctx.fillText('123456', 10, 25);
+  </script>`;
+  const { page, context } = await fixture(html);
+  try {
+    const username = 'synthetic-mobile-user@example.test';
+    const password = 'synthetic-mobile-password';
+    await page.locator('#loginId').fill(username);
+    await page.locator('#password').fill(password);
+    const current = await api.inspectChallenge(page);
+    assert.equal(current.type, 'image');
+    assert.equal(current.pending, true);
+    assert.equal(current.descriptor, null);
+    assert.ok(current.image.formId);
+    assert.ok(current.image.imageId);
+    assert.ok(current.image.inputId);
+
+    const client = provider({ solution: { text: '123456' } });
+    const result = await solve(page, client);
+    assert.equal(result.type, 'image');
+    assert.equal(result.providerApplied, true);
+    assert.equal(result.clear, false);
+    assert.equal(client.calls.length, 1);
+    assert.equal(client.calls[0].type, 'ImageToTextTask');
+    assert.equal(await page.locator('#autoBlockText').inputValue(), '123456');
+    assert.equal(await page.locator('#loginId').inputValue(), username);
+    assert.equal(await page.locator('#password').inputValue(), password);
+    assert.equal(await page.locator('#unrelatedNumber').inputValue(), '77');
+    assert.equal(await page.evaluate(() => window.submits), 0);
+    assert.equal(await api.isProviderApplicationCurrent(page, result.identity), true);
   } finally { await context.close(); }
 });
 
