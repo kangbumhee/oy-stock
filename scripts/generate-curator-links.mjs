@@ -22,6 +22,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   evaluateCuratorBatchFailure,
+  getReusableAttributedCuratorOriginal,
+  runCuratorRequestWithAuthRenewal,
   isReadyCuratorShortUrl,
   landingFailureStatus,
   runCuratorRequestWithRetry
@@ -495,7 +497,20 @@ function loadPrevCurator() {
 async function main() {
   const authCandidates = collectAuthCandidates();
   let selectedAuth = selectAuthCandidate(authCandidates);
-  const cookieHeader = selectedAuth?.cookieHeader || '';
+  const selectedCookieHeader = selectedAuth?.cookieHeader || '';
+  const refreshSessionCookieCandidate = authCandidates.find(
+    (candidate) =>
+      candidate.source === 'OY_REFRESH_COOKIE' &&
+      extractCookieValue(candidate.cookieHeader, 'OYSESSIONID')
+  );
+  const anySessionCookieCandidate = authCandidates.find((candidate) =>
+    extractCookieValue(candidate.cookieHeader, 'OYSESSIONID')
+  );
+  const cookieHeader =
+    refreshSessionCookieCandidate?.cookieHeader ||
+    (extractCookieValue(selectedCookieHeader, 'OYSESSIONID')
+      ? selectedCookieHeader
+      : anySessionCookieCandidate?.cookieHeader || selectedCookieHeader);
 
   if (!selectedAuth) {
     console.error(
@@ -533,6 +548,7 @@ async function main() {
       'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     locale: 'ko-KR'
   });
+  let forcedAuthRenewalAttempted = false;
 
   try {
     if (cookieHeader) {
@@ -540,6 +556,7 @@ async function main() {
     }
 
     if (selectedAuth.expired) {
+      forcedAuthRenewalAttempted = true;
       console.warn(
         `⚠️ 유효한 JWT가 없어 ${selectedAuth.source} 로그인 세션으로 자동 갱신합니다.`
       );
@@ -558,7 +575,7 @@ async function main() {
       );
     }
 
-    const authJwt = selectedAuth.jwt;
+    let authJwt = selectedAuth.jwt;
     const page = await ctx.newPage();
     console.log('www 워밍업…');
     await page.goto(OY_WWW + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -620,11 +637,16 @@ async function main() {
       }
 
       let apiKey = generateApiKey();
+      const existingAttributedLink = getReusableAttributedCuratorOriginal(
+        links[gn],
+        gn,
+        regId
+      );
       console.log(`\n📎 ${gn}`);
 
       let pack;
       let lastEvaluateError = null;
-      const requestOutcome = await runCuratorRequestWithRetry({
+      const runRequest = () => runCuratorRequestWithRetry({
         maxAttempts: 3,
         retryDelayMs: 1200,
         sleep,
@@ -636,7 +658,8 @@ async function main() {
             registerId,
             apiKey,
             placeholderCat,
-            authJwt: jwt
+            authJwt: jwt,
+            existingAttributedLink
           }) => {
             async function landing(body) {
               const headers = {
@@ -711,6 +734,62 @@ async function main() {
               }
             }
 
+            function readyShortUrl(value) {
+              try {
+                const parsed = new URL(String(value || '').trim());
+                if (
+                  parsed.protocol === 'https:' &&
+                  parsed.hostname === 'oy.run' &&
+                  parsed.pathname !== '/'
+                ) {
+                  return String(value).trim();
+                }
+              } catch {}
+              return null;
+            }
+
+            let existingShortenDetail = null;
+            if (existingAttributedLink) {
+              existingShortenDetail = await shorten(
+                existingAttributedLink.originalUrl,
+                registerId
+              );
+              const existingRow =
+                existingShortenDetail.json &&
+                existingShortenDetail.json.data &&
+                existingShortenDetail.json.data[0];
+              const existingShortenedUrl = readyShortUrl(
+                existingRow && existingRow.shortenedUrl
+              );
+              if (existingShortenDetail.ok && existingShortenedUrl) {
+                return {
+                  ok: true,
+                  shortenedUrl: existingShortenedUrl,
+                  originalUrl: existingAttributedLink.originalUrl,
+                  affiliateActivityId: existingAttributedLink.affiliateActivityId,
+                  affiliatePartnerId: registerId,
+                  reusedOriginal: true
+                };
+              }
+
+              const existingShortenStatus = Number(existingShortenDetail.status);
+              const existingShortenHardFailure =
+                existingShortenStatus === 0 ||
+                existingShortenStatus === 401 ||
+                existingShortenStatus === 403 ||
+                existingShortenStatus === 429 ||
+                existingShortenStatus >= 500 ||
+                !!existingShortenDetail.error;
+              if (existingShortenHardFailure) {
+                return {
+                  ok: false,
+                  step: 'existing_original_shorten',
+                  detail: existingShortenDetail,
+                  hardFailure: true
+                };
+              }
+            }
+
             const attempts = [
               { goodsNumber: goodsNo, categoryNumber: placeholderCat },
               { goodsNumber: goodsNo },
@@ -770,6 +849,7 @@ async function main() {
                 fallbackShortenDetail: fallbackShorten,
                 fallbackShortenedUrl: fallbackShortenedUrl || null,
                 fallbackOriginalUrl,
+                existingShortenDetail,
                 hardFailure
               };
             }
@@ -783,17 +863,7 @@ async function main() {
             const S = await shorten(originalUrl, affiliatePartnerId);
             const row = S.json && S.json.data && S.json.data[0];
             const shortenedUrl = row && row.shortenedUrl;
-            let readyShortenedUrl = null;
-            try {
-              const parsedShortUrl = new URL(String(shortenedUrl || '').trim());
-              if (
-                parsedShortUrl.protocol === 'https:' &&
-                parsedShortUrl.hostname === 'oy.run' &&
-                parsedShortUrl.pathname !== '/'
-              ) {
-                readyShortenedUrl = String(shortenedUrl).trim();
-              }
-            } catch {}
+            const readyShortenedUrl = readyShortUrl(shortenedUrl);
 
             if (S.ok && readyShortenedUrl) {
               return {
@@ -812,6 +882,7 @@ async function main() {
               originalUrl,
               affiliateActivityId,
               affiliatePartnerId,
+              existingShortenDetail,
               shortenDetail: S
             };
           },
@@ -820,7 +891,8 @@ async function main() {
             registerId: regId,
             apiKey,
             placeholderCat: PLACEHOLDER_CATEGORY,
-            authJwt: authJwt || ''
+            authJwt: authJwt || '',
+            existingAttributedLink
           }
             );
             lastEvaluateError = null;
@@ -854,6 +926,37 @@ async function main() {
           apiKey = generateApiKey();
         }
       });
+      let requestOutcome = await runCuratorRequestWithAuthRenewal({
+        runRequest,
+        currentAuthJwt: authJwt,
+        authRenewalAlreadyAttempted: forcedAuthRenewalAttempted,
+        renewAuth: async () => {
+          console.warn(
+            '  ⚠️ invalid_token HTTP 401 → 저장된 로그인 세션으로 JWT 강제 재발급 시도'
+          );
+          return renewExpiredAuthFromSession(ctx);
+        },
+        applyAuth: async (renewedAuth) => {
+          selectedAuth = renewedAuth;
+          authJwt = renewedAuth.jwt;
+          apiKey = generateApiKey();
+          console.log(
+            `  ✅ JWT 강제 재발급 완료 | 만료: ${describeExp(renewedAuth)}`
+          );
+          await page.goto(AFFILIATE_REFERER, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000
+          });
+        }
+      });
+      if (requestOutcome.authRenewalAttempted) {
+        forcedAuthRenewalAttempted = true;
+        if (!requestOutcome.authRenewed) {
+          console.error(
+            '  ❌ JWT 강제 재발급 실패 또는 동일 토큰 재발급 → 최초 401을 유지합니다.'
+          );
+        }
+      }
       pack = requestOutcome.result;
       if (requestOutcome.lastError) {
         lastEvaluateError = requestOutcome.lastError;
@@ -898,7 +1001,11 @@ async function main() {
           affiliatePartnerId: pack.affiliatePartnerId,
           generatedAt: now
         };
-        console.log('  ✅ oy.run + utm');
+        console.log(
+          pack.reusedOriginal
+            ? '  ✅ 기존 큐레이터 원본 URL → oy.run 단축 완료'
+            : '  ✅ oy.run + utm'
+        );
       } else if (pack.ok && pack.partial) {
         shortenFailureCount += 1;
         consecutiveHardFailureCount = 0;

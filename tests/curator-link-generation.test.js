@@ -124,7 +124,8 @@ test('original-only click queues once, waits, then becomes ready only with oy.ru
     );
     assert.equal(first.statusCode, 200);
     assert.match(first.headers['content-type'], /^text\/html/);
-    assert.match(first.body, /구매 링크 준비 중/);
+    assert.match(first.body, /상품페이지로 이동중/);
+    assert.doesNotMatch(first.body, /구매 링크 준비 중/);
     assert.match(first.body, /data\.unavailable === true/);
     assert.match(first.body, /retryBtn\.disabled = true/);
     assert.doesNotMatch(first.body, new RegExp(originalUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));

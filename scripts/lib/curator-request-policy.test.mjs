@@ -3,9 +3,12 @@ import assert from 'node:assert/strict';
 
 import {
   evaluateCuratorBatchFailure,
+  getReusableAttributedCuratorOriginal,
+  isInvalidCuratorAuthFailure,
   isReadyCuratorShortUrl,
   isSystemicLandingHardFailure,
   isTransientLandingHardFailure,
+  runCuratorRequestWithAuthRenewal,
   runCuratorRequestWithRetry,
   shouldReplaceCuratorEntry,
   shouldRetryCuratorError
@@ -40,7 +43,7 @@ test('retries a transient first 403 and returns the following success', async ()
   assert.deepEqual(waits, [10]);
 });
 
-test('does not retry a 401 authentication failure', async () => {
+test('does not retry a 401 authentication failure as a generic transient error', async () => {
   let calls = 0;
   const outcome = await runCuratorRequestWithRetry({
     runAttempt: async () => {
@@ -54,6 +57,207 @@ test('does not retry a 401 authentication failure', async () => {
   assert.equal(calls, 1);
   assert.equal(outcome.result.detail.status, 401);
   assert.equal(isTransientLandingHardFailure(outcome.result), false);
+});
+
+test('reuses only a matching attributed OliveYoung product URL owned by the partner', () => {
+  const goodsNo = 'A000000259298';
+  const activityId = 'e006efec55d1435eb8abf4d905a4770b';
+  const partnerId = '4ee076cc92da4447a1b4b42c590e4495';
+  const valid = {
+    shortenedUrl: null,
+    originalUrl:
+      'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+      goodsNo +
+      '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' +
+      activityId,
+    affiliateActivityId: activityId,
+    affiliatePartnerId: partnerId
+  };
+
+  assert.deepEqual(
+    getReusableAttributedCuratorOriginal(valid, goodsNo, partnerId),
+    {
+      originalUrl: valid.originalUrl,
+      affiliateActivityId: activityId,
+      affiliatePartnerId: partnerId
+    }
+  );
+
+  const wwwUrl = valid.originalUrl
+    .replace('m.oliveyoung.co.kr/m/goods/', 'www.oliveyoung.co.kr/store/goods/');
+  assert.equal(
+    getReusableAttributedCuratorOriginal(
+      { ...valid, originalUrl: wwwUrl },
+      goodsNo,
+      partnerId
+    ).originalUrl,
+    wwwUrl
+  );
+
+  const invalidEntries = [
+    { ...valid, affiliatePartnerId: 'someone-else' },
+    { ...valid, affiliateActivityId: 'differentActivity' },
+    {
+      ...valid,
+      affiliateActivityId: 'not_a_real_activity_id_00000000000',
+      originalUrl: valid.originalUrl.replace(activityId, 'not_a_real_activity_id_00000000000')
+    },
+    { ...valid, originalUrl: valid.originalUrl.replace(goodsNo, 'A000000000001') },
+    { ...valid, originalUrl: valid.originalUrl.replace('utm_source=shutter', 'utm_source=other') },
+    { ...valid, originalUrl: valid.originalUrl.replace('utm_medium=affiliate', 'utm_medium=other') },
+    { ...valid, originalUrl: valid.originalUrl.replace('m.oliveyoung.co.kr', 'example.com') },
+    { ...valid, originalUrl: valid.originalUrl.replace('m.oliveyoung.co.kr', 'm.oliveyoung.co.kr.example.com') },
+    { ...valid, originalUrl: valid.originalUrl.replace('/m/goods/getGoodsDetail.do', '/m/goods/other.do') },
+    { ...valid, originalUrl: valid.originalUrl.replace('m.oliveyoung.co.kr', 'm.oliveyoung.co.kr:444') },
+    { ...valid, originalUrl: valid.originalUrl.replace('https://', 'http://') },
+    { ...valid, originalUrl: valid.originalUrl.replace('https://', 'https://user@example.com@') },
+    { ...valid, originalUrl: valid.originalUrl + '&goodsNo=' + goodsNo },
+    { ...valid, originalUrl: valid.originalUrl + '&utm_source=shutter' },
+    { ...valid, originalUrl: valid.originalUrl + '#fragment' },
+    { ...valid, shortenedUrl: 'https://oy.run/already-ready' }
+  ];
+  for (const entry of invalidEntries) {
+    assert.equal(
+      getReusableAttributedCuratorOriginal(entry, goodsNo, partnerId),
+      null
+    );
+  }
+});
+
+test('canonicalizes a reusable attributed URL to only known parameters', () => {
+  const goodsNo = 'A000000259298';
+  const activityId = 'e006efec55d1435eb8abf4d905a4770b';
+  const partnerId = '4ee076cc92da4447a1b4b42c590e4495';
+  const reusable = getReusableAttributedCuratorOriginal(
+    {
+      originalUrl:
+        'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?extra=drop&goodsNo=' +
+        goodsNo +
+        '&utm_medium=affiliate&utm_content=OY_' +
+        activityId +
+        '&utm_source=shutter',
+      affiliateActivityId: activityId,
+      affiliatePartnerId: partnerId
+    },
+    goodsNo,
+    partnerId
+  );
+
+  assert.equal(
+    reusable.originalUrl,
+    'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+      goodsNo +
+      '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' +
+      activityId
+  );
+});
+
+test('recognizes only an invalid-token 401 as eligible for auth renewal', () => {
+  assert.equal(
+    isInvalidCuratorAuthFailure({
+      ...hard(401),
+      detail: { status: 401, json: { error: 'invalid_token' } }
+    }),
+    true
+  );
+  assert.equal(
+    isInvalidCuratorAuthFailure({
+      ...hard(401),
+      detail: { status: 401, json: { reason: 'identity_code_22004' } }
+    }),
+    true
+  );
+  assert.equal(isInvalidCuratorAuthFailure(hard(401)), false);
+  assert.equal(isInvalidCuratorAuthFailure(hard(403)), false);
+});
+
+test('renews invalid auth once and repeats the same request with the new JWT', async () => {
+  let activeJwt = 'old-jwt';
+  const usedJwts = [];
+  let renewalCalls = 0;
+  const outcome = await runCuratorRequestWithAuthRenewal({
+    currentAuthJwt: activeJwt,
+    runRequest: async () => {
+      usedJwts.push(activeJwt);
+      return activeJwt === 'old-jwt'
+        ? {
+            result: {
+              ...hard(401),
+              detail: { status: 401, json: { error: 'invalid_token' } }
+            },
+            attempts: 1
+          }
+        : { result: { ok: true, shortenedUrl: 'https://oy.run/renewed' }, attempts: 1 };
+    },
+    renewAuth: async () => {
+      renewalCalls += 1;
+      return { jwt: 'new-jwt' };
+    },
+    applyAuth: async (renewedAuth) => {
+      activeJwt = renewedAuth.jwt;
+    }
+  });
+
+  assert.equal(outcome.result.ok, true);
+  assert.equal(outcome.authRenewalAttempted, true);
+  assert.equal(outcome.authRenewed, true);
+  assert.equal(renewalCalls, 1);
+  assert.deepEqual(usedJwts, ['old-jwt', 'new-jwt']);
+});
+
+test('keeps the original 401 when renewal fails or returns the same JWT', async () => {
+  const invalid = {
+    result: {
+      ...hard(401),
+      detail: { status: 401, json: { error: 'invalid_token' } }
+    },
+    attempts: 1
+  };
+  for (const renewedAuth of [null, { jwt: 'old-jwt' }]) {
+    let requests = 0;
+    let renewals = 0;
+    const outcome = await runCuratorRequestWithAuthRenewal({
+      currentAuthJwt: 'old-jwt',
+      runRequest: async () => {
+        requests += 1;
+        return invalid;
+      },
+      renewAuth: async () => {
+        renewals += 1;
+        return renewedAuth;
+      }
+    });
+    assert.equal(requests, 1);
+    assert.equal(renewals, 1);
+    assert.equal(outcome.result.detail.status, 401);
+    assert.equal(outcome.authRenewed, false);
+  }
+});
+
+test('bounds a repeated invalid-token response to one renewal and one retry', async () => {
+  let requests = 0;
+  let renewals = 0;
+  const outcome = await runCuratorRequestWithAuthRenewal({
+    currentAuthJwt: 'old-jwt',
+    runRequest: async () => {
+      requests += 1;
+      return {
+        result: {
+          ...hard(401),
+          detail: { status: 401, json: { error: 'invalid_token' } }
+        },
+        attempts: 1
+      };
+    },
+    renewAuth: async () => {
+      renewals += 1;
+      return { jwt: 'new-jwt' };
+    }
+  });
+  assert.equal(requests, 2);
+  assert.equal(renewals, 1);
+  assert.equal(outcome.result.detail.status, 401);
+  assert.equal(outcome.authRenewed, true);
 });
 
 test('stops cleanly when retry preparation fails', async () => {

@@ -181,7 +181,7 @@ function mobileBridgeHtml({ goodsNo, appUrl, webUrl, androidIntentUrl }) {
 }
 
 function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
-  const statusText = queueStatus || '구매 링크를 준비하고 있습니다.';
+  const statusText = queueStatus || '상품페이지로 이동 중입니다.';
   const safeGoodsNo = htmlEscape(goodsNo);
   const checkUrl =
     '/api/oliveyoung/curator-redirect?goodsNo=' +
@@ -194,7 +194,7 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title>구매 링크 준비 중</title>
+  <title>상품페이지로 이동중</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:#f4fbf7;color:#14251c}
@@ -214,8 +214,8 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
 <body>
   <main>
     <div class="spinner" aria-hidden="true"></div>
-    <h1>구매 링크 준비 중</h1>
-    <p>상품번호 ${safeGoodsNo}의 구매 링크를 준비하고 있습니다. 준비되면 자동으로 올리브영으로 이동합니다.</p>
+    <h1>상품페이지로 이동중</h1>
+    <p>상품번호 ${safeGoodsNo}의 올리브영 상품페이지로 이동하고 있습니다.</p>
     <div class="status" id="status">${htmlEscape(statusText)}</div>
     <div class="actions">
       <button type="button" id="retry">지금 다시 확인</button>
@@ -255,13 +255,13 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
 
       function check() {
         tries += 1;
-        setStatus(tries <= 1 ? '링크 상태 확인 중...' : '아직 준비 중입니다. 다시 확인 중...');
+        setStatus(tries <= 1 ? '상품페이지 확인 중...' : '상품페이지 연결을 다시 확인 중...');
         fetch(checkUrl, { cache: 'no-store' })
           .then(function (res) { return res.ok ? res.json() : null; })
           .then(function (data) {
             var url = readyUrl(data);
             if (url) {
-              setStatus('준비 완료. 이동합니다.');
+              setStatus('상품페이지로 이동합니다.');
               window.location.replace(url);
               return;
             }

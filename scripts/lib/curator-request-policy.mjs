@@ -22,6 +22,86 @@ export function isTransientLandingHardFailure(pack) {
   );
 }
 
+export function isInvalidCuratorAuthFailure(pack) {
+  if (!pack || pack.ok || pack.hardFailure !== true) return false;
+  if (landingFailureStatus(pack) !== 401) return false;
+  const detail = pack.detail && pack.detail.json;
+  return Boolean(
+    detail &&
+      (detail.error === 'invalid_token' || detail.reason === 'identity_code_22004')
+  );
+}
+
+export async function runCuratorRequestWithAuthRenewal({
+  runRequest,
+  renewAuth,
+  applyAuth,
+  currentAuthJwt = '',
+  authRenewalAlreadyAttempted = false
+}) {
+  if (typeof runRequest !== 'function') {
+    throw new TypeError('runRequest function is required');
+  }
+
+  const initialOutcome = await runRequest();
+  if (
+    authRenewalAlreadyAttempted ||
+    !isInvalidCuratorAuthFailure(initialOutcome && initialOutcome.result)
+  ) {
+    return {
+      ...initialOutcome,
+      authRenewalAttempted: false,
+      authRenewed: false
+    };
+  }
+
+  let renewedAuth = null;
+  try {
+    renewedAuth =
+      typeof renewAuth === 'function'
+        ? await renewAuth({
+            previousAuthJwt: String(currentAuthJwt || ''),
+            failure: initialOutcome.result
+          })
+        : null;
+  } catch (authRenewalError) {
+    return {
+      ...initialOutcome,
+      authRenewalAttempted: true,
+      authRenewed: false,
+      authRenewalError
+    };
+  }
+
+  const nextAuthJwt = String(renewedAuth && renewedAuth.jwt ? renewedAuth.jwt : '');
+  if (!nextAuthJwt || nextAuthJwt === String(currentAuthJwt || '')) {
+    return {
+      ...initialOutcome,
+      authRenewalAttempted: true,
+      authRenewed: false
+    };
+  }
+
+  try {
+    if (typeof applyAuth === 'function') await applyAuth(renewedAuth);
+  } catch (authRenewalError) {
+    return {
+      ...initialOutcome,
+      authRenewalAttempted: true,
+      authRenewed: false,
+      authRenewalError
+    };
+  }
+
+  const retryOutcome = await runRequest();
+  return {
+    ...retryOutcome,
+    authRenewalAttempted: true,
+    authRenewed: true,
+    initialAuthFailure: initialOutcome.result
+  };
+}
+
 export function shouldRetryCuratorError(
   entry,
   { now = Date.now(), retryErrorAfterMs = 0 } = {}
@@ -48,6 +128,67 @@ export function isReadyCuratorShortUrl(value) {
     }
   } catch {}
   return false;
+}
+
+export function getReusableAttributedCuratorOriginal(
+  entry,
+  goodsNo,
+  expectedPartnerId
+) {
+  if (!entry || isReadyCuratorShortUrl(entry.shortenedUrl)) return null;
+
+  const normalizedGoodsNo = String(goodsNo || '').trim().toUpperCase();
+  const activityId = String(entry.affiliateActivityId || '').trim();
+  const partnerId = String(entry.affiliatePartnerId || '').trim();
+  const expectedPartner = String(expectedPartnerId || '').trim();
+  const originalUrl = String(entry.originalUrl || '').trim();
+
+  if (!/^[AB]\d+$/i.test(normalizedGoodsNo)) return null;
+  if (!/^[A-Fa-f0-9]{32}$/.test(activityId)) return null;
+  if (!/^[A-Fa-f0-9]{32}$/.test(partnerId)) return null;
+  if (!/^[A-Fa-f0-9]{32}$/.test(expectedPartner)) return null;
+  if (partnerId.toLowerCase() !== expectedPartner.toLowerCase()) return null;
+
+  try {
+    const url = new URL(originalUrl);
+    const allowedProductPath =
+      (url.hostname === 'm.oliveyoung.co.kr' &&
+        url.pathname === '/m/goods/getGoodsDetail.do') ||
+      (url.hostname === 'www.oliveyoung.co.kr' &&
+        url.pathname === '/store/goods/getGoodsDetail.do');
+    if (
+      url.protocol !== 'https:' ||
+      !allowedProductPath ||
+      url.username ||
+      url.password ||
+      url.port ||
+      url.hash
+    ) {
+      return null;
+    }
+    for (const name of ['goodsNo', 'utm_source', 'utm_medium', 'utm_content']) {
+      if (url.searchParams.getAll(name).length !== 1) return null;
+    }
+    if (String(url.searchParams.get('goodsNo') || '').toUpperCase() !== normalizedGoodsNo) {
+      return null;
+    }
+    if (url.searchParams.get('utm_source') !== 'shutter') return null;
+    if (url.searchParams.get('utm_medium') !== 'affiliate') return null;
+    if (url.searchParams.get('utm_content') !== `OY_${activityId}`) return null;
+
+    const canonical = new URL(`${url.origin}${url.pathname}`);
+    canonical.searchParams.set('goodsNo', normalizedGoodsNo);
+    canonical.searchParams.set('utm_source', 'shutter');
+    canonical.searchParams.set('utm_medium', 'affiliate');
+    canonical.searchParams.set('utm_content', `OY_${activityId}`);
+    return {
+      originalUrl: canonical.toString(),
+      affiliateActivityId: activityId,
+      affiliatePartnerId: partnerId
+    };
+  } catch {
+    return null;
+  }
 }
 
 function curatorLinkQuality(entry) {

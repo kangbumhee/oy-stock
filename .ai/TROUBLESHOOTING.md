@@ -55,7 +55,7 @@ AI가 에러를 해결할 때마다 아래 형식으로 추가한다.
 ### 쿠키 갱신 후에도 새 큐레이터 링크가 바로 생성되지 않음
 
 - 발생일: 2026-07-08
-- 증상: `/api/oliveyoung/curator-redirect?goodsNo=...`가 "구매 링크 준비 중" 화면에 머물거나 `cloudrun_live_failed`를 반환.
+- 증상: `/api/oliveyoung/curator-redirect?goodsNo=...`가 "상품페이지로 이동중" 화면에 머물거나 `cloudrun_live_failed`를 반환.
 - 원인:
   - Vercel 프로젝트의 Ignored Build Step이 `exit 0`이라 Deploy Hook 기반 재배포가 `CANCELED` 처리되어 최신 `OY_REFRESH_COOKIE`가 운영 함수에 반영되지 않았다.
   - 빠른 생성용 Cloud Run 서비스도 오래된 `OY_REFRESH_COOKIE`를 들고 있어 `missing_or_expired_curator_auth`를 반환했다.
