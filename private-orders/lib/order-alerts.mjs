@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 const execute = promisify(execFile);
 const WORKFLOW = 'oy-purchase-alert.yml';
 const EMAIL_STEP = 'Send purchase reconnect email';
-const REASONS = new Set(['reconnect_required', 'check_failed']);
+const REASONS = new Set(['reconnect_required', 'check_failed', 'connection_test']);
 const AUTH_CODES = new Set(['AUTH_REQUIRED', 'SESSION_INVALID', 'CREDENTIALS_REJECTED', 'ADDITIONAL_VERIFICATION',
   'CAPTCHA_NOT_CLEARED', 'CAPTCHA_AUTOMATIC_DISABLED', 'AUTO_REFRESH_PAUSED']);
 const ATTENTION_CODES = new Set(['DAILY_BUDGET_EXHAUSTED', 'MONTHLY_BUDGET_EXHAUSTED', 'BUDGET_EXHAUSTED']);
@@ -243,9 +243,10 @@ export async function sendPurchaseAlert({ env = process.env, createTransport } =
     transporter = makeTransport({ service: 'gmail', auth: { user: from, pass },
       connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000 });
     const reconnect = metadata.reason === 'reconnect_required';
+    const testing = metadata.reason === 'connection_test';
     await transporter.sendMail({ from, to,
-      subject: reconnect ? '[구매노트] 구매 계정 재연결 필요' : '[구매노트] 구매 내역 갱신 / 상태 확인 실패',
-      text: [reconnect ? '개인 구매노트의 구매 계정 연결 확인이 필요합니다.' : '개인 구매노트에서 갱신 또는 상태 확인 오류를 감지했습니다.',
+      subject: testing ? '[구매노트] 오류 알림 연결 테스트' : reconnect ? '[구매노트] 구매 계정 재연결 필요' : '[구매노트] 구매 내역 갱신 / 상태 확인 실패',
+      text: [testing ? '오류 알림 메일의 발송 경로를 확인하는 테스트입니다. 이 메일 자체가 계정 오류를 뜻하지 않으며 재연결할 필요는 없습니다.' : reconnect ? '개인 구매노트의 구매 계정 연결 확인이 필요합니다.' : '개인 구매노트에서 갱신 또는 상태 확인 오류를 감지했습니다.',
         `감지 시각: ${new Date(metadata.detectedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (한국 시간)`,
         '구매노트에 지정된 Google 계정으로 로그인한 뒤 구매 계정별 오류를 확인해 주세요.',
         'https://orders.cp1.co.kr',

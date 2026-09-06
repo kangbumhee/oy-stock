@@ -12,7 +12,7 @@ on:
         description: 'Sanitized attention category'
         required: true
         type: choice
-        options: [reconnect_required, check_failed]
+        options: [reconnect_required, check_failed, connection_test]
       detectedAt:
         description: 'Detection time in UTC ISO format'
         required: true
@@ -43,7 +43,7 @@ jobs:
           OY_PURCHASE_ALERT_DETECTED_AT: ${{ inputs.detectedAt }}
         run: node private-orders/lib/order-alerts.mjs --send-email
       - name: Mark purchase attention required for GitHub failure notifications
-        if: always()
+        if: always() && inputs.reason != 'connection_test'
         run: |
           echo "::error::Private purchase connection or collection requires attention."
           exit 1
