@@ -25,6 +25,7 @@
 
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { redeployProduction } from './lib/oy-vercel-redeploy.mjs';
 
 const ENV_KEY = 'OLIVEYOUNG_LINKAGE_STRING';
 const COOKIE_ENV_KEY = 'OY_REFRESH_COOKIE';
@@ -246,30 +247,6 @@ async function sendLinkageExpiryAlert(p) {
   }
 }
 
-async function triggerVercelRedeploy() {
-  if (process.env.SKIP_VERCEL_DEPLOY_HOOK === '1') {
-    console.log('[재배포] SKIP_VERCEL_DEPLOY_HOOK=1 — Deploy Hook 호출 생략');
-    return false;
-  }
-
-  const hookUrl = (process.env.VERCEL_DEPLOY_HOOK || '').trim();
-  if (!hookUrl) {
-    console.log('[재배포] VERCEL_DEPLOY_HOOK 미설정 — 수동 재배포 필요');
-    console.log('         Vercel Dashboard → Settings → Git → Deploy Hooks 에서 생성 후');
-    console.log('         GitHub Secret VERCEL_DEPLOY_HOOK 에 URL 저장하세요.');
-    return false;
-  }
-  console.log('3) Vercel 재배포 트리거…');
-  const r = await fetch(hookUrl, { method: 'POST' });
-  if (!r.ok) {
-    const t = await r.text();
-    console.error('[재배포 실패]', r.status, t);
-    return false;
-  }
-  console.log('[재배포] Vercel 빌드 시작됨 — 1~2분 후 반영됩니다.');
-  return true;
-}
-
 function teamQs(teamId) {
   return teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
 }
@@ -460,9 +437,17 @@ async function main() {
 
   console.log('[완료] Vercel 큐레이터 인증 환경변수 반영 완료.');
 
-  const redeployed = await triggerVercelRedeploy();
+  let redeployed = false;
+  if (process.env.SKIP_VERCEL_DEPLOY_HOOK !== '1') {
+    const deployment = await redeployProduction({ token, projectId, teamId });
+    console.log(`[재배포] 현재 운영 버전으로 인증 갱신 빌드 시작: ${deployment.id}`);
+    redeployed = true;
+  }
   if (!redeployed) {
     console.log('[안내] 환경변수만 갱신됨. 실제 적용하려면 Vercel 재배포가 필요합니다.');
+    if (process.env.SKIP_VERCEL_DEPLOY_HOOK !== '1') {
+      throw new Error('OY_PUBLICATION_DEPLOY_FAILED');
+    }
   }
 }
 

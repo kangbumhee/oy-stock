@@ -42,8 +42,3 @@ jobs:
           OY_PURCHASE_ALERT_REASON: ${{ inputs.reason }}
           OY_PURCHASE_ALERT_DETECTED_AT: ${{ inputs.detectedAt }}
         run: node private-orders/lib/order-alerts.mjs --send-email
-      - name: Mark purchase attention required for GitHub failure notifications
-        if: always() && inputs.reason != 'connection_test'
-        run: |
-          echo "::error::Private purchase connection or collection requires attention."
-          exit 1

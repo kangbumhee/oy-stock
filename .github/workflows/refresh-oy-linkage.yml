@@ -1,5 +1,5 @@
 # 수동 실행 시 linkageString → JWT 검증 후 Vercel/Cloud Run env 갱신.
-# 기본 실행은 배포하지 않으며, 수동 옵션을 켠 경우에만 Vercel을 한 번 배포한다.
+# 기본 실행은 Vercel 재배포와 실제 운영 인증 확인까지 완료한다.
 name: Refresh OliveYoung linkageString
 
 on:
@@ -9,7 +9,11 @@ on:
         description: '환경변수 갱신 후 Vercel을 한 번 배포'
         required: false
         type: boolean
-        default: false
+        default: true
+
+concurrency:
+  group: oy-auth-publication
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -68,6 +72,12 @@ jobs:
             --project "$GCP_PROJECT_ID" \
             --update-env-vars "^~^OY_REFRESH_COOKIE=${OY_REFRESH_COOKIE}~OLIVEYOUNG_LINKAGE_STRING=${LINKAGE_HEX}" \
             --quiet
+
+      - name: Verify published Vercel authentication
+        if: inputs.deployVercel == true
+        env:
+          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+        run: node scripts/verify-oy-publication.mjs
 
       - name: Health Check
         run: |

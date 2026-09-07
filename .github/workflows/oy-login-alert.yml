@@ -43,8 +43,3 @@ jobs:
           OY_LOGIN_ALERT_SOURCE: ${{ inputs.source }}
           OY_LOGIN_ALERT_DETECTED_AT: ${{ inputs.detectedAt }}
         run: node scripts/send-oy-login-alert.mjs
-      - name: Mark login attention required for GitHub failure notifications
-        if: always()
-        run: |
-          echo "::error::OliveYoung login reconnect or health check requires attention."
-          exit 1

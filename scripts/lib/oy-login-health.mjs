@@ -208,7 +208,9 @@ export async function runLoginHealthCheck({ repoRoot, runCheck, checkProduction,
     let production;
     try { production = await (checkProduction || (() => checkProductionLogin()))(); }
     catch { production = 1; }
-    if (production === 42) exitCode = 42;
+    // A healthy local session with expired server auth needs publication repair,
+    // not another user login. Treat it as a deployment/check failure.
+    if (production === 42) exitCode = 1;
     else if (production !== 0 || local !== 0) exitCode = 1;
   }
   return recordOutcome({ repoRoot, ...options, exitCode, source: 'periodic_check' });

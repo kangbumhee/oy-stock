@@ -19,7 +19,7 @@ export async function sendLoginAlert({ env = process.env, createTransport = node
   const time = new Date(metadata.detectedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
   const text = [
     reconnect ? '올리브영 로그인 또는 운영 사이트의 큐레이터 인증이 만료되었거나 연결되지 않았습니다.'
-      : metadata.source === 'daily_refresh' ? '올리브영 일일 자동 갱신 작업이 실패했습니다.' : '올리브영 로그인 상태 확인이 3회 연속 실패했습니다.',
+      : metadata.source === 'daily_refresh' ? '올리브영 자동 갱신 또는 운영 서버 반영에 실패했습니다.' : '올리브영 로그인 또는 운영 서버 인증 확인이 3회 연속 실패했습니다. 로컬 로그인이 정상이면 재로그인 없이 서버 반영을 복구해야 합니다.',
     `감지 시각: ${time} (한국 시간)`,
     '',
     '자동 갱신 PC에서 올리브영 계정 설정을 확인하고 갱신을 다시 실행해 주세요.',

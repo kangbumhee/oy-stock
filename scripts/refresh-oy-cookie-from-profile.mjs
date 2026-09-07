@@ -29,6 +29,7 @@ import { createCaptchaHandler } from './lib/oy-captcha-flow.mjs';
 import { OY_LOGIN_URL, runAutoLogin, assertLoginHost, isLoginUrl, inspectLoginOutcome } from './lib/oy-auto-login.mjs';
 import { acquireRefreshLock } from './lib/oy-refresh-lock.mjs';
 import { extractCookies, jwtExpFromLinkageHex } from './lib/cookie-extractor.mjs';
+import { waitForPublishedAuth } from './verify-oy-publication.mjs';
 import {
   githubRepoArgs,
   updateGitHubSecret
@@ -50,6 +51,7 @@ const args = new Set(process.argv.slice(2));
 const setupMode = args.has('--setup');
 const waitUntilLogin = setupMode && args.has('--wait-until-login');
 const checkOnly = args.has('--check-only') || args.has('--check');
+const publishOnly = args.has('--publish-only');
 const noDispatch = args.has('--no-dispatch');
 const unattended = !setupMode && process.env.OY_UNATTENDED !== '0';
 const headed = setupMode || args.has('--headed') || (!unattended && process.env.OY_HEADLESS !== '1');
@@ -398,7 +400,7 @@ async function setupProfile(context, page) {
 
 function dispatchRefreshWorkflow() {
   const workflow = (process.env.OY_REFRESH_WORKFLOW || 'refresh-oy-linkage.yml').trim();
-  runGh(['workflow', 'run', workflow, ...githubRepoArgs()]);
+  runGh(['workflow', 'run', workflow, '-f', 'deployVercel=true', ...githubRepoArgs()]);
   log(`GitHub workflow '${workflow}' dispatched`);
 
   try {
@@ -432,7 +434,7 @@ async function main() {
   let linkageReissueValidated = false;
   try {
     // Explicit inspection/setup never loads credentials or creates provider tasks.
-    const secrets = checkOnly || setupMode ? { configured: false, captchaEnabled: false } : await loadLoginSecrets({ repoRoot });
+    const secrets = checkOnly || setupMode || publishOnly ? { configured: false, captchaEnabled: false } : await loadLoginSecrets({ repoRoot });
     const parsedConfig = readCaptchaConfig({ ...process.env, TWOCAPTCHA_API_KEY: secrets.captchaApiKey || '' });
     const captchaConfig = { ...parsedConfig, enabled: Boolean(secrets.captchaEnabled && parsedConfig.enabled) };
     const budget = createCaptchaBudget(captchaConfig);
@@ -449,12 +451,12 @@ async function main() {
 
     // Health checks never activate curator membership, submit login, solve challenges,
     // or update GitHub. Only the daily refresh may perform those operations.
-    let state = checkOnly ? await collectState(context, page) : await ensureFreshLinkage(context, page);
+    let state = checkOnly || publishOnly ? await collectState(context, page) : await ensureFreshLinkage(context, page);
     if (checkOnly && process.env.OY_LOGIN_DIAGNOSTICS === '1') {
       log(`login diagnostics: ${JSON.stringify(await inspectChallengeDiagnostics(page))}`);
     }
     let previousExpiry = null;
-    if (!checkOnly && hasUsableCookies(state) && !isLoginPage(state) && !needsHumanVerification(state) &&
+    if (!checkOnly && !publishOnly && hasUsableCookies(state) && !isLoginPage(state) && !needsHumanVerification(state) &&
         !needsCuratorActivation(state) && state.exp < Date.now() / 1000 + DAILY_REFRESH_SECONDS) {
       // Reissue only the curator linkage token; preserve the underlying login session.
       // A token expiring before tomorrow must not be re-published unchanged as a refresh.
@@ -542,6 +544,9 @@ async function main() {
     }
 
     dispatchRefreshWorkflow();
+    log('waiting for the new authentication to reach production');
+    await waitForPublishedAuth(state.exp);
+    log('production authentication publication confirmed');
   } finally {
     if (context && previousLinkageCookies.length && !linkageReissueValidated) {
       await context.addCookies(previousLinkageCookies).catch(() => {});

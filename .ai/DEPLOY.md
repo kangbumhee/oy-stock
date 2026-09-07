@@ -1,5 +1,10 @@
 # 배포 설정
 
+2026-09-07 인증 전파 변경: [인증 전파 복구](../docs/auth-publication-recovery.md).
+쿠키 갱신은 현재 운영 배포를 Vercel API로 재배포하며, Deploy Hook을 사용하지 않는다.
+`deployVercel` 기본값 true. 실제 서버에 새 JWT가 적용되어야 성공한다.
+로그인/구매 알림은 전송 성공 시 성공으로 종료하며 의도적인 실패 알림은 생성하지 않는다.
+
 ## 플랫폼
 
 - 프론트/Serverless API: Vercel

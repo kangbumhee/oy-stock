@@ -57,10 +57,10 @@ test('production GET classifies explicit expired auth separately from unavailabl
   assert.equal(await checkProductionLogin({ fetchImpl: async () => ({ ok: false }) }), 1);
 });
 
-test('confirmed local or published expiry alerts immediately once until actual recovery', async (t) => {
+test('confirmed local expiry alerts immediately once until actual recovery', async (t) => {
   const { runLoginHealthCheck } = await import(healthUrl);
   const f = await fixture(t);
-  let local = 0;
+  let local = 42;
   let production = 42;
   const check = () => runLoginHealthCheck({ ...f.options, runCheck: async () => local, checkProduction: async () => production });
   assert.equal((await check()).notification, 'sent');
@@ -78,6 +78,17 @@ test('confirmed local or published expiry alerts immediately once until actual r
   assert.equal((await check()).notification, 'sent');
   assert.equal(f.calls.length, 2);
   assert.notEqual(f.calls[0].detectedAt, f.calls[1].detectedAt);
+});
+
+test('healthy local login with expired publication does not request user login', async (t) => {
+  const { runLoginHealthCheck } = await import(healthUrl);
+  const f = await fixture(t);
+  const check = () => runLoginHealthCheck({ ...f.options, runCheck: async () => 0, checkProduction: async () => 42 });
+  assert.equal((await check()).notification, 'not_needed');
+  assert.equal((await check()).notification, 'not_needed');
+  assert.equal((await check()).notification, 'sent');
+  assert.equal(f.calls[0].reason, 'check_failed');
+  assert.equal((await check()).notification, 'already_sent');
 });
 
 test('general failures alert at three observations; busy skips without changing state', async (t) => {
