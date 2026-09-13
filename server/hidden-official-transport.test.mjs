@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { readFile } from 'node:fs/promises';
 import { createHiddenOfficialTransport } from './hidden-official-transport.mjs';
 
 const STOCK = 'https://www.oliveyoung.co.kr';
@@ -153,5 +154,60 @@ test('private hidden route bypasses wildcard CORS even on unauthorized requests 
     assert.equal(publicHealth.headers.get('access-control-allow-origin'), '*');
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('review bootstrap uses an isolated unsigned mobile context without changing the desktop stock session', async () => {
+  const source = await readFile(new URL('./server.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('async function ensureHiddenReviewPage()');
+  const end = source.indexOf('\nfunction getHiddenStockHandler()', start);
+  assert.ok(start >= 0 && end > start);
+  let contexts = 0;
+  let contextOptions;
+  let currentUrl = 'about:blank';
+  const publicPage = { isClosed: () => false, url: () => currentUrl, route: async () => {},
+    goto: async url => { assert.equal(url, REVIEW + '/'); currentUrl = url; } };
+  const publicContext = { newPage: async () => publicPage, close: async () => {},
+    addCookies: () => { throw new Error('public reviews must not receive account cookies'); } };
+  const sandbox = vm.createContext({ URL, OY_M: REVIEW, ensureSession: async () => {}, sessionGeneration: 7,
+    hiddenReviewPage: null, hiddenReviewContext: null, hiddenReviewPageInitPromise: null,
+    browser: { newContext: async options => { contexts++; contextOptions = options; return publicContext; } },
+    browserContext: { newPage: () => { throw new Error('desktop stock context must remain separate'); } }
+  });
+  const bootstrap = vm.runInContext(source.slice(start, end) + '\nensureHiddenReviewPage;', sandbox);
+  const [first, concurrent] = await Promise.all([bootstrap(), bootstrap()]);
+  assert.equal(contexts, 1);
+  assert.equal(contextOptions.isMobile, true);
+  assert.match(contextOptions.userAgent, /Mobile/);
+  assert.equal(contextOptions.viewport.width, 390);
+  assert.equal('storageState' in contextOptions, false);
+  assert.equal('extraHTTPHeaders' in contextOptions, false);
+  assert.equal(first.page, publicPage);
+  assert.equal(concurrent.page, publicPage);
+  assert.equal(first.generation, 7);
+  await bootstrap();
+  assert.equal(contexts, 1);
+});
+
+test('review bootstrap still rejects redirects and replaced generations and closes its public context', async () => {
+  const source = await readFile(new URL('./server.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('async function ensureHiddenReviewPage()');
+  const end = source.indexOf('\nfunction getHiddenStockHandler()', start);
+  for (const mode of ['desktop-redirect', 'session-replaced']) {
+    let closed = 0;
+    let currentUrl = 'about:blank';
+    let sandbox;
+    const publicPage = { isClosed: () => false, url: () => currentUrl, route: async () => {}, goto: async () => {
+      currentUrl = mode === 'desktop-redirect' ? STOCK + '/store/main/main.do?oy=0' : REVIEW + '/';
+      if (mode === 'session-replaced') sandbox.sessionGeneration++;
+    } };
+    const publicContext = { newPage: async () => publicPage, close: async () => { closed++; } };
+    sandbox = vm.createContext({ URL, OY_M: REVIEW, ensureSession: async () => {}, sessionGeneration: 7,
+      hiddenReviewPage: null, hiddenReviewContext: null, hiddenReviewPageInitPromise: null,
+      browser: { newContext: async () => publicContext } });
+    const bootstrap = vm.runInContext(source.slice(start, end) + '\nensureHiddenReviewPage;', sandbox);
+    await assert.rejects(bootstrap(), /hidden_review_page_unavailable/);
+    assert.equal(closed, 1);
+    assert.equal(sandbox.hiddenReviewPage, null);
   }
 });

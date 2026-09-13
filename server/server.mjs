@@ -193,6 +193,7 @@ let searchPageInitPromise = null;
 let pricePage = null;
 let pricePageInitPromise = null;
 let hiddenReviewPage = null;
+let hiddenReviewContext = null;
 let hiddenReviewPageInitPromise = null;
 let hiddenStockHandler = null;
 let sessionReady = false;
@@ -573,23 +574,32 @@ async function ensureHiddenReviewPage() {
     } catch {}
   }
   if (hiddenReviewPageInitPromise) return hiddenReviewPageInitPromise;
-  const contextRef = browserContext;
-  if (!contextRef) throw new Error('hidden_review_context_unavailable');
+  const browserRef = browser;
+  if (!browserRef) throw new Error('hidden_review_context_unavailable');
   const nextInitPromise = (async () => {
-    const nextPage = await contextRef.newPage();
+    // The mobile storefront sends desktop browsers to www, which has no review
+    // API. Use its normal mobile layout in a separate public, unsigned context.
+    // Never import curator/account cookies or alter the public stock session.
+    const contextRef = await browserRef.newContext({
+      userAgent: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      locale: 'ko-KR', isMobile: true, viewport: { width: 390, height: 844 }
+    });
     try {
+      const nextPage = await contextRef.newPage();
       await nextPage.route('**/*', (route) => {
         const type = route.request().resourceType();
         return ['image', 'media', 'font'].includes(type) ? route.abort() : route.continue();
       });
       await nextPage.goto(OY_M + '/', { waitUntil: 'domcontentloaded', timeout: 10000 });
-      if (generation !== sessionGeneration || contextRef !== browserContext || new URL(nextPage.url()).origin !== OY_M) {
+      if (generation !== sessionGeneration || browserRef !== browser || new URL(nextPage.url()).origin !== OY_M) {
         throw new Error('hidden_review_session_changed');
       }
+      if (hiddenReviewContext) { try { await hiddenReviewContext.close(); } catch {} }
+      hiddenReviewContext = contextRef;
       hiddenReviewPage = nextPage;
       return { page: nextPage, generation };
     } catch {
-      try { await nextPage.close(); } catch {}
+      try { await contextRef.close(); } catch {}
       throw new Error('hidden_review_page_unavailable');
     }
   })();
@@ -1013,6 +1023,7 @@ async function _createSession() {
   pricePage = null;
   pricePageInitPromise = null;
   hiddenReviewPage = null;
+  hiddenReviewContext = null;
   hiddenReviewPageInitPromise = null;
   if (page) {
     try {
