@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-13T05:56:49.088Z",
+  "updatedAt": "2026-09-13T09:41:08.194Z",
   "links": {
     "A000000207822": {
       "shortenedUrl": "https://oy.run/pszchCvhvEjFBG",
@@ -149599,8 +149599,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000261675&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-09-10T09:05:38.241Z",
-      "retryAfter": "2026-09-11T09:06:03.806Z"
+      "generatedAt": "2026-09-13T09:41:08.194Z",
+      "retryAfter": "2026-09-14T09:41:24.089Z"
     },
     "A000000231399": {
       "shortenedUrl": "https://oy.run/rHueekQ71isTd6",
@@ -170500,8 +170500,8 @@
       "fallbackOriginalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=A000000258508&utm_source=shutter&utm_medium=affiliate",
       "error": "affiliate_link_unavailable",
       "errorCode": 7015,
-      "generatedAt": "2026-08-30T08:36:38.987Z",
-      "retryAfter": "2026-08-31T08:36:54.157Z"
+      "generatedAt": "2026-09-13T09:41:08.194Z",
+      "retryAfter": "2026-09-14T09:41:22.260Z"
     },
     "A000000240115": {
       "shortenedUrl": "https://oy.run/9avvRqjnM9RIwq",
@@ -231933,6 +231933,20 @@
       "affiliateActivityId": "fe00b0301513463d96ea22a1583c728f",
       "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
       "generatedAt": "2026-09-13T04:22:14.384Z"
+    },
+    "B000000245477": {
+      "shortenedUrl": "https://oy.run/81cQVOy9wjB2FN",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000245477&utm_source=shutter&utm_medium=affiliate&utm_content=OY_2830f3078a9446c9b1d179ba34fb4003",
+      "affiliateActivityId": "2830f3078a9446c9b1d179ba34fb4003",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-09-13T09:41:08.194Z"
+    },
+    "B000000265966": {
+      "shortenedUrl": "https://oy.run/s8LgwbavCCt2Vt",
+      "originalUrl": "https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=B000000265966&utm_source=shutter&utm_medium=affiliate&utm_content=OY_a6022cbca0e64f2787f6e3955b76ad6c",
+      "affiliateActivityId": "a6022cbca0e64f2787f6e3955b76ad6c",
+      "affiliatePartnerId": "4ee076cc92da4447a1b4b42c590e4495",
+      "generatedAt": "2026-09-13T09:41:08.194Z"
     }
   }
 }
