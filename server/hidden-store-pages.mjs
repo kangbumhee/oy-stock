@@ -56,7 +56,8 @@ export async function readHiddenStoreBatch({ request, productId, goodsNo, cursor
         searchWords: region, mapLat: 37.5665, mapLon: 126.978
       } });
       if (response?.status !== 'SUCCESS' || (response.code != null && Number(response.code) !== 200) ||
-        !Array.isArray(response.data?.storeList) || response.data.stockDisplayYn === false) throw new Error('unavailable');
+        !Array.isArray(response.data?.storeList) ||
+        (response.data.stockDisplayYn === false && !(response.data.storeList.length === 0 && response.data.totalCount === 0))) throw new Error('unavailable');
     } catch {
       reason = 'store_page_unavailable';
       break;

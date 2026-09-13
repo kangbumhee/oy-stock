@@ -316,6 +316,55 @@ test('provider failure/missing schema/non-display is incomplete, not empty stock
   }
 });
 
+test('verified SUCCESS empty total-zero non-display page ends the province and resumes at the next region', async () => {
+  const calls = [];
+  const first = await readHiddenStoreBatch(batchOptions(async ({ body }) => {
+    calls.push([body.searchWords, body.pageIdx]);
+    return storePage([], { pageIdx: 9, totalCount: 0, stockDisplayYn: false });
+  }, { cursor: encodeHiddenCursor(cursorState({ page: 9, rows: 369 }), SECRET), pagesPerBatch: 1 }));
+  assert.deepEqual(calls, [['서울', 9]]);
+  assert.equal(first.coverage.reason, 'more_pages');
+  assert.equal(first.coverage.complete, false);
+  assert.equal(first.coverage.scannedRegions, 1);
+  assert.equal(first.coverage.observedRows, 369);
+  assert.deepEqual(first.stores, []);
+  const continuation = decodeHiddenCursor(first.nextCursor, SECRET, CONTEXT, NOW);
+  assert.equal(continuation.region, 1);
+  assert.equal(continuation.page, 1);
+  const next = await readHiddenStoreBatch(batchOptions(async ({ body }) => {
+    assert.equal(body.searchWords, '부산');
+    assert.equal(body.pageIdx, 1);
+    return storePage([storeRow('busan-first', 2)]);
+  }, { cursor: first.nextCursor, pagesPerBatch: 1 }));
+  assert.equal(next.stores[0].code, 'busan-first');
+  const last = await readHiddenStoreBatch(batchOptions(async () => storePage([], { totalCount: 0, stockDisplayYn: false }), {
+    cursor: encodeHiddenCursor(cursorState({ region: OFFLINE_REGIONS.length - 1, page: 9 }), SECRET), pagesPerBatch: 1
+  }));
+  assert.equal(last.coverage.complete, true);
+  assert.equal(last.coverage.reason, 'public_pages_exhausted');
+  assert.equal(last.nextCursor, null);
+});
+
+test('non-display pages with rows or a missing/nonzero/non-numeric-zero total still fail closed', async () => {
+  for (const response of [
+    storePage([storeRow('withheld-stock')], { stockDisplayYn: false, totalCount: 0 }),
+    storePage([storeRow('withheld-stock')], { stockDisplayYn: false, totalCount: 1 }),
+    ...[undefined, null, 1, '0'].map(totalCount => storePage([], { stockDisplayYn: false, totalCount }))
+  ]) {
+    const result = await readHiddenStoreBatch(batchOptions(async () => response, {
+      cursor: encodeHiddenCursor(cursorState({ page: 9, rows: 369 }), SECRET), pagesPerBatch: 1
+    }));
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.coverage.reason, 'store_page_unavailable');
+    assert.equal(result.coverage.scannedRegions, 0);
+    assert.equal(result.coverage.observedRows, 369);
+    assert.deepEqual(result.stores, []);
+    const unchanged = decodeHiddenCursor(result.nextCursor, SECRET, CONTEXT, NOW);
+    assert.equal(unchanged.region, 0);
+    assert.equal(unchanged.page, 9);
+  }
+});
+
 test('unknown quantities stay null, true zero remains zero, invalid store codes never render', async () => {
   const values = [null, undefined, '', '   ', false, true, {}, [], 'unknown', -1, Infinity, 0, '0', 6, '51'];
   const result = await readHiddenStoreBatch(batchOptions(async () => storePage([
