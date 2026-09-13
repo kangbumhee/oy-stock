@@ -10,6 +10,13 @@
 
 ## 운영 배포 및 실제 확인
 
+### 무료 옵션 미리보기·전국 수량순 후속 배포 (2026-09-13)
+
+- 소스 `133e194ede4b319343443f912ddd4429122dee47`, Vercel `dpl_7JwSSXwSk5ufz5FnsSg2DSqtJ2Wp` READY 후 promote. [배포 URL](https://oy-stock-m98fjtqhr-kbhs-projects-ee1427b6.vercel.app), [운영 alias](https://olivestock.co.kr) 연결/실제 `hidden-preview-1` JS 로딩 확인. Cloud Run 변경 없음.
+- 검증 소스와 빌드된 hidden-stock/alerts/index/SW 및 gateway의 해시 일치 확인. 전체272개 Node 테스트 및 위 세 화면 폭 모의 브라우저 테스트 통과.
+- 13:47 KST 운영 무료 검색 `메디큐브`:4개 공개 옵션 설명/버튼과4개1000px 공식 이미지 로딩. 선택 옵션의 근처 버튼에서 이용권 결제 팝업이 나타나고 취소 후4개 공개 카드 유지, 매장 행0을 확인했다.
+- 무인증 전국 stores 요청401 `device_auth_required`, `private, no-store, max-age=0`, 매장 결과 없음. 실제 결제/프로모션 권한 부여는 실행하지 않았다. 전국 수량순 및 유료 승인 후 재개는 모의 UI/회귀 테스트로 검증한 범위다.
+
 ### 이미지·근처 우선 팝업 후속 배포 (2026-09-13)
 
 - 최종 구현 `d528b570dab83205286c2ede1740d7cddefae52b`. Vercel `dpl_Cgz3wugZSkyfAm8Mv3mVQBUX8XkE` READY 확인 후 promote, [운영 alias](https://olivestock.co.kr) inspect와 실제 JS/CSS 버전 `20260913-hidden-nearby-2` 확인.
