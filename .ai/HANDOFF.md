@@ -29,20 +29,23 @@
 - 작업 위치: `C:\Projects\oy-hidden-offline-20260913`, 기반 `origin/main` `053ffb91`. 원래 dirty workspace는 변경하지 않는다.
 - 구현: 유료 gateway search/options/stores, 서비스 Bearer 전용 Cloud Run 발견·매장 cursor API, 비공개 Blob 옵션 인덱스/백필 체크포인트, 검색 결과·상품 팝업 유료 UI와 결제·프로모션 이용권 재사용.
 - 공개 옵션과 과거 리뷰의 공식 SKU 연결로 숨겨진 옵션을 찾고, 실제 매장 수량은 별도 조회한다. 프런트에 제품별 SKU를 하드코딩하거나 `public/data`·브라우저 저장소·서비스워커에 유료 자료를 저장하지 않는다.
-- 검증 범위: 숨김 기능 유닛·분할 저장·실제 로컬 HTTP CORS 통합 검증, Python Playwright로390/1440폭 실제 프런트에 모의 API를 연결한 무료/평생권/해제·결제 안내·전국 조회 흐름 통과. 스크린샷도 직접 확인했다. 운영 결제·비밀키·운영 저장소를 사용하지 않았으므로 실서비스 검증과는 구분한다.
-- 검증 상세와 재현 방법: `.ai/HIDDEN_STOCK_ACCEPTANCE.md`. 기존 검색·가격알림을 포함한192개 테스트 통과, 브라우저2개 폭 통과.
+- 검증 상세와 재현 방법: [HIDDEN_STOCK_ACCEPTANCE.md](HIDDEN_STOCK_ACCEPTANCE.md). 기존 검색·가격알림·수집기·서버를 포함한239개 Node 테스트 통과. Python Playwright390/1440폭 재실행 통과, 페이지 오류0, 스크린샷 직접 검토. 유료/평생권 화면은 모의 API 검증이며 실제 결제를 실행한 것은 아니다.
+- 운영 프런트: Vercel `dpl_8faSNYwFf92KaGWUJ9Jg22UzBw5m` READY, [배포 URL](https://oy-stock-7nrlkesu2-kbhs-projects-ee1427b6.vercel.app), [운영 alias](https://olivestock.co.kr) 연결과 소스 `89acaad6` 확인. 공개 gateway 무인증401·`private, no-store`·옵션 자료 없음, 무료 이용권 안내/모달 확인.
+- 운영 백엔드: 최종 수정 `6e90591355dd49ef8d07a80e547fd166330d1946` 반영. [Cloud Run 배포 실행34734380525](https://github.com/kangbumhee/oy-stock/actions/runs/34734380525)가3분21초에 성공했으며 `oy-stock-api-00243-lw4` ready/트래픽100%를 확인했다.
+- 운영 연결 검증: 공식 모바일 비서명 컨텍스트, 비공개 Blob `Accept-Encoding:identity`의 strong ETag 및304 누락 태그 보존을 반영했다. 실제 읽기와 같은 내용 조건부 쓰기(CAS) 확인. 큐레이터 JWT 확인은 유효, 관찰된 만료시각 `2026-09-13T15:10:13Z`이며 이후 세션 상태는 다시 확인한다.
 - 공식 매장 API 실조회에서 `충북`4개 대 `충청북도`34개 등 지역 약칭 누락을 발견하여 충청/경상은 전체 도명을 사용했다. 전북/전남 주소는 기존 `전라북도`/`전라남도` 검색이0건이므로 검증된 짧은 표기를 유지한다. 각 지역은 짧은 결과나 `totalCount`가 아니라 빈 페이지까지 순회한다.
-- 저장소는 비공개v2 64분할+별도scan으로 변경했다. 상품/매장 조회는 대상 분할만 읽는다. 전체 카탈로그 운영 수집은 아직 실행하지 않았다.
-- 추가 작업: `scan.collection` 기반 CAS lease/중복 제거 큐와 주기별 재조사를 연결한다. 새 `scripts/collect-hidden-stock.mjs`, GitHub Actions **Collect Hidden OliveYoung Options**로 매시17분/수동 실행, 기본100단계·최대8분, 중단 위치 재개를 제공한다. LLM API/앱 자동화는 사용하지 않는다.
+- 운영 발견: 요청한 `A000000255680`/`8800289469145` 옵션을 실제 서비스에서 찾았다. `한교동` 검색은13개 숨김 옵션을 반환했지만 `coverage`는 부분 상태다. 모든 숨김 옵션이나 모든 실물 재고 발견 완료가 아니다.
+- 대상 SKU 전국 검증:17개 지역의 공식 공개 페이지를18회 연속 조회해 `public_pages_exhausted`/`complete=true`를 확인했다. 중복 제거1,343매장, 양수 재고147매장, 수량 미확인0매장이다. 해당 SKU의 조회 시점 결과이며 전체 상품이나 모든 물리적 재고를 검증했다는 의미가 아니다.
+- 저장소는 비공개v2 64분할+별도scan이며 상품/매장 조회는 대상 분할만 읽는다. `scan.collection` CAS lease/중복 제거 큐/주기별 재조회가 연결되었고, GitHub Variable `HIDDEN_STOCK_COLLECTION_ENABLED=true`를 확인했다.
+- 첫 수집: [수동5단계 실행34734224217](https://github.com/kangbumhee/oy-stock/actions/runs/34734224217)가1분19초 후 백오프 경고와 함께 종료되었다. 실행 종료는 인덱싱 완료가 아니다. 당시 상태는 알려진 상품101, 확인20, 숨김 옵션15, 대기81, 실패 상품3, 부분 상품1, 공식 카탈로그 총수21,591; `pausedUntil=2026-09-13T03:56:50.664Z`. 백오프 이후 후속 예약에서 재개하며, 이 수치는 당시 스냅샷이다.
+- 정기 수집: GitHub Actions **Collect Hidden OliveYoung Options** 매시17분/수동 실행, 기본100단계·최대8분, 중단 위치 재개. PC/브라우저 상시 실행은 필요 없고 LLM API/앱 자동화는 사용하지 않는다.
 - 운영 안내: [HIDDEN_STOCK_COLLECTION.md](HIDDEN_STOCK_COLLECTION.md). 일반 운영자는 GitHub Actions의 **Run workflow**를 사용하면 되며 터미널은 필수가 아니다. 매시 작업 실행과 모든 SKU 매시간 최신화는 다르다. 매장 수량은 고객 조회 요청 때 확인한다.
-- 현재 경계: 배포 담당자가 GitHub/Vercel 인증 설정을 반영하는 중이며 Cloud Run/Vercel 배포와 수집 활성화의 최종 검증·완료 ID는 아직 기록하지 않았다. 전체 카탈로그 인덱싱 완료로 보고하지 않는다.
+- 현재 경계: 초기 카탈로그 수집 및 업스트림 백오프 단계다. 최종 지역 종료조건 수정(`false`+빈 목록+총수0)의 Cloud Run 반영과 대상17지역 조회 확인은 완료했다. 배포 후 수집 상태 재조회에서도 기존101/20/15/81 및 백오프 체크포인트 보존을 확인했다. 전체 카탈로그 인덱싱·모든 SKU의 매시간 갱신·모든 매장 내부 옵션 발견을 보장하지 않는다.
 
 ### 다음 작업 — 숨겨진 옵션
 
-- 운영 설정 후 실제 gateway/Cloud Run/비공개 Blob 연결을 검증한다. 로컬 모의 검증은 `npm.cmd run test:hidden-stock`, `tests/hidden-stock-browser.py`로 재현한다.
-- `.env.example` 및 `DEPLOY.md`의 별도 service secret과 비공개 Blob 설정을 승인된 운영 환경에 적용한 뒤 Cloud Run/Vercel을 배포하고 실제 도메인을 확인한다.
-- 서비스 인증 상태 확인 후 GitHub Variable `HIDDEN_STOCK_COLLECTION_ENABLED=true`로 켜고 수동1회·후속 예약 실행의 Summary/체크포인트를 검증한다. 현재 workflow는 수동 실행도 이 변수가 필요하다. 상태 CLI는 `node scripts/collect-hidden-stock.mjs --status`이며 읽기 전용이다.
-- 배포 담당자가 Cloud Run revision, Vercel deployment/alias, 수집 workflow 실행 ID와 진행률을 이 절에 갱신한다. 기본 배포·새 수집 관리자 검증과 이전192개 테스트 기록을 구분한다. 전체 상품 열거와 모든 오프라인 옵션 발견은 다르다.
+- 백오프 이후 후속 매시17분 예약 실행에서 카탈로그/대기열이 재개되는지 확인한다. `node scripts/collect-hidden-stock.mjs --status`는 읽기 전용이다. 실패/부분/한도 상태를 완료로 변경하거나 상한을 무작정 올리지 않는다.
+- 로컬 회귀는 `npm.cmd run test:hidden-stock`, `tests/hidden-stock-browser.py`로 재현한다. 실제 결제 및 운영 평생권 사용자 테스트는 이번 모의 UI 검증과 구분한다.
 - 아래 2026-08-27 운영 상태는 과거 기록이다. 현재 결제/배포 상태로 재사용하지 않는다.
 
 ### 이전 운영 기록 (2026-08-27)

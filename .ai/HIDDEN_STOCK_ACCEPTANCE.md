@@ -3,8 +3,26 @@
 ## 작업 상태
 
 - 구현 작업트리: `C:\Projects\oy-hidden-offline-20260913`, `codex/hidden-offline-stock-20260913`, 기준 `053ffb91`.
-- 원래 작업트리의 사용자 변경을 건드리지 않았다. 운영 배포·설정 변경·전체 상품 수집·실결제는 수행하지 않았다.
+- 원래 작업트리의 사용자 변경을 건드리지 않았다. 운영 프런트 공개·서비스/비공개 Blob 설정·초기 정기 수집 활성화는 수행했다. 전체 상품 수집 완료나 실제 결제 검증은 수행하지 않았다.
 - 기존 30일/평생 이용권의 서버 권한을 그대로 이용한다. 무료 검색 결과에는 숨김 옵션/SKU/개수/매장 데이터를 섞지 않는다.
+
+## 운영 배포 및 실제 확인
+
+- Vercel `dpl_8faSNYwFf92KaGWUJ9Jg22UzBw5m` READY. [배포 URL](https://oy-stock-7nrlkesu2-kbhs-projects-ee1427b6.vercel.app), [olivestock.co.kr alias](https://olivestock.co.kr), 소스 `89acaad6` 확인.
+- 백엔드 `6e90591355dd49ef8d07a80e547fd166330d1946` 반영. [Cloud Run 실행34734380525](https://github.com/kangbumhee/oy-stock/actions/runs/34734380525)가3분21초에 성공했다. `oy-stock-api-00243-lw4` ready/트래픽100% 확인.
+- 공개 gateway 무인증 요청은401, `Cache-Control: private, no-store`, 유료 옵션 자료 없음. 운영 무료 사용자 화면의 이용권 안내와 모달을 확인했다. 평생/30일권 UI 흐름은 아래 모의 검증이며 실제 결제 성공의 증거가 아니다.
+- 공식 모바일 비서명 컨텍스트 연결을 검증했다. Blob identity 표현의 strong ETag,304 응답에 태그가 없을 때 기존 태그 유지, 실제 읽기 및 동일 내용 ETag 조건부 쓰기(CAS)를 확인했다. 비밀값은 기록하지 않는다.
+- 실제 서비스에서 요청한 `A000000255680`/`8800289469145` 옵션이 확인되었고 `한교동` 검색은 숨김 옵션13개를 반환했다. 검색 coverage는 부분 상태이며 전체 숨김 옵션의 총개수로 해석하지 않는다.
+- 해당 SKU의 전국17지역을18회 연속 조회해 `public_pages_exhausted`/`complete=true`까지 확인했다. 중복 제거1,343매장 중 양수 재고147매장, 수량 미확인0매장. 공식 공개 응답의 해당 SKU 조회 시점 결과이며 전체 상품/모든 물리적 재고 완전성을 뜻하지 않는다.
+- 기존 큐레이터 JWT 확인은 유효였으며 관찰된 만료는 `2026-09-13T15:10:13Z`다. 이 시각 이후도 유효하다고 재사용하지 않는다.
+
+## 초기 정기 수집 결과
+
+- GitHub repository Variable `HIDDEN_STOCK_COLLECTION_ENABLED=true` 확인. **Collect Hidden OliveYoung Options**는 매시17분, 기본100단계·최대8분이며 PC/브라우저를 켜둘 필요가 없다. LLM API 호출은 없다.
+- 첫 [수동5단계 실행34734224217](https://github.com/kangbumhee/oy-stock/actions/runs/34734224217)는1분19초 후 백오프 경고와 함께 종료했다. workflow 종료와 전체 인덱싱 완료는 다르다.
+- 당시 스냅샷: 알려진 상품101, 확인 상품20, 숨김 옵션15, 대기 상품81, 실패 상품3, 부분 상품1, 공식 카탈로그 총수21,591. `pausedUntil=2026-09-13T03:56:50.664Z` 이후 후속 예약에서 재개한다. 날짜가 있는 관찰값이며 현재 수치로 고정하지 않는다.
+- 최종 백엔드 배포 뒤 상태 재조회에서 위 진행률 및 백오프 체크포인트 보존을 확인했다. 백오프를 강제로 해제하지 않았다.
+- 아직 초기 수집·업스트림 백오프 단계다. 매시 예약이 모든 SKU의 매시간 최신화를 뜻하지 않으며 매장 수량은 실제 사용자 조회 때 확인한다. [운영 방법](HIDDEN_STOCK_COLLECTION.md).
 
 ## 검증한 경계
 
@@ -17,21 +35,20 @@
 ## 재현 테스트
 
 ```powershell
-node --test tests/hidden-stock*.test.js tests/price-alerts*.test.js server/*.test.mjs
+node --test tests/hidden-stock*.test.js tests/hidden-stock-collector.test.mjs tests/price-alerts*.test.js server/*.test.mjs
 python -m http.server 8873 --bind 127.0.0.1 --directory public
 # 별도 터미널, Python Playwright 설치 환경
 python tests/hidden-stock-browser.py
 ```
 
-- 신규 기능/기존 가격알림/기존 검색과 서버 회귀를 함께 실행했다.
+- 신규 기능/정기 수집기/기존 가격알림/기존 검색과 서버 회귀239개 Node 테스트 통과.
 - 실제 로컬 HTTP 서버에서 서비스 인증 없는 GET/OPTIONS가401이고 공개 CORS를 상속하지 않는지 확인했다.
-- 비공개 분할 저장소의 CAS 충돌·재개·동시 접근·상품별 읽기/쓰기 범위를 모의 저장소로 확인했다. 운영 Blob 연결 검증은 별도다.
+- 비공개 분할 저장소의 CAS 충돌·재개·동시 접근·상품별 읽기/쓰기 범위를 모의 저장소로 확인했다. 운영 Blob 읽기/strong ETag/304 및 동일 내용 CAS도 별도 확인했으며 대규모 동시 운영 부하 검증을 뜻하지 않는다.
 - 브라우저390/1440폭에서 실제 HTML/JS에 모의 API를 연결해 무료 안내→이용권 화면→평생권 조회→매장 연속 페이지→중복 제거→권한 해제 시 제거를 확인했다. 두 폭 모두 페이지 오류0, 가로 넘침 없음. 저장한 화면도 직접 검토했다.
 - 화면 증거는 `.ai/logs/hidden-stock-browser/`에 로컬 보관한다. 모의 상품/수량 화면이며 실제 판매 가능 재고의 증거가 아니다.
 
-## 운영 반영 전 남은 일
+## 남은 확인과 보장하지 않는 범위
 
-1. 별도 공유 서비스 secret, 비공개 Blob 연결과 환경별 namespace를 준비한다.
-2. 승인 후 루트 Dockerfile 기준 Cloud Run→Vercel을 배포하고 실제 도메인의 유/무료 권한과 저장소 연결을 확인한다.
-3. 제한된 백필 CLI를 반복 실행해 전체 공개 상품 목록을 수집한다. 체크포인트·미해결 목록·차단·비용을 확인하고 배치 상한을 무작정 늘리지 않는다.
-4. 공개 자료에 없는 SKU, 리뷰가 없고 판매 옵션에서도 제거된 SKU, 공식 API가 반환하지 않는 매장 내부 재고는 발견을 보장할 수 없다. 공개 상품 열거 완료와 모든 물리적 재고 확인 완료를 동일시하지 않는다.
+1. 백오프 후 매시17분 예약 수집의 재개·체크포인트·미해결 목록·비용을 확인하고 배치 상한을 무작정 늘리지 않는다.
+2. 실제 결제와 실제 유료/평생권 사용자 흐름은 모의 UI 검증으로 대체하지 않는다.
+3. 공개 자료에 없는 SKU, 리뷰가 없고 판매 옵션에서도 제거된 SKU, 공식 API가 반환하지 않는 매장 내부 재고는 발견을 보장할 수 없다. 공개 상품 열거 완료와 모든 물리적 재고 확인 완료를 동일시하지 않는다.
