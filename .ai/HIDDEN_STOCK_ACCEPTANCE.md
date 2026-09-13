@@ -12,6 +12,13 @@
 
 ## 운영 배포 및 실제 확인
 
+### 이미지 전용 카드·유료 클릭 팝업 후속 배포 (2026-09-13)
+
+- 소스 `973444fc7dcc2c0c2af8527e3d90c6c98805b2b4`, Vercel `dpl_4FFBsc5HQSumVvDw3bSL3LcgFGEy` READY 후 promote. [배포 URL](https://oy-stock-i3vlnxyhy-kbhs-projects-ee1427b6.vercel.app), [운영 alias](https://olivestock.co.kr) 같은 배포 확인. 변경 정적5파일/gateway의 소스·빌드 해시 일치, 실제 `hidden-cards-1` JS/CSS 로딩 확인. Cloud Run 변경 없음.
+- 14:47 KST 운영 `메디큐브` 무료 검색:5개 이미지 전용 카드, 모두 실제1000px 사진 로딩, 카드 내 보이는 텍스트 없음. 표시 이미지221px로 기존 일반 상품과 일치. 두 번째 사진 클릭 시 `유료 이용자만 사용 가능합니다` 팝업 및 닫기 초점, Escape로 같은 두 번째 이미지 복귀/5개 카드 유지/매장 행0 확인.
+- 무인증 전국 stores401 `device_auth_required`, `private, no-store, max-age=0`, 매장 자료 없음. 실제 결제·프로모션 부여·운영 유료계정 조회는 수행하지 않았다. 유료 팝업·근처/전국 정렬은 모의 API 브라우저 검증 범위다.
+- 모의 브라우저 최종 세 화면 폭에서 두 번째 이미지 Enter→paywall, 정책 앵커를 포함한 Tab/Shift+Tab 순환, 처리 중 Escape 차단, 취소 후 정확한 원래 이미지/중첩 팝업 초점 복귀를 확인했다. 페이지 오류0.
+
 ### 무료 옵션 미리보기·전국 수량순 후속 배포 (2026-09-13)
 
 - 소스 `133e194ede4b319343443f912ddd4429122dee47`, Vercel `dpl_7JwSSXwSk5ufz5FnsSg2DSqtJ2Wp` READY 후 promote. [배포 URL](https://oy-stock-m98fjtqhr-kbhs-projects-ee1427b6.vercel.app), [운영 alias](https://olivestock.co.kr) 연결/실제 `hidden-preview-1` JS 로딩 확인. Cloud Run 변경 없음.
