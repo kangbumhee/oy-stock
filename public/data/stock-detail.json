@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-12T05:36:05.646Z",
+  "updatedAt": "2026-09-13T05:56:24.934Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -14,12 +14,22 @@
   },
   "recentEvents": [
     {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 39,
+      "to": 39,
+      "fromQty": 129,
+      "toQty": 126,
+      "date": "2026-09-13T05:56:24.934Z"
+    },
+    {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 254,
-      "to": 248,
-      "date": "2026-09-12T05:36:05.646Z"
+      "from": 248,
+      "to": 206,
+      "date": "2026-09-13T05:56:24.934Z"
     },
     {
       "type": "stock_changed",
@@ -27,35 +37,25 @@
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
       "from": 44,
       "to": 44,
-      "fromQty": 183,
-      "toQty": 181,
-      "date": "2026-09-12T05:36:05.646Z"
+      "fromQty": 181,
+      "toQty": 180,
+      "date": "2026-09-13T05:56:24.934Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 312,
-      "to": 959,
-      "date": "2026-09-12T05:36:05.646Z"
-    },
-    {
-      "type": "soldout",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 0,
-      "fromQty": 2,
-      "toQty": 0,
-      "date": "2026-09-12T05:36:05.646Z"
+      "from": 959,
+      "to": 280,
+      "date": "2026-09-13T05:56:24.934Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 6440,
-      "to": 7545,
-      "date": "2026-09-12T05:36:05.646Z"
+      "from": 7545,
+      "to": 6249,
+      "date": "2026-09-13T05:56:24.934Z"
     }
   ],
   "products": {
@@ -76,8 +76,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
           "inStock": 44,
-          "totalQty": 181,
-          "onlineQty": 959,
+          "totalQty": 180,
+          "onlineQty": 280,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -385,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-12T05:36:05.646Z"
+      "updatedAt": "2026-09-13T05:56:24.934Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -404,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
           "inStock": 36,
-          "totalQty": 117,
-          "onlineQty": 248,
+          "totalQty": 114,
+          "onlineQty": 206,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -704,8 +704,8 @@
               "name": "일산역점",
               "code": "DDE9",
               "dist": 9.07,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
@@ -1027,7 +1027,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-12T05:36:05.646Z"
+      "updatedAt": "2026-09-13T05:56:24.934Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1355,7 +1355,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-12T05:36:05.646Z"
+      "updatedAt": "2026-09-13T05:56:24.934Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1368,7 +1368,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-12T05:36:05.646Z"
+      "updatedAt": "2026-09-13T05:56:24.934Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1381,7 +1381,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-12T05:36:05.646Z"
+      "updatedAt": "2026-09-13T05:56:24.934Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1401,7 +1401,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 4631,
+          "onlineQty": 3383,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1715,7 +1715,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1297,
+          "onlineQty": 1289,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2029,7 +2029,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 973,
+          "onlineQty": 949,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2343,7 +2343,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 644,
+          "onlineQty": 628,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2651,7 +2651,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-12T05:36:05.646Z"
+      "updatedAt": "2026-09-13T05:56:24.934Z"
     }
   }
 }
