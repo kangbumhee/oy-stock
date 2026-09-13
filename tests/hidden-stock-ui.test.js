@@ -23,7 +23,8 @@ function environment(active = true) {
   }
   elements.set('hidden-stock-search', node('hidden-stock-search'));
   context = {
-    URLSearchParams, AbortController, Map, Date, Number, Promise, Error, String,
+    URL, URLSearchParams, AbortController, Map, Date, Number, Promise, Error, String,
+    App: { lat: 37.6152, lng: 126.7156, locationName: '김포 사우' },
     setTimeout, clearTimeout, setInterval() {},
     document: {
       activeElement: null, hidden: false,
@@ -132,7 +133,7 @@ test('expired entitlement clears premium memory and DOM before any further reque
 test('continuous store lookup is sequential, bounded to 60 requests, and honestly leaves a continuation', async () => {
   const env = environment();
   env.context.response = { stores: [], nextCursor: 'next' };
-  await env.feature.openStores(option);
+  await env.feature.openStores(option, 'national');
   let inFlight = 0, maxInFlight = 0, calls = 0;
   env.feature._pace = async () => {};
   env.context.PriceAlerts._request = async () => {
@@ -156,7 +157,7 @@ test('continuous store pause stops after in-flight page and close prevents late 
   for (const action of ['pause', 'close']) {
     const env = environment();
     env.context.response = { stores: [], nextCursor: 'next' };
-    await env.feature.openStores(option);
+    await env.feature.openStores(option, 'national');
     let resolve, calls = 0;
     env.context.PriceAlerts._request = () => { calls++; return new Promise(r => { resolve = r; }); };
     const task = env.feature.startContinuousStores();
@@ -173,7 +174,7 @@ test('continuous store pause stops after in-flight page and close prevents late 
 test('continuous store lookup stops at a request error and does not claim completed coverage', async () => {
   const env = environment();
   env.context.response = { stores: [], nextCursor: 'next' };
-  await env.feature.openStores(option);
+  await env.feature.openStores(option, 'national');
   let calls = 0;
   env.context.PriceAlerts._request = async () => { calls++; throw new Error('upstream unavailable'); };
   await env.feature.startContinuousStores();
@@ -234,8 +235,8 @@ test('premium markup escapes option text and no premium data is persisted or bak
   assert.match(sw, /url\.pathname === '\/api\/oliveyoung\/hidden-stock'\) return/);
   const index = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
   for (const asset of ['css/style.css', 'js/ui.js', 'js/app.js', 'js/alerts.js', 'js/hidden-stock.js']) {
-    assert.ok(index.includes('/' + asset + '?v=20260913-hidden-stock-1'));
-    assert.ok(sw.includes('/' + asset + '?v=20260913-hidden-stock-1'));
+    assert.ok(index.includes('/' + asset + '?v=20260913-hidden-nearby-2'));
+    assert.ok(sw.includes('/' + asset + '?v=20260913-hidden-nearby-2'));
   }
 });
 
@@ -276,4 +277,81 @@ test('access-only checkout keeps hidden target-price input disabled and not requ
   alerts._renderEntitlement();
   assert.equal(target.disabled, true);
   assert.equal(target.required, false);
+});
+
+test('official images have safe src, useful alt and dimensions; untrusted or missing images use fallback', () => {
+  const env = environment();
+  const html = env.feature._imageHtml({ ...option, image: 'https://image.oliveyoung.co.kr/product.png' });
+  assert.match(html, /<img data-hidden-image="1"/);
+  assert.match(html, /width="72" height="72"/);
+  assert.match(html, /테스트 상품 참고 이미지/);
+  for (const image of ['', 'javascript:alert(1)', 'https://oliveyoung.co.kr.evil.test/x', 'https://user:pass@image.oliveyoung.co.kr/x']) {
+    const invalid = env.feature._imageHtml({ ...option, image });
+    assert.doesNotMatch(invalid, /<img /);
+    assert.match(invalid, /이미지 준비 중/);
+  }
+});
+
+test('hidden option opens nearby first at the selected location and sorts known distances before unknowns', async () => {
+  const env = environment();
+  env.context.response = { stores: [{ code: 'far', dist: 5, qty: 0 }, { code: 'unknown', dist: null, qty: null },
+    { code: 'near', dist: 0.37, qty: 2 }], coverage: { complete: true } };
+  await env.feature.openStores(option);
+  const params = new URL('https://local.test' + env.context.calls[0].url).searchParams;
+  assert.equal(params.get('scope'), 'nearby');
+  assert.equal(params.get('lat'), '37.6152');
+  assert.equal(params.get('lng'), '126.7156');
+  assert.deepEqual(Array.from(env.feature.panelState.stores, s => s.code), ['near', 'far', 'unknown']);
+  const html = env.elements.get('hidden-stock-panel').innerHTML;
+  assert.match(html, /김포 사우 기준/);
+  assert.match(html, /0.37km/);
+  assert.match(html, /거리 미확인/);
+  assert.match(html, /data-hidden-action="national-stores"/);
+  assert.ok(html.indexOf('national-stores') > html.indexOf('</ul>'));
+  await env.feature.startContinuousStores();
+  assert.equal(env.context.calls.length, 1, 'no national lookup before explicit click');
+});
+
+test('national action has a separate cursor and restores the nearby snapshot without a request', async () => {
+  const env = environment();
+  env.context.response = { stores: [{ code: 'near', dist: 0.1 }], nextCursor: 'nearby-cursor' };
+  await env.feature.openStores(option);
+  const nearby = env.feature.panelState;
+  env.context.response = { stores: [{ code: 'national', dist: 300 }], nextCursor: null, coverage: { complete: true } };
+  await env.feature.openNational();
+  const params = new URL('https://local.test' + env.context.calls[1].url).searchParams;
+  assert.equal(params.get('scope'), 'national');
+  assert.equal(params.has('cursor'), false);
+  assert.equal(params.get('lng'), '126.7156');
+  assert.equal(env.feature.panelState.stores[0].code, 'national');
+  env.feature.backPanel('nearby');
+  assert.equal(env.feature.panelState, nearby);
+  assert.equal(env.feature.panelState.nextCursor, 'nearby-cursor');
+  assert.equal(env.context.calls.length, 2);
+});
+
+test('missing location does not invent nearest results but permits an explicit national lookup', async () => {
+  const env = environment();
+  env.context.App = {};
+  await env.feature.openStores(option);
+  assert.equal(env.context.calls.length, 0);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /상단에서 지역을 선택/);
+  env.context.response = { stores: [], coverage: { complete: false } };
+  await env.feature.openNational();
+  assert.equal(env.context.calls.length, 1);
+  assert.match(env.context.calls[0].url, /scope=national/);
+});
+
+test('leaving national lookup discards its delayed result and does not pollute the nearby list', async () => {
+  const env = environment();
+  env.context.response = { stores: [{ code: 'near', dist: 1 }] };
+  await env.feature.openStores(option);
+  let resolve;
+  env.context.PriceAlerts._request = () => new Promise(r => { resolve = r; });
+  const pending = env.feature.openNational();
+  env.feature.backPanel('nearby');
+  resolve({ stores: [{ code: 'far' }], nextCursor: 'next' });
+  await pending;
+  assert.equal(env.feature.panelState.scope, 'nearby');
+  assert.deepEqual(Array.from(env.feature.panelState.stores, s => s.code), ['near']);
 });

@@ -2417,7 +2417,7 @@ var UI = {
           summary +
           storeHtml +
           allBtnPerOpt +
-          (window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o) : '') +
+          (window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o, detail) : '') +
           '</div>'
         );
       })

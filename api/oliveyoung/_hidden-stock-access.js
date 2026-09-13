@@ -10,19 +10,19 @@ const MAX_CURSOR_LENGTH = 2048;
 const REQUEST_FIELDS = {
   search: new Set(['action', 'keyword', 'cursor']),
   options: new Set(['action', 'goodsNo']),
-  stores: new Set(['action', 'goodsNo', 'productId', 'cursor'])
+  stores: new Set(['action', 'goodsNo', 'productId', 'cursor', 'scope', 'lat', 'lng'])
 };
 const PUBLIC_ERRORS = new Set([
   'device_auth_required', 'device_auth_failed', 'entitlement_required',
   'entitlement_not_configured', 'cross_site_request_denied', 'origin_mismatch',
   'rate_limit_exceeded', 'rate_limit_unavailable', 'invalid_query',
   'invalid_action', 'invalid_keyword', 'invalid_goods_no', 'invalid_product_id',
-  'invalid_cursor', 'hidden_stock_not_configured', 'hidden_stock_unavailable',
+  'invalid_cursor', 'invalid_scope', 'invalid_location', 'hidden_stock_not_configured', 'hidden_stock_unavailable',
   'hidden_stock_timeout', 'hidden_stock_invalid_response', 'method_not_allowed'
 ]);
 const UPSTREAM_ERRORS = new Set([
   'invalid_query', 'invalid_action', 'invalid_keyword', 'invalid_goods_no',
-  'invalid_product_id', 'invalid_cursor', 'product_not_found', 'option_not_found',
+  'invalid_product_id', 'invalid_cursor', 'invalid_scope', 'invalid_location', 'product_not_found', 'option_not_found',
   'catalog_unavailable', 'hidden_stock_unavailable', 'rate_limit_exceeded',
   'upstream_unavailable', 'upstream_timeout', 'upstream_blocked', 'request_timeout'
 ]);
@@ -93,6 +93,21 @@ function normalizedQuery(req) {
     const productId = String(fields.productId || '').trim();
     if (!/^\d{6,20}$/.test(productId)) throw new HttpError(400, 'invalid_product_id');
     query.set('productId', productId);
+    const scope = Object.hasOwn(fields, 'scope') ? fields.scope : 'national';
+    if (!['nearby', 'national'].includes(scope)) throw new HttpError(400, 'invalid_scope');
+    if (Object.hasOwn(fields, 'scope')) query.set('scope', scope);
+    const locationProvided = Object.hasOwn(fields, 'lat') || Object.hasOwn(fields, 'lng');
+    if (scope === 'nearby' && !locationProvided) throw new HttpError(400, 'invalid_location');
+    if (locationProvided) {
+      for (const [key, limit] of [['lat', 90], ['lng', 180]]) {
+        const value = fields[key];
+        if (typeof value !== 'string' || value.length > 32 || !/^-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d{1,3})?$/.test(value) ||
+          !Number.isFinite(Number(value)) || Math.abs(Number(value)) > limit) {
+          throw new HttpError(400, 'invalid_location');
+        }
+        query.set(key, String(Number(value)));
+      }
+    }
   }
   if (Object.hasOwn(fields, 'cursor')) {
     const cursor = fields.cursor;

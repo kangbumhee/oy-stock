@@ -400,3 +400,96 @@ test('invalid internal batch size cannot create an unbounded request loop', asyn
     assert.ok(result.nextCursor);
   }
 });
+
+test('nearby uses the supplied location with blank official search and sorts known km distances before unknown', async () => {
+  const calls = [];
+  const result = await readHiddenStoreBatch(batchOptions(async ({ body }) => {
+    calls.push(body);
+    if (body.pageIdx === 2) return storePage([], { totalCount: 0, stockDisplayYn: false });
+    return storePage([
+      storeRow('far', 1, { distance: '4.2' }),
+      storeRow('unknown', null, { distance: null, latitude: 37, longitude: 127 }),
+      storeRow('near', 0, { distance: 0.37 }),
+      storeRow('same-place', 1, { distance: 0 }),
+      storeRow('invalid-distance', 1, { distance: -3 })
+    ]);
+  }, { scope: 'nearby', lat: 37.6152, lng: 126.7156 }));
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0], { productId: SKU, lat: 37.6152, lon: 126.7156,
+    pageIdx: 1, searchWords: '', mapLat: 37.6152, mapLon: 126.7156 });
+  assert.ok(calls.every(body => body.searchWords === ''));
+  assert.equal(result.scope, 'nearby');
+  assert.equal(result.coverage.scope, 'official-nearby-search');
+  assert.deepEqual(result.coverage.origin, { lat: 37.6152, lng: 126.7156 });
+  assert.equal(result.coverage.complete, true);
+  assert.equal(result.coverage.allPhysicalInventoryGuaranteed, false);
+  assert.equal(result.nextCursor, null);
+  assert.deepEqual(result.stores.map(row => row.code), ['same-place', 'near', 'far', 'unknown', 'invalid-distance']);
+  assert.deepEqual(result.stores.map(row => row.dist), [0, 0.37, 4.2, null, null]);
+  assert.equal(result.stores.find(row => row.code === 'near').qty, 0);
+  assert.equal(result.stores.find(row => row.code === 'unknown').qty, null);
+  assert.ok(result.stores.every(row => row.lat === undefined && row.lng === undefined && row.latitude === undefined));
+});
+
+test('nearby calls are bounded to three pages and remain partial until a verified empty page', async () => {
+  let calls = 0;
+  const result = await readHiddenStoreBatch(batchOptions(async ({ body }) => {
+    calls++;
+    return storePage([storeRow(`nearby-${body.pageIdx}`)], { totalCount: 1, nextPage: false });
+  }, { scope: 'nearby', lat: 37, lng: 127, pagesPerBatch: 100 }));
+  assert.equal(calls, 3);
+  assert.equal(result.coverage.complete, false);
+  assert.equal(result.coverage.reason, 'more_pages');
+  assert.ok(result.nextCursor);
+});
+
+test('nearby cursor cannot continue as national or at a different location; equivalent numbers normalize', async () => {
+  let calls = 0;
+  const request = async ({ body }) => { calls++; return storePage([storeRow(`page-${body.pageIdx}`)]); };
+  const first = await readHiddenStoreBatch(batchOptions(request, { scope: 'nearby', lat: '37.00', lng: '127.000', pagesPerBatch: 1 }));
+  assert.equal(calls, 1);
+  for (const extra of [
+    {}, { scope: 'national', lat: 37, lng: 127 },
+    { scope: 'nearby', lat: 37.01, lng: 127 }, { scope: 'nearby', lat: 37, lng: 126.99 }
+  ]) {
+    await assert.rejects(() => readHiddenStoreBatch(batchOptions(request, { ...extra, cursor: first.nextCursor })), /invalid_cursor/);
+  }
+  assert.equal(calls, 1);
+  const next = await readHiddenStoreBatch(batchOptions(request, { scope: 'nearby', lat: 37, lng: 127,
+    pagesPerBatch: 1, cursor: first.nextCursor }));
+  assert.equal(next.stores[0].code, 'page-2');
+});
+
+test('national location is optional and preserves old cursors while explicit origins are independently bound', async () => {
+  const calls = [];
+  const request = async ({ body }) => { calls.push(body); return storePage([storeRow(`page-${body.pageIdx}`)]); };
+  const old = encodeHiddenCursor(cursorState({ page: 2 }), SECRET);
+  await readHiddenStoreBatch(batchOptions(request, { scope: 'national', cursor: old, pagesPerBatch: 1 }));
+  assert.equal(calls[0].lat, 37.5665);
+  assert.equal(calls[0].searchWords, '서울');
+  assert.equal(calls[0].pageIdx, 2);
+  const located = await readHiddenStoreBatch(batchOptions(request, { scope: 'national', lat: 35.2, lng: 129.1, pagesPerBatch: 1 }));
+  assert.equal(calls[1].lat, 35.2);
+  assert.equal(calls[1].lon, 129.1);
+  assert.equal(calls[1].searchWords, '서울');
+  await assert.rejects(() => readHiddenStoreBatch(batchOptions(request, { scope: 'national', cursor: located.nextCursor })), /invalid_cursor/);
+  assert.equal(calls.length, 2);
+});
+
+test('invalid nearby scope, location or state fails before issuing official requests', async () => {
+  let calls = 0;
+  const request = async () => { calls++; return storePage([]); };
+  for (const [extra, error] of [
+    [{ scope: 'all' }, 'invalid_scope'], [{ scope: '' }, 'invalid_scope'],
+    [{ scope: 'nearby' }, 'invalid_location'], [{ scope: 'nearby', lat: 37 }, 'invalid_location'],
+    [{ lat: 37 }, 'invalid_location'], [{ lng: 127 }, 'invalid_location'],
+    ...['', ' ', 'NaN', Infinity, false, [], {}, '0x25', 91, -91].map(lat => [{ scope: 'nearby', lat, lng: 127 }, 'invalid_location']),
+    ...[181, -181, null, undefined].map(lng => [{ scope: 'nearby', lat: 37, lng }, 'invalid_location'])
+  ]) {
+    await assert.rejects(() => readHiddenStoreBatch(batchOptions(request, extra)), new RegExp(error));
+  }
+  const context = `stores:${GOODS}:${SKU}:nearby:37:127`;
+  await assert.rejects(() => readHiddenStoreBatch(batchOptions(request, { scope: 'nearby', lat: 37, lng: 127,
+    cursor: encodeHiddenCursor(cursorState({ context, region: 1 }), SECRET) })), /invalid_cursor/);
+  assert.equal(calls, 0);
+});

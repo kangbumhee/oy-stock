@@ -56,8 +56,11 @@
 
 - 인증: 기존 `X-Price-Alert-Device-Id` / `X-Price-Alert-Device-Secret`와 유효한 30일권 또는 평생 이용권. 매 요청 서버가 최신 권한을 확인하며 브라우저 불리언은 권한 근거가 아니다.
 - Query: `action=search&keyword=...` 또는 `action=options&goodsNo=...`, `action=stores&goodsNo=...&productId=...`. `search`/`stores`의 다음 범위는 응답의 `nextCursor`를 요청 `cursor`로 그대로 전달한다. 최초 요청에 빈 cursor를 넣지 않으며 `options`에는 cursor를 넣지 않는다.
-- `search`/`options`: `{success:true,options:[{goodsNo,optionNumber,productId,name,goodsName,hidden:true,stale,discoveredAt}],nextCursor,coverage}`. 공개 목록에서 빠졌으나 공식 공개 자료로 SKU 연결이 확인된 옵션만 반환한다.
-- `stores`: `{success:true,option,stores:[{code,name,qty,region,addr}],nextCursor,coverage}`. 확인된 일반 옵션도 같은 유료 전국 매장 조회를 사용한다. `qty:null`은 수량 미확인이고 `0`과 다르다.
+- `search`/`options`: `{success:true,options:[{goodsNo,optionNumber,productId,name,goodsName,image,hidden:true,stale,discoveredAt}],nextCursor,coverage}`. 공개 목록에서 빠졌으나 공식 공개 자료로 SKU 연결이 확인된 옵션만 반환한다. `image`는 공식 옵션 이미지 또는 해당 상품 이미지이며, 확인하지 못하면 빈 문자열이다.
+- `stores`: `{success:true,scope,option,stores:[{code,name,qty,region,addr,dist}],nextCursor,coverage}`. 확인된 일반 옵션도 같은 유료 매장 조회를 사용한다. `qty:null`은 수량 미확인이고 `0`과 다르다. `dist`는 기존 재고 조회와 동일한 공식 `distance`의 km 숫자이며 유효하지 않거나 누락되면 `null`이다. 응답 묶음은 거리 오름차순, 미확인 거리 마지막이며 여러 묶음을 합치는 클라이언트도 중복 제거·거리순 정렬을 유지한다. 확인되지 않은 매장 좌표는 만들어서 반환하지 않는다.
+  - `scope=nearby&lat=37.6152&lng=126.7156`: 좌표 두 개가 필수이며 위도 ±90, 경도 ±180 범위의 유한한 수만 허용한다. 공식 `stock-stores`에 검색어 공백과 요청 좌표를 전달하여 근처 재고부터 조회한다. 요청당 최대3페이지, 이후는 `nextCursor`로 이어가며 확인된 빈 페이지 전에는 완료로 표시하지 않는다.
+  - `scope=national`: 전국17개 지역 페이지 조회. scope 생략도 기존과 동일하게 전국 조회다. 선택적으로 `lat`/`lng`를 함께 보내면 전국 매장 거리도 같은 위치 기준이며 생략하면 기존 서울 기본 좌표를 사용한다. 한쪽 좌표만 보내는 요청은 거부한다.
+  - `coverage.scope`는 근처 `official-nearby-search` / 전국 `official-province-search`, `coverage.origin`은 실제 조회 기준 `{lat,lng}`다. 근처 조회 완료가 전국 조회 완료를 뜻하지 않는다. scope 또는 좌표가 바뀌면 기존 cursor를 버리고 새 조회를 시작한다. cursor는 상품·SKU·조회 범위·좌표에 서명으로 결합되며 다른 범위/위치 재사용은 `400 invalid_cursor`다. 위치 없는 기존 전국 cursor는 호환을 유지한다.
 - `coverage`는 현재 조사 범위·진행률을 나타낸다. 일부 범위 또는 빈 결과를 전체 옵션 없음/전국 품절로 해석하지 않는다. 과거 리뷰의 옵션 존재는 현재 온라인 구매 가능을 뜻하지 않는다.
 - 보안: same-origin, 기기별 요청률 제한, `private, no-store`, CDN 캐시 금지, wildcard CORS 없음. 비회원에게 옵션명·SKU·개수를 미리 내려주지 않는다. 서비스 인증값은 Vercel→Cloud Run에서만 붙인다.
 - 오류: 잘못된 입력 `400`, 기기 인증 `401`, 이용권 없음 `402`, 교차 출처 `403`, 제한 `429`, 저장소/서비스 설정·조회 실패 `502`/`503`/`504`. 응답 오류를 재고0으로 변환하지 않는다.

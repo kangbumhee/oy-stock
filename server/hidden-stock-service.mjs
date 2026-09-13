@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createHiddenOptionDiscovery } from './hidden-option-discovery.mjs';
 import { canonicalHiddenOptions, createHiddenIndexStore, mergeDiscovery, searchHiddenIndex } from './hidden-stock-index.mjs';
-import { decodeHiddenCursor, encodeHiddenCursor, readHiddenStoreBatch } from './hidden-store-pages.mjs';
+import { decodeHiddenCursor, encodeHiddenCursor, readHiddenStoreBatch, validateHiddenStoreQuery } from './hidden-store-pages.mjs';
 import { createHiddenCollection } from './hidden-collection.mjs';
 
 const goodId = value => /^[AB]\d{6,20}$/.test(String(value || ''));
@@ -223,6 +223,11 @@ export function createHiddenStockService({ request, index = createHiddenIndexSto
     if (action === 'stores') {
       const productId = String(query.get('productId') || '');
       if (!stockId(productId)) throw new Error('invalid_product_id');
+      const storeQuery = {
+        goodsNo, productId, cursor: query.get('cursor'), secret: serviceSecret,
+        scope: query.get('scope'), lat: query.get('lat'), lng: query.get('lng')
+      };
+      validateHiddenStoreQuery({ ...storeQuery, now: now() });
       // Read only the product shard, refreshing its own evidence if needed. A
       // store page must not download the nationwide search catalog on every call.
       const own = await discoverAndSave(goodsNo, requestFn, false, false);
@@ -231,7 +236,7 @@ export function createHiddenStockService({ request, index = createHiddenIndexSto
       const option = matches.find(o => o.hidden !== null);
       if (!option) throw new Error('option_not_found');
       // Only verified evidence can address a SKU; no arbitrary SKU enumeration route.
-      return { ...await readHiddenStoreBatch({ request: requestFn, goodsNo, productId, cursor: query.get('cursor'), secret: serviceSecret, now }), option: publicOption(option) };
+      return { ...await readHiddenStoreBatch({ request: requestFn, ...storeQuery, now }), option: publicOption(option) };
     }
     throw new Error('invalid_action');
   }

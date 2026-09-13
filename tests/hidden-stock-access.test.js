@@ -190,7 +190,9 @@ test('only normalized parameters and service token reach Cloud Run; device crede
     const queries = [
       { action: 'search', keyword: '  한교동   에디션  ', cursor: 'page_abc.123-xyz' },
       { action: 'options', goodsNo: ` ${GOODS_NO.toLowerCase()} ` },
-      { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, cursor: 'opaque-2' }
+      { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, cursor: 'opaque-2' },
+      { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, scope: 'nearby', lat: '37.615200', lng: '126.715600' },
+      { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, scope: 'national', lat: '37.6152', lng: '126.7156' }
     ];
     for (const query of queries) {
       const { deps, calls } = dependencies();
@@ -204,6 +206,11 @@ test('only normalized parameters and service token reach Cloud Run; device crede
       assert.equal(target.searchParams.get('action'), query.action);
       if (query.action === 'search') assert.equal(target.searchParams.get('keyword'), '한교동 에디션');
       else assert.equal(target.searchParams.get('goodsNo'), GOODS_NO);
+      if (query.scope) {
+        assert.equal(target.searchParams.get('scope'), query.scope);
+        assert.equal(target.searchParams.get('lat'), '37.6152');
+        assert.equal(target.searchParams.get('lng'), '126.7156');
+      }
       assert.deepEqual(options.headers, { Accept: 'application/json', Authorization: `Bearer ${SERVICE_SECRET}` });
       assert.equal(options.method, 'GET');
       assert.equal(options.redirect, 'error');
@@ -285,6 +292,48 @@ test('strict query allowlist rejects URL injection, invalid identifiers, duplica
     assert.equal(calls.upstream.length, 0);
   }
   assert.throws(() => normalizedQuery({ url: '/api/oliveyoung/hidden-stock?action=search&keyword=one&keyword=two' }), /invalid_query/);
+});
+
+test('nearby gateway validates scope and paired coordinates without accepting authority or arbitrary search words', async () => {
+  const base = { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID };
+  for (const [extra, error] of [
+    [{ scope: '' }, 'invalid_scope'], [{ scope: 'all' }, 'invalid_scope'],
+    [{ scope: 'nearby' }, 'invalid_location'], [{ scope: 'nearby', lat: '37' }, 'invalid_location'],
+    [{ lat: '37' }, 'invalid_location'], [{ lng: '127' }, 'invalid_location'],
+    ...['', ' ', 'NaN', 'Infinity', '0x25', '91', '-91'].map(lat => [{ scope: 'nearby', lat, lng: '127' }, 'invalid_location']),
+    ...['181', '-181'].map(lng => [{ scope: 'nearby', lat: '37', lng }, 'invalid_location']),
+    [{ scope: 'nearby', lat: '37', lng: '127', searchWords: 'private' }, 'invalid_query'],
+    [{ scope: 'nearby', lat: '37', lng: '127', active: 'true' }, 'invalid_query']
+  ]) {
+    const { deps, calls } = dependencies();
+    const res = response();
+    await createHiddenStockHandler(deps)(request({ ...base, ...extra }), res);
+    assert.equal(res.statusCode, 400, JSON.stringify(extra));
+    assert.equal(res.body.error, error);
+    assert.equal(calls.auth.length, 0);
+    assert.equal(calls.upstream.length, 0);
+  }
+  assert.equal(normalizedQuery(request(base)).has('scope'), false);
+  const normalized = normalizedQuery(request({ ...base, scope: 'nearby', lat: '-0', lng: '0.00000001' }));
+  assert.equal(normalized.get('lat'), '0');
+  assert.equal(Number(normalized.get('lng')), 0.00000001);
+  assert.throws(() => normalizedQuery({ url: '/api/oliveyoung/hidden-stock?action=stores&goodsNo=' + GOODS_NO +
+    '&productId=' + PRODUCT_ID + '&scope=nearby&lat=37&lat=38&lng=127' }), /invalid_query/);
+});
+
+test('nearby and national modes both retain the server-side paid entitlement gate', async () => {
+  await withEntitlementEnabled(async () => {
+    for (const scope of ['nearby', 'national']) {
+      const { deps, calls } = dependencies({ async authenticateDevice() { return { record: {} }; } });
+      const res = response();
+      await createHiddenStockHandler(deps)(request({ action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID,
+        scope, lat: '37.6152', lng: '126.7156' }), res);
+      assert.equal(res.statusCode, 402);
+      assert.equal(calls.rate.length, 0);
+      assert.equal(calls.upstream.length, 0);
+      assert.equal(res.headers['cache-control'], 'private, no-store, max-age=0');
+    }
+  });
 });
 
 test('missing service secret and unsafe configured destinations fail closed with 503', async () => {

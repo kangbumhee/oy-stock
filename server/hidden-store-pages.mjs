@@ -33,27 +33,49 @@ function quantity(value) {
   return Number(value);
 }
 
-export async function readHiddenStoreBatch({ request, productId, goodsNo, cursor, secret, now = Date.now, pagesPerBatch = 3 }) {
+function coordinate(value, limit) {
+  if (!['number', 'string'].includes(typeof value) || String(value).length > 32 ||
+    !/^-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d{1,3})?$/.test(String(value)) || !Number.isFinite(Number(value)) ||
+    Math.abs(Number(value)) > limit) throw new Error('invalid_location');
+  return Number(value);
+}
+
+// Validate before discovery/storage as well as before a stock request. Signed
+// continuation must never be transferable to another scope or search origin.
+export function validateHiddenStoreQuery({ productId, goodsNo, cursor, secret, scope, lat, lng, now = Date.now() }) {
   if (!/^[AB]\d{6,20}$/.test(String(goodsNo || ''))) throw new Error('invalid_goods_no');
   if (!/^\d{6,20}$/.test(String(productId || ''))) throw new Error('invalid_product_id');
-  const batchLimit = Math.max(1, Math.min(10, Math.trunc(Number(pagesPerBatch)) || 3));
-  const context = `stores:${goodsNo}:${productId}`;
-  const state = decodeHiddenCursor(cursor, secret, context, now()) || { region: 0, page: 1, rows: 0, last: '', context, expires: now() + 30 * 60 * 1000 };
-  if (!Number.isInteger(state.region) || state.region < 0 || state.region >= OFFLINE_REGIONS.length ||
+  scope = scope == null ? 'national' : scope;
+  if (!['nearby', 'national'].includes(scope)) throw new Error('invalid_scope');
+  const locationProvided = lat != null || lng != null;
+  if (scope === 'nearby' && !locationProvided) throw new Error('invalid_location');
+  const origin = locationProvided ? { lat: coordinate(lat, 90), lng: coordinate(lng, 180) } : { lat: 37.5665, lng: 126.978 };
+  const regions = scope === 'nearby' ? [''] : OFFLINE_REGIONS;
+  // Keep the old no-location national cursor context compatible with deployed clients.
+  const context = `stores:${goodsNo}:${productId}` + (locationProvided || scope === 'nearby' ? `:${scope}:${origin.lat}:${origin.lng}` : '');
+  const state = decodeHiddenCursor(cursor, secret, context, now) || { region: 0, page: 1, rows: 0, last: '', context, expires: now + 30 * 60 * 1000 };
+  if (!Number.isInteger(state.region) || state.region < 0 || state.region >= regions.length ||
     !Number.isInteger(state.page) || state.page < 1 || state.page > 200 ||
     !Number.isInteger(state.rows) || state.rows < 0 || typeof state.last !== 'string' ||
     (state.last !== '' && !/^[a-f0-9]{24}$/.test(state.last))) throw new Error('invalid_cursor');
+  return { scope, origin, regions, state };
+}
+
+export async function readHiddenStoreBatch({ request, productId, goodsNo, cursor, secret, scope, lat, lng, now = Date.now, pagesPerBatch = 3 }) {
+  const selected = validateHiddenStoreQuery({ productId, goodsNo, cursor, secret, scope, lat, lng, now: now() });
+  const { origin, regions, state } = selected;
+  const batchLimit = Math.max(1, Math.min(selected.scope === 'nearby' ? 3 : 10, Math.trunc(Number(pagesPerBatch)) || 3));
   const stores = new Map();
   let reason = '';
   let attempts = 0;
-  while (state.region < OFFLINE_REGIONS.length && attempts < batchLimit) {
+  while (state.region < regions.length && attempts < batchLimit) {
     attempts++;
-    const region = OFFLINE_REGIONS[state.region];
+    const region = regions[state.region];
     let response;
     try {
       response = await request({ method: 'POST', path: '/oystore/api/stock/stock-stores', body: {
-        productId, lat: 37.5665, lon: 126.978, pageIdx: state.page,
-        searchWords: region, mapLat: 37.5665, mapLon: 126.978
+        productId, lat: origin.lat, lon: origin.lng, pageIdx: state.page,
+        searchWords: region, mapLat: origin.lat, mapLon: origin.lng
       } });
       if (response?.status !== 'SUCCESS' || (response.code != null && Number(response.code) !== 200) ||
         !Array.isArray(response.data?.storeList) ||
@@ -71,6 +93,9 @@ export async function readHiddenStoreBatch({ request, productId, goodsNo, cursor
       if (!/^[a-zA-Z0-9_-]{1,30}$/.test(code)) continue;
       stores.set(code, {
         code, name: String(row.storeName || ''), addr: String(row.address || row.storeAddr || ''), region,
+        // `distance` is the same official km field used by the existing stock UI.
+        // No store coordinates are inferred from an address or unknown upstream fields.
+        dist: quantity(row.distance),
         qty: quantity(row.remainQuantity), o2o: quantity(row.o2oRemainQuantity),
         salesStore: typeof row.salesStoreYn === 'boolean' ? row.salesStoreYn : null,
         open: row.openYn === true || row.openYn === 'Y',
@@ -82,13 +107,15 @@ export async function readHiddenStoreBatch({ request, productId, goodsNo, cursor
     state.page++;
     if (state.page > 200) { reason = 'store_page_limit'; break; }
   }
-  const complete = state.region >= OFFLINE_REGIONS.length;
+  const complete = state.region >= regions.length;
   return {
-    success: true, stores: [...stores.values()],
+    success: true, scope: selected.scope,
+    stores: [...stores.values()].sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity)),
     nextCursor: complete || ['repeated_store_page', 'store_page_limit'].includes(reason) ? null : encodeHiddenCursor(state, secret),
     coverage: {
-      complete, scope: 'official-province-search', scannedRegions: state.region,
-      totalRegions: OFFLINE_REGIONS.length, observedRows: state.rows, reason: reason || (complete ? 'public_pages_exhausted' : 'more_pages'),
+      complete, scope: selected.scope === 'nearby' ? 'official-nearby-search' : 'official-province-search', origin,
+      scannedRegions: state.region, totalRegions: regions.length,
+      observedRows: state.rows, reason: reason || (complete ? 'public_pages_exhausted' : 'more_pages'),
       allPhysicalInventoryGuaranteed: false, checkedAt: new Date(now()).toISOString()
     }
   };

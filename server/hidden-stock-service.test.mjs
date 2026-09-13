@@ -120,6 +120,55 @@ test('stores validates identity, allows verified normal options, and does not tu
   assert.equal(valid.data.option.hidden, false); assert.ok(valid.data.nextCursor);
 });
 
+test('nearby service passes validated location, returns image/dist, and national transition requires its own cursor', async () => {
+  const seed = emptyHiddenIndex();
+  const evidence = result();
+  evidence.options[0].image = 'https://image.oliveyoung.co.kr/uploads/images/goods/fixture.jpg';
+  mergeDiscovery(seed, GOODS, evidence, clock);
+  const calls = [];
+  const handler = createHiddenStockService({ secret: () => SECRET, index: memoryIndex(seed), now: () => ++clock,
+    request: async ({ body }) => {
+      calls.push(body);
+      return { status: 'SUCCESS', data: { stockDisplayYn: true, storeList: [
+        { storeCode: `store-${body.pageIdx}`, storeName: '테스트점', distance: '0.37', remainQuantity: 2 }
+      ] } };
+    }
+  });
+  const base = `/api/hidden-stock?action=stores&goodsNo=${GOODS}&productId=${SKU}`;
+  const nearby = await invoke(handler, base + '&scope=nearby&lat=37.6152&lng=126.7156');
+  assert.equal(nearby.status, 200);
+  assert.equal(nearby.data.scope, 'nearby');
+  assert.equal(nearby.data.stores[0].dist, 0.37);
+  assert.equal(nearby.data.option.image, evidence.options[0].image);
+  assert.ok(calls.every(body => body.lat === 37.6152 && body.lon === 126.7156 && body.searchWords === ''));
+  const before = calls.length;
+  const wrongMode = await invoke(handler, base + '&scope=national&lat=37.6152&lng=126.7156&cursor=' + nearby.data.nextCursor);
+  assert.equal(wrongMode.status, 400);
+  assert.equal(wrongMode.data.error, 'invalid_cursor');
+  assert.equal(calls.length, before);
+  const national = await invoke(handler, base + '&scope=national&lat=37.6152&lng=126.7156');
+  assert.equal(national.status, 200);
+  assert.equal(national.data.scope, 'national');
+  assert.equal(calls[before].searchWords, '서울');
+});
+
+test('service rejects invalid nearby inputs and malformed continuation before discovery or storage', async () => {
+  const fail = () => { throw new Error('must not be reached'); };
+  const handler = createHiddenStockService({ secret: () => SECRET, index: { read: fail }, request: fail,
+    discoveryFactory: fail, now: () => ++clock });
+  const base = `/api/hidden-stock?action=stores&goodsNo=${GOODS}&productId=${SKU}`;
+  for (const [suffix, error] of [
+    ['&scope=all', 'invalid_scope'], ['&scope=', 'invalid_scope'],
+    ['&scope=nearby', 'invalid_location'], ['&scope=nearby&lat=91&lng=127', 'invalid_location'],
+    ['&scope=nearby&lat=37', 'invalid_location'], ['&scope=national&lat=37', 'invalid_location'],
+    ['&scope=nearby&lat=37&lng=127&cursor=invalid', 'invalid_cursor']
+  ]) {
+    const res = await invoke(handler, base + suffix);
+    assert.equal(res.status, 400, suffix);
+    assert.equal(res.data.error, error);
+  }
+});
+
 test('partial discovery is briefly cached so store pages do not repeatedly crawl reviews', async () => {
   const seed = emptyHiddenIndex(); mergeDiscovery(seed, GOODS, result(false), clock);
   let discoveries = 0;
