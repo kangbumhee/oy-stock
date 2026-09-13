@@ -148,14 +148,16 @@ export function createHiddenIndexStore(options = {}) {
       const result = await readDocument(pathFor(shard), { ...(current?.etag ? { ifNoneMatch: current.etag } : {}) });
       let value;
       if (result?.notModified) {
-        if (!current || !current.etag || result.etag !== current.etag) throw new Error('hidden_index_invalid');
+        // The private Blob origin can omit ETag on HTTP 304. That response is
+        // conditional on the tag we sent; retain it for the next CAS write.
+        if (!current || !current.etag || (result.etag && result.etag !== current.etag)) throw new Error('hidden_index_invalid');
         value = current.value;
       } else {
         value = result?.value == null ? emptyDocument(shard) : validateDocument(result.value, shard);
       }
       // A slow read cannot overwrite a newer successful local CAS write.
       if ((epochs.get(shard) || 0) !== epoch && cache.has(shard)) return cache.get(shard);
-      const loaded = { value: structuredClone(value), etag: result?.etag || null, loadedAt: now() };
+      const loaded = { value: structuredClone(value), etag: result?.notModified ? current.etag : result?.etag || null, loadedAt: now() };
       cache.set(shard, loaded);
       return loaded;
     })();

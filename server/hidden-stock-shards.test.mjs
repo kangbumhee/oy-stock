@@ -171,6 +171,47 @@ test('expired cache revalidates ETags and fresh targeted reads do not fetch othe
   assert.equal(memory.writes.length, 1);
 });
 
+test('304 without an echoed ETag reuses cached data and preserves the previous ETag for the next CAS write', async () => {
+  for (const missingTag of [undefined, null, '']) {
+    const memory = memoryDocuments();
+    const originalRead = memory.adapters.readDocument;
+    const store = createHiddenIndexStore({ ...memory.adapters,
+      readDocument: async (path, options) => {
+        const response = await originalRead(path, options);
+        return response.notModified ? { notModified: true, ...(missingTag === undefined ? {} : { etag: missingTag }) } : response;
+      }
+    });
+    await store.saveDiscovery(GOODS, discovery(), NOW);
+    const path = hiddenIndexDocumentPath(hiddenIndexShardId(GOODS), 'test');
+    const originalEtag = memory.documents.get(path).etag;
+    memory.advance(30001);
+    const revalidated = await store.readProduct(GOODS);
+    assert.equal(revalidated.options[0].name, '한교동 더블기획');
+    assert.deepEqual(memory.reads.at(-1).options, { ifNoneMatch: originalEtag });
+    await store.saveDiscovery(GOODS, discovery(GOODS, { name: '갱신된 옵션명' }), NOW + 30002);
+    assert.equal(memory.writes.at(-1).expected, originalEtag);
+    const replacementEtag = memory.documents.get(path).etag;
+    assert.notEqual(replacementEtag, originalEtag);
+    assert.equal((await store.readProduct(GOODS, { fresh: true })).options[0].name, '갱신된 옵션명');
+    assert.deepEqual(memory.reads.at(-1).options, { ifNoneMatch: replacementEtag });
+  }
+});
+
+test('304 still rejects a conflicting echoed ETag or an uncached response with no ETag', async () => {
+  const memory = memoryDocuments();
+  const originalRead = memory.adapters.readDocument;
+  const store = createHiddenIndexStore({ ...memory.adapters,
+    readDocument: async (path, options) => {
+      const response = await originalRead(path, options);
+      return response.notModified ? { notModified: true, etag: 'different-present-tag' } : response;
+    }
+  });
+  await store.saveDiscovery(GOODS, discovery(), NOW);
+  await assert.rejects(store.readProduct(GOODS, { fresh: true }), /hidden_index_invalid/);
+  const cold = createHiddenIndexStore({ readDocument: async () => ({ notModified: true }), writeDocument: async () => {} });
+  await assert.rejects(cold.readProduct(GOODS), /hidden_index_invalid/);
+});
+
 test('external shard changes become visible after TTL and own updates do not erase other roots', async () => {
   const memory = memoryDocuments();
   const first = createHiddenIndexStore(memory.adapters);
