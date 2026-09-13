@@ -4,7 +4,7 @@
 
 - `server/server.mjs`, `server/stock-request-runner.mjs` 변경은 main push의 `deploy-server.yml`로 Cloud Run에 반영한다. UI/app/config/SW 변경도 Vercel production 사전 빌드·검증·promote가 필요하다. 한쪽 배포만으로 완료 처리하지 않는다.
 - 새 환경변수/Secret/유료 권한 변경 없음. 인스턴스별 매장 요청 동시성1, 시작 간격1000ms, 큐20개/대기12초, 정상 응답3분 캐시를 고정 적용한다. 이전 `STOCK_STORE_BATCH_CONCURRENCY` 값은 더 이상 동시성을 높이지 않는다. 기존 인스턴스 수·CPU/메모리 설정은 유지한다.
-- 정적 버전 `20260913-stock-recovery-1`(config/ui/app 및 SW). 팝업 중 배경 온라인 수집 일시정지·온라인 메타 캐시 재사용, 배경 배치1개/1초, 전국 재고 선조회 제거. 매장 조회 실패는 지속 안내와 대기 후 수동 재조회로 표시한다.
+- 최종 정적 버전 `20260913-stock-recovery-2`(config/ui/app/hidden-stock 및 SW). 팝업 중 배경 온라인 수집 일시정지·온라인 메타 캐시 재사용, 배경 배치1개/1초, 전국 재고 선조회 제거. 매장 조회 실패는 지속 안내와 대기 후 수동 재조회로 표시한다. 추가 요청에 따라 온라인 품절 옵션의 유료 근처 조회 진입을 별도 제공한다.
 - 출시 전 Node 회귀와 `tests/stock-detail-browser.py`의390/1440 모의 검증, 출시 후 실제 에스네이처 `A000000263782`/투슬래시포 `A000000227778` 조회를 별도로 확인한다. 모의 재고 수량을 운영 재고 증거로 사용하지 않는다. 배포 식별자·최종 실측은 HANDOFF에 기록한다.
 
 2026-09-07 인증 전파 변경: [인증 전파 복구](../docs/auth-publication-recovery.md).

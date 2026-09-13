@@ -2520,6 +2520,8 @@ var UI = {
               UI.esc(pidStr) +
               '">🗺️ 이 옵션 전국 재고 보기</button>'
             : '';
+        var paidStockButton = window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o, detail) : '';
+        var paidNearbyFirst = window.HiddenStock && typeof HiddenStock.isOnlineSoldOutOption === 'function' && HiddenStock.isOnlineSoldOutOption(o);
         return (
           '<div class="opt-panel' +
           (i === selectedIndex ? ' active' : '') +
@@ -2527,10 +2529,11 @@ var UI = {
           i +
           '">' +
           summary +
+          (paidNearbyFirst ? paidStockButton : '') +
           storeHtml +
           (storeLookupUnavailable || storeState === 'partial' ? UI._stockRetryButton(goodsNo, detail.storeRetryAt) : '') +
           allBtnPerOpt +
-          (window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o, detail) : '') +
+          (!paidNearbyFirst ? paidStockButton : '') +
           '</div>'
         );
       })

@@ -227,12 +227,23 @@ var HiddenStock = {
       this._esc(goodsNo) + '">온라인 미노출 매장 옵션 보기</button>';
   },
 
+  isOnlineSoldOutOption: function (option) {
+    if (!option) return false;
+    var quantity = option.onlineQty;
+    return option.soldOut === true || (quantity != null && String(quantity).trim() !== '' &&
+      (typeof quantity === 'number' || typeof quantity === 'string') &&
+      Number.isFinite(Number(quantity)) && Number(quantity) === 0);
+  },
+
   normalStoreButtonHtml: function (goodsNo, option, detail) {
     if (!option || !option.productId) return '';
-    return '<button type="button" class="hidden-stock-button" data-hidden-action="normal-stores" data-goodsno="' + this._esc(goodsNo) +
+    var soldOut = this.isOnlineSoldOutOption(option);
+    return (soldOut ? '<p class="hidden-stock-reference-note">온라인 품절과 매장 재고는 별개입니다. 유료 이용자는 이 옵션의 매장 재고를 따로 확인할 수 있습니다.</p>' : '') +
+      '<button type="button" class="hidden-stock-button" data-hidden-action="normal-stores" data-scope="' + (soldOut ? 'nearby' : 'national') + '" data-goodsno="' + this._esc(goodsNo) +
       '" data-productid="' + this._esc(option.productId) + '" data-optionnumber="' + this._esc(option.optionNumber || '') +
       '" data-optionname="' + this._esc(option.name || '') + '" data-image="' + this._esc(option.image || (detail && detail.thumbnail) || '') +
-      '" data-goodsname="' + this._esc((detail && detail.goodsName) || '') + '">전국 매장 전체 이어서 조회 · 이용권</button>';
+      '" data-goodsname="' + this._esc((detail && detail.goodsName) || '') + '">' +
+      (soldOut ? '온라인 품절 옵션 · 근처 매장 재고 확인 · 이용권' : '전국 매장 전체 이어서 조회 · 이용권') + '</button>';
   },
 
   openOptions: async function (goodsNo) {
@@ -537,7 +548,7 @@ var HiddenStock = {
       case 'options': this.openOptions(button.dataset.goodsno); break;
       case 'normal-stores': this.openStores({ goodsNo: button.dataset.goodsno, productId: button.dataset.productid,
         optionNumber: button.dataset.optionnumber, name: button.dataset.optionname, image: button.dataset.image,
-        goodsName: button.dataset.goodsname }, 'national'); break;
+        goodsName: button.dataset.goodsname }, button.dataset.scope === 'nearby' ? 'nearby' : 'national'); break;
       case 'stores': {
         var state = button.dataset.source === 'search' ? this.searchState : this.panelState;
         var option = state && state.options[Number(button.dataset.index)];

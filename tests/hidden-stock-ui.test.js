@@ -193,6 +193,44 @@ test('normal-option full-store access is gated and unknown store quantities diff
   assert.match(env.context.calls[1].url, /cursor=stores-2/);
 });
 
+test('online sold-out normal options advertise paid nearby lookup without claiming offline availability', () => {
+  const env = environment();
+  const soldOut = { ...option, hidden: false, onlineQty: 0 };
+  const html = env.feature.normalStoreButtonHtml(option.goodsNo, soldOut, {});
+  assert.match(html, /data-scope="nearby"/);
+  assert.match(html, /온라인 품절 옵션 · 근처 매장 재고 확인 · 이용권/);
+  assert.match(html, /온라인 품절과 매장 재고는 별개/);
+  assert.doesNotMatch(html, /판매중|재고 있음/);
+  for (const onlineQty of [null, undefined, '', ' ', false, -1, 'invalid', 5]) {
+    assert.equal(env.feature.isOnlineSoldOutOption({ onlineQty }), false);
+    assert.match(env.feature.normalStoreButtonHtml(option.goodsNo, { ...option, onlineQty }, {}), /data-scope="national"/);
+  }
+  assert.equal(env.feature.isOnlineSoldOutOption({ onlineQty: '0' }), true);
+  assert.equal(env.feature.isOnlineSoldOutOption({ soldOut: true }), true);
+});
+
+test('sold-out normal option CTA gates free access then resumes exact SKU nearby and nationwide', async () => {
+  const env = environment(false);
+  const dataset = { hiddenAction: 'normal-stores', scope: 'nearby', goodsno: 'A000000227778',
+    productid: '8809923821608', optionnumber: '008', optionname: '[립칠러 미니 증정] 인 살몬', goodsname: '투슬래시포 립 쉐이퍼' };
+  env.feature._handleAction({ dataset });
+  assert.equal(env.context.accessOpened, 1);
+  assert.equal(env.context.calls.length, 0);
+  env.context.PriceAlerts.entitlement = { active: true, lifetime: true };
+  env.context.response = { stores: [{ code: 'fixture-near', name: '모의 매장', qty: 2 }], coverage: { complete: true } };
+  await env.context.accessCallback();
+  const nearby = new URL(env.context.calls[0].url, 'https://fixture.test');
+  assert.equal(nearby.searchParams.get('goodsNo'), dataset.goodsno);
+  assert.equal(nearby.searchParams.get('productId'), dataset.productid);
+  assert.equal(nearby.searchParams.get('scope'), 'nearby');
+  assert.equal(env.feature.panelState.option.optionNumber, '008');
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /전국 재고 조회/);
+  await env.feature.openNational();
+  const national = new URL(env.context.calls[1].url, 'https://fixture.test');
+  assert.equal(national.searchParams.get('productId'), dataset.productid);
+  assert.equal(national.searchParams.get('scope'), 'national');
+});
+
 test('expired entitlement clears paid inventory but preserves public previews before any further stock request', async () => {
   const env = environment();
   env.context.response = { options: [option] };
