@@ -2,5 +2,6 @@
 .auth/
 .ai/logs/
 node_modules/
+tests/__pycache__/
 scripts/.tmp-linkage-secret.txt
 scripts/_vercel-env-once.mjs

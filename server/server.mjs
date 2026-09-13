@@ -9,6 +9,13 @@ import {
 } from './official-search.mjs';
 import { createHiddenOfficialTransport } from './hidden-official-transport.mjs';
 import { createHiddenStockService } from './hidden-stock-service.mjs';
+import {
+  createStockRequestRunner,
+  isCompleteStockResult,
+  stockFailure,
+  stockLookupHttpStatus,
+  stockResponseState
+} from './stock-request-runner.mjs';
 
 const PORT = Number(process.env.PORT) || 8080;
 const OY = 'https://www.oliveyoung.co.kr';
@@ -24,10 +31,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const onlineCache = new Map();
 const ONLINE_CACHE_TTL = 10 * 60 * 1000;
-const STOCK_STORE_BATCH_CONCURRENCY = Math.max(
-  1,
-  Math.min(6, Number.parseInt(process.env.STOCK_STORE_BATCH_CONCURRENCY || '4', 10) || 4)
-);
 const STOCK_STORE_FETCH_TIMEOUT_MS = Math.max(
   1500,
   Number.parseInt(process.env.STOCK_STORE_FETCH_TIMEOUT_MS || '4500', 10) || 4500
@@ -101,9 +104,11 @@ const PRICE_CACHE_MAX = 1000;
 
 /** 팝업 등 동일 상품·위치 반복 조회 시 Playwright 부하 완화 (TTL 짧게 유지) */
 const detailResponseCache = new Map();
+const detailResponseFlights = new Map();
 const DETAIL_RESPONSE_TTL_MS = 3 * 60 * 1000;
 const DETAIL_RESPONSE_CACHE_MAX = 80;
 const allRegionsResponseCache = new Map();
+const allRegionsResponseFlights = new Map();
 const ALL_REGIONS_RESPONSE_TTL_MS = 3 * 60 * 1000;
 const ALL_REGIONS_RESPONSE_CACHE_MAX = 80;
 
@@ -616,7 +621,16 @@ function getHiddenStockHandler() {
       isCurrent: (work, surface) => work.generation === sessionGeneration &&
         work.page === (surface === 'review' ? hiddenReviewPage : page)
     });
-    hiddenStockHandler = createHiddenStockService({ request });
+    hiddenStockHandler = createHiddenStockService({ request: async (input) => {
+      // This branch receives already validated service requests after the
+      // existing paid authorization gate. Share the public stock read budget.
+      if (input?.method === 'POST' && input.path === '/oystore/api/stock/stock-stores') {
+        const result = await requestStockStores(input.body);
+        if (!stockResponseState(result).ok) throw new Error('hidden_official_unavailable');
+        return result.data;
+      }
+      return request(input);
+    } });
   }
   return hiddenStockHandler;
 }
@@ -1079,7 +1093,7 @@ async function _createSession() {
   console.log(`✅ 세션 준비 완료 (${((Date.now() - start) / 1000).toFixed(1)}초)`);
 }
 
-async function oyPost(apiPath, body) {
+async function oyPost(apiPath, body, timeoutMs = OY_API_FETCH_TIMEOUT_MS) {
   const work = await ensureStockPageOrigin();
   const result = await work.page.evaluate(
     async ({ url, payload, timeoutMs }) => {
@@ -1099,9 +1113,9 @@ async function oyPost(apiPath, body) {
         });
         const t = await r.text();
         try {
-          return { ok: r.ok, status: r.status, data: JSON.parse(t) };
+          return { ok: r.ok, status: r.status, retryAfter: r.headers.get('retry-after'), data: JSON.parse(t) };
         } catch {
-          return { ok: false, status: r.status, data: t };
+          return { ok: false, status: r.status, retryAfter: r.headers.get('retry-after'), data: t };
         }
       } catch (e) {
         return {
@@ -1113,7 +1127,7 @@ async function oyPost(apiPath, body) {
         clearTimeout(timeoutId);
       }
     },
-    { url: OY + '/oystore/api' + apiPath, payload: body, timeoutMs: OY_API_FETCH_TIMEOUT_MS }
+    { url: OY + '/oystore/api' + apiPath, payload: body, timeoutMs }
   );
   if (work.generation !== sessionGeneration || work.page !== page) {
     throw new Error('stock_session_replaced');
@@ -1254,116 +1268,24 @@ const runOfficialSearch = createBoundedSearchRunner(
   }
 );
 
-async function oyPostWithRetry(apiPath, body, retries = 1) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await oyPost(apiPath, body);
-
-      if (apiPath.includes('stock-stores')) {
-        const inner =
-          res.ok && res.data && res.data.status === 'SUCCESS' ? unwrapPayload(res.data) : {};
-        const stores = inner.storeList || [];
-
-        if (stores.length === 0 && attempt < retries) {
-          console.log(
-            '⚠️ stock-stores 빈 응답, 세션 리셋 시도... (attempt ' + (attempt + 1) + ')'
-          );
-          sessionReady = false;
-          try {
-            await ensureSession();
-          } catch (e) {
-            console.error('세션 리셋 실패:', e.message);
-          }
-          continue;
-        }
-      }
-      return res;
-    } catch (e) {
-      console.error('oyPostWithRetry 에러 (attempt ' + attempt + '):', e.message);
-      if (attempt < retries) {
-        sessionReady = false;
-        try {
-          await ensureSession();
-        } catch (e2) {
-          console.error('세션 리셋 실패:', e2.message);
-        }
-        continue;
-      }
-      return { ok: false, status: 500, data: { error: e.message } };
-    }
-  }
-  return { ok: false, status: 500, data: { error: 'max retries' } };
-}
+const requestStockStores = createStockRequestRunner(
+  (payload) => oyPost('/stock/stock-stores', payload, STOCK_STORE_FETCH_TIMEOUT_MS),
+  { requestTimeoutMs: STOCK_STORE_FETCH_TIMEOUT_MS }
+);
 
 async function oyPostStockStoresBatch(requests) {
   if (!requests || requests.length === 0) return [];
-  const work = await ensureStockPageOrigin();
-
-  const result = await work.page.evaluate(
-    async ({ url, requests: reqs, concurrency, timeoutMs }) => {
-      let index = 0;
-      const results = [];
-
-      async function runOne(req) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const r = await fetch(url, {
-            method: 'POST',
-            credentials: 'include',
-            signal: controller.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify(req.payload)
-          });
-          const t = await r.text();
-          let json = null;
-          try {
-            json = JSON.parse(t);
-          } catch {
-            json = t;
-          }
-          return { productId: req.productId, ok: r.ok, status: r.status, data: json };
-        } catch (e) {
-          return {
-            productId: req.productId,
-            ok: false,
-            status: 0,
-            error: e && e.message ? e.message : String(e)
-          };
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      }
-
-      async function worker() {
-        while (index < reqs.length) {
-          const req = reqs[index++];
-          results.push(await runOne(req));
-        }
-      }
-
-      const workers = Array.from(
-        { length: Math.min(concurrency, reqs.length) },
-        () => worker()
-      );
-      await Promise.all(workers);
-      return results;
-    },
-    {
-      url: OY + '/oystore/api/stock/stock-stores',
-      requests,
-      concurrency: STOCK_STORE_BATCH_CONCURRENCY,
-      timeoutMs: STOCK_STORE_FETCH_TIMEOUT_MS
-    }
-  );
-  if (work.generation !== sessionGeneration || work.page !== page) {
-    throw new Error('stock_session_replaced');
+  // Sequential admission prevents one product's many options from filling the
+  // global queue. Other users can interleave; duplicate SKU reads join a flight.
+  const rows = [];
+  const deadlineAt = Date.now() + Math.max(1000, STOCK_DETAIL_TOTAL_TIMEOUT_MS - OY_API_FETCH_TIMEOUT_MS - 6000);
+  let interrupted = null;
+  for (const req of requests) {
+    const result = interrupted || await requestStockStores(req.payload, { deadlineAt });
+    rows.push({ productId: req.productId, ...result });
+    if (!stockResponseState(result).ok) interrupted = result;
   }
-  return result;
+  return rows;
 }
 
 async function getNearbyStoresByProductIds(productIds, lat, lng) {
@@ -1394,7 +1316,7 @@ async function getNearbyStoresByProductIds(productIds, lat, lng) {
     rows = await oyPostStockStoresBatch(requests);
   } catch (e) {
     console.error('[매장배치] 예외:', e.message || e);
-    return {};
+    rows = unique.map((productId) => ({ productId, ...stockFailure() }));
   }
 
   const storesByPid = {
@@ -1402,19 +1324,23 @@ async function getNearbyStoresByProductIds(productIds, lat, lng) {
       requested: unique.length,
       succeeded: 0,
       failed: 0,
-      byProduct: {}
+      byProduct: {},
+      errorsByProduct: {},
+      retryAfterSeconds: 0
     }
   };
   for (const row of rows || []) {
     const pid = String(row.productId || '').trim();
     if (!pid) continue;
-    const lookupOk = !!(row.ok && row.data && row.data.status === 'SUCCESS');
-    const stInner = lookupOk ? unwrapPayload(row.data) : {};
-    const storeList = stInner.storeList || [];
+    const state = stockResponseState(row);
+    const lookupOk = state.ok;
+    const storeList = state.stores || [];
     if (lookupOk) {
       storesByPid._meta.succeeded += 1;
     } else {
       storesByPid._meta.failed += 1;
+      storesByPid._meta.errorsByProduct[pid] = state.error;
+      storesByPid._meta.retryAfterSeconds = Math.max(storesByPid._meta.retryAfterSeconds, row.retryAfterSeconds || 5);
       console.log('[매장배치] 실패:', pid, row.error || compactApiFailure(row));
     }
     storesByPid._meta.byProduct[pid] = lookupOk ? 'ok' : 'unavailable';
@@ -1510,6 +1436,10 @@ async function getGoodsInfoResponse(goodsNo, opts = {}) {
   const direct = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
   if (isGoodsInfoSuccess(direct)) return direct;
 
+  // Rate limiting and network timeouts are not evidence that this browser's
+  // session expired. Recreating it also interrupts unrelated in-flight reads.
+  if (direct?.status === 429 || direct?.status === 0 || direct?.status >= 500) return direct;
+
   if (opts.fastOnly) {
     console.log('[상품정보] fastOnly direct 실패:', goodsNo, compactApiFailure(direct));
     return direct;
@@ -1518,20 +1448,7 @@ async function getGoodsInfoResponse(goodsNo, opts = {}) {
   console.log('[상품정보] direct 실패 → 상세 진입 재시도:', goodsNo, compactApiFailure(direct));
   const pageRetry = await fetchGoodsInfoOnDetailPage(goodsNo);
   if (isGoodsInfoSuccess(pageRetry)) return pageRetry;
-
-  console.log('[상품정보] 상세 재시도 실패 → 세션 재생성:', goodsNo, compactApiFailure(pageRetry));
-  sessionReady = false;
-  try {
-    await ensureSession();
-  } catch (e) {
-    console.error('[상품정보] 세션 재생성 실패:', e.message || e);
-  }
-
-  const resetRetry = await oyPost('/stock/stock-goods-info-v3', { goodsNo });
-  if (isGoodsInfoSuccess(resetRetry)) return resetRetry;
-
-  console.log('[상품정보] 최종 실패:', goodsNo, compactApiFailure(resetRetry));
-  return resetRetry || pageRetry || direct;
+  return pageRetry || direct;
 }
 
 function prunePriceCache() {
@@ -1826,6 +1743,16 @@ async function lookupPublicPrices(goodsNos) {
 }
 
 async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly = false, fresh = false) {
+  const key = detailResponseCacheKey(goodsNo, lat, lng, withOnline, onlineOnly);
+  const existing = detailResponseFlights.get(key);
+  if (existing) return existing.then((result) => structuredClone(result));
+  const task = getStockDetailCached(goodsNo, lat, lng, withOnline, onlineOnly, fresh);
+  detailResponseFlights.set(key, task);
+  try { return await task; }
+  finally { if (detailResponseFlights.get(key) === task) detailResponseFlights.delete(key); }
+}
+
+async function getStockDetailCached(goodsNo, lat, lng, withOnline = false, onlineOnly = false, fresh = false) {
   const ck = detailResponseCacheKey(goodsNo, lat, lng, withOnline, onlineOnly);
   const hit = fresh ? null : detailResponseCache.get(ck);
   if (hit && Date.now() - hit.ts < DETAIL_RESPONSE_TTL_MS) {
@@ -1847,11 +1774,7 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
   }
   try {
     const result = await getStockDetailBody(goodsNo, lat, lng, withOnline, onlineOnly);
-    if (
-      result &&
-      result.success &&
-      (onlineOnly || result.storeLookupStatus !== 'unavailable')
-    ) {
+    if (isCompleteStockResult(result, onlineOnly)) {
       pruneDetailResponseCache();
       detailResponseCache.set(ck, { data: result, ts: Date.now() });
     }
@@ -1862,6 +1785,10 @@ async function getStockDetail(goodsNo, lat, lng, withOnline = false, onlineOnly 
       success: false,
       error: true,
       goodsNo,
+      storeLookupStatus: onlineOnly ? 'skipped' : 'unavailable',
+      storeLookupError: 'stock_unavailable',
+      retryAfterSeconds: 5,
+      retryAfterMs: 5000,
       message: String(e.message || e)
     };
   }
@@ -1874,7 +1801,11 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       success: false,
       error: true,
       goodsNo,
-      message: '상품 조회 실패 (단종 가능성)'
+      storeLookupStatus: 'unavailable',
+      storeLookupError: infoRes?.status === 429 ? 'stock_rate_limited' : 'stock_unavailable',
+      retryAfterSeconds: infoRes?.status === 429 ? 60 : 5,
+      retryAfterMs: infoRes?.status === 429 ? 60000 : 5000,
+      message: '상품 정보 조회 지연'
     };
   }
 
@@ -2054,6 +1985,9 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
       )
     : {};
   const storeLookupMeta = storeResultsByPid._meta || null;
+  let storeLookupError = Object.values(storeLookupMeta?.errorsByProduct || {}).includes('stock_rate_limited')
+    ? 'stock_rate_limited' : storeLookupMeta?.failed ? 'stock_unavailable' : '';
+  let retryAfterSeconds = storeLookupMeta?.retryAfterSeconds || 0;
   let storeLookupStatus = onlineOnly
     ? 'skipped'
     : storeLookupMeta && storeLookupMeta.succeeded > 0
@@ -2111,6 +2045,9 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
             storeLookupMeta.byProduct[String(pid)]
           ? storeLookupMeta.byProduct[String(pid)]
           : 'unavailable',
+      storeLookupError: onlineOnly ? '' : storeLookupMeta?.errorsByProduct?.[String(pid)] || '',
+      retryAfterSeconds: onlineOnly ? 0 : retryAfterSeconds,
+      retryAfterMs: onlineOnly ? 0 : retryAfterSeconds * 1000,
       stores: stores.slice(0, 30)
     });
   }
@@ -2130,6 +2067,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
         maxOrderQty: gi.orderableMaximumQuantity || 0,
         deliveredToday: !!gi.deliveredToday,
         presentable: !!gi.presentable,
+        storeLookupStatus: 'skipped',
         stores: []
       });
     } else {
@@ -2142,6 +2080,8 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
           ? singleStoresByPid._meta.byProduct[pid]
           : 'unavailable';
       storeLookupStatus = singleLookupStatus;
+      storeLookupError = singleStoresByPid._meta?.errorsByProduct?.[pid] || '';
+      retryAfterSeconds = singleStoresByPid._meta?.retryAfterSeconds || 0;
       optionResults.push({
         name: gi.goodsName,
         productId: pid,
@@ -2155,6 +2095,9 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
         deliveredToday: !!gi.deliveredToday,
         presentable: !!gi.presentable,
         storeLookupStatus: singleLookupStatus,
+        storeLookupError,
+        retryAfterSeconds,
+        retryAfterMs: retryAfterSeconds * 1000,
         stores: stores.slice(0, 30)
       });
     }
@@ -2169,7 +2112,7 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
   if (onlineOnly) {
     status = anyOnline ? 'active' : 'soldout';
     statusLabel = anyOnline ? '🛒 온라인 재고' : '🛒 온라인 품절';
-  } else if (storeLookupStatus === 'unavailable') {
+  } else if (storeLookupStatus === 'unavailable' || (storeLookupStatus === 'partial' && totalInStock === 0)) {
     status = 'unknown';
     statusLabel = '⚠️ 매장 재고 조회 지연';
   } else {
@@ -2182,6 +2125,9 @@ async function getStockDetailBody(goodsNo, lat, lng, withOnline = false, onlineO
     source: onlineOnly ? 'live-online' : 'live',
     inventoryScope: onlineOnly ? 'online' : 'store',
     storeLookupStatus,
+    storeLookupError,
+    retryAfterSeconds,
+    retryAfterMs: retryAfterSeconds * 1000,
     goodsNo,
     goodsName: gName,
     price: gi.priceToPay,
@@ -2210,6 +2156,16 @@ const REGIONS = [
 ];
 
 async function getStockAllRegions(goodsNo, targetProductId) {
+  const key = allRegionsResponseCacheKey(goodsNo, targetProductId);
+  const existing = allRegionsResponseFlights.get(key);
+  if (existing) return existing.then((result) => structuredClone(result));
+  const task = getStockAllRegionsBody(goodsNo, targetProductId);
+  allRegionsResponseFlights.set(key, task);
+  try { return await task; }
+  finally { if (allRegionsResponseFlights.get(key) === task) allRegionsResponseFlights.delete(key); }
+}
+
+async function getStockAllRegionsBody(goodsNo, targetProductId) {
   const cacheKey = allRegionsResponseCacheKey(goodsNo, targetProductId);
   const cacheHit = allRegionsResponseCache.get(cacheKey);
   if (cacheHit && Date.now() - cacheHit.ts < ALL_REGIONS_RESPONSE_TTL_MS) {
@@ -2222,7 +2178,10 @@ async function getStockAllRegions(goodsNo, targetProductId) {
 
   const infoRes = await getGoodsInfoResponse(goodsNo);
   if (!infoRes.ok || !infoRes.data || infoRes.data.status !== 'SUCCESS') {
-    return { success: false, error: '상품 조회 실패' };
+    return { success: false, error: '상품 조회 실패', storeLookupStatus: 'unavailable',
+      storeLookupError: infoRes?.status === 429 ? 'stock_rate_limited' : 'stock_unavailable',
+      retryAfterSeconds: infoRes?.status === 429 ? 60 : 5,
+      retryAfterMs: infoRes?.status === 429 ? 60000 : 5000 };
   }
   const infoInner = unwrapPayload(infoRes.data);
   const gi = infoInner.goodsInfo;
@@ -2262,48 +2221,33 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     options = filtered;
   }
 
-  const regionBatchSize = 5;
-
-  async function fetchStoresForRegions(pid, regions) {
-    const promises = regions.map((region) =>
-      oyPostWithRetry('/stock/stock-stores', {
-        productId: String(pid),
-        lat: region.lat,
-        lon: region.lng,
-        pageIdx: 1,
-        searchWords: '',
-        mapLat: region.lat,
-        mapLon: region.lng
-      })
-        .then((stRes) => {
-          const stInner =
-            stRes.ok && stRes.data && stRes.data.status === 'SUCCESS'
-              ? unwrapPayload(stRes.data)
-              : {};
-          return (stInner.storeList || []).map((s) => ({
-            name: s.storeName,
-            code: s.storeCode,
-            region: region.name,
-            qty: s.remainQuantity || 0,
-            o2o: s.o2oRemainQuantity || 0,
-            pickup: yn(s.pickupYn),
-            open: yn(s.openYn),
-            addr: s.address || s.storeAddr || ''
-          }));
-        })
-        .catch(() => [])
-    );
-    const settled = await Promise.all(promises);
-    return settled.flat();
-  }
-
+  let nationalInterrupted = null;
+  const nationalDeadlineAt = Date.now() + Math.max(1000, STOCK_DETAIL_TOTAL_TIMEOUT_MS - OY_API_FETCH_TIMEOUT_MS - 6000);
   async function fetchStoresAllRegions(pid) {
-    const rows = [];
-    for (let i = 0; i < REGIONS.length; i += regionBatchSize) {
-      rows.push(...(await fetchStoresForRegions(pid, REGIONS.slice(i, i + regionBatchSize))));
-      if (i + regionBatchSize < REGIONS.length) await sleep(150);
+    const stores = [];
+    let completedRegions = 0;
+    for (const region of REGIONS) {
+      const result = nationalInterrupted || await requestStockStores({
+        productId: String(pid), lat: region.lat, lon: region.lng, pageIdx: 1,
+        searchWords: '', mapLat: region.lat, mapLon: region.lng
+      }, { deadlineAt: nationalDeadlineAt });
+      const state = stockResponseState(result);
+      if (!state.ok) {
+        nationalInterrupted = result;
+        break;
+      }
+      completedRegions++;
+      stores.push(...state.stores.map((s) => ({
+        name: s.storeName, code: s.storeCode, region: region.name,
+        qty: s.remainQuantity || 0, o2o: s.o2oRemainQuantity || 0,
+        pickup: yn(s.pickupYn), open: yn(s.openYn), addr: s.address || s.storeAddr || ''
+      })));
     }
-    return rows;
+    return { stores, storeLookupStatus: completedRegions === REGIONS.length ? 'ok' : completedRegions ? 'partial' : 'unavailable',
+      completedRegions, totalRegions: REGIONS.length,
+      storeLookupError: nationalInterrupted ? stockResponseState(nationalInterrupted).error : '',
+      retryAfterSeconds: nationalInterrupted?.retryAfterSeconds || 0,
+      retryAfterMs: (nationalInterrupted?.retryAfterSeconds || 0) * 1000 };
   }
 
   const optionResults = [];
@@ -2316,7 +2260,8 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     const baseUpload = optionUploadUrl || uploadUrl;
     const optImage = imgPath ? baseUpload + imgPath : uploadUrl + (gi.goodsThumbnailPath || '');
 
-    const regionStores = await fetchStoresAllRegions(pid);
+    const regionResult = await fetchStoresAllRegions(pid);
+    const regionStores = regionResult.stores;
 
     const storeMap = {};
     regionStores.forEach((s) => {
@@ -2334,6 +2279,12 @@ async function getStockAllRegions(goodsNo, targetProductId) {
       ...publicFieldsFromStockOption(opt),
       image: optImage,
       onlineQty: opt.quantity ?? 0,
+      storeLookupStatus: regionResult.storeLookupStatus,
+      storeLookupError: regionResult.storeLookupError,
+      retryAfterSeconds: regionResult.retryAfterSeconds,
+      retryAfterMs: regionResult.retryAfterMs,
+      completedRegions: regionResult.completedRegions,
+      totalRegions: regionResult.totalRegions,
       totalStores: allStores.length,
       inStock: allStores.filter((s) => s.qty > 0).length,
       totalQty: allStores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
@@ -2350,7 +2301,8 @@ async function getStockAllRegions(goodsNo, targetProductId) {
   ) {
     const pid = String(gi.masterGoodsNumber || gi.goodsNumber);
     const optImage = uploadUrl + (gi.goodsThumbnailPath || '');
-    const regionStores = await fetchStoresAllRegions(pid);
+    const regionResult = await fetchStoresAllRegions(pid);
+    const regionStores = regionResult.stores;
     const storeMap = {};
     regionStores.forEach((s) => {
       if (!s.code) return;
@@ -2365,6 +2317,12 @@ async function getStockAllRegions(goodsNo, targetProductId) {
       ...publicFieldsFromStockOption(gi),
       image: optImage,
       onlineQty: gi.quantity ?? 0,
+      storeLookupStatus: regionResult.storeLookupStatus,
+      storeLookupError: regionResult.storeLookupError,
+      retryAfterSeconds: regionResult.retryAfterSeconds,
+      retryAfterMs: regionResult.retryAfterMs,
+      completedRegions: regionResult.completedRegions,
+      totalRegions: regionResult.totalRegions,
       totalStores: allStores.length,
       inStock: allStores.filter((s) => s.qty > 0).length,
       totalQty: allStores.filter((s) => s.qty > 0).reduce((a, s) => a + s.qty, 0),
@@ -2375,6 +2333,12 @@ async function getStockAllRegions(goodsNo, targetProductId) {
   const response = {
     success: true,
     source: 'live-all',
+    inventoryScope: 'store',
+    storeLookupStatus: optionResults.length && optionResults.every((opt) => opt.storeLookupStatus === 'ok')
+      ? 'ok' : optionResults.some((opt) => opt.storeLookupStatus !== 'unavailable') ? 'partial' : 'unavailable',
+    storeLookupError: nationalInterrupted ? stockResponseState(nationalInterrupted).error : '',
+    retryAfterSeconds: nationalInterrupted?.retryAfterSeconds || 0,
+    retryAfterMs: (nationalInterrupted?.retryAfterSeconds || 0) * 1000,
     goodsNo,
     goodsName: gi.goodsName || '',
     price: gi.priceToPay,
@@ -2384,8 +2348,10 @@ async function getStockAllRegions(goodsNo, targetProductId) {
     options: optionResults,
     updatedAt: new Date().toISOString()
   };
-  pruneAllRegionsResponseCache();
-  allRegionsResponseCache.set(cacheKey, { data: response, ts: Date.now() });
+  if (isCompleteStockResult(response)) {
+    pruneAllRegionsResponseCache();
+    allRegionsResponseCache.set(cacheKey, { data: response, ts: Date.now() });
+  }
   return JSON.parse(JSON.stringify(response));
 }
 
@@ -2708,7 +2674,8 @@ const server = http.createServer(async (req, res) => {
 
     const stockJsonHdr = {
       'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store, max-age=0'
     };
 
     if (onlineOnly && fresh) {
@@ -2729,13 +2696,16 @@ const server = http.createServer(async (req, res) => {
       await withTimeout(ensureSession(), STOCK_SESSION_READY_TIMEOUT_MS, 'stock session ready');
     } catch (e) {
       console.error('[api/stock] 세션:', e.message);
-      sessionReady = false;
-      res.writeHead(200, stockJsonHdr);
+      res.writeHead(503, { ...stockJsonHdr, 'Retry-After': '5' });
       res.end(
         JSON.stringify({
           success: false,
           error: true,
           goodsNo,
+          storeLookupStatus: 'unavailable',
+          storeLookupError: 'stock_unavailable',
+          retryAfterSeconds: 5,
+          retryAfterMs: 5000,
           message: String(e.message || e)
         })
       );
@@ -2751,17 +2721,23 @@ const server = http.createServer(async (req, res) => {
       const out = result.success
         ? result
         : { ...result, error: true, goodsNo: result.goodsNo || goodsNo };
-      res.writeHead(200, stockJsonHdr);
+      res.writeHead(stockLookupHttpStatus(out), {
+        ...stockJsonHdr,
+        ...(out.retryAfterSeconds ? { 'Retry-After': String(out.retryAfterSeconds) } : {})
+      });
       res.end(JSON.stringify(out));
     } catch (e) {
       console.error('[api/stock] 예외:', e.message);
-      sessionReady = false;
-      res.writeHead(200, stockJsonHdr);
+      res.writeHead(503, { ...stockJsonHdr, 'Retry-After': '5' });
       res.end(
         JSON.stringify({
           success: false,
           error: true,
           goodsNo,
+          storeLookupStatus: 'unavailable',
+          storeLookupError: 'stock_unavailable',
+          retryAfterSeconds: 5,
+          retryAfterMs: 5000,
           message: String(e.message || e)
         })
       );
@@ -2779,15 +2755,20 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      await ensureSession();
-      const result = await getStockAllRegions(goodsNo, productId || null);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+      await withTimeout(ensureSession(), STOCK_SESSION_READY_TIMEOUT_MS, 'stock session ready');
+      const result = await withTimeout(getStockAllRegions(goodsNo, productId || null), STOCK_DETAIL_TOTAL_TIMEOUT_MS, 'national stock lookup');
+      res.writeHead(stockLookupHttpStatus(result), {
+        'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, max-age=0',
+        ...(result.retryAfterSeconds ? { 'Retry-After': String(result.retryAfterSeconds) } : {})
+      });
       res.end(JSON.stringify(result));
     } catch (e) {
       console.error('전국재고 에러:', e.message);
-      sessionReady = false;
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+      res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, max-age=0', 'Retry-After': '5' });
+      res.end(JSON.stringify({ success: false, error: e.message || String(e), goodsNo,
+        storeLookupStatus: 'unavailable', storeLookupError: 'stock_unavailable', retryAfterSeconds: 5, retryAfterMs: 5000 }));
     }
     return;
   }

@@ -34,6 +34,8 @@ var App = {
   _searchSeq: 0,
   _searchAbortCtrl: null,
   _curatorQueueCache: {},
+  _stockDetailInflight: {},
+  _stockDetailFailures: {},
   autoBuyGoodsNo: '',
   autoBuyTriggered: false,
 
@@ -896,6 +898,8 @@ var App = {
       return {
         name: o.name || '',
         productId: o.productId || '',
+        optionNumber: o.optionNumber || '',
+        priceToPay: o.priceToPay,
         image: o.image || '',
         totalStores: 0,
         inStock: 0,
@@ -904,6 +908,7 @@ var App = {
         maxOrderQty: o.maxOrderQty || 0,
         deliveredToday: !!o.deliveredToday,
         presentable: !!o.presentable,
+        storeLookupStatus: 'skipped',
         stores: []
       };
     });
@@ -914,6 +919,7 @@ var App = {
       success: true,
       source: 'live-online',
       inventoryScope: 'online',
+      storeLookupStatus: 'skipped',
       goodsNo: detail.goodsNo || '',
       goodsName: detail.goodsName || '',
       price: detail.price,
@@ -1540,6 +1546,9 @@ var App = {
       value && typeof value === 'object'
         ? value.message || value.error || ''
         : String(value || '');
+    if (/429|rate.?limit|stock_rate_limited/i.test(text)) {
+      return '올리브영 요청이 많아 매장 조회가 잠시 제한됐습니다. 잠시 후 다시 조회해 주세요.';
+    }
     if (
       /timeout|timed out|abort|signal is aborted|failed to fetch|networkerror/i.test(text)
     ) {
@@ -1563,9 +1572,17 @@ var App = {
             data = text ? JSON.parse(text) : {};
           } catch (e) {}
           if (!r.ok) {
-            throw new Error(
+            var error = new Error(
               (data && (data.message || data.error)) || '재고 서버 오류 (' + r.status + ')'
             );
+            error.status = r.status;
+            error.data = data;
+            error.retryAfterMs = Math.max(
+              Number(data && data.retryAfterMs) || 0,
+              (Number(data && data.retryAfterSeconds) || 0) * 1000,
+              r.headers && r.headers.get ? (Number(r.headers.get('Retry-After')) || 0) * 1000 : 0
+            );
+            throw error;
           }
           return data || {};
         });
@@ -1589,9 +1606,10 @@ var App = {
       });
   },
 
-  _popupStillShowingGoods: function (goodsNo) {
+  _popupStillShowingGoods: function (goodsNo, session) {
     var gn = String(goodsNo || '').trim();
-    return !!document.querySelector('#popup-root [data-goodsno="' + gn + '"]');
+    return (session == null || session === UI._stockPopupSession) &&
+      !!document.querySelector('#popup-root [data-goodsno="' + gn + '"]');
   },
 
   _applyRealtimeDetail: function (goodsNo, detail) {
@@ -1601,7 +1619,85 @@ var App = {
     var onlineSnapshot = this._rememberOnlineStock(goodsNo, detail);
     if (onlineSnapshot) UI.updateCardBadge(goodsNo, onlineSnapshot);
     this._recordVelocitySnapshot(goodsNo, onlineSnapshot || detail, this._productMetaForGoodsNo(goodsNo));
-    UI.showDetailPopup(detail, goodsNo);
+    UI.showDetailPopup(detail, goodsNo, { preserveView: true });
+  },
+
+  _fetchPopupStockDetail: function (url, timeoutMs) {
+    if (this._stockDetailInflight[url]) return this._stockDetailInflight[url];
+    var failure = this._stockDetailFailures[url];
+    if (failure && failure.until > Date.now()) {
+      var cooldown = new Error('요청이 많아 잠시 기다린 후 다시 조회할 수 있습니다.');
+      cooldown.code = 'STOCK_RETRY_COOLDOWN';
+      cooldown.retryAfterMs = failure.until - Date.now();
+      cooldown.data = failure.data;
+      return Promise.reject(cooldown);
+    }
+    var self = this;
+    this._stockDetailInflight[url] = this._fetchJsonWithTimeout(url, timeoutMs)
+      .catch(function (error) {
+        self._stockDetailFailures[url] = {
+          until: Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(error.retryAfterMs) || 0),
+          data: error.data
+        };
+        throw error;
+      })
+      .finally(function () { delete self._stockDetailInflight[url]; });
+    return this._stockDetailInflight[url];
+  },
+
+  _storeLookupPendingDetail: function (detail) {
+    return Object.assign({}, detail, {
+      storeLookupStatus: 'pending',
+      storeRetryAt: 0,
+      options: (detail.options || []).map(function (option) {
+        if (option.storeLookupStatus === 'ok') return option;
+        return Object.assign({}, option, { storeLookupStatus: 'pending' });
+      })
+    });
+  },
+
+  _showStoreLookupFailure: function (goodsNo, displayName, error, session) {
+    if (!this._popupStillShowingGoods(goodsNo, session)) return;
+    var candidate = error && error.data;
+    var previous = UI._stockPopupDetail || (this.detailData && this.detailData.products && this.detailData.products[goodsNo]);
+    var detail = candidate && candidate.options && candidate.options.length ? candidate : previous;
+    var isCurrentEvidence = detail === candidate || detail === UI._stockPopupDetail;
+    var retryMs = Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(error && error.retryAfterMs) || 0);
+    var url = this._stockDetailUrl(goodsNo);
+    var retryAt = Date.now() + retryMs;
+    if (this._stockDetailFailures[url]) {
+      retryAt = error && error.code === 'STOCK_RETRY_COOLDOWN'
+        ? this._stockDetailFailures[url].until : Math.max(retryAt, this._stockDetailFailures[url].until);
+    }
+    this._stockDetailFailures[url] = { until: retryAt, data: candidate };
+    if (detail && detail.options && detail.options.length) {
+      this._applyRealtimeDetail(goodsNo, Object.assign({}, detail, {
+        storeLookupStatus: 'unavailable',
+        storeRetryAt: retryAt,
+        storeLookupMessage: this._stockLookupErrorText(error),
+        options: detail.options.map(function (option) {
+          if (isCurrentEvidence && option.storeLookupStatus === 'ok') return option;
+          return Object.assign({}, option, { storeLookupStatus: 'unavailable' });
+        })
+      }));
+    } else {
+      UI.showPopupError(displayName, this._stockLookupErrorText(error), goodsNo, retryAt);
+    }
+  },
+
+  retryStoreStock: async function (goodsNo) {
+    var gn = String(goodsNo || '').trim();
+    if (!gn || !this._popupStillShowingGoods(gn)) return;
+    var failure = this._stockDetailFailures[this._stockDetailUrl(gn)];
+    if (failure && failure.until > Date.now()) return;
+    var detail = this.detailData && this.detailData.products && this.detailData.products[gn];
+    var name = detail && detail.goodsName || gn;
+    if (detail && detail.options && detail.options.length) {
+      this._applyRealtimeDetail(gn, this._storeLookupPendingDetail(detail));
+    } else {
+      UI.showPopupStockSkeleton({ goodsNo: gn, goodsName: name });
+    }
+    return this._loadRealtimeDetailIntoPopup(gn, name, { fullOnly: true });
   },
 
   _hasUsableStoreDetail: function (detail) {
@@ -1614,7 +1710,10 @@ var App = {
       return false;
     }
     if (detail.storeLookupStatus === 'ok' || detail.storeLookupStatus === 'partial') {
-      return true;
+      return (detail.options || []).some(function (option) {
+        var state = UI._storeLookupState(detail, option);
+        return state === 'ok' || state === 'partial';
+      });
     }
     if (detail.storeLookupStatus === 'unavailable') return false;
     return (detail.options || []).some(function (option) {
@@ -1625,31 +1724,34 @@ var App = {
     });
   },
 
-  _loadRealtimeDetailIntoPopup: async function (goodsNo, displayName) {
+  _loadRealtimeDetailIntoPopup: async function (goodsNo, displayName, options) {
     var gn = String(goodsNo || '').trim();
-    var onlineShown = false;
+    var session = UI._stockPopupSession;
+    var fullOnly = !!(options && options.fullOnly);
+    this._pauseOnlineBatchForPopup();
     var onlineTimeout = CONFIG.STOCK_ONLINE_FIRST_TIMEOUT_MS || 10000;
     var fullTimeout = CONFIG.STOCK_DETAIL_FETCH_TIMEOUT_MS || 35000;
 
-    try {
-      var online = await this._fetchJsonWithTimeout(
-        this._stockDetailUrl(gn, { onlineOnly: true }),
-        onlineTimeout
-      );
+    if (!fullOnly) try {
+      var cached = typeof Storage.getOnlineDetails === 'function'
+        ? Storage.getOnlineDetails([gn], CONFIG.ONLINE_DETAIL_CACHE_TTL_MS || 120000)[gn] : null;
+      var online = cached && cached.options && cached.options.length
+        ? cached : await this._fetchPopupStockDetail(
+            this._stockDetailUrl(gn, { onlineOnly: true }), onlineTimeout
+          );
       if (online && online.success && online.options && online.options.length > 0) {
-        onlineShown = true;
-        if (this._popupStillShowingGoods(gn)) {
-          this._applyRealtimeDetail(gn, online);
+        if (this._popupStillShowingGoods(gn, session)) {
+          this._applyRealtimeDetail(gn, this._storeLookupPendingDetail(online));
         }
       }
     } catch (e) {
       /* The full lookup below can still provide both online and nearby-store stock. */
     }
 
-    if (!this._popupStillShowingGoods(gn)) return;
+    if (!this._popupStillShowingGoods(gn, session)) return;
 
     try {
-      var full = await this._fetchJsonWithTimeout(this._stockDetailUrl(gn), fullTimeout);
+      var full = await this._fetchPopupStockDetail(this._stockDetailUrl(gn), fullTimeout);
       if (
         full &&
         full.success &&
@@ -1657,38 +1759,24 @@ var App = {
         full.options.length > 0 &&
         this._hasUsableStoreDetail(full)
       ) {
-        if (this._popupStillShowingGoods(gn)) {
+        if (this._popupStillShowingGoods(gn, session)) {
+          if (full.storeLookupStatus === 'partial') {
+            var retryAt = Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(full.retryAfterMs) || 0);
+            this._stockDetailFailures[this._stockDetailUrl(gn)] = { until: retryAt };
+            full = Object.assign({}, full, { storeRetryAt: retryAt });
+          } else {
+            delete this._stockDetailFailures[this._stockDetailUrl(gn)];
+          }
           this._applyRealtimeDetail(gn, full);
         }
         return;
       }
-      if (!onlineShown && this._popupStillShowingGoods(gn)) {
-        UI.showPopupError(
-          displayName,
-          this._stockLookupErrorText(full && (full.message || full.error)),
-          gn
-        );
-      } else if (onlineShown && this._popupStillShowingGoods(gn) && UI.showSyncStatus) {
-        UI.showSyncStatus(
-          '온라인 재고는 확인됐지만 주변 매장 조회가 지연되고 있습니다.',
-          false,
-          5000
-        );
-      }
+      var incomplete = new Error(full && (full.message || full.error) || '매장 재고 응답을 확인하지 못했습니다.');
+      incomplete.data = full;
+      incomplete.retryAfterMs = Number(full && full.retryAfterMs) || 0;
+      this._showStoreLookupFailure(gn, displayName, incomplete, session);
     } catch (e) {
-      if (!onlineShown && this._popupStillShowingGoods(gn)) {
-        UI.showPopupError(
-          displayName,
-          this._stockLookupErrorText(e),
-          gn
-        );
-      } else if (onlineShown && this._popupStillShowingGoods(gn) && UI.showSyncStatus) {
-        UI.showSyncStatus(
-          '온라인 재고는 확인됐지만 주변 매장 조회가 지연되고 있습니다.',
-          false,
-          5000
-        );
-      }
+      this._showStoreLookupFailure(gn, displayName, e, session);
     }
   },
 

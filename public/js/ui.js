@@ -4,6 +4,66 @@ var UI = {
   _curatorLinksLoadedAt: 0,
   _allStockCache: {},
   _allStockInflight: {},
+  _allStockFailures: {},
+  _allStockCacheAt: {},
+  _stockPopupSession: 0,
+  _stockSelectionVersion: 0,
+  _stockPopupDetail: null,
+  _selectedStockOption: null,
+  _stockRetryTimer: null,
+
+  _beginStockPopup: function () {
+    UI._stockPopupSession++;
+    UI._stockSelectionVersion++;
+    UI._stockPopupDetail = null;
+    UI._selectedStockOption = null;
+    clearTimeout(UI._stockRetryTimer);
+  },
+
+  _storeLookupState: function (detail, option) {
+    detail = detail || {};
+    option = option || {};
+    var state = option.storeLookupStatus;
+    if (state === 'unavailable' || state === 'pending' || state === 'partial') return state;
+    if (detail.inventoryScope === 'online' || detail.source === 'live-online') {
+      return detail.storeLookupStatus === 'unavailable' ? 'unavailable' : 'pending';
+    }
+    if (state === 'ok') return 'ok';
+    if (detail.storeLookupStatus === 'pending') return 'pending';
+    if (detail.storeLookupStatus === 'unavailable' || state === 'skipped') return 'unavailable';
+    if (detail.storeLookupStatus === 'partial') return 'unavailable';
+    if (detail.storeLookupStatus === 'ok') return 'ok';
+    // Legacy collected rows are evidence; an absent row list is not a successful lookup.
+    return Array.isArray(option.stores) && option.stores.length ? 'ok' : 'unavailable';
+  },
+
+  _sameStockOption: function (a, b) {
+    return !!(a && b && a.productId != null && b.productId != null &&
+      String(a.productId) === String(b.productId) &&
+      String(a.optionNumber || '') === String(b.optionNumber || ''));
+  },
+
+  _stockRetryButton: function (goodsNo, retryAt) {
+    var remaining = Math.max(0, Math.ceil(((Number(retryAt) || 0) - Date.now()) / 1000));
+    return '<button type="button" class="btn-all-stock-opt" data-action="retryStoreStock" data-goodsno="' +
+      UI.esc(goodsNo) + '" data-retry-at="' + (Number(retryAt) || 0) + '"' +
+      (remaining > 0 ? ' disabled' : '') + '>' +
+      (remaining > 0 ? remaining + '초 후 매장 재고 다시 조회' : '매장 재고 다시 조회') + '</button>';
+  },
+
+  _scheduleStockRetry: function () {
+    clearTimeout(UI._stockRetryTimer);
+    var root = document.getElementById('popup-root');
+    if (!root) return;
+    var next = 0;
+    root.querySelectorAll('[data-action="retryStoreStock"]').forEach(function (button) {
+      var remaining = Math.max(0, Math.ceil(((Number(button.dataset.retryAt) || 0) - Date.now()) / 1000));
+      button.disabled = remaining > 0;
+      button.textContent = remaining > 0 ? remaining + '초 후 매장 재고 다시 조회' : '매장 재고 다시 조회';
+      if (remaining > 0) next = 1000;
+    });
+    if (next) UI._stockRetryTimer = setTimeout(UI._scheduleStockRetry, next);
+  },
 
   /** 일반 올리브영 상품 상세(www) — shorten 실패·에러 팝업 폴백 */
   oliveyoungFallbackUrl: function (goodsNo, categoryNumber) {
@@ -1837,6 +1897,12 @@ var UI = {
       UI.switchTab(parseInt(el.dataset.idx, 10));
       return;
     }
+    if (action === 'retryStoreStock') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!el.disabled && typeof App.retryStoreStock === 'function') App.retryStoreStock(el.dataset.goodsno);
+      return;
+    }
     if (action === 'toggleFavPopup') {
       e.preventDefault();
       e.stopPropagation();
@@ -1856,22 +1922,31 @@ var UI = {
       var pid = el.dataset.productid;
       if (!gno || !pid || el.classList.contains('loading')) return;
       if (!CONFIG.REALTIME_API) return;
+      var session = UI._stockPopupSession;
+      var selectionVersion = UI._stockSelectionVersion;
+      var selected = UI._selectedStockOption;
+      var stillSelected = function () {
+        return el.isConnected && session === UI._stockPopupSession && selectionVersion === UI._stockSelectionVersion &&
+          UI._sameStockOption(selected, UI._selectedStockOption);
+      };
       el.classList.add('loading');
       el.textContent = '🗺️ 전국 조회 중...';
 
       UI.fetchAllStock(gno, pid)
         .then(function (d) {
-          if (d.success && d.options && d.options.length > 0) {
+          if (!stillSelected()) return;
+          if (UI._hasAllStockResult(d)) {
             UI.showAllStockPanel(d);
-            el.textContent = '🗺️ 전국 재고 (조회완료)';
+            el.textContent = d.storeLookupStatus === 'partial' ? '⚠️ 전국 재고 일부 확인 · 다시 조회' : '🗺️ 전국 재고 (조회완료)';
             el.classList.remove('loading');
           } else {
-            el.textContent = '⚠️ 조회 실패: ' + (d.error || '데이터 없음');
+            el.textContent = '⚠️ 전국 재고 미확인 · 잠시 후 다시 눌러 주세요';
             el.classList.remove('loading');
           }
         })
         .catch(function () {
-          el.textContent = '⚠️ 서버 연결 실패';
+          if (!stillSelected()) return;
+          el.textContent = '⚠️ 전국 재고 미확인 · 잠시 후 다시 눌러 주세요';
           el.classList.remove('loading');
         });
     }
@@ -1884,8 +1959,9 @@ var UI = {
     if (!gno || !pid || !CONFIG.REALTIME_API) {
       return Promise.resolve({ success: false, error: 'invalid_request' });
     }
-    if (UI._allStockCache[key]) return Promise.resolve(UI._allStockCache[key]);
+    if (UI._allStockCache[key] && Date.now() - UI._allStockCacheAt[key] < 60000) return Promise.resolve(UI._allStockCache[key]);
     if (UI._allStockInflight[key]) return UI._allStockInflight[key];
+    if (UI._allStockFailures[key] > Date.now()) return Promise.reject(new Error('매장 요청 제한 · 잠시 후 다시 조회해 주세요.'));
 
     var allUrl =
       CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
@@ -1896,18 +1972,39 @@ var UI = {
     var controller = new AbortController();
     var tid = setTimeout(function () {
       controller.abort();
-    }, timeoutMs || 15000);
+    }, timeoutMs || 45000);
 
     UI._allStockInflight[key] = fetch(allUrl, { signal: controller.signal })
       .then(function (r) {
-        return r.json();
+        return r.json().then(function (d) {
+          if (!r.ok) {
+            var error = new Error('전국 매장 재고 응답을 확인하지 못했습니다.');
+            error.retryAfterMs = Math.max(Number(d && d.retryAfterMs) || 0,
+              (Number(d && d.retryAfterSeconds) || 0) * 1000,
+              r.headers && r.headers.get ? (Number(r.headers.get('Retry-After')) || 0) * 1000 : 0);
+            throw error;
+          }
+          return d;
+        });
       })
       .then(function (d) {
-        if (d && d.success && d.options && d.options.length > 0) {
+        if (!UI._hasAllStockResult(d)) {
+          var error = new Error('전국 재고 조회를 완료하지 못했습니다.');
+          error.retryAfterMs = Number(d && d.retryAfterMs) || 0;
+          throw error;
+        }
+        if (d.storeLookupStatus !== 'partial' && d.options.every(function (option) { return UI._storeLookupState(d, option) === 'ok'; })) {
           UI._allStockCache[key] = d;
+          UI._allStockCacheAt[key] = Date.now();
           UI.markAllStockButtonReady(gno, pid);
+        } else {
+          UI._allStockFailures[key] = Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(d.retryAfterMs) || 0);
         }
         return d;
+      })
+      .catch(function (error) {
+        UI._allStockFailures[key] = Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(error.retryAfterMs) || 0);
+        throw error;
       })
       .finally(function () {
         clearTimeout(tid);
@@ -1916,21 +2013,12 @@ var UI = {
     return UI._allStockInflight[key];
   },
 
-  prefetchAllStockForDetail: function (detail, goodsNo) {
-    if (!detail || !CONFIG.REALTIME_API || !detail.options || !detail.options.length) return;
-    var first = detail.options.find(function (o) {
-      return o && o.productId != null && String(o.productId).trim() !== '';
-    });
-    if (!first) return;
-    UI.fetchAllStock(goodsNo, first.productId).catch(function () {});
-  },
-
-  prefetchAllStockButton: function (btn) {
-    if (!btn || !btn.dataset) return;
-    var gno = btn.dataset.goodsno;
-    var pid = btn.dataset.productid;
-    if (!gno || !pid) return;
-    UI.fetchAllStock(gno, pid).catch(function () {});
+  _hasAllStockResult: function (detail) {
+    return !!(detail && detail.success && detail.options && detail.options.length &&
+      detail.storeLookupStatus !== 'unavailable' && detail.options.some(function (option) {
+        var state = UI._storeLookupState(detail, option);
+        return state === 'ok' || state === 'partial';
+      }));
   },
 
   markAllStockButtonReady: function (goodsNo, productId) {
@@ -2111,6 +2199,7 @@ var UI = {
 
   /** 팝업: 상품 기본 정보 먼저, 재고 영역만 로딩 */
   showPopupStockSkeleton: function (preview) {
+    UI._beginStockPopup();
     var root = document.getElementById('popup-root');
     if (!root) return;
     var name = preview.goodsName || '';
@@ -2215,7 +2304,7 @@ var UI = {
     document.body.style.overflow = 'hidden';
   },
 
-  showPopupError: function (name, msg, goodsNo) {
+  showPopupError: function (name, msg, goodsNo, retryAt) {
     var root = document.getElementById('popup-root');
     if (!root) return;
     var oyLink = UI.oliveyoungFallbackUrl(goodsNo);
@@ -2230,17 +2319,29 @@ var UI = {
       '<div class="popup-error"><p>⚠️ ' +
       UI.esc(safeMsg) +
       '</p>' +
-      '<p class="popup-note">즐겨찾기에 추가하면 다음 수집 시 자동으로 재고가 업데이트됩니다.</p>' +
+      '<p class="popup-note">매장 재고를 확인하지 못했습니다. 품절을 뜻하지 않습니다.</p>' +
+      (goodsNo && CONFIG.REALTIME_API ? UI._stockRetryButton(goodsNo, retryAt) : '') +
       '<a href="' +
       UI.esc(oyLink) +
       '" target="_blank" rel="noopener noreferrer" class="btn-oy">올리브영에서 확인 →</a></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
+    UI._scheduleStockRetry();
   },
 
-  showDetailPopup: function (detail, goodsNo) {
+  showDetailPopup: function (detail, goodsNo, options) {
     var root = document.getElementById('popup-root');
     if (!root) return;
+    var preserve = !!(options && options.preserveView);
+    var oldContent = preserve ? root.querySelector('.popup-content') : null;
+    var oldScroll = oldContent ? oldContent.scrollTop : 0;
+    var selected = preserve ? UI._selectedStockOption : null;
+    if (!preserve) UI._beginStockPopup();
+    var opts = detail.options || [];
+    var selectedIndex = selected ? opts.findIndex(function (option) { return UI._sameStockOption(selected, option); }) : 0;
+    if (selectedIndex < 0) selectedIndex = 0;
+    UI._stockPopupDetail = detail;
+    UI._selectedStockOption = opts[selectedIndex] || null;
     var cat =
       detail && detail.categoryNumber != null && detail.categoryNumber !== ''
         ? String(detail.categoryNumber)
@@ -2272,15 +2373,18 @@ var UI = {
     if (detail.inventoryScope === 'vendor' || detail.source === 'vendor-delivery')
       statusBadge =
         '<div class="popup-badge bg-purple">업체배송 상품입니다. 매장·올영창고 실시간 재고 조회 대상이 아니며 올리브영 상품 페이지에서 구매 가능 여부를 확인합니다.</div>';
-    else if (detail.source === 'live-online')
-      statusBadge =
-        '<div class="popup-badge bg-blue-light">🛒 온라인 재고 먼저 표시 중 · 주변 매장 재고는 계속 조회됩니다</div>';
     else if (detail.storeLookupStatus === 'unavailable')
       statusBadge =
-        '<div class="popup-badge bg-orange-light">⚠️ 주변 매장 재고를 불러오지 못했습니다. 품절로 확정하지 않고 다시 조회합니다.</div>';
+        '<div class="popup-badge bg-orange-light" role="status">⚠️ 주변 매장 재고를 확인하지 못했습니다. 품절 여부는 미확인입니다.</div>';
+    else if (detail.storeLookupStatus === 'partial')
+      statusBadge =
+        '<div class="popup-badge bg-orange-light" role="status">⚠️ 일부 옵션만 확인됐습니다. 미확인 옵션은 품절로 판단할 수 없습니다.</div>';
+    else if (detail.source === 'live-online' || detail.inventoryScope === 'online' || detail.storeLookupStatus === 'pending')
+      statusBadge =
+        '<div class="popup-badge bg-blue-light" role="status">🛒 온라인 재고 먼저 표시 중 · 주변 매장 재고 조회 중</div>';
     else if (detail.status === 'discontinued')
       statusBadge = '<div class="popup-badge bg-red-light">⛔ 단종/삭제된 상품입니다</div>';
-    else if (detail.status === 'soldout')
+    else if (detail.status === 'soldout' && opts.length && opts.every(function (o) { return UI._storeLookupState(detail, o) === 'ok'; }))
       statusBadge = '<div class="popup-badge bg-orange-light">🔴 주변 매장 전체 품절</div>';
     var priceHtml =
       '<div class="popup-price-row">' +
@@ -2293,7 +2397,6 @@ var UI = {
         : '') +
       '</div>';
 
-    var opts = detail.options || [];
     var alertMeta = {
       goodsName: detail.goodsName || '',
       imageUrl: detail.thumbnail || '',
@@ -2310,7 +2413,7 @@ var UI = {
             if (label.length > 20) label = label.substring(0, 20) + '…';
             return (
               '<button type="button" class="opt-tab' +
-              (i === 0 ? ' active' : '') +
+              (i === selectedIndex ? ' active' : '') +
               '" data-action="switchTab" data-idx="' +
               i +
               '">' +
@@ -2324,9 +2427,9 @@ var UI = {
 
     var optPanels = opts
       .map(function (o, i) {
-        var storeLookupUnavailable =
-          detail.storeLookupStatus === 'unavailable' ||
-          o.storeLookupStatus === 'unavailable';
+        var storeState = UI._storeLookupState(detail, o);
+        var storeLookupUnavailable = storeState === 'unavailable';
+        var storeLookupPending = storeState === 'pending';
         var optImg = o.image
           ? '<img src="' +
             UI.esc(o.image) +
@@ -2350,8 +2453,12 @@ var UI = {
           '<div class="opt-info"><p class="opt-name">' +
           UI.esc(o.name) +
           '</p><p class="opt-stock">' +
-          (storeLookupUnavailable
-            ? '<span class="stock-pending">⚠️ 주변 매장 재고 다시 조회 중</span>'
+          (storeLookupPending
+            ? '<span class="stock-pending">⏳ 주변 매장 재고 조회 중</span>'
+            : storeLookupUnavailable
+            ? '<span class="stock-pending">⚠️ 주변 매장 재고 미확인</span>'
+            : storeState === 'partial'
+            ? '<span class="stock-pending">⚠️ 일부 매장만 확인됨 · 나머지 매장 품절 여부 미확인</span>'
             : o.inStock > 0
             ? '<span class="stock-ok">✅ ' +
               o.inStock +
@@ -2363,18 +2470,21 @@ var UI = {
             : '<span class="stock-out">🔴 주변 매장 재고 없음</span>') +
           onlineStatus +
           '</p></div></div>';
-        var stores = o.stores || [];
+        var stores = storeLookupUnavailable || storeLookupPending ? [] : o.stores || [];
         var storeHtml;
         if (stores.length === 0) {
-          storeHtml = storeLookupUnavailable
-            ? '<div class="no-store">매장 재고 응답이 지연되고 있습니다. 잠시 후 상품을 다시 눌러 주세요.</div>'
+          storeHtml = storeLookupPending
+            ? '<div class="no-store" role="status">매장 응답을 기다리고 있습니다. 아직 품절 여부를 확인하지 않았습니다.</div>'
+            : storeLookupUnavailable || storeState === 'partial'
+            ? '<div class="no-store">매장 재고 응답을 확인하지 못했습니다. 잠시 후 다시 조회해 주세요.</div>'
             : '<div class="no-store">주변 매장 재고 없음</div>';
         } else {
           storeHtml =
             '<div class="store-list">' +
             stores
               .map(function (s) {
-                var qtyClass = s.qty > 0 ? 'stock-ok' : 'stock-out';
+                var knownQty = s.qty != null && s.qty !== '' && Number.isFinite(Number(s.qty)) && Number(s.qty) >= 0;
+                var qtyClass = !knownQty ? 'stock-pending' : s.qty > 0 ? 'stock-ok' : 'stock-out';
                 var distLabel =
                   s.region != null
                     ? String(s.region)
@@ -2389,7 +2499,7 @@ var UI = {
                   '</span></div><div class="store-right ' +
                   qtyClass +
                   '">' +
-                  (s.qty > 0
+                  (!knownQty ? '재고 미확인' : s.qty > 0
                     ? '재고 <b>' +
                       s.qty +
                       '</b>' +
@@ -2412,12 +2522,13 @@ var UI = {
             : '';
         return (
           '<div class="opt-panel' +
-          (i === 0 ? ' active' : '') +
+          (i === selectedIndex ? ' active' : '') +
           '" data-panel="' +
           i +
           '">' +
           summary +
           storeHtml +
+          (storeLookupUnavailable || storeState === 'partial' ? UI._stockRetryButton(goodsNo, detail.storeRetryAt) : '') +
           allBtnPerOpt +
           (window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o, detail) : '') +
           '</div>'
@@ -2479,10 +2590,12 @@ var UI = {
       '" data-original-label="올리브영에서 구매 →">올리브영에서 구매 →</button></div>' +
       '</div></div>';
     document.body.style.overflow = 'hidden';
-    // The online-first response must not compete with the nearby-store request.
-    if (detail.source !== 'live-online') {
-      UI.prefetchAllStockForDetail(detail, goodsNo);
+    // Nationwide lookup is intentionally click-only; rendering/tabs must not fan out requests.
+    if (oldContent) {
+      var newContent = root.querySelector('.popup-content');
+      if (newContent) newContent.scrollTop = oldScroll;
     }
+    UI._scheduleStockRetry();
     if (window.PriceAlerts) PriceAlerts.refreshControls();
   },
 
@@ -2495,6 +2608,9 @@ var UI = {
       '<div id="all-stock-panel" style="margin-top:12px;border-top:2px solid #bae6fd;padding-top:12px">';
     html +=
       '<h4 style="font-size:14px;font-weight:700;color:#0369a1;margin-bottom:8px">🗺️ 전국 매장 재고</h4>';
+    if (detail.storeLookupStatus === 'partial') {
+      html += '<p class="stock-pending">일부 지역만 확인됐습니다. 미확인 지역은 품절로 판단할 수 없습니다.</p>';
+    }
 
     opts.forEach(function (o, i) {
       var optName = o.name || '옵션 ' + (i + 1);
@@ -2508,20 +2624,25 @@ var UI = {
           UI.esc(optName) +
           '</p>';
       }
-      html +=
-        '<p style="font-size:12px;color:#059669;margin-bottom:6px">✅ ' +
-        o.inStock +
-        '/' +
-        o.totalStores +
-        '매장 재고 (총 ' +
-        UI.num(o.totalQty) +
-        '개)</p>';
+      var state = UI._storeLookupState(detail, o);
+      var confirmed = state === 'ok';
+      var available = confirmed || state === 'partial';
+      html += available
+        ? '<p style="font-size:12px;color:#059669;margin-bottom:6px">' +
+          (confirmed ? '✅ ' : '확인된 지역: ') + (o.inStock || 0) + '/' + (o.totalStores || 0) +
+          '매장 재고 (총 ' + UI.num(o.totalQty) + '개)</p>'
+        : '<p class="stock-pending">⚠️ 이 옵션 전국 재고 미확인 · 품절로 판단할 수 없습니다.</p>';
 
-      var stores = o.stores || [];
+      var stores = available ? (o.stores || []).slice().sort(function (a, b) {
+        var aq = a.qty != null && a.qty !== '' && Number.isFinite(Number(a.qty)) ? Number(a.qty) : -1;
+        var bq = b.qty != null && b.qty !== '' && Number.isFinite(Number(b.qty)) ? Number(b.qty) : -1;
+        return bq - aq || String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+      }) : [];
       if (stores.length > 0) {
         html += '<div class="store-list">';
         stores.forEach(function (s) {
-          var qtyClass = s.qty > 0 ? 'stock-ok' : 'stock-out';
+          var knownQty = s.qty != null && s.qty !== '' && Number.isFinite(Number(s.qty)) && Number(s.qty) >= 0;
+          var qtyClass = !knownQty ? 'stock-pending' : s.qty > 0 ? 'stock-ok' : 'stock-out';
           html +=
             '<div class="store-row"><div class="store-left">' +
             '<span class="store-name">' +
@@ -2533,7 +2654,7 @@ var UI = {
             '</div><div class="store-right ' +
             qtyClass +
             '">' +
-            (s.qty > 0
+            (!knownQty ? '재고 미확인' : s.qty > 0
               ? '재고 <b>' +
                 s.qty +
                 '</b>' +
@@ -2560,6 +2681,7 @@ var UI = {
   },
 
   closePopup: function () {
+    UI._beginStockPopup();
     var root = document.getElementById('popup-root');
     if (root) root.innerHTML = '';
     document.body.style.overflow = '';
@@ -2569,6 +2691,7 @@ var UI = {
   },
 
   switchTab: function (idx) {
+    UI._stockSelectionVersion++;
     document.querySelectorAll('.opt-tab').forEach(function (t, i) {
       t.classList.toggle('active', i === idx);
     });
@@ -2579,9 +2702,7 @@ var UI = {
     });
     var old = document.getElementById('all-stock-panel');
     if (old) old.remove();
-    if (activePanel) {
-      UI.prefetchAllStockButton(activePanel.querySelector('[data-action="loadAllStockOpt"]'));
-    }
+    if (activePanel && UI._stockPopupDetail) UI._selectedStockOption = (UI._stockPopupDetail.options || [])[idx] || null;
   },
 
   showSyncStatus: function (msg, isError, ms) {

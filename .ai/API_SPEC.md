@@ -8,6 +8,14 @@
 
 ## 엔드포인트 목록
 
+### [GET] Cloud Run `/api/stock`, `/api/stock-all` (2026-09-13 조회 복구)
+
+- 일반 상품 근처 조회는 `/api/stock?goodsNo=...&lat=...&lng=...&withOnline=true`, 온라인 우선 응답은 `onlineOnly=true`, 선택 SKU 전국 조회는 `/api/stock-all?goodsNo=...&productId=...`다. 기존 공개 범위와 숨김 옵션 유료 서버 권한은 바꾸지 않는다.
+- 응답과 `options[]`의 `storeLookupStatus`는 `ok`/`partial`/`unavailable`, 온라인 전용 옵션은 `skipped`다. `partial`은 확인된 옵션/지역만 표시하고 나머지는 미확인이다. 온라인 수량0이나 매장 요청 실패를 오프라인 품절로 해석하지 않는다.
+- 완전/부분 성공 HTTP200, 전체 매장 요청 제한 HTTP429, 전체 조회 불가/시간 초과 HTTP503. 오류에 `storeLookupError`, `retryAfterSeconds`, `retryAfterMs`를 포함하고 HTTP `Retry-After` 및 `Cache-Control: no-store`를 보낸다. 일부 옵션 정보가 있는 전체 실패도 오류 상태를 우선한다. 확인된 빈 매장 목록만 재고 없음으로 해석한다.
+- 전국 옵션에는 `completedRegions`/`totalRegions`가 포함된다. 기존 일반 전국 조회는10개 기준 지역의 검색 결과 합집합이며 전체 실물 매장·모든 페이지 수집 보장이 아니다. 부분 조회는 완료 캐시에 저장하지 않는다.
+- 일반 근처·전국 및 권한 검사 후 숨김 재고 조회는 인스턴스별 공통 직렬 요청 큐(시작 간격1초)를 사용한다. 동일 SKU/좌표/페이지 요청을 합치고 검증된 정상 응답만3분 재사용한다. 429는 서버의 대기 시간(없으면60초)을 존중하고 나머지 작업을 중단한다. 네트워크 실패·빈 응답을 이유로 로그인 세션을 재생성하지 않는다.
+
 ### [GET] `/api/oliveyoung/search`
 
 - 설명: 키워드 기반 올리브영 상품 검색 및 매장 재고 검색 프록시.
