@@ -38,7 +38,10 @@ function serializedDocument(value) {
 
 async function readBlobDocument(path, { ifNoneMatch } = {}) {
   if (!token()) throw new Error('hidden_index_not_configured');
-  const result = await get(path, { access: 'private', useCache: false, token: token(), abortSignal: AbortSignal.timeout(8000), ...(ifNoneMatch ? { ifNoneMatch } : {}) });
+  // Gzip delivery weakens the HTTP ETag (W/), which Blob correctly rejects for
+  // conditional writes. Request the identity representation, not a stripped tag.
+  const result = await get(path, { access: 'private', useCache: false, token: token(),
+    headers: { 'Accept-Encoding': 'identity' }, abortSignal: AbortSignal.timeout(8000), ...(ifNoneMatch ? { ifNoneMatch } : {}) });
   if (!result || result.statusCode === 404) return { value: null, etag: null };
   if (result.statusCode === 304) return { notModified: true, etag: result.blob.etag };
   if (result.statusCode !== 200 || !result.stream) throw new Error('hidden_index_unavailable');

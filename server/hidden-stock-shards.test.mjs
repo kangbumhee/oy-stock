@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 import {
   HIDDEN_INDEX_SHARD_COUNT,
   MAX_HIDDEN_INDEX_DOCUMENT_BYTES,
@@ -85,6 +87,45 @@ test('production store uses stable 64 shards and private version2 namespace path
   assert.equal(typeof store.readScan, 'function');
   assert.equal(typeof store.mutateScan, 'function');
   assert.equal(store.mutate, undefined, 'production cannot accidentally overwrite the entire catalog');
+});
+
+test('actual Blob adapter requests identity encoding and forwards the original strong ETag to conditional writes', async () => {
+  const source = await readFile(new URL('./hidden-stock-index.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('function serializedDocument(');
+  const end = source.indexOf('// Keep reducer injection', start);
+  assert.ok(start >= 0 && end > start);
+  const strong = '"0123456789abcdef0123456789abcdef"';
+  const weak = 'W/' + strong;
+  const calls = [];
+  let forceWeak = false;
+  const sandbox = vm.createContext({ Buffer, AbortSignal, MAX_HIDDEN_INDEX_DOCUMENT_BYTES,
+    token: () => 'test-only-private-adapter-token',
+    get: async (path, options) => {
+      calls.push({ operation: 'get', path, options });
+      const etag = !forceWeak && options.headers?.['Accept-Encoding'] === 'identity' ? strong : weak;
+      return { statusCode: 200, blob: { etag }, stream: (async function* () { yield Buffer.from('{"version":2,"products":{}}'); })() };
+    },
+    put: async (path, value, options) => {
+      calls.push({ operation: 'put', path, value, options });
+      if (options.ifMatch !== strong) throw new Error('weak_etag_rejected');
+      return { etag: strong };
+    }
+  });
+  const adapter = vm.runInContext(source.slice(start, end) + '\n({ readBlobDocument, writeBlobDocument });', sandbox);
+  const loaded = await adapter.readBlobDocument('test/catalog.json', { ifNoneMatch: strong });
+  assert.equal(calls[0].options.headers['Accept-Encoding'], 'identity');
+  assert.equal(calls[0].options.ifNoneMatch, strong);
+  assert.equal(loaded.etag, strong);
+  await adapter.writeBlobDocument('test/catalog.json', loaded.value, loaded.etag);
+  assert.equal(calls[1].options.ifMatch, strong);
+  assert.equal(calls[1].options.access, 'private');
+  // If an upstream still sends a weak validator, do not turn it into a strong
+  // one by stripping W/. Preserve it so conditional-write rejection is honest.
+  forceWeak = true;
+  const unexpectedlyWeak = await adapter.readBlobDocument('test/catalog.json');
+  assert.equal(unexpectedlyWeak.etag, weak);
+  await assert.rejects(adapter.writeBlobDocument('test/catalog.json', unexpectedlyWeak.value, unexpectedlyWeak.etag), /weak_etag_rejected/);
+  assert.equal(calls.at(-1).options.ifMatch, weak);
 });
 
 test('saving one product reads/writes only its shard, not the whole catalog or scan metadata', async () => {

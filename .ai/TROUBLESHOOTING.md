@@ -16,6 +16,15 @@ AI가 에러를 해결할 때마다 아래 형식으로 추가한다.
 
 ## 기록
 
+### 숨김 옵션 운영 조회의 모바일 출처·Blob 조건부 저장 오류
+
+- 발생일: 2026-09-13
+- 에러 메시지: `review_options_unavailable`, `hidden_stock_unavailable`, 내부 `hidden_index_invalid` / `BlobPreconditionFailedError`.
+- 원인: PC 세션의 모바일 홈페이지는 www로 이동하며 www에는 해당 리뷰 API가 없다. 비공개 Blob의304 응답은 ETag를 생략할 수 있고, gzip GET의 약한 `W/` ETag는 조건부 저장에 사용할 수 없다.
+- 해결법: 계정 쿠키를 복사하지 않는 별도 공개 모바일 세션을 사용하고 도메인·세션 검증은 유지한다. Blob GET은 `Accept-Encoding: identity`로 강한 ETag를 받고,304에 태그가 없으면 요청에 사용한 캐시 태그를 보존한다. 태그를 임의로 잘라내거나 조건부 저장을 끄지 않는다.
+- 검증: 실제 공식 모바일 리뷰200, 운영 Blob의200→304 재조회 및 동일 내용 CAS 저장 성공. 모의 어댑터만 통과한 상태와 운영 ETag 검증을 구분한다.
+- 관련 파일: `server/server.mjs`, `server/hidden-stock-index.mjs`, `server/hidden-official-transport.test.mjs`, `server/hidden-stock-shards.test.mjs`.
+
 ### 큐레이터 링크가 내 수익 링크가 아닌 것처럼 보임
 
 - 발생일: 2026-04-22
