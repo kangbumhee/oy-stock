@@ -171,6 +171,57 @@ async function boundedJson(response, limit = MAX_RESPONSE_BYTES) {
   return body;
 }
 
+function previewText(value, limit = 2000) {
+  return typeof value === 'string' ? value.slice(0, limit) : '';
+}
+
+function previewImage(value) {
+  if (typeof value !== 'string' || value.length > 2048) return '';
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:' && /(^|\.)oliveyoung\.co\.kr$/i.test(url.hostname) &&
+      !url.username && !url.password && !url.port) return url.href;
+  } catch (_) {}
+  return '';
+}
+
+function publicPreview(body) {
+  // This is a response boundary, not a recursive blacklist: an upstream schema
+  // expansion must never make stock quantities, evidence or internal data public.
+  if (!Array.isArray(body.options)) throw new HttpError(502, 'hidden_stock_invalid_response');
+  const options = body.options.map((option) => {
+    if (!option || typeof option !== 'object' || Array.isArray(option) ||
+      typeof option.goodsNo !== 'string' || !/^[AB]\d{6,20}$/.test(option.goodsNo) ||
+      typeof option.optionNumber !== 'string' || !/^[a-zA-Z0-9_-]{1,40}$/.test(option.optionNumber) ||
+      typeof option.productId !== 'string' || !/^\d{6,20}$/.test(option.productId)) {
+      throw new HttpError(502, 'hidden_stock_invalid_response');
+    }
+    return {
+      goodsNo: option.goodsNo,
+      optionNumber: option.optionNumber,
+      productId: option.productId,
+      name: previewText(option.name),
+      goodsName: previewText(option.goodsName),
+      image: previewImage(option.image),
+      hidden: typeof option.hidden === 'boolean' ? option.hidden : null,
+      stale: option.stale === true,
+      discoveredAt: typeof option.discoveredAt === 'string' && option.discoveredAt.length <= 64 &&
+        Number.isFinite(Date.parse(option.discoveredAt)) ? option.discoveredAt : null,
+      onlineStatus: ['not_listed', 'not_checked'].includes(option.onlineStatus) ? option.onlineStatus : 'not_checked'
+    };
+  });
+  const cursor = body.nextCursor;
+  if (cursor != null && (typeof cursor !== 'string' || !cursor || cursor.length > MAX_CURSOR_LENGTH ||
+    !/^[A-Za-z0-9_.~-]+$/.test(cursor))) throw new HttpError(502, 'hidden_stock_invalid_response');
+  return {
+    success: true,
+    options,
+    nextCursor: cursor || null,
+    // Public completeness describes the current discovery range, not store stock.
+    coverage: { complete: body.coverage?.complete === true }
+  };
+}
+
 function createHiddenStockHandler(dependencies = {}) {
   const authenticate = dependencies.authenticateDevice || authenticateDevice;
   const requireEntitlement = dependencies.requireActiveEntitlement || requireActiveEntitlement;
@@ -188,10 +239,14 @@ function createHiddenStockHandler(dependencies = {}) {
     try {
       assertSameOrigin(req);
       const query = normalizedQuery(req);
-      // The record comes only from server storage. Do not accept client entitlement flags.
-      const loaded = await authenticate(req, { allowCreate: false });
-      if (!loaded || !loaded.record) throw new HttpError(401, 'device_auth_failed');
-      requireEntitlement(loaded.record);
+      const isStoreRequest = query.get('action') === 'stores';
+      if (isStoreRequest) {
+        // Only store inventory is paid. Authorization always uses the latest
+        // stored record; preview identifiers and client flags cannot unlock it.
+        const loaded = await authenticate(req, { allowCreate: false });
+        if (!loaded || !loaded.record) throw new HttpError(401, 'device_auth_failed');
+        requireEntitlement(loaded.record);
+      }
       const service = configuredService(getEnvironment());
       await rateLimit(req, 'hidden_stock');
       const target = new URL(service.url);
@@ -226,7 +281,7 @@ function createHiddenStockHandler(dependencies = {}) {
       if (body.success !== true || serialized.includes(service.secret) || serialized.includes(escapedSecret)) {
         throw new HttpError(502, 'hidden_stock_invalid_response');
       }
-      return sendPrivateJson(res, 200, body);
+      return sendPrivateJson(res, 200, isStoreRequest ? body : publicPreview(body));
     } catch (error) {
       const timedOut = error && ['AbortError', 'TimeoutError'].includes(error.name);
       const recognized = error instanceof HttpError && PUBLIC_ERRORS.has(error.code);
@@ -249,5 +304,6 @@ module.exports = {
   configuredService,
   createHiddenStockHandler,
   normalizedQuery,
+  publicPreview,
   setPrivateHeaders
 };

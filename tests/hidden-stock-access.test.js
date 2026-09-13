@@ -45,6 +45,10 @@ function request(query = { action: 'search', keyword: '한교동' }, headers = {
   };
 }
 
+function storeRequest(extra = {}, headers = {}) {
+  return request({ action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, ...extra }, headers);
+}
+
 function response() {
   return {
     headers: {},
@@ -66,7 +70,7 @@ function dependencies(overrides = {}) {
     getEnvironment() { return { HIDDEN_STOCK_SERVICE_SECRET: SERVICE_SECRET }; },
     async fetch(url, options) {
       calls.upstream.push({ url, options });
-      return new Response(JSON.stringify({ success: true, products: [], nextCursor: null }));
+      return new Response(JSON.stringify({ success: true, options: [], nextCursor: null }));
     },
     ...overrides
   };
@@ -82,6 +86,133 @@ async function withEntitlementEnabled(fn) {
   }
 }
 
+function previewOption(extra = {}) {
+  return {
+    goodsNo: GOODS_NO, optionNumber: '001', productId: PRODUCT_ID,
+    name: '[한교동 콜라보] 본품2EA+공병키링', goodsName: 'PDRN 핑크 콜라겐 미스트',
+    image: 'https://image.oliveyoung.co.kr/images/option.jpg', hidden: true, stale: false,
+    discoveredAt: '2026-09-13T01:00:00.000Z', onlineStatus: 'not_listed', ...extra
+  };
+}
+
+test('anonymous, free and expired users can preview search/options without authentication or entitlement reads', async () => {
+  await withEntitlementEnabled(async () => {
+    const expired = {};
+    applyPaymentGrant(expired, PAYMENT_ID, '2026-07-01T00:00:00.000Z');
+    for (const record of [null, {}, expired]) {
+      for (const query of [{ action: 'search', keyword: '한교동' }, { action: 'options', goodsNo: GOODS_NO }]) {
+        let authReads = 0, entitlementReads = 0;
+        const { deps, calls } = dependencies({
+          async authenticateDevice() { authReads++; return record ? { record } : null; },
+          requireActiveEntitlement() { entitlementReads++; throw new Error('preview_must_not_check_payment'); }
+        });
+        const req = request(query);
+        if (!record) {
+          delete req.headers['x-price-alert-device-id'];
+          delete req.headers['x-price-alert-device-secret'];
+        }
+        const res = response();
+        await createHiddenStockHandler(deps)(req, res);
+        assert.equal(res.statusCode, 200);
+        assert.deepEqual(res.body, { success: true, options: [], nextCursor: null, coverage: { complete: false } });
+        assert.equal(authReads, 0);
+        assert.equal(entitlementReads, 0);
+        assert.equal(calls.rate.length, 1);
+        assert.equal(calls.upstream.length, 1);
+        assert.equal(res.headers['cache-control'], 'private, no-store, max-age=0');
+        assert.equal(res.headers['cdn-cache-control'], 'no-store');
+        assert.equal(res.headers['vercel-cdn-cache-control'], 'no-store');
+      }
+    }
+  });
+});
+
+test('public preview stays available without a device record even when entitlement sales are disabled', async () => {
+  const previous = process.env.PRICE_ALERT_ENTITLEMENT_ENABLED;
+  process.env.PRICE_ALERT_ENTITLEMENT_ENABLED = 'false';
+  try {
+    const { deps, calls } = dependencies();
+    delete deps.authenticateDevice;
+    const req = request({ action: 'options', goodsNo: GOODS_NO });
+    delete req.headers['x-price-alert-device-id'];
+    delete req.headers['x-price-alert-device-secret'];
+    const res = response();
+    await createHiddenStockHandler(deps)(req, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(calls.upstream.length, 1);
+  } finally {
+    if (previous === undefined) delete process.env.PRICE_ALERT_ENTITLEMENT_ENABLED;
+    else process.env.PRICE_ALERT_ENTITLEMENT_ENABLED = previous;
+  }
+});
+
+test('every preview response allowlists display/identity fields and excludes nested paid inventory and internal metadata', async () => {
+  const paidStock = { stores: [{ code: '001', qty: 12, address: 'private stock address' }], qty: 12, stockCount: 12 };
+  const option = previewOption();
+  const payload = {
+    success: true, options: [{ ...option, ...paidStock, inventory: paidStock, evidence: [paidStock],
+      sourceGoodsNos: ['A000000000000'], debug: paidStock, entitlement: { active: true } }],
+    nextCursor: 'signed_search_cursor.1', coverage: { complete: false, ...paidStock, internal: paidStock, indexedProducts: 999 },
+    ...paidStock, products: [paidStock], option: paidStock, progress: paidStock, collection: paidStock
+  };
+  for (const query of [{ action: 'search', keyword: '한교동' }, { action: 'options', goodsNo: GOODS_NO }]) {
+    const { deps } = dependencies({ async fetch() { return new Response(JSON.stringify(payload)); } });
+    const res = response();
+    await createHiddenStockHandler(deps)(request(query), res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body, {
+      success: true, options: [option], nextCursor: 'signed_search_cursor.1', coverage: { complete: false }
+    });
+    for (const forbidden of ['stores', 'qty', 'stockCount', 'inventory', 'evidence', 'sourceGoodsNos', 'entitlement', 'private stock address']) {
+      assert.equal(res.text.includes(forbidden), false, forbidden);
+    }
+  }
+});
+
+test('preview display fields cannot smuggle nested objects, untrusted images or inventory status', async () => {
+  const nested = { stores: [{ qty: 99 }] };
+  const { deps } = dependencies({ async fetch() {
+    return new Response(JSON.stringify({ success: true, options: [previewOption({
+      name: nested, goodsName: [nested], image: nested, hidden: nested, stale: nested,
+      discoveredAt: nested, onlineStatus: nested
+    })], coverage: { complete: nested } }));
+  } });
+  const res = response();
+  await createHiddenStockHandler(deps)(request(), res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.options, [previewOption({
+    name: '', goodsName: '', image: '', hidden: null, stale: false, discoveredAt: null, onlineStatus: 'not_checked'
+  })]);
+  assert.deepEqual(res.body.coverage, { complete: false });
+  for (const image of ['javascript:alert(1)', 'http://image.oliveyoung.co.kr/a.jpg', 'https://evil.example/a.jpg',
+    'https://oliveyoung.co.kr.evil.example/a.jpg', 'https://user:password@image.oliveyoung.co.kr/a.jpg']) {
+    const { deps: imageDeps } = dependencies({ async fetch() {
+      return new Response(JSON.stringify({ success: true, options: [previewOption({ image })] }));
+    } });
+    const imageRes = response();
+    await createHiddenStockHandler(imageDeps)(request(), imageRes);
+    assert.equal(imageRes.statusCode, 200);
+    assert.equal(imageRes.body.options[0].image, '');
+  }
+});
+
+test('malformed preview identities, arrays and paging metadata fail closed rather than report empty inventory', async () => {
+  for (const body of [
+    { success: true }, { success: true, options: {} }, { success: true, options: [null] },
+    { success: true, options: [previewOption({ goodsNo: { stores: [] } })] },
+    { success: true, options: [previewOption({ productId: ['123456'] })] },
+    { success: true, options: [previewOption({ optionNumber: '' })] },
+    { success: true, options: [], nextCursor: { stores: [] } },
+    { success: true, options: [], nextCursor: 'x'.repeat(2049) }
+  ]) {
+    const { deps } = dependencies({ async fetch() { return new Response(JSON.stringify(body)); } });
+    const res = response();
+    await createHiddenStockHandler(deps)(request(), res);
+    assert.equal(res.statusCode, 502);
+    assert.deepEqual(res.body, { success: false, error: 'hidden_stock_invalid_response' });
+  }
+});
+
 test('missing or invalid device auth returns 401 before rate counter or upstream retrieval', async () => {
   for (const code of ['device_auth_required', 'device_auth_failed']) {
     const { deps, calls } = dependencies({
@@ -91,7 +222,7 @@ test('missing or invalid device auth returns 401 before rate counter or upstream
       }
     });
     const res = response();
-    await createHiddenStockHandler(deps)(request(), res);
+    await createHiddenStockHandler(deps)(storeRequest(), res);
     assert.equal(res.statusCode, 401);
     assert.equal(res.body.error, code);
     assert.equal(calls.rate.length, 0);
@@ -99,10 +230,47 @@ test('missing or invalid device auth returns 401 before rate counter or upstream
   }
 });
 
+test('anonymous store requests and their nearby/national follow-up cursors cannot reuse public preview access', async () => {
+  for (const scope of ['nearby', 'national']) {
+    for (const cursor of [undefined, 'signed_cursor.1']) {
+      const { deps, calls } = dependencies();
+      delete deps.authenticateDevice;
+      const req = storeRequest({ scope, lat: '37.6152', lng: '126.7156', ...(cursor ? { cursor } : {}) });
+      delete req.headers['x-price-alert-device-id'];
+      delete req.headers['x-price-alert-device-secret'];
+      const res = response();
+      await createHiddenStockHandler(deps)(req, res);
+      assert.equal(res.statusCode, 401);
+      assert.equal(res.body.error, 'device_auth_required');
+      assert.equal(calls.rate.length, 0);
+      assert.equal(calls.upstream.length, 0);
+    }
+  }
+});
+
+test('paid store requests retain inventory and still validate current authorization', async () => {
+  await withEntitlementEnabled(async () => {
+    const payload = { success: true, stores: [{ code: '001', name: '매장', qty: 12, dist: 0.4 }],
+      option: previewOption(), nextCursor: null, coverage: { complete: true }, scope: 'nearby' };
+    const { deps, calls } = dependencies();
+    const originalFetch = deps.fetch;
+    deps.fetch = async (...args) => {
+      await originalFetch(...args);
+      return new Response(JSON.stringify(payload));
+    };
+    const res = response();
+    await createHiddenStockHandler(deps)(storeRequest({ scope: 'nearby', lat: '37', lng: '127' }), res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body, payload);
+    assert.equal(calls.auth.length, 1);
+    assert.equal(calls.upstream.length, 1);
+  });
+});
+
 test('production authenticator rejects absent device credentials without creating a user record', async () => {
   const { deps, calls } = dependencies();
   delete deps.authenticateDevice;
-  const req = request();
+  const req = storeRequest();
   delete req.headers['x-price-alert-device-id'];
   delete req.headers['x-price-alert-device-secret'];
   const res = response();
@@ -124,7 +292,7 @@ test('free, expired, refunded and revoked lifetime users are denied regardless o
     revokedLifetime.entitlement.grants[0].revokedAt = new Date(NOW).toISOString();
     for (const record of [{}, expired, refunded, revokedLifetime, { entitlement: { active: true } }]) {
       const { deps, calls } = dependencies({ async authenticateDevice() { return { record }; } });
-      const req = request();
+      const req = storeRequest();
       req.body = { active: true, paid: true, lifetime: true, entitlement: { active: true } };
       req.headers['x-paid-member'] = 'true';
       const res = response();
@@ -161,7 +329,7 @@ test('paid and lifetime grants permit retrieval only after server authentication
       const originalFetch = deps.fetch;
       deps.fetch = (...args) => { sequence.push('fetch'); return originalFetch(...args); };
       const res = response();
-      await createHiddenStockHandler(deps)(request(), res);
+      await createHiddenStockHandler(deps)(storeRequest(), res);
       assert.equal(res.statusCode, 200);
       assert.deepEqual(sequence, ['auth', 'entitlement', 'rate', 'fetch']);
       assert.equal(calls.upstream.length, 1);
@@ -175,7 +343,7 @@ test('configured paid gate never opens when entitlement feature is disabled', as
   try {
     const { deps, calls } = dependencies();
     const res = response();
-    await createHiddenStockHandler(deps)(request(), res);
+    await createHiddenStockHandler(deps)(storeRequest(), res);
     assert.equal(res.statusCode, 503);
     assert.equal(res.body.error, 'entitlement_not_configured');
     assert.equal(calls.upstream.length, 0);
@@ -234,7 +402,7 @@ test('success and denial responses are private and never send permissive CORS', 
       const res = response();
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      await createHiddenStockHandler(deps)(request(), res);
+      await createHiddenStockHandler(deps)(storeRequest(), res);
       assert.equal(res.headers['cache-control'], 'private, no-store, max-age=0');
       assert.equal(res.headers['cdn-cache-control'], 'no-store');
       assert.equal(res.headers['vercel-cdn-cache-control'], 'no-store');
@@ -268,6 +436,8 @@ test('strict query allowlist rejects URL injection, invalid identifiers, duplica
   const invalidQueries = [
     { action: 'search', keyword: '미스트', url: 'http://169.254.169.254' },
     { action: 'search', keyword: '미스트', active: 'true' },
+    { action: 'search', keyword: '미스트', scope: 'nearby', lat: '37', lng: '127' },
+    { action: 'search', keyword: '미스트', includeStores: 'true' },
     { action: 'search', keyword: '' },
     { action: 'search', keyword: 'a'.repeat(121) },
     { action: 'search', keyword: 'abc\r\nHost: evil' },
@@ -276,9 +446,14 @@ test('strict query allowlist rejects URL injection, invalid identifiers, duplica
     { action: 'search', keyword: '미스트', cursor: 'https://evil.example' },
     { action: 'options', goodsNo: `../${GOODS_NO}` },
     { action: 'options', goodsNo: GOODS_NO, cursor: 'ignored-maybe' },
+    { action: 'options', goodsNo: GOODS_NO, productId: PRODUCT_ID },
+    { action: 'options', goodsNo: GOODS_NO, stores: 'true' },
     { action: 'stores', goodsNo: GOODS_NO, productId: 'https://evil.example' },
     { action: 'stores', goodsNo: GOODS_NO, productId: '123' },
     { action: 'stores', goodsNo: GOODS_NO },
+    { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, preview: 'true' },
+    { action: 'stores', goodsNo: GOODS_NO, productId: PRODUCT_ID, entitlement: 'true' },
+    { action: 'stores,search', goodsNo: GOODS_NO, productId: PRODUCT_ID },
     { action: 'toString' },
     { action: 'constructor' },
     { action: 'unknown' },
@@ -292,6 +467,7 @@ test('strict query allowlist rejects URL injection, invalid identifiers, duplica
     assert.equal(calls.upstream.length, 0);
   }
   assert.throws(() => normalizedQuery({ url: '/api/oliveyoung/hidden-stock?action=search&keyword=one&keyword=two' }), /invalid_query/);
+  assert.throws(() => normalizedQuery({ url: '/api/oliveyoung/hidden-stock?action=search&action=stores&keyword=one' }), /invalid_query/);
 });
 
 test('nearby gateway validates scope and paired coordinates without accepting authority or arbitrary search words', async () => {

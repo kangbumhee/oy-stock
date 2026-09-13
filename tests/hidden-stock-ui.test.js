@@ -35,6 +35,10 @@ function environment(active = true) {
     },
     addEventListener(type, fn) { listeners[type] = fn; },
     UI: { esc(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); } },
+    async fetch(url, opts) {
+      context.calls.push({ url, opts, public: true });
+      return { ok: true, status: 200, async json() { return context.response; } };
+    },
     PriceAlerts: {
       entitlement: active ? { active: true, expiresAt: new Date(Date.now() + 60000).toISOString() } : { active: false },
       _apiHeaders() { return { 'X-Price-Alert-Device-Id': context.deviceId, 'X-Price-Alert-Device-Secret': 'test-device-secret' }; },
@@ -53,16 +57,29 @@ function environment(active = true) {
 }
 const option = { goodsNo: 'fixture-product', productId: 'fixture-sku', optionNumber: '001', name: '비공개 테스트 옵션', goodsName: '테스트 상품', hidden: true };
 
-test('free search never loads premium names, counts or identifiers; only generic access CTA', async () => {
+test('free search and option previews load photos and names without entitlement checks or payment prompts', async () => {
   const env = environment(false);
-  env.context.response = { options: [option] };
+  env.context.PriceAlerts.refreshEntitlement = () => { throw new Error('preview must not wait for entitlement'); };
+  env.context.response = { options: [{ ...option, image: 'https://image.oliveyoung.co.kr/product.png' }] };
   await env.feature.search('사용자 검색어');
-  assert.equal(env.context.calls.length, 0);
-  assert.match(env.html(), /이용권 확인/);
-  assert.doesNotMatch(env.html(), /fixture-sku|비공개 테스트 옵션|1개/);
+  assert.equal(env.context.calls.length, 1);
+  assert.equal(env.context.calls[0].public, true);
+  assert.equal(env.context.calls[0].opts.credentials, 'omit');
+  assert.equal(env.context.calls[0].opts.cache, 'no-store');
+  assert.deepEqual(Object.keys(env.context.calls[0].opts.headers), ['Accept']);
+  assert.match(env.html(), /비공개 테스트 옵션/);
+  assert.match(env.html(), /<img data-hidden-image/);
+  assert.match(env.html(), /근처 매장 재고 확인/);
+  assert.doesNotMatch(env.html(), /data-hidden-action="access"/);
   await env.feature.openOptions('public-product');
-  assert.equal(env.context.accessOpened, 1);
-  assert.equal(env.context.calls.length, 0);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /비공개 테스트 옵션/);
+  assert.equal(env.context.accessOpened, 0);
+  assert.equal(env.context.calls.length, 2);
+  assert.doesNotMatch(env.feature.productButtonHtml('fixture-product'), /이용권/);
+  env.feature._guard();
+  env.feature.onEntitlementChange();
+  assert.match(env.html(), /비공개 테스트 옵션/);
+  assert.equal(env.feature.panelState.mode, 'options');
 });
 
 test('authorized pages merge by goodsNo + optionNumber + SKU and preserve pagination', async () => {
@@ -93,7 +110,7 @@ test('network errors remain errors, preserving loaded partial rows instead of as
   const env = environment();
   env.context.response = { options: [option], nextCursor: 'cursor' };
   await env.feature.search('미스트');
-  env.context.PriceAlerts._request = async () => { throw new Error('unavailable'); };
+  env.context.fetch = async () => { throw new Error('unavailable'); };
   await env.feature.loadSearch();
   assert.match(env.html(), /비공개 테스트 옵션/);
   assert.match(env.html(), /품절을 뜻하지 않습니다/);
@@ -118,16 +135,23 @@ test('normal-option full-store access is gated and unknown store quantities diff
   assert.match(env.context.calls[1].url, /cursor=stores-2/);
 });
 
-test('expired entitlement clears premium memory and DOM before any further request', async () => {
+test('expired entitlement clears paid inventory but preserves public previews before any further stock request', async () => {
   const env = environment();
   env.context.response = { options: [option] };
   await env.feature.search('미스트');
+  await env.feature.openOptions(option.goodsNo);
+  const optionsParent = env.feature.panelState;
+  env.context.response = { stores: [{ code: 'private-store', name: '유료매장', qty: 7 }] };
+  await env.feature.openStores(option);
+  const stockState = env.feature.panelState;
   env.context.PriceAlerts.entitlement.expiresAt = new Date(Date.now() - 1).toISOString();
   env.feature._guard();
-  assert.equal(env.feature.searchState, null);
-  assert.doesNotMatch(env.html(), /비공개 테스트 옵션/);
-  await assert.rejects(env.feature._request({ action: 'search' }), /access_required/);
-  assert.equal(env.context.calls.length, 1);
+  assert.equal(stockState.stores.length, 0);
+  assert.equal(env.feature.panelState, optionsParent);
+  assert.match(env.html(), /비공개 테스트 옵션/);
+  assert.doesNotMatch(env.elements.get('hidden-stock-panel').innerHTML, /유료매장|재고 7개/);
+  await assert.rejects(env.feature._request({ action: 'stores' }), /access_required/);
+  assert.equal(env.context.calls.length, 3);
 });
 
 test('continuous store lookup is sequential, bounded to 60 requests, and honestly leaves a continuation', async () => {
@@ -185,17 +209,20 @@ test('continuous store lookup stops at a request error and does not claim comple
 
 test('device rotation invalidates in-flight premium data and cannot repaint it', async () => {
   const env = environment();
+  env.context.response = { options: [option] };
+  await env.feature.search('미스트');
   let resolve;
   env.context.PriceAlerts._request = () => new Promise(r => { resolve = r; });
-  const pending = env.feature.search('미스트');
+  const pending = env.feature.openStores(option);
   await new Promise(setImmediate);
   env.context.deviceId = 'new-device';
   env.listeners.storage();
-  resolve({ options: [option] });
+  resolve({ stores: [{ code: 'private', qty: 8 }] });
   await pending;
-  assert.equal(env.feature.searchState, null);
+  assert.equal(env.feature.panelState, null);
+  assert.equal(env.feature.searchState.options.length, 1);
   assert.equal(env.context.PriceAlerts.entitlement, null);
-  assert.doesNotMatch(env.html(), /비공개 테스트 옵션/);
+  assert.match(env.html(), /비공개 테스트 옵션/);
 });
 
 test('server authorization failure clears all premium rows and closes panel', async () => {
@@ -205,10 +232,10 @@ test('server authorization failure clears all premium rows and closes panel', as
     await env.feature.search('미스트');
     env.context.PriceAlerts._request = async () => { const e = new Error('denied'); e.status = status; throw e; };
     await env.feature.openStores(option);
-    assert.equal(env.feature.searchState, null);
+    assert.equal(env.feature.searchState.options.length, 1);
     assert.equal(env.feature.panelState, null);
     assert.equal(env.elements.has('hidden-stock-panel'), false);
-    assert.doesNotMatch(env.html(), /비공개 테스트 옵션/);
+    assert.match(env.html(), /비공개 테스트 옵션/);
   }
 });
 
@@ -218,8 +245,13 @@ test('lifetime access still requires active server entitlement; pagehide clears 
   env.context.response = { options: [option] };
   await env.feature.search('미스트');
   assert.equal(env.feature.searchState.options.length, 1);
+  env.context.response = { stores: [{ code: 'private', qty: 8 }] };
+  await env.feature.openStores(option);
+  const state = env.feature.panelState;
   env.listeners.pagehide();
-  assert.equal(env.feature.searchState, null);
+  assert.equal(env.feature.searchState.options.length, 1);
+  assert.equal(state.stores.length, 0);
+  assert.equal(env.feature.panelState, null);
   env.context.PriceAlerts.entitlement.active = false;
   assert.equal(env.feature._hasAccess(), false);
 });
@@ -234,9 +266,10 @@ test('premium markup escapes option text and no premium data is persisted or bak
   const sw = fs.readFileSync(path.join(root, 'public/sw.js'), 'utf8');
   assert.match(sw, /url\.pathname === '\/api\/oliveyoung\/hidden-stock'\) return/);
   const index = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
-  for (const asset of ['css/style.css', 'js/ui.js', 'js/app.js', 'js/alerts.js', 'js/hidden-stock.js']) {
-    assert.ok(index.includes('/' + asset + '?v=20260913-hidden-nearby-2'));
-    assert.ok(sw.includes('/' + asset + '?v=20260913-hidden-nearby-2'));
+  const version = index.match(/\/js\/hidden-stock\.js\?v=([^"']+)/)[1];
+  for (const asset of ['js/alerts.js', 'js/hidden-stock.js']) {
+    assert.ok(index.includes('/' + asset + '?v=' + version));
+    assert.ok(sw.includes('/' + asset + '?v=' + version));
   }
 });
 
@@ -368,4 +401,130 @@ test('nearby displays ten stores before the national footer and expands cached r
   await env.feature.showNearbyMore();
   assert.equal((env.elements.get('hidden-stock-panel').innerHTML.match(/<li>/g)||[]).length, 25);
   assert.doesNotMatch(env.elements.get('hidden-stock-panel').innerHTML, /근처 매장 더 보기/);
+});
+
+test('public previews work without the payment module and malformed public replies show an error', async () => {
+  const env = environment(false);
+  delete env.context.PriceAlerts;
+  env.context.response = { options: [option] };
+  await env.feature.search('미스트');
+  await env.feature.openOptions(option.goodsNo);
+  assert.equal(env.feature.searchState.options.length, 1);
+  assert.equal(env.feature.panelState.options.length, 1);
+  env.context.fetch = async () => ({ ok: false, status: 503, async json() { return { success: false, error: 'unavailable' }; } });
+  await env.feature.loadSearch();
+  assert.match(env.html(), /품절을 뜻하지 않습니다/);
+  assert.match(env.html(), /비공개 테스트 옵션/);
+});
+
+test('inventory click opens payment only then resumes the exact selected option on grant', async () => {
+  const env = environment(false);
+  const selected = { ...option, productId: 'selected-sku', name: '선택한 옵션' };
+  env.context.response = { options: [option, selected] };
+  await env.feature.search('미스트');
+  const preview = env.feature.searchState;
+  const originFocus = { isConnected: true, focus() {} };
+  env.context.document.activeElement = originFocus;
+  env.feature._handleAction({ dataset: { hiddenAction: 'stores', source: 'search', index: '1' } });
+  assert.equal(env.context.accessOpened, 1);
+  assert.equal(env.context.calls.length, 1, 'no inventory request before entitlement');
+  assert.equal(env.feature.searchState, preview);
+  assert.equal(env.feature.panelState, null, 'dismissing payment leaves public preview untouched');
+  env.context.PriceAlerts.entitlement = { active: true, lifetime: true };
+  env.context.response = { stores: [{ code: 'paid', name: '유료 매장', qty: 2 }] };
+  env.context.document.activeElement = { isConnected: false };
+  env.context.accessCallback();
+  await new Promise(setImmediate);
+  assert.equal(env.feature.panelState.option.productId, 'selected-sku');
+  assert.equal(env.feature._returnFocus, originFocus);
+  assert.equal(env.feature.panelState.scope, 'nearby');
+  assert.match(env.context.calls[1].url, /productId=selected-sku/);
+  assert.equal(env.context.calls[1].public, undefined);
+});
+
+test('public requests survive identity changes while pending stock requests are aborted and discarded', async () => {
+  const env = environment();
+  let resolvePreview;
+  env.context.fetch = () => new Promise(resolve => { resolvePreview = resolve; });
+  const preview = env.feature.search('미스트');
+  env.context.deviceId = 'next-device';
+  env.listeners.storage();
+  resolvePreview({ ok: true, status: 200, async json() { return { options: [option] }; } });
+  await preview;
+  assert.match(env.html(), /비공개 테스트 옵션/);
+  env.context.PriceAlerts.entitlement = { active: true, lifetime: true };
+  let resolveStores, signal;
+  env.context.PriceAlerts._request = (url, opts) => { signal = opts.signal; return new Promise(resolve => { resolveStores = resolve; }); };
+  const pending = env.feature.openStores(option);
+  env.context.PriceAlerts.entitlement.active = false;
+  env.feature.onEntitlementChange();
+  assert.equal(signal.aborted, true);
+  assert.equal(env.feature._premiumRequests.length, 0);
+  resolveStores({ stores: [{ code: 'private', name: '비공개 매장', qty: 99 }] });
+  await pending;
+  assert.equal(env.feature.panelState, null);
+  assert.match(env.html(), /비공개 테스트 옵션/);
+  assert.doesNotMatch(env.html(), /비공개 매장|재고 99개/);
+});
+
+test('national pages reorder by quantity descending, keep zero before unknown and tie by distance stably', async () => {
+  const env = environment();
+  env.context.response = { stores: [
+    { code: 'zero', name: '품절 매장', dist: 0.01, qty: 0 },
+    { code: 'unknown', name: '수량 미확인', dist: 0, qty: null },
+    { code: 'two-far', dist: 3, qty: 2 },
+    { code: 'six', dist: 5, qty: 6 }
+  ], nextCursor: 'national-page-2' };
+  await env.feature.openStores(option, 'national');
+  env.context.response = { stores: [
+    { code: 'nineteen', dist: 300, qty: 19 },
+    { code: 'two-near', dist: 0.02, qty: 2 },
+    { code: 'two-tie', dist: 0.02, qty: 2 },
+    { code: 'invalid', dist: 0.01, qty: '50' },
+    { code: 'negative', dist: 0.02, qty: -1 }
+  ], coverage: { complete: true } };
+  await env.feature.loadPanel();
+  assert.deepEqual(Array.from(env.feature.panelState.stores, row => row.code),
+    ['nineteen', 'six', 'two-near', 'two-tie', 'two-far', 'zero', 'unknown', 'invalid', 'negative']);
+  const html = env.elements.get('hidden-stock-panel').innerHTML;
+  assert.match(html, /조회된 매장 중 재고 많은 순/);
+  assert.doesNotMatch(html, /기준 · 가까운 매장순/);
+});
+
+test('entitlement notifications do not rerender free preview or detach its payment trigger', async () => {
+  const env = environment(false);
+  env.context.response = { options: [option] };
+  await env.feature.search('미스트');
+  let renders = 0;
+  env.feature._renderSearch = () => { renders++; };
+  env.feature.onEntitlementChange();
+  env.context.PriceAlerts.entitlement = { active: true, lifetime: true };
+  env.feature.onEntitlementChange();
+  env.context.PriceAlerts.entitlement.active = false;
+  env.feature.onEntitlementChange();
+  env.feature.clearPremium();
+  assert.equal(renders, 0);
+});
+
+test('revocation clears nationwide and nearby snapshots together and restores the free option panel', async () => {
+  const env = environment();
+  env.context.response = { options: [option] };
+  await env.feature.openOptions(option.goodsNo);
+  const preview = env.feature.panelState;
+  env.context.response = { stores: [{ code: 'near', qty: 5 }], nextCursor: 'near-next' };
+  await env.feature.openStores(option);
+  const nearby = env.feature.panelState;
+  env.context.response = { stores: [{ code: 'national', qty: 9 }], coverage: { complete: true } };
+  await env.feature.openNational();
+  const national = env.feature.panelState;
+  env.context.PriceAlerts.entitlement.active = false;
+  env.feature.onEntitlementChange();
+  for (const state of [nearby, national]) {
+    assert.equal(state.stores.length, 0);
+    assert.equal(state.nextCursor, null);
+    assert.equal(state.coverage, null);
+    assert.equal(state.auto, false);
+  }
+  assert.equal(env.feature.panelState, preview);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /비공개 테스트 옵션/);
 });

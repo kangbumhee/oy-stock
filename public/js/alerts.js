@@ -758,7 +758,7 @@ var PriceAlerts = {
     this._ensureModal();
     this._bindModalForm();
     this.modalState = { accessOnly: true, onAccess: onAccess };
-    document.getElementById('price-alert-title').textContent = '숨겨진 옵션 · 가격 알림 이용권';
+    document.getElementById('price-alert-title').textContent = '매장 재고 · 가격 알림 이용권';
     var modal = document.getElementById('price-alert-modal');
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');

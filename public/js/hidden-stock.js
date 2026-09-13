@@ -1,9 +1,10 @@
-/* Premium inventory stays in memory only. Every page is authorized by the server. */
+/* Option previews are public. Premium inventory stays in memory and is authorized on every server request. */
 var HiddenStock = {
   keyword: '',
   searchState: null,
   panelState: null,
   _generation: 0,
+  _premiumRequests: [],
   _identity: '',
   _initialized: false,
 
@@ -40,11 +41,11 @@ var HiddenStock = {
     window.addEventListener('storage', function () { HiddenStock._guard(); });
     window.addEventListener('pagehide', function () { HiddenStock.clearPremium(); });
     window.addEventListener('pageshow', function (event) {
-      if (event.persisted) { HiddenStock.clearPremium(); PriceAlerts.refreshEntitlement({ silent: true }); }
+      if (event.persisted) { HiddenStock.clearPremium(); if (window.PriceAlerts) PriceAlerts.refreshEntitlement({ silent: true }); }
     });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) HiddenStock.clearPremium();
-      else PriceAlerts.refreshEntitlement({ silent: true });
+      else if (window.PriceAlerts) PriceAlerts.refreshEntitlement({ silent: true });
     });
     this._guardTimer = window.setInterval(function () { HiddenStock._guard(); }, 1000);
   },
@@ -71,7 +72,7 @@ var HiddenStock = {
       return false;
     }
     if (!this._hasAccess()) {
-      if (this.searchState || this.panelState) this.clearPremium();
+      if (this._premiumRequests.length || (this.panelState && this.panelState.mode === 'stores')) this.clearPremium();
       return false;
     }
     return true;
@@ -80,14 +81,23 @@ var HiddenStock = {
   onEntitlementChange: function () {
     if (!this._initialized) return;
     this._guard();
-    this._renderSearch();
   },
 
   clearPremium: function () {
     this._generation++;
-    this.searchState = null;
-    this.closePanel();
-    this._renderSearch();
+    this._premiumRequests.splice(0).forEach(function (controller) { controller.abort(); });
+    var state = this.panelState;
+    if (state && state.mode === 'stores') {
+      var publicParent = state.optionsParent;
+      while (state && state.mode === 'stores') {
+        state.auto = false; state.stores = []; state.nextCursor = null; state.coverage = null;
+        state = state.nearbyParent;
+      }
+      if (publicParent) {
+        this.panelState = publicParent;
+        this._renderPanel();
+      } else this.closePanel();
+    }
   },
 
   _esc: function (value) { return UI.esc(String(value == null ? '' : value)); },
@@ -123,8 +133,13 @@ var HiddenStock = {
     return { lat: Number(lat), lng: Number(lng), name: String(app.locationName || config.DEFAULT_LOCATION || '선택한 위치') };
   },
 
-  _sortStores: function (stores) {
+  _sortStores: function (stores, scope) {
     return stores.sort(function (a, b) {
+      if (scope === 'national') {
+        var leftQty = typeof a.qty === 'number' && Number.isFinite(a.qty) && a.qty >= 0 ? a.qty : -1;
+        var rightQty = typeof b.qty === 'number' && Number.isFinite(b.qty) && b.qty >= 0 ? b.qty : -1;
+        if (leftQty !== rightQty) return rightQty - leftQty;
+      }
       var left = typeof a.dist === 'number' && Number.isFinite(a.dist) && a.dist >= 0 ? a.dist : Infinity;
       var right = typeof b.dist === 'number' && Number.isFinite(b.dist) && b.dist >= 0 ? b.dist : Infinity;
       return left === right ? 0 : left - right;
@@ -132,7 +147,8 @@ var HiddenStock = {
   },
 
   _request: async function (params) {
-    if (!this._guard()) { var denied = new Error('access_required'); denied.status = 402; throw denied; }
+    var premium = params.action === 'stores';
+    if (premium && !this._guard()) { var denied = new Error('access_required'); denied.status = 402; throw denied; }
     var generation = this._generation, identity = this._identity;
     var query = new URLSearchParams();
     Object.keys(params).forEach(function (key) {
@@ -140,21 +156,36 @@ var HiddenStock = {
       query.set(key, params[key]);
     });
     var controller = new AbortController();
+    if (premium) this._premiumRequests.push(controller);
     var timer = window.setTimeout(function () { controller.abort(); }, 60000);
     try {
-      var response = await PriceAlerts._request('/api/oliveyoung/hidden-stock?' + query.toString(), { signal: controller.signal });
-      if (!this._guard() || generation !== this._generation || identity !== this._identity) {
+      var url = '/api/oliveyoung/hidden-stock?' + query.toString();
+      var response;
+      if (premium) response = await PriceAlerts._request(url, { signal: controller.signal });
+      else {
+        var result = await fetch(url, { signal: controller.signal, cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' } });
+        try { response = await result.json(); } catch (_) {}
+        if (!result.ok || !response || response.success === false) {
+          var failed = new Error((response && response.error) || 'preview_unavailable'); failed.status = result.status; throw failed;
+        }
+      }
+      if (premium && (!this._guard() || generation !== this._generation || identity !== this._identity)) {
         var stale = new Error('discarded_response'); stale.discarded = true; throw stale;
       }
       return response;
     } catch (error) {
-      if ([401, 402, 403].indexOf(error.status) !== -1) {
+      if (premium && (generation !== this._generation || identity !== this._identity)) error.discarded = true;
+      if (premium && !error.discarded && [401, 402, 403].indexOf(error.status) !== -1) {
         PriceAlerts.entitlement = null;
         this.clearPremium();
         if (UI.showSyncStatus) UI.showSyncStatus('이용권 인증이 필요합니다. 이용권 확인을 다시 눌러 주세요.', true, 5000);
       }
       throw error;
-    } finally { window.clearTimeout(timer); }
+    } finally {
+      window.clearTimeout(timer);
+      var index = this._premiumRequests.indexOf(controller);
+      if (index !== -1) this._premiumRequests.splice(index, 1);
+    }
   },
 
   search: async function (keyword) {
@@ -162,9 +193,7 @@ var HiddenStock = {
     this.searchState = null;
     this._renderSearch();
     var requestedKeyword = this.keyword;
-    if (!requestedKeyword || !window.PriceAlerts) return;
-    await PriceAlerts.refreshEntitlement({ silent: true });
-    if (this.keyword !== requestedKeyword || !this._guard()) { this._renderSearch(); return; }
+    if (!requestedKeyword) return;
     this.searchState = this._newState('search');
     await this.loadSearch();
   },
@@ -195,7 +224,7 @@ var HiddenStock = {
 
   productButtonHtml: function (goodsNo) {
     return '<button type="button" class="hidden-stock-button" data-hidden-action="options" data-goodsno="' +
-      this._esc(goodsNo) + '">매장 숨겨진 옵션 보기 · 이용권</button>';
+      this._esc(goodsNo) + '">매장 숨겨진 옵션 보기</button>';
   },
 
   normalStoreButtonHtml: function (goodsNo, option, detail) {
@@ -207,7 +236,6 @@ var HiddenStock = {
   },
 
   openOptions: async function (goodsNo) {
-    if (!this._guard()) return this.openAccess(function () { HiddenStock.openOptions(goodsNo); });
     this._returnFocus = document.activeElement;
     var state = this._newState('options');
     state.goodsNo = String(goodsNo || '');
@@ -216,10 +244,13 @@ var HiddenStock = {
     await this.loadPanel();
   },
 
-  openStores: async function (option, scope) {
+  openStores: async function (option, scope, returnFocus) {
     if (!option) return;
-    if (!this._guard()) return this.openAccess(function () { HiddenStock.openStores(option, scope); });
-    if (!this.panelState) this._returnFocus = document.activeElement;
+    if (!this._guard()) {
+      var sourceFocus = returnFocus || document.activeElement;
+      return this.openAccess(function () { HiddenStock.openStores(option, scope, sourceFocus); });
+    }
+    if (!this.panelState) this._returnFocus = returnFocus || document.activeElement;
     var state = this._newState('stores');
     state.goodsNo = option.goodsNo;
     state.option = option;
@@ -248,7 +279,7 @@ var HiddenStock = {
   backPanel: function (kind) {
     var state = this.panelState;
     var previous = state && (kind === 'nearby' ? state.nearbyParent : state.optionsParent);
-    if (!previous || !this._guard()) return;
+    if (!previous || (previous.mode === 'stores' && !this._guard())) return;
     state.auto = false;
     this.panelState = previous;
     this._renderPanel(true);
@@ -283,7 +314,7 @@ var HiddenStock = {
       var rows = storesMode ? response.stores : response.options;
       if (!Array.isArray(rows)) throw new Error('invalid_response');
       if (storesMode) {
-        state.stores = this._sortStores(this._merge(state.stores, rows, function (store) { return String(store.code || store.name + '|' + store.addr); }));
+        state.stores = this._sortStores(this._merge(state.stores, rows, function (store) { return String(store.code || store.name + '|' + store.addr); }), state.scope);
       } else state.options = this._merge(state.options, rows, this._key);
       state.nextCursor = response.nextCursor || null;
       state.coverage = response.coverage || null;
@@ -369,11 +400,7 @@ var HiddenStock = {
     root.hidden = !this.keyword;
     if (!this.keyword) { root.innerHTML = ''; return; }
     var html = '<h3 id="hidden-stock-search-title">매장 숨겨진 옵션</h3>';
-    if (!this._hasAccess()) {
-      root.innerHTML = html + '<p>온라인에 표시되지 않는 옵션의 매장 재고를 이용권으로 확인하세요. 가격 알림 이용권과 함께 사용할 수 있습니다.</p>' +
-        '<button type="button" class="hidden-stock-button" data-hidden-action="access">이용권 확인 / 프로모션 입력</button>';
-      return;
-    }
+    html += '<p>사진과 옵션 정보는 무료로 볼 수 있습니다. 매장 재고 조회는 이용권이 필요합니다.</p>';
     var state = this.searchState;
     if (!state) {
       root.innerHTML = html + '<button type="button" class="hidden-stock-button" data-hidden-action="search">이 검색어로 숨겨진 옵션 조회</button>';
@@ -386,7 +413,7 @@ var HiddenStock = {
 
   _renderPanel: function (focus) {
     var state = this.panelState;
-    if (!state || !this._hasAccess()) return;
+    if (!state || (state.mode === 'stores' && !this._hasAccess())) return;
     var root = document.getElementById('hidden-stock-panel');
     var hadFocus = root && root.contains(document.activeElement);
     var focusedAction = hadFocus && document.activeElement.dataset ? document.activeElement.dataset.hiddenAction : '';
@@ -403,7 +430,9 @@ var HiddenStock = {
         this._esc(state.option.goodsName || '') + '</p><h4>' + this._esc(state.option.name) +
         '</h4></div></div><p class="hidden-stock-image-note">상품 참고 이미지로, 옵션의 실제 구성·패키지와 다를 수 있습니다.</p>' +
         '<p>온라인 판매 여부 확인 불가 · 매장 방문 전 재고 확인 권장</p>';
-      if (state.location) html += '<p class="hidden-stock-location">📍 ' + this._esc(state.location.name) + ' 기준 · 가까운 매장순</p>';
+      if (state.scope === 'national') html += '<p class="hidden-stock-location">조회된 매장 중 재고 많은 순 · 같은 수량은 가까운 매장순</p>';
+      if (state.location) html += '<p class="hidden-stock-location">📍 ' + this._esc(state.location.name) + ' 기준' +
+        (state.scope === 'nearby' ? ' · 가까운 매장순' : '') + '</p>';
       else if (state.scope === 'nearby') html += '<p class="hidden-stock-error">선택한 위치를 확인할 수 없습니다. 창을 닫고 상단에서 지역을 선택하거나 아래 전국 재고 조회를 눌러 주세요.</p>';
       html += '<ul class="hidden-stock-stores">';
       var visibleStores = state.scope === 'nearby' ? state.stores.slice(0, state.visibleStores || 10) : state.stores;

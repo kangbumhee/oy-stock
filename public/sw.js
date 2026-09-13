@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260913-hidden-nearby-2';
+const CACHE_NAME = 'olivestock-app-v20260913-hidden-preview-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -20,8 +20,8 @@ const CORE_ASSETS = [
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/alerts.js?v=20260913-hidden-nearby-2',
-  '/js/hidden-stock.js?v=20260913-hidden-nearby-2',
+  '/js/alerts.js?v=20260913-hidden-preview-1',
+  '/js/hidden-stock.js?v=20260913-hidden-preview-1',
   '/js/app.js?v=20260913-hidden-nearby-2'
 ];
 
@@ -67,7 +67,7 @@ self.addEventListener('fetch', function (event) {
   if (request.method !== 'GET') return;
   var url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  // Authenticated hidden options and inventory must never enter Cache Storage.
+  // Preview metadata and authenticated inventory are always fetched fresh, never cached here.
   if (url.pathname === '/api/oliveyoung/hidden-stock') return;
   if (url.pathname.indexOf('/api/') === 0) return;
   var isNavigation =
