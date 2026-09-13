@@ -144,7 +144,8 @@ var PriceAlerts = {
         true
       );
     } else if (!active && !this.entitlementLoading && !this.paymentBusy) {
-      this._setPaywallMessage('30일 이용권을 결제하거나 프로모션 코드를 적용해 주세요.', false);
+      this._setPaywallMessage((accessOnly ? '매장 재고 조회는 유료 이용자 전용입니다. ' : '') +
+        '30일 이용권을 결제하거나 프로모션 코드를 적용해 주세요.', false);
     }
     if (window.HiddenStock) HiddenStock.onEntitlementChange();
   },
@@ -718,6 +719,29 @@ var PriceAlerts = {
     var form = document.getElementById('price-alert-form');
     if (!form || form.__priceAlertBound) return;
     form.__priceAlertBound = true;
+    form.addEventListener('keydown', function (event) {
+      if (!PriceAlerts.modalState || !PriceAlerts.modalState.accessOnly) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        PriceAlerts.closeModal();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      var controls = Array.from(form.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).filter(function (control) {
+        return !control.disabled && control.tabIndex >= 0 && control.getClientRects().length > 0;
+      });
+      var first = controls[0];
+      var last = controls[controls.length - 1];
+      if (!first) {
+        event.preventDefault();
+        form.setAttribute('tabindex', '-1');
+        form.focus();
+      } else if (!controls.includes(document.activeElement) || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
+    });
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       if (PriceAlerts._hasActiveEntitlement()) {
@@ -757,14 +781,16 @@ var PriceAlerts = {
   openAccess: function (onAccess) {
     this._ensureModal();
     this._bindModalForm();
-    this.modalState = { accessOnly: true, onAccess: onAccess };
-    document.getElementById('price-alert-title').textContent = '매장 재고 · 가격 알림 이용권';
+    this.modalState = { accessOnly: true, onAccess: onAccess, returnFocus: document.activeElement };
+    document.getElementById('price-alert-title').textContent = '유료 이용자만 사용 가능합니다';
     var modal = document.getElementById('price-alert-modal');
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('price-alert-modal-open');
     this._setModalError('');
     this._renderEntitlement();
+    var closeButton = modal.querySelector('.price-alert-close');
+    if (closeButton) closeButton.focus();
     this.refreshEntitlement({ silent: true });
   },
 
@@ -1016,12 +1042,14 @@ var PriceAlerts = {
 
   closeModal: function () {
     if (this.loading) return;
+    var returnFocus = this.modalState && this.modalState.accessOnly && this.modalState.returnFocus;
     var modal = document.getElementById('price-alert-modal');
     if (!modal) return;
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('price-alert-modal-open');
     this.modalState = null;
+    if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === 'function') returnFocus.focus();
   },
 
   _setModalBusy: function (busy) {

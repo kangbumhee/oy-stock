@@ -119,7 +119,7 @@ var HiddenStock = {
       if (url.protocol === 'https:' && /(^|\.)oliveyoung\.co\.kr$/i.test(url.hostname) && !url.username && !url.password) src = url.href;
     } catch (_) {}
     return '<div class="hidden-stock-image">' + (src ? '<img data-hidden-image="1" src="' + this._esc(src) +
-      '" width="72" height="72" alt="' + this._esc((option.goodsName || option.name || '상품') + ' 참고 이미지') +
+      '" width="320" height="320" alt="' + this._esc((option.goodsName || option.name || '상품') + ' 참고 이미지') +
       '" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '') +
       '<span' + (src ? ' hidden' : '') + '>이미지 준비 중</span></div>';
   },
@@ -368,11 +368,10 @@ var HiddenStock = {
 
   _optionRows: function (options, source) {
     return options.map(function (option, index) {
-      return '<li class="hidden-stock-option"><div class="hidden-stock-option-summary">' + HiddenStock._imageHtml(option) +
-        '<div><p class="hidden-stock-product">' + HiddenStock._esc(option.goodsName || '') +
-        '</p><h4>' + HiddenStock._esc(option.name) + '</h4><p>숨겨진 옵션 · 매장 재고 별도 조회</p></div></div>' +
-        '<button type="button" class="hidden-stock-button" data-hidden-action="stores" data-source="' + source +
-        '" data-index="' + index + '">근처 매장 재고 확인</button></li>';
+      var label = [option.goodsName, option.name].filter(Boolean).join(' · ') + ' · 근처 매장 재고 확인, 유료 이용자 전용';
+      return '<li class="hidden-stock-option card"><button type="button" class="card-img hidden-stock-preview"' +
+        ' data-hidden-action="stores" data-source="' + source + '" data-index="' + index + '" aria-haspopup="dialog" aria-label="' +
+        HiddenStock._esc(label) + '">' + HiddenStock._imageHtml(option) + '</button></li>';
     }).join('');
   },
 
@@ -400,13 +399,13 @@ var HiddenStock = {
     root.hidden = !this.keyword;
     if (!this.keyword) { root.innerHTML = ''; return; }
     var html = '<h3 id="hidden-stock-search-title">매장 숨겨진 옵션</h3>';
-    html += '<p>사진과 옵션 정보는 무료로 볼 수 있습니다. 매장 재고 조회는 이용권이 필요합니다.</p>';
+    html += '<p>이미지를 누르면 매장 재고를 확인할 수 있습니다. 유료 이용자 전용입니다.</p>';
     var state = this.searchState;
     if (!state) {
       root.innerHTML = html + '<button type="button" class="hidden-stock-button" data-hidden-action="search">이 검색어로 숨겨진 옵션 조회</button>';
       return;
     }
-    html += '<ul class="hidden-stock-options">' + this._optionRows(state.options, 'search') + '</ul>';
+    html += '<ul class="hidden-stock-options grid">' + this._optionRows(state.options, 'search') + '</ul>';
     if (state.loaded && !state.options.length && !state.error) html += '<p>이번 조회 범위에서는 일치하는 숨겨진 옵션을 찾지 못했습니다. 전체 매장 품절이라는 뜻은 아닙니다.</p>';
     root.innerHTML = html + this._statusHtml(state, 'search-more');
   },
@@ -446,7 +445,8 @@ var HiddenStock = {
       html += '</ul>';
       if (state.loaded && !state.stores.length && !state.error) html += '<p>이번 범위에 표시할 매장 정보가 없습니다. 전국 품절을 뜻하지 않습니다.</p>';
     } else {
-      html += '<ul class="hidden-stock-options">' + this._optionRows(state.options, 'panel') + '</ul>';
+      html += '<p>이미지를 누르면 매장 재고를 확인할 수 있습니다. 유료 이용자 전용입니다.</p>' +
+        '<ul class="hidden-stock-options grid">' + this._optionRows(state.options, 'panel') + '</ul>';
       if (state.loaded && !state.options.length && !state.error) html += '<p>이번 조회 범위에서 확인된 숨겨진 옵션이 없습니다.</p>';
     }
     html += this._statusHtml(state, 'panel-more');

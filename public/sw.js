@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260913-hidden-preview-1';
+const CACHE_NAME = 'olivestock-app-v20260913-hidden-cards-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -10,7 +10,7 @@ const CORE_ASSETS = [
   '/payment-info.html',
   '/terms.html',
   '/privacy.html',
-  '/css/style.css?v=20260913-hidden-nearby-2',
+  '/css/style.css?v=20260913-hidden-cards-1',
   '/js/config.js?v=20260906-curator-shortlink-2',
   '/js/pwa.js?v=20260906-curator-shortlink-2',
   '/js/storage.js?v=20260906-curator-shortlink-2',
@@ -20,8 +20,8 @@ const CORE_ASSETS = [
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/alerts.js?v=20260913-hidden-preview-1',
-  '/js/hidden-stock.js?v=20260913-hidden-preview-1',
+  '/js/alerts.js?v=20260913-hidden-cards-1',
+  '/js/hidden-stock.js?v=20260913-hidden-cards-1',
   '/js/app.js?v=20260913-hidden-nearby-2'
 ];
 

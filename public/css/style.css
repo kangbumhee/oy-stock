@@ -1,5 +1,5 @@
 :root{--header-height:88px}
-.hidden-stock-search{margin:14px 0;padding:16px;border:1px solid #dfead8;border-left:4px solid #15803d;border-radius:8px;background:#fff}
+.hidden-stock-search{margin:24px 0 0;background:#fff}
 .hidden-stock-search[hidden]{display:none}
 .hidden-stock-search h3,.hidden-stock-dialog h3{font-size:17px;color:#193d22;line-height:1.45}
 .hidden-stock-search p,.hidden-stock-dialog p{font-size:13px;color:#475569;margin:6px 0;word-break:keep-all;overflow-wrap:anywhere}
@@ -7,15 +7,19 @@
 .hidden-stock-button:hover{background:#dcfce7}
 .hidden-stock-button:focus-visible,.hidden-stock-dialog button:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
 .hidden-stock-options,.hidden-stock-stores{list-style:none;padding:0;margin:8px 0}
-.hidden-stock-option{padding:14px 0;border-bottom:1px solid #e5eadf}
+.hidden-stock-option{min-width:0}
+.hidden-stock-option .hidden-stock-preview{display:block;width:100%;padding:0;margin:0;border:0;color:inherit;font:inherit;line-height:1;cursor:pointer}
+.hidden-stock-option:focus-within{outline:3px solid #2563eb;outline-offset:3px}
+.hidden-stock-option .hidden-stock-preview:focus-visible{outline:0}
 .hidden-stock-option-summary{display:flex;align-items:center;gap:12px;min-width:0}
 .hidden-stock-option-summary>div:last-child{min-width:0;flex:1}
-.hidden-stock-image{display:grid;place-items:center;flex:0 0 72px;width:72px;height:72px;border:1px solid #e5e7eb;border-radius:7px;background:#fff;overflow:hidden}
-.hidden-stock-image img{display:block;width:72px;height:72px;object-fit:contain}
+.hidden-stock-image{display:grid;place-items:center;width:100%;height:100%;aspect-ratio:1;background:#fff;overflow:hidden}
+.hidden-stock-image img{display:block;width:100%;height:100%;object-fit:contain}
+.hidden-stock-option .hidden-stock-image img{object-fit:contain}
 .hidden-stock-image img[hidden],.hidden-stock-image span[hidden]{display:none}
-.hidden-stock-image span{padding:6px;color:#64748b;text-align:center;font-size:11px;line-height:1.5}
-.hidden-stock-option>.hidden-stock-button{width:100%;margin-bottom:0}
+.hidden-stock-image span{padding:12px;color:#64748b;text-align:center;font-size:13px;line-height:1.5}
 .hidden-stock-selected{padding:12px;border-radius:8px;background:#f8f9fa}
+.hidden-stock-selected .hidden-stock-image{flex:0 0 128px;width:128px;height:128px;border:1px solid #e5e7eb;border-radius:8px}
 .hidden-stock-dialog .hidden-stock-image-note{font-size:11px;color:#64748b;margin:8px 0 12px}
 .hidden-stock-back{min-height:44px;margin:-4px 0 8px;padding:8px 0;border:0;background:transparent;color:#166534;font:inherit;font-size:13px;cursor:pointer}
 .hidden-stock-dialog .hidden-stock-location{padding:10px 0;margin:10px 0 0;color:#166534;font-weight:600}
@@ -24,7 +28,7 @@
 .hidden-stock-national-footer .hidden-stock-button{width:100%;margin:0;background:#f0fdf4}
 .hidden-stock-national-footer p{font-size:12px;text-align:center}
 .hidden-stock-option h4,.hidden-stock-dialog h4{font-size:15px;color:#16251a;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
-.hidden-stock-option .hidden-stock-product{font-size:12px;color:#64748b}
+.hidden-stock-dialog .hidden-stock-product{font-size:12px;color:#64748b}
 .hidden-stock-search .hidden-stock-error,.hidden-stock-dialog .hidden-stock-error{color:#b91c1c}
 .hidden-stock-coverage{padding:10px;background:#f6f8f4;border-radius:6px}
 .hidden-stock-overlay{position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -38,7 +42,7 @@
 .hidden-stock-stores li p{font-size:11px;margin:3px 0 0;color:#64748b}
 .hidden-stock-stores li>span{font-size:13px;flex:0 0 auto;max-width:110px;text-align:right}
 body.hidden-stock-open{overflow:hidden}
-@media(max-width:560px){.hidden-stock-overlay{align-items:flex-end;padding:0}.hidden-stock-dialog{width:100%;max-height:92dvh;padding:16px 12px max(16px,env(safe-area-inset-bottom));border-radius:16px 16px 0 0}.hidden-stock-stores li{gap:10px}.hidden-stock-button{width:100%}}
+@media(max-width:560px){.hidden-stock-overlay{align-items:flex-end;padding:0}.hidden-stock-dialog{width:100%;max-height:92dvh;padding:16px 12px max(16px,env(safe-area-inset-bottom));border-radius:16px 16px 0 0}.hidden-stock-selected .hidden-stock-image{flex-basis:104px;width:104px;height:104px}.hidden-stock-stores li{gap:10px}.hidden-stock-button{width:100%}}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f6f8f4;color:#1f2933;line-height:1.5}
 a{color:inherit}

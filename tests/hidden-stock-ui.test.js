@@ -57,7 +57,49 @@ function environment(active = true) {
 }
 const option = { goodsNo: 'fixture-product', productId: 'fixture-sku', optionNumber: '001', name: '비공개 테스트 옵션', goodsName: '테스트 상품', hidden: true };
 
-test('free search and option previews load photos and names without entitlement checks or payment prompts', async () => {
+function accessDialogEnvironment() {
+  const env = environment(false);
+  vm.runInContext(fs.readFileSync(path.join(root, 'public/js/alerts.js'), 'utf8'), env.context);
+  function element(id) {
+    const classes = new Set();
+    const item = { id, textContent: '', disabled: false, tabIndex: 0, visible: true, isConnected: true, attributes: {}, events: {},
+      classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, contains(name) { return classes.has(name); } },
+      setAttribute(name, value) { item.attributes[name] = value; },
+      addEventListener(name, handler) { item.events[name] = handler; },
+      getClientRects() { return item.visible ? [{}] : []; },
+      focus() { env.context.document.activeElement = item; }
+    };
+    env.elements.set(id, item);
+    return item;
+  }
+  const title = element('price-alert-title');
+  const modal = element('price-alert-modal');
+  const form = element('price-alert-form');
+  const close = element('fixture-close');
+  const promo = element('price-alert-promo-input');
+  const last = element('price-alert-entitlement-refresh');
+  const origin = element('fixture-image-button');
+  const controls = [close, promo, last];
+  modal.classList.add('hidden');
+  modal.querySelector = selector => selector === '.price-alert-close' ? close : null;
+  form.querySelectorAll = () => controls;
+  const alerts = env.context.PriceAlerts;
+  alerts._ensureModal = () => {};
+  alerts._setModalError = () => {};
+  alerts._renderEntitlement = () => {};
+  alerts.refreshEntitlement = () => {};
+  alerts._loadModalOptions = () => { throw new Error('unexpected product option request'); };
+  origin.focus();
+  function key(key, shiftKey = false) {
+    const event = { key, shiftKey, prevented: false, stopped: false,
+      preventDefault() { this.prevented = true; }, stopPropagation() { this.stopped = true; } };
+    form.events.keydown(event);
+    return event;
+  }
+  return { ...env, alerts, title, modal, form, close, promo, last, origin, controls, key, element };
+}
+
+test('free search and option previews show image-only product cards with accessible names and no payment prompt', async () => {
   const env = environment(false);
   env.context.PriceAlerts.refreshEntitlement = () => { throw new Error('preview must not wait for entitlement'); };
   env.context.response = { options: [{ ...option, image: 'https://image.oliveyoung.co.kr/product.png' }] };
@@ -69,10 +111,17 @@ test('free search and option previews load photos and names without entitlement 
   assert.deepEqual(Object.keys(env.context.calls[0].opts.headers), ['Accept']);
   assert.match(env.html(), /비공개 테스트 옵션/);
   assert.match(env.html(), /<img data-hidden-image/);
-  assert.match(env.html(), /근처 매장 재고 확인/);
+  assert.match(env.html(), /class="hidden-stock-options grid"/);
+  assert.match(env.html(), /class="hidden-stock-option card"/);
+  assert.match(env.html(), /<button type="button" class="card-img hidden-stock-preview"[^>]+aria-haspopup="dialog"[^>]+aria-label="테스트 상품 · 비공개 테스트 옵션 · 근처 매장 재고 확인, 유료 이용자 전용"/);
+  const cards = env.feature._optionRows(env.feature.searchState.options, 'search');
+  assert.doesNotMatch(cards, /<h4|hidden-stock-product|card-body|hidden-stock-button/);
+  assert.doesNotMatch(cards.replace(/<[^>]*>/g, ''), /테스트 상품|비공개 테스트 옵션|근처 매장 재고 확인/);
   assert.doesNotMatch(env.html(), /data-hidden-action="access"/);
   await env.feature.openOptions('public-product');
   assert.match(env.elements.get('hidden-stock-panel').innerHTML, /비공개 테스트 옵션/);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /class="hidden-stock-options grid"/);
+  assert.doesNotMatch(env.elements.get('hidden-stock-panel').innerHTML, /<h4|hidden-stock-product/);
   assert.equal(env.context.accessOpened, 0);
   assert.equal(env.context.calls.length, 2);
   assert.doesNotMatch(env.feature.productButtonHtml('fixture-product'), /이용권/);
@@ -273,28 +322,80 @@ test('premium markup escapes option text and no premium data is persisted or bak
   }
 });
 
-test('dedicated access dialog has no fake product and never starts price-alert option lookup', () => {
-  const env = environment();
-  const alertsSource = fs.readFileSync(path.join(root, 'public/js/alerts.js'), 'utf8');
-  vm.runInContext(alertsSource, env.context);
-  for (const id of ['price-alert-title', 'price-alert-modal']) {
-    env.elements.set(id, { textContent: '', classList: { add() {}, remove() {} }, setAttribute() {} });
-  }
-  const alerts = env.context.PriceAlerts;
-  alerts._ensureModal = () => {};
-  alerts._bindModalForm = () => {};
-  alerts._setModalError = () => {};
-  alerts._renderEntitlement = () => {};
-  alerts.refreshEntitlement = () => {};
-  alerts._loadModalOptions = () => { throw new Error('unexpected product option request'); };
+test('dedicated access dialog states paid-only access, focuses close and restores the image before continuing', () => {
+  const env = accessDialogEnvironment();
+  const { alerts } = env;
   let continued = 0;
-  alerts.openAccess(() => continued++);
+  alerts.openAccess(() => { assert.equal(env.context.document.activeElement, env.origin); continued++; });
   assert.equal(alerts.modalState.accessOnly, true);
   assert.equal(alerts.modalState.goodsNo, undefined);
+  assert.equal(alerts.modalState.returnFocus, env.origin);
+  assert.equal(env.title.textContent, '유료 이용자만 사용 가능합니다');
+  assert.equal(env.context.document.activeElement, env.close);
+  assert.equal(env.modal.classList.contains('hidden'), false);
+  assert.equal(env.modal.attributes['aria-hidden'], 'false');
   alerts.entitlement = { active: true, lifetime: true };
   alerts._continueAlertSetup(alerts.modalState);
   assert.equal(continued, 1);
   assert.equal(alerts.modalState, null);
+  assert.equal(env.modal.classList.contains('hidden'), true);
+  assert.equal(env.modal.attributes['aria-hidden'], 'true');
+});
+
+test('access dialog Tab loops through visible enabled controls and keeps focus inside if none remain', () => {
+  const env = accessDialogEnvironment();
+  env.alerts.openAccess();
+  const disabled = env.element('fixture-disabled');
+  disabled.disabled = true;
+  const hidden = env.element('fixture-hidden');
+  hidden.visible = false;
+  const untabbable = env.element('fixture-untabbable');
+  untabbable.tabIndex = -1;
+  env.controls.push(disabled, hidden, untabbable);
+  env.last.focus();
+  assert.equal(env.key('Tab').prevented, true);
+  assert.equal(env.context.document.activeElement, env.close);
+  assert.equal(env.key('Tab', true).prevented, true);
+  assert.equal(env.context.document.activeElement, env.last);
+  env.promo.focus();
+  assert.equal(env.key('Tab').prevented, false, 'normal forward focus movement stays native');
+  env.origin.focus();
+  assert.equal(env.key('Tab').prevented, true);
+  assert.equal(env.context.document.activeElement, env.close);
+  env.controls.forEach(control => { control.disabled = true; });
+  assert.equal(env.key('Tab').prevented, true);
+  assert.equal(env.context.document.activeElement, env.form);
+  assert.equal(env.form.attributes.tabindex, '-1');
+});
+
+test('access Escape respects loading, restores connected image focus, and does not affect ordinary alert dialogs', () => {
+  const env = accessDialogEnvironment();
+  env.alerts.openAccess();
+  const state = env.alerts.modalState;
+  env.alerts.loading = true;
+  const busyEscape = env.key('Escape');
+  assert.equal(busyEscape.prevented, true);
+  assert.equal(busyEscape.stopped, true);
+  assert.equal(env.alerts.modalState, state);
+  assert.equal(env.modal.classList.contains('hidden'), false);
+  env.alerts.loading = false;
+  env.key('Escape');
+  assert.equal(env.alerts.modalState, null);
+  assert.equal(env.context.document.activeElement, env.origin);
+  env.alerts.openAccess();
+  env.origin.isConnected = false;
+  env.key('Escape');
+  assert.equal(env.alerts.modalState, null);
+  assert.equal(env.context.document.activeElement, env.close, 'removed image is not refocused');
+  const ordinary = { accessOnly: false, goodsNo: 'ordinary-product' };
+  env.alerts.modalState = ordinary;
+  env.last.focus();
+  assert.equal(env.key('Tab').prevented, false);
+  const ordinaryEscape = env.key('Escape');
+  assert.equal(ordinaryEscape.prevented, false);
+  assert.equal(ordinaryEscape.stopped, false);
+  assert.equal(env.alerts.modalState, ordinary);
+  assert.equal(env.context.document.activeElement, env.last);
 });
 
 test('access-only checkout keeps hidden target-price input disabled and not required', () => {
@@ -316,13 +417,42 @@ test('official images have safe src, useful alt and dimensions; untrusted or mis
   const env = environment();
   const html = env.feature._imageHtml({ ...option, image: 'https://image.oliveyoung.co.kr/product.png' });
   assert.match(html, /<img data-hidden-image="1"/);
-  assert.match(html, /width="72" height="72"/);
+  assert.match(html, /width="320" height="320"/);
   assert.match(html, /테스트 상품 참고 이미지/);
   for (const image of ['', 'javascript:alert(1)', 'https://oliveyoung.co.kr.evil.test/x', 'https://user:pass@image.oliveyoung.co.kr/x']) {
     const invalid = env.feature._imageHtml({ ...option, image });
     assert.doesNotMatch(invalid, /<img /);
     assert.match(invalid, /이미지 준비 중/);
   }
+});
+
+test('image-only cards never add visible names, prices, quantities or unrelated normal purchase actions', () => {
+  const env = environment(false);
+  const html = env.feature._optionRows([{ ...option, image: 'https://image.oliveyoung.co.kr/product.png',
+    price: 9900, qty: 12, stores: [{ name: '테스트 비공개 매장', qty: 12 }] }], 'search');
+  assert.match(html, /data-hidden-action="stores"/);
+  assert.match(html, /data-source="search" data-index="0"/);
+  assert.doesNotMatch(html, /data-action=|바로구매|재고 12|9900|테스트 비공개 매장|<h4|<p>/);
+  assert.equal((html.match(/<button /g) || []).length, 1);
+  assert.match(html, /aria-label="테스트 상품 · 비공개 테스트 옵션/);
+  const css = fs.readFileSync(path.join(root, 'public/css/style.css'), 'utf8');
+  assert.match(css, /\.hidden-stock-option \.hidden-stock-preview\{[^}]*padding:0[^}]*border:0/);
+  assert.match(css, /\.hidden-stock-option:focus-within\{outline:3px solid/);
+  assert.match(css, /\.hidden-stock-option \.hidden-stock-image img\{object-fit:contain/);
+});
+
+test('paid inventory popup restores selected product image and details with a separate nationwide footer', async () => {
+  const env = environment();
+  const selected = { ...option, image: 'https://image.oliveyoung.co.kr/product.png' };
+  env.context.response = { stores: [{ code: 'near', name: '근처 매장', dist: 0.25, qty: 3 }], coverage: { complete: true } };
+  await env.feature.openStores(selected);
+  const html = env.elements.get('hidden-stock-panel').innerHTML;
+  assert.match(html, /role="dialog" aria-modal="true"/);
+  assert.match(html, /hidden-stock-option-summary hidden-stock-selected/);
+  assert.match(html, /<img data-hidden-image="1" src="https:\/\/image.oliveyoung.co.kr\/product.png"/);
+  assert.match(html, /<p class="hidden-stock-product">테스트 상품<\/p><h4>비공개 테스트 옵션<\/h4>/);
+  assert.match(html, /재고 3개/);
+  assert.ok(html.indexOf('data-hidden-action="national-stores"') > html.indexOf('근처 매장</strong>'));
 });
 
 test('hidden option opens nearby first at the selected location and sorts known distances before unknowns', async () => {

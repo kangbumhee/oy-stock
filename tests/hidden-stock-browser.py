@@ -1,5 +1,6 @@
 """Local, mocked browser acceptance. No production accounts or payments are used."""
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 from playwright.sync_api import sync_playwright, expect
@@ -10,7 +11,7 @@ OUT = PROJECT / '.ai' / 'logs' / 'hidden-stock-browser'
 OUT.mkdir(parents=True, exist_ok=True)
 IMAGE = 'https://image.oliveyoung.co.kr/browser-fixture/product.png'
 BROKEN_IMAGE = 'https://image.oliveyoung.co.kr/browser-fixture/missing.png'
-IMAGE_BYTES = (PROJECT / 'public' / 'favicon-192x192.png').read_bytes()
+IMAGE_BYTES = (PROJECT / 'public' / 'images' / 'blog' / 'oliveyoung-hot-item-stock-a000000255680-source.jpg').read_bytes()
 option = dict(goodsNo='A000000255680', optionNumber='001', productId='8800289469145',
               goodsName='브라우저 테스트용 미스트', name='한교동 숨김 옵션 테스트', hidden=True,
               image=IMAGE)
@@ -31,9 +32,27 @@ def button(root, action):
 
 def verify_image(locator):
     expect(locator).to_be_visible()
-    expect(locator).to_have_attribute('width', '72')
-    expect(locator).to_have_attribute('height', '72')
     locator.page.wait_for_function('(img) => img.complete && img.naturalWidth > 0', arg=locator.element_handle())
+    assert locator.evaluate('(img) => img.naturalWidth === 550 && img.naturalHeight === 550'), 'fixture must decode the existing product photograph'
+
+
+def verify_image_grid(root):
+    cards = root.locator('.hidden-stock-option')
+    expect(cards).to_have_count(3)
+    expect(root.locator('.hidden-stock-options.grid')).to_have_count(1)
+    expect(cards.locator('h4, .hidden-stock-product, .card-body')).to_have_count(0)
+    assert cards.first.inner_text() == '', 'available photo cards must have no visible text'
+    expect(cards.first.locator('.hidden-stock-image span')).not_to_be_visible()
+    image_button = button(root, 'stores').first
+    expect(image_button).to_have_attribute('aria-label', re.compile(re.escape(option['name'])))
+    expect(image_button).to_have_attribute('aria-haspopup', 'dialog')
+    verify_image(cards.first.locator('img'))
+    box = image_button.bounding_box()
+    assert box and box['width'] >= 140 and abs(box['width'] - box['height']) < 2, box
+    assert image_button.evaluate('(el) => getComputedStyle(el).paddingTop === "0px"'), 'image card must not retain text-button padding'
+    expect(root.locator('.hidden-stock-image span:visible')).to_have_count(2)
+    assert root.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'free image grid horizontal overflow'
+    return box
 
 
 with sync_playwright() as p:
@@ -51,7 +70,7 @@ with sync_playwright() as p:
             path, query = url.path, parse_qs(url.query)
             if route.request.url == IMAGE:
                 state['images'] += 1
-                return route.fulfill(status=200, content_type='image/png', body=IMAGE_BYTES)
+                return route.fulfill(status=200, content_type='image/jpeg', body=IMAGE_BYTES)
             if route.request.url == BROKEN_IMAGE:
                 return route.fulfill(status=404, content_type='text/plain', body='fixture image unavailable')
             if url.hostname not in ['127.0.0.1', 'localhost']:
@@ -115,39 +134,84 @@ with sync_playwright() as p:
         page.locator('#search-form button[type=submit]').click()
         premium = page.locator('#hidden-stock-search')
         expect(premium).to_be_visible()
-        expect(premium.get_by_text(option['name'], exact=True)).to_be_visible()
-        expect(premium.get_by_text(option['goodsName'], exact=True)).to_have_count(3)
-        verify_image(premium.locator('.hidden-stock-image img').first)
-        expect(premium.locator('.hidden-stock-image span:visible')).to_have_count(2)
+        expect(button(premium, 'stores')).to_have_count(3)
+        # Compare the new image cards against the existing product renderer at the same viewport.
+        ordinary_fixture = page.evaluate('''(image) => {
+            UI.renderProducts(Array.from({length: 6}, (_, i) => ({
+                goodsNo: 'A00000025568' + i, goodsName: '일반 상품 크기 비교용', imageUrl: image, priceToPay: 27900
+            })), {products: {}});
+            const card = document.querySelector('#product-list .card-img').getBoundingClientRect();
+            const grid = getComputedStyle(document.querySelector('#product-list .grid'));
+            return {box: {width: card.width, height: card.height}, gap: grid.gap, columns: grid.gridTemplateColumns.split(' ').length};
+        }''', IMAGE)
+        ordinary = ordinary_fixture['box']
+        assert ordinary and ordinary['width'] > 140
+        grid_style = ordinary_fixture
+        # Normal product content is removed only from this controlled local fixture so free-grid screenshots stay focused.
+        page.evaluate('document.querySelector("#product-list").innerHTML = ""')
+        hidden_box = verify_image_grid(premium)
+        hidden_grid = premium.locator('.hidden-stock-options').evaluate('(el) => ({gap:getComputedStyle(el).gap,columns:getComputedStyle(el).gridTemplateColumns.split(" ").length})')
+        assert hidden_grid['gap'] == grid_style['gap'], (hidden_grid, grid_style)
+        assert hidden_grid['columns'] == grid_style['columns'], (hidden_grid, grid_style)
+        assert abs(hidden_box['width'] - ordinary['width']) < 2, (hidden_box, ordinary)
         assert state['public_calls'] > 0 and not state['store_requests']
         premium.scroll_into_view_if_needed()
-        page.screenshot(path=str(OUT / f'free-{width}.png'))
-        button(premium, 'stores').first.click()
+        premium.evaluate('(element) => window.scrollTo(0, element.getBoundingClientRect().top + scrollY - 200)')
+        page.screenshot(path=str(OUT / f'free-grid-{width}.png'))
+        premium.locator('.hidden-stock-image img').first.click()
         expect(page.locator('#price-alert-modal')).to_be_visible()
-        expect(page.locator('#price-alert-title')).to_have_text('매장 재고 · 가격 알림 이용권')
+        expect(page.locator('#price-alert-title')).to_have_text('유료 이용자만 사용 가능합니다')
         expect(page.locator('#price-alert-target-input')).to_be_disabled()
         assert not state['store_requests'], 'opening the payment dialog must not request inventory'
         page.screenshot(path=str(OUT / f'access-{width}.png'))
         page.locator('#price-alert-modal .price-alert-close').click()
         expect(page.locator('#price-alert-modal')).not_to_be_visible()
-        expect(premium.get_by_text(option['name'], exact=True)).to_be_visible()
-        verify_image(premium.locator('.hidden-stock-image img').first)
+        verify_image_grid(premium)
+
+        # Keyboard users enter the same paid-only dialog, stay within it, and return to the exact image.
+        image_control = button(premium, 'stores').nth(1)
+        image_control.focus()
+        page.keyboard.press('Enter')
+        access = page.locator('#price-alert-modal')
+        expect(access).to_be_visible()
+        close_access = access.locator('.price-alert-close')
+        expect(close_access).to_be_focused()
+        page.wait_for_function('PriceAlerts.entitlementLoading === false')
+        access_controls = access.locator('button:visible:enabled, input:visible:enabled, select:visible:enabled, textarea:visible:enabled, a[href]:visible, [tabindex="0"]:visible')
+        assert access_controls.count() >= 4, 'paywall must expose its close, form, and help controls'
+        access_controls.last.focus()
+        page.keyboard.press('Tab')
+        expect(access_controls.first).to_be_focused()
+        page.keyboard.press('Shift+Tab')
+        expect(access_controls.last).to_be_focused()
+        page.evaluate('PriceAlerts.loading = true')
+        page.keyboard.press('Escape')
+        expect(access).to_be_visible()
+        page.evaluate('PriceAlerts.loading = false')
+        page.keyboard.press('Escape')
+        expect(access).not_to_be_visible()
+        expect(image_control).to_be_focused()
+        verify_image_grid(premium)
+        assert not state['store_requests'], 'keyboard preview access must not fetch inventory'
 
         # Product-level option details also remain public, including when a payment is cancelled.
         page.evaluate("UI.showDetailPopup({goodsName:'기존 일반 재고 팝업 테스트',thumbnail:'',price:10000,options:[],source:'vendor-delivery'},'A000000255680')")
         normal_popup = page.locator('#popup-root')
         button(normal_popup, 'options').click()
         dialog = page.locator('#hidden-stock-panel')
-        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
-        verify_image(dialog.locator('.hidden-stock-image img').first)
+        verify_image_grid(dialog)
         assert not state['store_requests']
         page.screenshot(path=str(OUT / f'free-product-options-{width}.png'))
-        button(dialog, 'stores').first.click()
+        nested_image_control = button(dialog, 'stores').nth(1)
+        nested_image_control.focus()
+        page.keyboard.press('Enter')
         expect(page.locator('#price-alert-modal')).to_be_visible()
         assert not state['store_requests']
-        page.locator('#price-alert-modal .price-alert-close').click()
+        expect(page.locator('#price-alert-modal .price-alert-close')).to_be_focused()
+        page.keyboard.press('Escape')
         expect(page.locator('#price-alert-modal')).not_to_be_visible()
-        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
+        expect(nested_image_control).to_be_focused()
+        verify_image_grid(dialog)
         page.keyboard.press('Escape')
         expect(dialog).to_have_count(0)
         expect(normal_popup.get_by_text('기존 일반 재고 팝업 테스트', exact=True)).to_be_visible()
@@ -160,10 +224,8 @@ with sync_playwright() as p:
         page.wait_for_function('PriceAlerts.entitlementLoading === false')
         state['paid'] = True
         page.evaluate('PriceAlerts.refreshEntitlement({silent:true})')
-        expect(premium.get_by_text(option['name'], exact=True)).to_be_visible()
+        verify_image_grid(premium)
         expect(page.locator('#price-alert-modal')).not_to_be_visible()
-        verify_image(premium.locator('.hidden-stock-image img').first)
-        expect(premium.locator('.hidden-stock-image span:visible')).to_have_count(2)
         assert state['national_calls'] == 0
         page.screenshot(path=str(OUT / f'options-{width}.png'))
         expect(dialog.get_by_text('가장 가까운 테스트점', exact=True)).to_be_visible()
@@ -174,10 +236,17 @@ with sync_playwright() as p:
         expect(dialog.locator('.hidden-stock-stores li:nth-child(-n+3) strong')).to_have_text([
             '가장 가까운 테스트점', '중간 거리 테스트점', '수량 미확인 테스트점'])
         verify_image(dialog.locator('.hidden-stock-image img').first)
+        expect(dialog.get_by_text(option['goodsName'], exact=True)).to_be_visible()
+        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
+        expect(dialog.locator('[role="dialog"]')).to_have_attribute('aria-modal', 'true')
+        popup_image = dialog.locator('.hidden-stock-selected img').first.bounding_box()
+        assert popup_image and popup_image['width'] >= 100 and popup_image['height'] >= 100, popup_image
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'paid inventory popup horizontal overflow'
         assert state['nearby_calls'] == 1 and state['national_calls'] == 0
         expect(button(dialog, 'national-stores')).to_have_text('전국 재고 조회')
         assert button(dialog, 'national-stores').evaluate('(button) => button.compareDocumentPosition(document.querySelector("#hidden-stock-panel .hidden-stock-stores")) & Node.DOCUMENT_POSITION_PRECEDING')
-        page.screenshot(path=str(OUT / f'nearby-{width}.png'))
+        dialog.locator('.hidden-stock-dialog').evaluate('(element) => { element.scrollTop = 0; }')
+        page.screenshot(path=str(OUT / f'paid-popup-{width}.png'))
         button(dialog, 'nearby-more').click()
         expect(dialog.locator('.hidden-stock-stores strong')).to_have_count(20)
         assert state['nearby_calls'] == 1 and state['national_calls'] == 0, 'cached nearby rows must not trigger another API call'
@@ -212,11 +281,11 @@ with sync_playwright() as p:
         page.evaluate("UI.showDetailPopup({goodsName:'기존 일반 재고 팝업 테스트',thumbnail:'',price:10000,options:[],source:'vendor-delivery'},'A000000255680')")
         normal_popup = page.locator('#popup-root')
         button(normal_popup, 'options').click()
-        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
+        verify_image_grid(dialog)
         button(dialog, 'stores').first.click()
         expect(dialog.get_by_text('가장 가까운 테스트점', exact=True)).to_be_visible()
         button(dialog, 'back-options').click()
-        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
+        verify_image_grid(dialog)
         page.keyboard.press('Escape')
         expect(dialog).to_have_count(0)
         expect(normal_popup.get_by_text('기존 일반 재고 팝업 테스트', exact=True)).to_be_visible()
@@ -227,8 +296,7 @@ with sync_playwright() as p:
         state['deny'] = True
         button(premium, 'stores').first.click()
         expect(page.locator('#hidden-stock-panel')).to_have_count(0)
-        expect(premium.get_by_text(option['name'], exact=True)).to_be_visible()
-        verify_image(premium.locator('.hidden-stock-image img').first)
+        verify_image_grid(premium)
         expect(page.locator('.hidden-stock-stores')).to_have_count(0)
 
         # Expiration of an already-open nested inventory restores only its public option list.
@@ -237,14 +305,13 @@ with sync_playwright() as p:
         page.evaluate('PriceAlerts.refreshEntitlement({silent:true})')
         page.evaluate("UI.showDetailPopup({goodsName:'기존 일반 재고 팝업 테스트',thumbnail:'',price:10000,options:[],source:'vendor-delivery'},'A000000255680')")
         button(normal_popup, 'options').click()
-        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
+        verify_image_grid(dialog)
         button(dialog, 'stores').first.click()
         expect(dialog.get_by_text('가장 가까운 테스트점', exact=True)).to_be_visible()
         state['paid'] = False
         page.evaluate('PriceAlerts.refreshEntitlement({silent:true})')
         expect(dialog.locator('.hidden-stock-stores')).to_have_count(0)
-        expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()
-        verify_image(dialog.locator('.hidden-stock-image img').first)
+        verify_image_grid(dialog)
         page.keyboard.press('Escape')
         expect(dialog).to_have_count(0)
         normal_popup.locator('[data-action="closePopup"]').filter(has_text='✕').click()
@@ -254,6 +321,8 @@ with sync_playwright() as p:
         print(json.dumps({'width': width, 'result': 'PASS', 'hiddenCalls': state['hidden_calls'],
                           'publicCalls': state['public_calls'],
                           'nearbyCalls': state['nearby_calls'], 'nationalCalls': state['national_calls'],
-                          'decodedImages': state['images'], 'pageErrors': errors}))
+                          'decodedImages': state['images'], 'ordinaryImageWidth': ordinary['width'],
+                          'hiddenImageWidth': hidden_box['width'], 'popupImageWidth': popup_image['width'],
+                          'pageErrors': errors}))
         context.close()
     browser.close()
