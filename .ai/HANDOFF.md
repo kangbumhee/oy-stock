@@ -32,7 +32,10 @@
 - 실제 김포 기준 근처 요청200/150매장/거리순 확인, 요청 SKU 사진1000x1000 로딩 확인. 후속 전국 요청에서 부분 재수집이 기존 SKU를 null로 덮어써404가 된 기존 병합 결함을 발견해 보완했다. 상충 없는 불완전 관찰만 기존 검증 식별자를 stale로 보존하고, SKU 연결과 온라인 노출 분류를 구분한다.
 - 유료 gateway의 stores에 scope/lat/lng를 추가했다. 공식 distance(km)로 정렬하고 거리 미확인/수량 미확인/재고0을 구분한다. scope/좌표는 커서 서명에 결합하며 기존 scope 없는 전국 조회는 호환한다. 유료권한·비공개 저장 정책 유지.
 - Node259개 테스트 및 Python Playwright360/390/1440폭 모의 브라우저 검증 통과. 실제 이미지 디코딩/대체 표시/10개씩 펼치기/명시적 전국 조회/중복 제거/복귀/권한 해제 검증, 페이지 오류0. 저장한 스크린샷 직접 확인.
-- 캐시 버전 `20260913-hidden-nearby-2`. 운영 배포 결과는 완료 후 기록한다. 이전 배포/전국 매장 수는 아래 초기 배포 시점 기록이다.
+- 배포 소스 `3d337cc9592d475f6e1a4b7ddc0a39dca2e4fb42` 및 보완 `d528b570dab83205286c2ede1740d7cddefae52b`를 main에 반영했다. Cloud Run [실행34737383668](https://github.com/kangbumhee/oy-stock/actions/runs/34737383668) 성공, `oy-stock-api-00245-jcn` ready/트래픽100% 확인.
+- 운영 프런트는 Vercel `dpl_Cgz3wugZSkyfAm8Mv3mVQBUX8XkE` READY를 검증 후 promote했다. [배포 URL](https://oy-stock-6t1oxc2kb-kbhs-projects-ee1427b6.vercel.app), [운영 alias](https://olivestock.co.kr) 연결을 inspect로 확인하고 실제 브라우저에서 JS/CSS `20260913-hidden-nearby-2` 로딩을 확인했다.
+- 보완본 실제 재검증(2026-09-13 13:20~13:21 KST): 동일 SKU 근처200/150매장 및 전국200/첫150매장, 둘 다 이미지·거리순·후속 커서 확인. 이번 후속 검증은 전국 페이지를 끝까지 재수집한 것이 아니다. 부분 재수집으로 이미 지워졌던 식별자는 공식 자체 재조회에서 회복됐으며 수동 인덱스 편집은 하지 않았다. 검토했던 관련 root fallback은 저장 증거가 없어 배포하지 않았다.
+- 공개 gateway는 실제 브라우저에서 무인증401/`private, no-store, max-age=0`/옵션·매장 자료 없음 확인. 최종 소스 전체 회귀259/259 재통과. 이전 배포/전국 매장 수는 아래 초기 배포 시점 기록이다.
 
 ### 마지막 작업 — 2026-09-13 숨겨진 옵션·전체 매장 조회 및 정기 수집
 

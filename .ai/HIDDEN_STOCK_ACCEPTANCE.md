@@ -9,6 +9,16 @@
 
 ## 운영 배포 및 실제 확인
 
+### 이미지·근처 우선 팝업 후속 배포 (2026-09-13)
+
+- 최종 구현 `d528b570dab83205286c2ede1740d7cddefae52b`. Vercel `dpl_Cgz3wugZSkyfAm8Mv3mVQBUX8XkE` READY 확인 후 promote, [운영 alias](https://olivestock.co.kr) inspect와 실제 JS/CSS 버전 `20260913-hidden-nearby-2` 확인.
+- Cloud Run [실행34737383668](https://github.com/kangbumhee/oy-stock/actions/runs/34737383668) 성공, `oy-stock-api-00245-jcn` ready/트래픽100% 확인.
+- 13:20~13:21 KST 실제 SKU `8800289469145`: 근처200/150매장/150개 거리값, 전국200/첫150매장/후속 커서. 김포 좌표(37.6152,126.7156)와 scope가 각각 보존되고 거리 오름차순이었다. 공식 상품 이미지1000x1000 로딩도 실제 브라우저에서 확인했다.
+- 부분 수집 시 확인된 SKU를 잃는 병합 결함 보완 후 공식 재조회가 식별자를 회복했다. 수동 데이터 수정·추정 SKU 연결은 하지 않았다. 아래 초기 전국1,343매장 완주 결과와 이번 첫 배치 연결 확인은 별도 증거다.
+- 운영 무인증401/`private, no-store, max-age=0`/옵션·매장 자료 없음 확인. 최종259/259 Node 회귀 통과. 모의 유료 UI의 세 화면 폭 검증은 위 작업 상태에 기록했다.
+
+### 초기 숨김 옵션 배포 시점 기록
+
 - Vercel `dpl_8faSNYwFf92KaGWUJ9Jg22UzBw5m` READY. [배포 URL](https://oy-stock-7nrlkesu2-kbhs-projects-ee1427b6.vercel.app), [olivestock.co.kr alias](https://olivestock.co.kr), 소스 `89acaad6` 확인.
 - 백엔드 `6e90591355dd49ef8d07a80e547fd166330d1946` 반영. [Cloud Run 실행34734380525](https://github.com/kangbumhee/oy-stock/actions/runs/34734380525)가3분21초에 성공했다. `oy-stock-api-00243-lw4` ready/트래픽100% 확인.
 - 공개 gateway 무인증 요청은401, `Cache-Control: private, no-store`, 유료 옵션 자료 없음. 운영 무료 사용자 화면의 이용권 안내와 모달을 확인했다. 평생/30일권 UI 흐름은 아래 모의 검증이며 실제 결제 성공의 증거가 아니다.
