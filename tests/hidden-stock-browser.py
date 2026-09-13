@@ -13,11 +13,12 @@ IMAGE = 'https://image.oliveyoung.co.kr/browser-fixture/product.png'
 BROKEN_IMAGE = 'https://image.oliveyoung.co.kr/browser-fixture/missing.png'
 IMAGE_BYTES = (PROJECT / 'public' / 'images' / 'blog' / 'oliveyoung-hot-item-stock-a000000255680-source.jpg').read_bytes()
 option = dict(goodsNo='A000000255680', optionNumber='001', productId='8800289469145',
-              goodsName='브라우저 테스트용 미스트', name='한교동 숨김 옵션 테스트', hidden=True,
+              goodsName='[청담샵화잘먹] 메디큐브 PDRN 핑크 콜라겐 글로우 젤리 미스트 100ml 더블기획 (+미스트 공병키링)',
+              name='[한교동 콜라보] 본품2EA+공병키링', hidden=True,
               image=IMAGE)
 options = [option,
-           dict(option, optionNumber='002', productId='8800289469146', name='이미지 누락 옵션', image=''),
-           dict(option, optionNumber='003', productId='8800289469147', name='이미지 오류 옵션', image=BROKEN_IMAGE)]
+           dict(option, goodsNo='A000000255681', optionNumber='002', productId='8800289469146', name='이미지 누락 옵션', image=''),
+           dict(option, goodsNo='A000000255682', optionNumber='003', productId='8800289469147', name='이미지 오류 옵션', image=BROKEN_IMAGE)]
 NEARBY_STORES = [
     {'code': 's2', 'name': '수량 미확인 테스트점', 'region': '경기', 'addr': '테스트 주소', 'qty': None, 'dist': 3.2},
     {'code': 's1', 'name': '가장 가까운 테스트점', 'region': '경기', 'addr': '테스트 주소', 'qty': 6, 'dist': 0.37},
@@ -27,7 +28,8 @@ NEARBY_STORES.extend({'code': f'near-{i}', 'name': f'추가 근처 테스트점 
 
 
 def button(root, action):
-    return root.locator('[data-hidden-action="' + action + '"]')
+    prefix = '.hidden-stock-preview' if action == 'stores' else ''
+    return root.locator(prefix + '[data-hidden-action="' + action + '"]')
 
 
 def verify_image(locator):
@@ -40,8 +42,16 @@ def verify_image_grid(root):
     cards = root.locator('.hidden-stock-option')
     expect(cards).to_have_count(3)
     expect(root.locator('.hidden-stock-options.grid')).to_have_count(1)
-    expect(cards.locator('h4, .hidden-stock-product, .card-body')).to_have_count(0)
-    assert cards.first.inner_text() == '', 'available photo cards must have no visible text'
+    expect(cards.locator('.card-body')).to_have_count(3)
+    expect(cards.locator('.card-name')).to_have_text([entry['goodsName'] for entry in options])
+    expect(cards.locator('.hidden-stock-card-option')).to_have_text([entry['name'] for entry in options])
+    expect(cards.first.locator('.hidden-stock-card-price .price')).to_have_text('23,800원')
+    expect(cards.first.locator('.hidden-stock-price-note')).to_have_text('온라인 상품 참고가')
+    expect(cards.nth(1).locator('.hidden-stock-card-price')).to_have_text('매장 가격 확인 필요')
+    expect(cards.nth(2).locator('.hidden-stock-card-price .price')).to_have_text('17,900원')
+    expect(cards.nth(2).locator('.hidden-stock-price-note')).to_have_text('최근 수집 참고가')
+    expect(cards.first.locator('.card-name')).to_be_visible()
+    expect(cards.first.locator('.hidden-stock-card-option')).to_be_visible()
     expect(cards.first.locator('.hidden-stock-image span')).not_to_be_visible()
     image_button = button(root, 'stores').first
     expect(image_button).to_have_attribute('aria-label', re.compile(re.escape(option['name'])))
@@ -50,9 +60,38 @@ def verify_image_grid(root):
     box = image_button.bounding_box()
     assert box and box['width'] >= 140 and abs(box['width'] - box['height']) < 2, box
     assert image_button.evaluate('(el) => getComputedStyle(el).paddingTop === "0px"'), 'image card must not retain text-button padding'
+    body = cards.first.locator('.card-body').bounding_box()
+    assert body and body['y'] >= box['y'] + box['height'] - 1, 'product name and price must appear below the photograph'
     expect(root.locator('.hidden-stock-image span:visible')).to_have_count(2)
     assert root.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'free image grid horizontal overflow'
     return box
+
+
+def verify_exact_price_refresh(page, root, keep_dialog=False):
+    before = page.evaluate('''(fixture) => {
+        const focused = document.activeElement;
+        const image = document.querySelector('#hidden-stock-search .hidden-stock-preview');
+        const dialog = document.querySelector('#hidden-stock-panel');
+        App.detailData.products[fixture.goodsNo] = {goodsNo: fixture.goodsNo, options: [{
+            productId: fixture.productId, optionNumber: fixture.optionNumber, priceToPay: 21900
+        }]};
+        UI.updateCardBadge(fixture.goodsNo, App.detailData.products[fixture.goodsNo]);
+        return {sameFocus: document.activeElement === focused,
+            sameImage: document.querySelector('#hidden-stock-search .hidden-stock-preview') === image,
+            hadDialog: !!dialog, sameDialog: document.querySelector('#hidden-stock-panel') === dialog};
+    }''', option)
+    expect(root.locator('.hidden-stock-option').first.locator('.price')).to_have_text('21,900원')
+    expect(root.locator('.hidden-stock-option').first.locator('.hidden-stock-price-note')).to_have_text('온라인 옵션 참고가')
+    assert before['sameFocus'] and before['sameImage'], before
+    if keep_dialog:
+        assert before['hadDialog'] and before['sameDialog'], before
+        expect(page.locator('#hidden-stock-panel .hidden-stock-stores strong')).to_have_count(10)
+    page.evaluate('''(goodsNo) => {
+        delete App.detailData.products[goodsNo];
+        UI.updateCardBadge(goodsNo, null);
+    }''', option['goodsNo'])
+    expect(root.locator('.hidden-stock-option').first.locator('.price')).to_have_text('23,800원')
+    expect(root.locator('.hidden-stock-option').first.locator('.hidden-stock-price-note')).to_have_text('온라인 상품 참고가')
 
 
 with sync_playwright() as p:
@@ -135,6 +174,17 @@ with sync_playwright() as p:
         premium = page.locator('#hidden-stock-search')
         expect(premium).to_be_visible()
         expect(button(premium, 'stores')).to_have_count(3)
+        page.wait_for_load_state('networkidle')
+        # Normal search and cached product prices are independent public data, not invented hidden-option prices.
+        page.evaluate('''(fixture) => {
+            App.products = [{goodsNo: fixture.goodsNo, goodsNumber: fixture.goodsNo, goodsName: fixture.goodsName,
+                imageUrl: fixture.image, priceToPay: 23800}];
+            App.detailData = {products: {'A000000255682': {price: 17900, options: []}}};
+            HiddenStock.refreshCardPrices();
+        }''', option)
+        expect(premium.locator('#hidden-stock-search-title')).to_have_text('온라인에 없는 매장 상품')
+        expect(premium.locator('.hidden-stock-reference-note')).to_have_text('표시 가격은 참고가이며, 실제 옵션·매장 가격과 다를 수 있습니다.')
+        expect(premium.get_by_text('온라인몰 미노출·과거 판매 옵션을 모았습니다. 현재 매장 재고 조회는 유료 이용자 전용입니다.', exact=True)).to_be_visible()
         # Compare the new image cards against the existing product renderer at the same viewport.
         ordinary_fixture = page.evaluate('''(image) => {
             UI.renderProducts(Array.from({length: 6}, (_, i) => ({
@@ -142,7 +192,10 @@ with sync_playwright() as p:
             })), {products: {}});
             const card = document.querySelector('#product-list .card-img').getBoundingClientRect();
             const grid = getComputedStyle(document.querySelector('#product-list .grid'));
-            return {box: {width: card.width, height: card.height}, gap: grid.gap, columns: grid.gridTemplateColumns.split(' ').length};
+            const name = getComputedStyle(document.querySelector('#product-list .card-name'));
+            const price = getComputedStyle(document.querySelector('#product-list .price'));
+            return {box: {width: card.width, height: card.height}, gap: grid.gap, columns: grid.gridTemplateColumns.split(' ').length,
+                nameSize: name.fontSize, priceSize: price.fontSize, nameClamp: name.webkitLineClamp};
         }''', IMAGE)
         ordinary = ordinary_fixture['box']
         assert ordinary and ordinary['width'] > 140
@@ -154,10 +207,14 @@ with sync_playwright() as p:
         assert hidden_grid['gap'] == grid_style['gap'], (hidden_grid, grid_style)
         assert hidden_grid['columns'] == grid_style['columns'], (hidden_grid, grid_style)
         assert abs(hidden_box['width'] - ordinary['width']) < 2, (hidden_box, ordinary)
+        name_style = premium.locator('.card-name').first.evaluate('(element) => ({size: getComputedStyle(element).fontSize, clamp: getComputedStyle(element).webkitLineClamp})')
+        price_size = premium.locator('.card-price .price').first.evaluate('(element) => getComputedStyle(element).fontSize')
+        assert name_style == {'size': ordinary_fixture['nameSize'], 'clamp': ordinary_fixture['nameClamp']}, (name_style, ordinary_fixture)
+        assert price_size == ordinary_fixture['priceSize'], (price_size, ordinary_fixture)
         assert state['public_calls'] > 0 and not state['store_requests']
         premium.scroll_into_view_if_needed()
         premium.evaluate('(element) => window.scrollTo(0, element.getBoundingClientRect().top + scrollY - 200)')
-        page.screenshot(path=str(OUT / f'free-grid-{width}.png'))
+        page.screenshot(path=str(OUT / f'free-product-cards-{width}.png'))
         premium.locator('.hidden-stock-image img').first.click()
         expect(page.locator('#price-alert-modal')).to_be_visible()
         expect(page.locator('#price-alert-title')).to_have_text('유료 이용자만 사용 가능합니다')
@@ -167,6 +224,15 @@ with sync_playwright() as p:
         page.locator('#price-alert-modal .price-alert-close').click()
         expect(page.locator('#price-alert-modal')).not_to_be_visible()
         verify_image_grid(premium)
+
+        # Clicking the conventional product-name button uses the same access boundary as the photograph.
+        premium.locator('.card-name').first.click()
+        expect(page.locator('#price-alert-modal')).to_be_visible()
+        expect(page.locator('#price-alert-title')).to_have_text('유료 이용자만 사용 가능합니다')
+        assert not state['store_requests']
+        page.keyboard.press('Escape')
+        expect(page.locator('#price-alert-modal')).not_to_be_visible()
+        expect(premium.locator('.card-name').first).to_be_focused()
 
         # Keyboard users enter the same paid-only dialog, stay within it, and return to the exact image.
         image_control = button(premium, 'stores').nth(1)
@@ -193,6 +259,9 @@ with sync_playwright() as p:
         expect(image_control).to_be_focused()
         verify_image_grid(premium)
         assert not state['store_requests'], 'keyboard preview access must not fetch inventory'
+        verify_exact_price_refresh(page, premium)
+        expect(image_control).to_be_focused()
+        assert not state['store_requests'], 'public price updates must not fetch paid inventory'
 
         # Product-level option details also remain public, including when a payment is cancelled.
         page.evaluate("UI.showDetailPopup({goodsName:'기존 일반 재고 팝업 테스트',thumbnail:'',price:10000,options:[],source:'vendor-delivery'},'A000000255680')")
@@ -235,6 +304,7 @@ with sync_playwright() as p:
         expect(dialog.locator('.hidden-stock-stores strong')).to_have_count(10)
         expect(dialog.locator('.hidden-stock-stores li:nth-child(-n+3) strong')).to_have_text([
             '가장 가까운 테스트점', '중간 거리 테스트점', '수량 미확인 테스트점'])
+        verify_exact_price_refresh(page, premium, keep_dialog=True)
         verify_image(dialog.locator('.hidden-stock-image img').first)
         expect(dialog.get_by_text(option['goodsName'], exact=True)).to_be_visible()
         expect(dialog.get_by_text(option['name'], exact=True)).to_be_visible()

@@ -224,7 +224,7 @@ var HiddenStock = {
 
   productButtonHtml: function (goodsNo) {
     return '<button type="button" class="hidden-stock-button" data-hidden-action="options" data-goodsno="' +
-      this._esc(goodsNo) + '">매장 숨겨진 옵션 보기</button>';
+      this._esc(goodsNo) + '">온라인 미노출 매장 옵션 보기</button>';
   },
 
   normalStoreButtonHtml: function (goodsNo, option, detail) {
@@ -366,12 +366,64 @@ var HiddenStock = {
     this._renderPanel();
   },
 
+  _positivePrice: function (value) {
+    if (typeof value !== 'number' && !(typeof value === 'string' && /^\d+$/.test(value))) return null;
+    var amount = Number(value);
+    return Number.isSafeInteger(amount) && amount > 0 && amount <= 100000000 ? amount : null;
+  },
+
+  _cardPrice: function (option) {
+    var app = window.App || {};
+    var goodsNo = String(option.goodsNo || '');
+    var detail = app.detailData && app.detailData.products && app.detailData.products[goodsNo];
+    if (detail && detail.goodsNo && String(detail.goodsNo) !== goodsNo) detail = null;
+    var exact = detail && Array.isArray(detail.options) && detail.options.find(function (item) {
+      return item && option.productId && String(item.productId || '') === String(option.productId) &&
+        (!option.optionNumber || !item.optionNumber || String(item.optionNumber) === String(option.optionNumber)) &&
+        HiddenStock._positivePrice(item.priceToPay) !== null;
+    });
+    if (exact) return { amount: this._positivePrice(exact.priceToPay), label: '온라인 옵션 참고가' };
+    var product = Array.isArray(app.products) && app.products.find(function (item) {
+      return item && String(item.goodsNumber || item.goodsNo || '') === goodsNo && HiddenStock._positivePrice(item.priceToPay) !== null;
+    });
+    if (product) return { amount: this._positivePrice(product.priceToPay), label: '온라인 상품 참고가' };
+    var collected = this._positivePrice(detail && detail.price);
+    if (collected !== null) return { amount: collected, label: '최근 수집 참고가' };
+    return { amount: null, label: '매장 가격 확인 필요' };
+  },
+
+  _cardPriceHtml: function (option) {
+    var price = this._cardPrice(option);
+    if (price.amount === null) return '<div class="card-price"><span class="hidden-stock-price-missing">' + price.label + '</span></div>';
+    return '<div class="card-price"><span class="price">' + price.amount.toLocaleString('ko-KR') +
+      '원</span></div><span class="hidden-stock-price-note">' + price.label + '</span>';
+  },
+
+  refreshCardPrices: function () {
+    // Public metadata can finish after previews. Update price text only: keep
+    // image buttons, focus, scroll and any paid inventory dialog intact.
+    [['hidden-stock-search', this.searchState], ['hidden-stock-panel', this.panelState]].forEach(function (entry) {
+      var root = document.getElementById(entry[0]), state = entry[1];
+      if (!root || !state || state.mode === 'stores') return;
+      root.querySelectorAll('[data-hidden-price-index]').forEach(function (node) {
+        var option = state.options[Number(node.dataset.hiddenPriceIndex)];
+        if (!option) return;
+        var html = HiddenStock._cardPriceHtml(option);
+        if (node.innerHTML !== html) node.innerHTML = html;
+      });
+    });
+  },
+
   _optionRows: function (options, source) {
     return options.map(function (option, index) {
       var label = [option.goodsName, option.name].filter(Boolean).join(' · ') + ' · 근처 매장 재고 확인, 유료 이용자 전용';
+      var action = ' data-hidden-action="stores" data-source="' + source + '" data-index="' + index + '" aria-haspopup="dialog"';
       return '<li class="hidden-stock-option card"><button type="button" class="card-img hidden-stock-preview"' +
-        ' data-hidden-action="stores" data-source="' + source + '" data-index="' + index + '" aria-haspopup="dialog" aria-label="' +
-        HiddenStock._esc(label) + '">' + HiddenStock._imageHtml(option) + '</button></li>';
+        action + ' aria-label="' + HiddenStock._esc(label) + '">' + HiddenStock._imageHtml(option) + '</button>' +
+        '<div class="card-body"><button type="button" class="card-name hidden-stock-card-name"' + action +
+        ' title="' + HiddenStock._esc(label) + '">' + HiddenStock._esc(option.goodsName || option.name || '상품명 확인 필요') + '</button>' +
+        '<p class="hidden-stock-card-option" title="' + HiddenStock._esc(option.name || '') + '">' + HiddenStock._esc(option.name || '') + '</p>' +
+        '<div class="hidden-stock-card-price" data-hidden-price-index="' + index + '">' + HiddenStock._cardPriceHtml(option) + '</div></div></li>';
     }).join('');
   },
 
@@ -398,8 +450,9 @@ var HiddenStock = {
     if (!root) return;
     root.hidden = !this.keyword;
     if (!this.keyword) { root.innerHTML = ''; return; }
-    var html = '<h3 id="hidden-stock-search-title">매장 숨겨진 옵션</h3>';
-    html += '<p>이미지를 누르면 매장 재고를 확인할 수 있습니다. 유료 이용자 전용입니다.</p>';
+    var html = '<h3 id="hidden-stock-search-title">온라인에 없는 매장 상품</h3>';
+    html += '<p>온라인몰 미노출·과거 판매 옵션을 모았습니다. 현재 매장 재고 조회는 유료 이용자 전용입니다.</p>' +
+      '<p class="hidden-stock-reference-note">표시 가격은 참고가이며, 실제 옵션·매장 가격과 다를 수 있습니다.</p>';
     var state = this.searchState;
     if (!state) {
       root.innerHTML = html + '<button type="button" class="hidden-stock-button" data-hidden-action="search">이 검색어로 숨겨진 옵션 조회</button>';
@@ -419,7 +472,7 @@ var HiddenStock = {
     var oldDialog = root && root.querySelector('.hidden-stock-dialog');
     var scrollTop = !focus && oldDialog ? oldDialog.scrollTop : 0;
     if (!root) { root = document.createElement('div'); root.id = 'hidden-stock-panel'; root.className = 'hidden-stock-overlay'; document.body.appendChild(root); }
-    var title = state.mode === 'stores' ? (state.scope === 'nearby' ? '근처 매장 재고' : '전국 매장 재고') : '이 상품의 숨겨진 옵션';
+    var title = state.mode === 'stores' ? (state.scope === 'nearby' ? '근처 매장 재고' : '전국 매장 재고') : '온라인에 없는 매장 상품';
     var html = '<div class="hidden-stock-backdrop" data-hidden-action="close"></div><section class="hidden-stock-dialog" role="dialog" aria-modal="true" aria-labelledby="hidden-stock-panel-title">' +
       '<div class="hidden-stock-heading"><h3 id="hidden-stock-panel-title">' + title + '</h3><button type="button" data-hidden-action="close" aria-label="숨겨진 옵션 닫기">✕</button></div>';
     if (state.mode === 'stores') {
@@ -446,6 +499,7 @@ var HiddenStock = {
       if (state.loaded && !state.stores.length && !state.error) html += '<p>이번 범위에 표시할 매장 정보가 없습니다. 전국 품절을 뜻하지 않습니다.</p>';
     } else {
       html += '<p>이미지를 누르면 매장 재고를 확인할 수 있습니다. 유료 이용자 전용입니다.</p>' +
+        '<p class="hidden-stock-reference-note">표시 가격은 참고가이며, 실제 옵션·매장 가격과 다를 수 있습니다.</p>' +
         '<ul class="hidden-stock-options grid">' + this._optionRows(state.options, 'panel') + '</ul>';
       if (state.loaded && !state.options.length && !state.error) html += '<p>이번 조회 범위에서 확인된 숨겨진 옵션이 없습니다.</p>';
     }

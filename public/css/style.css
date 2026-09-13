@@ -11,6 +11,11 @@
 .hidden-stock-option .hidden-stock-preview{display:block;width:100%;padding:0;margin:0;border:0;color:inherit;font:inherit;line-height:1;cursor:pointer}
 .hidden-stock-option:focus-within{outline:3px solid #2563eb;outline-offset:3px}
 .hidden-stock-option .hidden-stock-preview:focus-visible{outline:0}
+.hidden-stock-option .hidden-stock-card-name{width:100%;padding:0;margin:0;border:0;background:none;color:inherit;text-align:left;font-family:inherit;min-height:2.6em}
+.hidden-stock-option .hidden-stock-card-option{font-size:11px;line-height:1.4;margin:4px 0 0;color:#64748b;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em}
+.hidden-stock-price-note,.hidden-stock-price-missing{font-size:11px;color:#64748b;line-height:1.4}
+.hidden-stock-option .hidden-stock-card-name:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.hidden-stock-search .hidden-stock-reference-note,.hidden-stock-dialog .hidden-stock-reference-note{font-size:11px;color:#64748b}
 .hidden-stock-option-summary{display:flex;align-items:center;gap:12px;min-width:0}
 .hidden-stock-option-summary>div:last-child{min-width:0;flex:1}
 .hidden-stock-image{display:grid;place-items:center;width:100%;height:100%;aspect-ratio:1;background:#fff;overflow:hidden}

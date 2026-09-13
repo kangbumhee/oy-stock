@@ -1290,6 +1290,7 @@ var UI = {
 
   /** 검색 그리드: 공개 캐시(stock-detail.json) 기준 온라인만 표시, 매장 뱃지는 숨김(수집 위치와 사용자 위치 불일치) */
   renderProducts: function (products, detailData, opts) {
+    if (window.HiddenStock && typeof HiddenStock.refreshCardPrices === 'function') HiddenStock.refreshCardPrices();
     opts = opts || {};
     var searchListCacheMode = !!opts.searchListCacheMode;
     var coupangStockLink =
@@ -1491,6 +1492,7 @@ var UI = {
   },
 
   updateCardBadge: function (goodsNo, detail) {
+    if (window.HiddenStock && typeof HiddenStock.refreshCardPrices === 'function') HiddenStock.refreshCardPrices();
     if (!detail) return;
     var gn = String(goodsNo);
 

@@ -99,9 +99,10 @@ function accessDialogEnvironment() {
   return { ...env, alerts, title, modal, form, close, promo, last, origin, controls, key, element };
 }
 
-test('free search and option previews show image-only product cards with accessible names and no payment prompt', async () => {
+test('free search and option previews show product images, names and reference prices without a payment prompt', async () => {
   const env = environment(false);
   env.context.PriceAlerts.refreshEntitlement = () => { throw new Error('preview must not wait for entitlement'); };
+  env.context.App.products = [{ goodsNumber: option.goodsNo, priceToPay: 23800 }];
   env.context.response = { options: [{ ...option, image: 'https://image.oliveyoung.co.kr/product.png' }] };
   await env.feature.search('사용자 검색어');
   assert.equal(env.context.calls.length, 1);
@@ -113,14 +114,22 @@ test('free search and option previews show image-only product cards with accessi
   assert.match(env.html(), /<img data-hidden-image/);
   assert.match(env.html(), /class="hidden-stock-options grid"/);
   assert.match(env.html(), /class="hidden-stock-option card"/);
+  assert.match(env.html(), /<h3 id="hidden-stock-search-title">온라인에 없는 매장 상품<\/h3>/);
+  assert.match(env.html(), /실제 옵션·매장 가격과 다를 수 있습니다/);
   assert.match(env.html(), /<button type="button" class="card-img hidden-stock-preview"[^>]+aria-haspopup="dialog"[^>]+aria-label="테스트 상품 · 비공개 테스트 옵션 · 근처 매장 재고 확인, 유료 이용자 전용"/);
   const cards = env.feature._optionRows(env.feature.searchState.options, 'search');
-  assert.doesNotMatch(cards, /<h4|hidden-stock-product|card-body|hidden-stock-button/);
-  assert.doesNotMatch(cards.replace(/<[^>]*>/g, ''), /테스트 상품|비공개 테스트 옵션|근처 매장 재고 확인/);
+  assert.match(cards, /class="card-body"/);
+  assert.match(cards, /class="card-name hidden-stock-card-name"[^>]*>테스트 상품<\/button>/);
+  assert.match(cards, /class="hidden-stock-card-option"[^>]*>비공개 테스트 옵션<\/p>/);
+  assert.match(cards, /23,800원/);
+  assert.match(cards, /온라인 상품 참고가/);
+  assert.doesNotMatch(cards, /hidden-stock-button|data-action="buyNow"/);
   assert.doesNotMatch(env.html(), /data-hidden-action="access"/);
   await env.feature.openOptions('public-product');
   assert.match(env.elements.get('hidden-stock-panel').innerHTML, /비공개 테스트 옵션/);
   assert.match(env.elements.get('hidden-stock-panel').innerHTML, /class="hidden-stock-options grid"/);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /온라인에 없는 매장 상품/);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /23,800원/);
   assert.doesNotMatch(env.elements.get('hidden-stock-panel').innerHTML, /<h4|hidden-stock-product/);
   assert.equal(env.context.accessOpened, 0);
   assert.equal(env.context.calls.length, 2);
@@ -316,9 +325,10 @@ test('premium markup escapes option text and no premium data is persisted or bak
   assert.match(sw, /url\.pathname === '\/api\/oliveyoung\/hidden-stock'\) return/);
   const index = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
   const version = index.match(/\/js\/hidden-stock\.js\?v=([^"']+)/)[1];
-  for (const asset of ['js/alerts.js', 'js/hidden-stock.js']) {
-    assert.ok(index.includes('/' + asset + '?v=' + version));
-    assert.ok(sw.includes('/' + asset + '?v=' + version));
+  for (const asset of ['js/alerts.js', 'js/hidden-stock.js', 'js/ui.js', 'css/style.css']) {
+    const assetVersion = index.match(new RegExp('/' + asset.replace(/\./g, '\\.') + '\\?v=([^"\']+)'))[1];
+    assert.ok(sw.includes('/' + asset + '?v=' + assetVersion), asset + ' must use the same version in the page and service worker');
+    if (asset !== 'js/alerts.js') assert.equal(assetVersion, version, asset + ' must use this card release version');
   }
 });
 
@@ -426,19 +436,153 @@ test('official images have safe src, useful alt and dimensions; untrusted or mis
   }
 });
 
-test('image-only cards never add visible names, prices, quantities or unrelated normal purchase actions', () => {
+test('product cards show names and sourced prices but never expose stock or unrelated normal purchase actions', () => {
   const env = environment(false);
+  env.context.App.products = [{ goodsNo: option.goodsNo, priceToPay: 23800 }];
   const html = env.feature._optionRows([{ ...option, image: 'https://image.oliveyoung.co.kr/product.png',
     price: 9900, qty: 12, stores: [{ name: '테스트 비공개 매장', qty: 12 }] }], 'search');
   assert.match(html, /data-hidden-action="stores"/);
   assert.match(html, /data-source="search" data-index="0"/);
-  assert.doesNotMatch(html, /data-action=|바로구매|재고 12|9900|테스트 비공개 매장|<h4|<p>/);
-  assert.equal((html.match(/<button /g) || []).length, 1);
+  assert.doesNotMatch(html, /data-action=|바로구매|재고 12|9,?900|테스트 비공개 매장/);
+  assert.equal((html.match(/<button /g) || []).length, 2, 'both image and visible product name use the paid inventory gate');
+  assert.equal((html.match(/data-hidden-action="stores"/g) || []).length, 2);
+  assert.match(html, />테스트 상품<\/button>/);
+  assert.match(html, />비공개 테스트 옵션<\/p>/);
+  assert.match(html, /23,800원/);
+  assert.match(html, /온라인 상품 참고가/);
   assert.match(html, /aria-label="테스트 상품 · 비공개 테스트 옵션/);
   const css = fs.readFileSync(path.join(root, 'public/css/style.css'), 'utf8');
   assert.match(css, /\.hidden-stock-option \.hidden-stock-preview\{[^}]*padding:0[^}]*border:0/);
   assert.match(css, /\.hidden-stock-option:focus-within\{outline:3px solid/);
   assert.match(css, /\.hidden-stock-option \.hidden-stock-image img\{object-fit:contain/);
+});
+
+test('reference prices accept only bounded positive whole won amounts', () => {
+  const env = environment(false);
+  for (const value of [1, 23800, 100000000, '23800', '00023800']) {
+    assert.equal(env.feature._positivePrice(value), Number(value));
+  }
+  for (const value of [0, -1, 1.5, 100000001, NaN, Infinity, null, undefined, true, false,
+    '', '0', '-1', '1.5', '23,800', ' 23800 ', '1e4', '23800원', [], {}, '<script>']) {
+    assert.equal(env.feature._positivePrice(value), null, String(value));
+  }
+});
+
+test('exact SKU option prices take priority without turning an online reference into a store price', () => {
+  const env = environment(false);
+  env.context.App.products = [{ goodsNumber: option.goodsNo, priceToPay: 23800 }];
+  env.context.App.detailData = { products: { [option.goodsNo]: {
+    goodsNo: option.goodsNo, price: 33300, updatedAt: '2026-09-13T05:00:00.000Z',
+    options: [{ productId: 'another-sku', optionNumber: '001', priceToPay: 1 },
+      { productId: option.productId, optionNumber: option.optionNumber, priceToPay: '21900' }]
+  } } };
+  const price = env.feature._cardPrice(option);
+  assert.equal(price.amount, 21900);
+  assert.equal(price.label, '온라인 옵션 참고가');
+  const html = env.feature._cardPriceHtml(option);
+  assert.match(html, /21,900원/);
+  assert.match(html, /온라인 옵션 참고가/);
+  assert.doesNotMatch(html, /매장 판매가|매장 가격|23,800|33,300/);
+  delete env.context.App.detailData.products[option.goodsNo].options[1].optionNumber;
+  assert.equal(env.feature._cardPrice(option).amount, 21900, 'exact SKU may be used if no option number contradicts it');
+});
+
+test('same SKU with a conflicting option number is never used as the selected option price', () => {
+  const env = environment(false);
+  env.context.App.detailData = { products: { [option.goodsNo]: {
+    goodsNo: option.goodsNo,
+    options: [{ productId: option.productId, optionNumber: 'other-option', priceToPay: 1900 }]
+  } } };
+  assert.equal(env.feature._cardPrice(option).amount, null);
+  assert.equal(env.feature._cardPrice(option).label, '매장 가격 확인 필요');
+  env.context.App.products = [{ goodsNo: option.goodsNo, priceToPay: 23800 }];
+  assert.equal(env.feature._cardPrice(option).amount, 23800);
+  assert.equal(env.feature._cardPrice(option).label, '온라인 상품 참고가', 'product fallback remains explicitly different from an exact option price');
+});
+
+test('reference price fallback is limited to the same goods number and labels collected prices separately', () => {
+  const env = environment(false);
+  env.context.App.products = [{ goodsNo: 'other-product', priceToPay: 7777 },
+    { goodsNumber: option.goodsNo, priceToPay: 23800 }];
+  env.context.App.detailData = { products: { [option.goodsNo]: {
+    goodsNo: option.goodsNo, price: 33300, options: []
+  } } };
+  assert.equal(env.feature._cardPrice(option).amount, 23800);
+  assert.equal(env.feature._cardPrice(option).label, '온라인 상품 참고가');
+  env.context.App.products.pop();
+  assert.equal(env.feature._cardPrice(option).amount, 33300);
+  assert.equal(env.feature._cardPrice(option).label, '최근 수집 참고가');
+  env.context.App.detailData.products[option.goodsNo].goodsNo = 'other-product';
+  env.context.App.detailData.products[option.goodsNo].options = [
+    { productId: option.productId, optionNumber: option.optionNumber, priceToPay: 9999 }
+  ];
+  assert.equal(env.feature._cardPrice(option).amount, null, 'a mismatched detail payload cannot supply even an otherwise matching SKU');
+  assert.match(env.feature._cardPriceHtml(option), /매장 가격 확인 필요/);
+  assert.doesNotMatch(env.feature._cardPriceHtml(option), /0원|7,777|9,999|33,300/);
+});
+
+test('invalid, unrelated and unsourced values never become a hidden option card price', () => {
+  const env = environment(false);
+  env.context.App.products = [null, undefined, { goodsNumber: option.goodsNo, priceToPay: 0 }];
+  env.context.App.detailData = { products: { [option.goodsNo]: {
+    goodsNo: option.goodsNo, price: -1,
+    options: [null, undefined, { productId: 'different-sku', optionNumber: option.optionNumber, priceToPay: 12900 },
+      { productId: option.productId, optionNumber: option.optionNumber, price: 9900, priceToPay: null }]
+  } } };
+  const unknown = env.feature._cardPrice({ ...option, price: 9900, priceToPay: 7900 });
+  assert.equal(unknown.amount, null);
+  assert.equal(unknown.label, '매장 가격 확인 필요');
+  assert.equal(env.feature._cardPrice({ ...option, productId: '' }).amount, null, 'a missing SKU cannot match an option price');
+  delete env.context.App;
+  assert.equal(env.feature._cardPrice(option).amount, null, 'the preview can render before the main app metadata arrives');
+});
+
+test('late reference price updates change only price nodes and preserve image focus, scroll and paid dialogs', () => {
+  const env = environment(false);
+  function priceNode(index) {
+    let html = '', writes = 0;
+    return { dataset: { hiddenPriceIndex: String(index) },
+      get innerHTML() { return html; }, set innerHTML(value) { html = value; writes++; },
+      get writes() { return writes; } };
+  }
+  const searchPrice = priceNode(0), unknownPrice = priceNode(9), panelPrice = priceNode(0);
+  const root = env.elements.get('hidden-stock-search');
+  const imageButton = { isConnected: true };
+  root.innerHTML = '<fixture-search-card-with-image-button>';
+  root.scrollTop = 500;
+  root.querySelectorAll = selector => {
+    assert.equal(selector, '[data-hidden-price-index]');
+    return [searchPrice, unknownPrice];
+  };
+  const panel = { innerHTML: '<fixture-options-dialog>', scrollTop: 250,
+    querySelectorAll: () => [panelPrice] };
+  env.elements.set('hidden-stock-panel', panel);
+  env.feature.searchState = { mode: 'search', options: [option] };
+  env.feature.panelState = { mode: 'options', options: [option] };
+  env.context.document.activeElement = imageButton;
+  env.context.App.products = [{ goodsNumber: option.goodsNo, priceToPay: 23800 }];
+  env.feature._renderSearch = () => assert.fail('price refresh must not rebuild image buttons');
+  env.feature._renderPanel = () => assert.fail('price refresh must not rebuild an open dialog');
+  env.feature.refreshCardPrices();
+  assert.match(searchPrice.innerHTML, /23,800원/);
+  assert.match(panelPrice.innerHTML, /23,800원/);
+  assert.equal(unknownPrice.writes, 0);
+  assert.equal(env.context.document.activeElement, imageButton);
+  assert.equal(root.innerHTML, '<fixture-search-card-with-image-button>');
+  assert.equal(panel.innerHTML, '<fixture-options-dialog>');
+  assert.equal(root.scrollTop, 500);
+  assert.equal(panel.scrollTop, 250);
+  env.feature.refreshCardPrices();
+  assert.equal(searchPrice.writes, 1, 'unchanged reference prices avoid DOM rewrites');
+  assert.equal(panelPrice.writes, 1);
+  env.feature.panelState = { mode: 'stores', stores: [{ code: 'paid-store', qty: 7 }] };
+  env.context.App.products[0].priceToPay = 21900;
+  env.feature.refreshCardPrices();
+  assert.match(searchPrice.innerHTML, /21,900원/);
+  assert.match(panelPrice.innerHTML, /23,800원/, 'paid inventory dialog is not touched');
+  assert.equal(panelPrice.writes, 1);
+  assert.equal(env.context.document.activeElement, imageButton);
+  assert.equal(env.context.calls.length, 0, 'existing public metadata is reused without network requests');
 });
 
 test('paid inventory popup restores selected product image and details with a separate nationwide footer', async () => {
