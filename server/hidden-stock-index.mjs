@@ -225,13 +225,38 @@ export function createHiddenIndexStore(options = {}) {
 export function mergeDiscovery(index, goodsNo, result, now = Date.now()) {
   const previous = index.products[goodsNo];
   const byKey = new Map();
+  const complete = result.coverage?.complete === true;
+  const observedAt = new Date(now).toISOString();
+  const hasSku = value => typeof value === 'string' && /^\d{6,20}$/.test(value);
+  const skuEvidence = option => (option?.evidence || []).filter(entry => hasSku(entry?.productId));
+  const conflictReported = String(result.coverage?.reason || '').split(',').includes('conflicting_sku_evidence');
   // A partial observation cannot erase old verified identities. Their freshness is explicit.
-  if (result.coverage?.complete !== true) {
+  if (!complete) {
     for (const option of previous?.options || []) byKey.set(`${option.goodsNo}:${option.optionNumber}`, { ...option, stale: true });
   }
   for (const option of result.options || []) {
     if (!option.goodsNo || !option.optionNumber) continue;
-    byKey.set(`${option.goodsNo}:${option.optionNumber}`, { ...option, discoveredAt: new Date(now).toISOString(), stale: false });
+    const key = `${option.goodsNo}:${option.optionNumber}`;
+    const old = byKey.get(key);
+    const currentEvidence = skuEvidence(option);
+    // A review-count response can prove the option still exists without yielding
+    // its SKU when a later review request fails. That is not a SKU revocation.
+    // Never carry an identity through conflicting evidence or a complete refresh.
+    const retainIdentity = !complete && option.productId == null && hasSku(old?.productId) && !conflictReported &&
+      [...currentEvidence, ...skuEvidence(old)].every(entry => entry.productId === old.productId);
+    const next = { ...option, discoveredAt: observedAt, stale: false };
+    if (retainIdentity) {
+      next.productId = old.productId;
+      next.stale = true;
+      next.identityVerifiedAt = old.identityVerifiedAt || old.discoveredAt || previous.checkedAt || null;
+      next.image = option.image || old.image || '';
+      // Preserve only the old identity proof, not an old online/hidden decision.
+      const evidence = [...skuEvidence(old), ...(option.evidence || [])];
+      next.evidence = [...new Map(evidence.map(entry => [JSON.stringify(entry), entry])).values()];
+    } else if (hasSku(option.productId)) {
+      next.identityVerifiedAt = observedAt;
+    }
+    byKey.set(key, next);
   }
   index.products[goodsNo] = {
     goodsNo, options: [...byKey.values()], relatedGoodsNos: result.relatedGoodsNos || [],

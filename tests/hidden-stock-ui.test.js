@@ -355,3 +355,17 @@ test('leaving national lookup discards its delayed result and does not pollute t
   assert.equal(env.feature.panelState.scope, 'nearby');
   assert.deepEqual(Array.from(env.feature.panelState.stores, s => s.code), ['near']);
 });
+
+test('nearby displays ten stores before the national footer and expands cached rows without extra requests', async () => {
+  const env = environment();
+  env.context.response = { stores: Array.from({length:25}, (_,i)=>({code:String(i),name:'매장'+i,dist:i})), coverage:{complete:true} };
+  await env.feature.openStores(option);
+  assert.equal((env.elements.get('hidden-stock-panel').innerHTML.match(/<li>/g)||[]).length, 10);
+  assert.match(env.elements.get('hidden-stock-panel').innerHTML, /근처 매장 더 보기/);
+  await env.feature.showNearbyMore();
+  assert.equal((env.elements.get('hidden-stock-panel').innerHTML.match(/<li>/g)||[]).length, 20);
+  assert.equal(env.context.calls.length, 1);
+  await env.feature.showNearbyMore();
+  assert.equal((env.elements.get('hidden-stock-panel').innerHTML.match(/<li>/g)||[]).length, 25);
+  assert.doesNotMatch(env.elements.get('hidden-stock-panel').innerHTML, /근처 매장 더 보기/);
+});

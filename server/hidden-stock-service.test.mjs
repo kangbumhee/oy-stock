@@ -182,6 +182,87 @@ test('partial discovery is briefly cached so store pages do not repeatedly crawl
   assert.equal(discoveries, 1);
 });
 
+test('nearby to national still accepts the verified SKU after the partial TTL refresh loses review SKU data', async () => {
+  const startedAt = clock;
+  const seed = emptyHiddenIndex();
+  const initial = result(false);
+  initial.options[0].image = 'https://image.oliveyoung.co.kr/fixture.jpg';
+  initial.options[0].evidence = [{ type: 'review-goods-sku', productId: SKU }];
+  mergeDiscovery(seed, GOODS, initial, clock);
+  const index = memoryIndex(seed);
+  let discoveries = 0;
+  const queries = [];
+  const handler = createHiddenStockService({ secret: () => SECRET, index, now: () => ++clock,
+    discoveryFactory: () => async () => {
+      discoveries++;
+      const partial = result(false);
+      partial.options[0].productId = null;
+      partial.options[0].hidden = null;
+      partial.options[0].evidence = [{ type: 'review-option', goodsNo: GOODS, optionNumber: '001' }];
+      partial.coverage.reason = 'review_page_unavailable,unresolved_option_skus';
+      return partial;
+    },
+    request: async ({ body }) => {
+      queries.push(body);
+      return { status: 'SUCCESS', data: { stockDisplayYn: true, storeList: body.pageIdx === 1 ? [
+        { storeCode: 'known-store', storeName: '검증점', distance: 0.37, remainQuantity: 2 }
+      ] : [] } };
+    }
+  });
+  const base = `/api/hidden-stock?action=stores&goodsNo=${GOODS}&productId=${SKU}&lat=37.6152&lng=126.7156`;
+  assert.equal((await invoke(handler, base + '&scope=nearby')).status, 200);
+  assert.equal(discoveries, 0);
+  clock += 60001;
+  const national = await invoke(handler, base + '&scope=national');
+  assert.equal(national.status, 200);
+  assert.equal(discoveries, 1);
+  assert.equal(national.data.option.productId, SKU);
+  assert.equal(national.data.option.stale, true);
+  assert.equal(national.data.option.hidden, null);
+  assert.equal(national.data.option.image, initial.options[0].image);
+  assert.ok(queries.some(body => body.searchWords === '서울'));
+  const saved = (await index.read()).products[GOODS].options[0];
+  assert.equal(saved.identityVerifiedAt, new Date(startedAt).toISOString());
+  assert.equal(saved.productId, SKU);
+});
+
+test('unresolved new option, conflict, complete removal and replacement SKU cannot authorize an old requested SKU', async () => {
+  for (const scenario of ['new-unresolved', 'conflict', 'removed', 'replacement']) {
+    const seed = emptyHiddenIndex();
+    if (scenario !== 'new-unresolved') mergeDiscovery(seed, GOODS, result(false), clock - 120000);
+    let stockCalls = 0;
+    const handler = createHiddenStockService({ secret: () => SECRET, index: memoryIndex(seed), now: () => ++clock,
+      request: async () => { stockCalls++; throw new Error('must not reach stock'); },
+      discoveryFactory: () => async () => {
+        const refreshed = result(scenario === 'removed');
+        refreshed.options[0].productId = scenario === 'replacement' ? '8800289469146' : null;
+        if (scenario === 'removed') refreshed.options = [];
+        if (scenario === 'conflict') {
+          refreshed.coverage.reason = 'conflicting_sku_evidence,unresolved_option_skus';
+          refreshed.options[0].evidence = [{ productId: SKU }, { productId: '8800289469146' }];
+        }
+        return refreshed;
+      }
+    });
+    const res = await invoke(handler, `/api/hidden-stock?action=stores&goodsNo=${GOODS}&productId=${SKU}&scope=national`);
+    assert.equal(res.status, 404, scenario);
+    assert.equal(res.data.error, 'option_not_found');
+    assert.equal(stockCalls, 0);
+  }
+});
+
+test('a directly verified SKU may be queried despite unavailable online-list classification', async () => {
+  const seed = emptyHiddenIndex();
+  const unknown = result(false);
+  unknown.options[0].hidden = null;
+  mergeDiscovery(seed, GOODS, unknown, clock);
+  const handler = createHiddenStockService({ secret: () => SECRET, index: memoryIndex(seed), now: () => ++clock,
+    request: async () => ({ status: 'SUCCESS', data: { stockDisplayYn: true, storeList: [] } }) });
+  const response = await invoke(handler, `/api/hidden-stock?action=stores&goodsNo=${GOODS}&productId=${SKU}&scope=nearby&lat=37&lng=127`);
+  assert.equal(response.status, 200);
+  assert.equal(response.data.option.hidden, null);
+});
+
 test('backfill CLI bounds work, avoids redirecting bearer and reports no credentials', async () => {
   const config = backfillConfig(['--steps', '2', '--refresh'], { HIDDEN_STOCK_SERVICE_SECRET: SECRET });
   const calls = [], logs = [];

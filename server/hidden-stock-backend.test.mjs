@@ -67,6 +67,58 @@ test('partial index merge keeps old verified identities stale while complete mer
   assert.equal(searchHiddenIndex(index, '한교동').length, 0);
 });
 
+test('unresolved partial refresh retains only the same verified SKU as stale without resetting identity time or hidden classification', () => {
+  const index = emptyHiddenIndex();
+  const verified = option({ image: 'https://image.oliveyoung.co.kr/fixture.jpg', evidence: [
+    { type: 'review-goods-sku', goodsNo: GOODS, optionNumber: '001', productId: SKU }
+  ] });
+  mergeDiscovery(index, GOODS, discovery([verified]), NOW);
+  const observed = discovery([option({ productId: null, hidden: null, evidence: [
+    { type: 'review-option', goodsNo: GOODS, optionNumber: '001' }
+  ] })], false);
+  observed.coverage.reason = 'review_page_unavailable,unresolved_option_skus';
+  for (const at of [NOW + 60001, NOW + 120002]) {
+    mergeDiscovery(index, GOODS, observed, at);
+    const saved = index.products[GOODS].options[0];
+    assert.equal(saved.productId, SKU);
+    assert.equal(saved.stale, true);
+    assert.equal(saved.hidden, null);
+    assert.equal(saved.identityVerifiedAt, new Date(NOW).toISOString());
+    assert.equal(saved.discoveredAt, new Date(at).toISOString());
+    assert.equal(saved.image, verified.image);
+    assert.equal(saved.evidence.filter(entry => entry.productId === SKU).length, 1);
+    assert.equal(index.products[GOODS].coverage.complete, false);
+    // Unknown online classification is not silently restored to hidden=true.
+    assert.equal(searchHiddenIndex(index, '한교동').length, 0);
+  }
+});
+
+test('partial identity carry-forward never crosses option keys, conflicts, changed SKU or complete removal', () => {
+  const cases = [
+    { options: [option({ productId: null })], complete: true, expected: null },
+    { options: [option({ productId: null })], complete: false, reason: 'conflicting_sku_evidence,unresolved_option_skus', expected: null },
+    { options: [option({ productId: null, evidence: [{ productId: SKU }, { productId: '8800289469146' }] })], complete: false, expected: null },
+    { options: [option({ productId: null, evidence: [{ productId: '8800289469146' }] })], complete: false, expected: null },
+    { options: [option({ productId: '8800289469146' })], complete: false, expected: '8800289469146' },
+    { options: [], complete: true, expected: undefined }
+  ];
+  for (const entry of cases) {
+    const index = emptyHiddenIndex();
+    mergeDiscovery(index, GOODS, discovery(), NOW);
+    const latest = discovery(entry.options, entry.complete);
+    if (entry.reason) latest.coverage.reason = entry.reason;
+    mergeDiscovery(index, GOODS, latest, NOW + 60001);
+    assert.equal(index.products[GOODS].options[0]?.productId, entry.expected);
+    assert.equal(index.products[GOODS].options.some(row => row.productId === SKU), false);
+  }
+  const index = emptyHiddenIndex();
+  mergeDiscovery(index, GOODS, discovery(), NOW);
+  mergeDiscovery(index, GOODS, discovery([option({ goodsNo: RELATED, productId: null }),
+    option({ optionNumber: '002', productId: null })], false), NOW + 60001);
+  assert.equal(index.products[GOODS].options.find(row => row.goodsNo === RELATED).productId, null);
+  assert.equal(index.products[GOODS].options.find(row => row.optionNumber === '002').productId, null);
+});
+
 test('canonical option status removes stale related hidden copies before keyword/SKU filtering', () => {
   const index = emptyHiddenIndex();
   mergeDiscovery(index, RELATED, discovery([option({ name: '예전 한교동 숨김', productId: '8800000000001' })]), NOW);

@@ -21,6 +21,8 @@ NEARBY_STORES = [
     {'code': 's2', 'name': '수량 미확인 테스트점', 'region': '경기', 'addr': '테스트 주소', 'qty': None, 'dist': 3.2},
     {'code': 's1', 'name': '가장 가까운 테스트점', 'region': '경기', 'addr': '테스트 주소', 'qty': 6, 'dist': 0.37},
     {'code': 's3', 'name': '중간 거리 테스트점', 'region': '경기', 'addr': '테스트 주소', 'qty': 0, 'dist': 1.4}]
+NEARBY_STORES.extend({'code': f'near-{i}', 'name': f'추가 근처 테스트점 {i}', 'region': '경기',
+                     'addr': '테스트 주소', 'qty': 1, 'dist': float(i)} for i in range(4, 26))
 
 
 def button(root, action):
@@ -129,13 +131,21 @@ with sync_playwright() as p:
         expect(dialog.get_by_text('수량 확인 불가', exact=True)).to_be_visible()
         expect(dialog.get_by_text('조회 시점 재고 0개', exact=True)).to_be_visible()
         expect(dialog.get_by_text('테스트 김포 사우', exact=False)).to_be_visible()
-        expect(dialog.locator('.hidden-stock-stores strong')).to_have_text([
+        expect(dialog.locator('.hidden-stock-stores strong')).to_have_count(10)
+        expect(dialog.locator('.hidden-stock-stores li:nth-child(-n+3) strong')).to_have_text([
             '가장 가까운 테스트점', '중간 거리 테스트점', '수량 미확인 테스트점'])
         verify_image(dialog.locator('.hidden-stock-image img').first)
         assert state['nearby_calls'] == 1 and state['national_calls'] == 0
         expect(button(dialog, 'national-stores')).to_have_text('전국 재고 조회')
         assert button(dialog, 'national-stores').evaluate('(button) => button.compareDocumentPosition(document.querySelector("#hidden-stock-panel .hidden-stock-stores")) & Node.DOCUMENT_POSITION_PRECEDING')
         page.screenshot(path=str(OUT / f'nearby-{width}.png'))
+        button(dialog, 'nearby-more').click()
+        expect(dialog.locator('.hidden-stock-stores strong')).to_have_count(20)
+        assert state['nearby_calls'] == 1 and state['national_calls'] == 0, 'cached nearby rows must not trigger another API call'
+        button(dialog, 'nearby-more').click()
+        expect(dialog.locator('.hidden-stock-stores strong')).to_have_count(25)
+        expect(button(dialog, 'nearby-more')).to_have_count(0)
+        assert state['nearby_calls'] == 1 and state['national_calls'] == 0
         button(dialog, 'national-stores').click()
         expect(dialog.get_by_text('전국 제주 테스트점', exact=True)).to_be_visible()
         assert state['national_calls'] == 2

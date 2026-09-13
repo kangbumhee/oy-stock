@@ -233,7 +233,11 @@ export function createHiddenStockService({ request, index = createHiddenIndexSto
       const own = await discoverAndSave(goodsNo, requestFn, false, false);
       const matches = canonicalHiddenOptions({ products: { [goodsNo]: own } })
         .filter(o => o.goodsNo === goodsNo && o.productId === productId);
-      const option = matches.find(o => o.hidden !== null);
+      // The SKU proof and current online-list classification are independent.
+      // This paid endpoint already accepts normal options; an unavailable active
+      // list must not revoke a verified SKU. Conflicts/unresolved new identities
+      // have no productId and cannot match this authorization lookup.
+      const option = matches[0];
       if (!option) throw new Error('option_not_found');
       // Only verified evidence can address a SKU; no arbitrary SKU enumeration route.
       return { ...await readHiddenStoreBatch({ request: requestFn, ...storeQuery, now }), option: publicOption(option) };

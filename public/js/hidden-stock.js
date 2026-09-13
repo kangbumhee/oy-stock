@@ -255,6 +255,16 @@ var HiddenStock = {
     if (!previous.loaded && !previous.busy) this.loadPanel();
   },
 
+  showNearbyMore: async function () {
+    var state = this.panelState;
+    if (!state || state.scope !== 'nearby' || state.busy || !this._guard()) return;
+    var visible = state.visibleStores || 10;
+    if (visible >= state.stores.length && state.nextCursor) await this.loadPanel();
+    if (this.panelState !== state) return;
+    state.visibleStores = visible + 10;
+    this._renderPanel();
+  },
+
   loadPanel: async function () {
     var state = this.panelState;
     if (!state || state.busy) return;
@@ -341,7 +351,9 @@ var HiddenStock = {
     if (state.auto) html += '<p role="status">남은 전국 범위를 순서대로 확인 중입니다. 한 번에 한 요청만 진행합니다.</p>' +
       '<button type="button" class="hidden-stock-button" data-hidden-action="pause-stores">연속 조회 일시정지</button>';
     else if (state.busy) html += '<p role="status">옵션·매장 정보를 확인하고 있습니다…</p>';
-    else if (state.nextCursor || state.error) html += '<button type="button" class="hidden-stock-button" data-hidden-action="' + action +
+    else if (state.scope === 'nearby' && !state.error && (state.nextCursor || state.stores.length > (state.visibleStores || 10))) {
+      html += '<button type="button" class="hidden-stock-button" data-hidden-action="nearby-more">근처 매장 더 보기</button>';
+    } else if (state.nextCursor || state.error) html += '<button type="button" class="hidden-stock-button" data-hidden-action="' + action +
       '">' + (state.error ? '다시 조회' : '다음 범위 더 보기') + '</button>';
     if (state.mode === 'stores' && state.scope === 'national' && state.nextCursor && !state.busy && !state.autoRunning && !state.error) {
       if (state.autoLimited) html += '<p>안전을 위해 60회 요청 후 멈췄습니다. 아직 남은 범위가 있으니 이어서 조회할 수 있습니다.</p>';
@@ -394,7 +406,8 @@ var HiddenStock = {
       if (state.location) html += '<p class="hidden-stock-location">📍 ' + this._esc(state.location.name) + ' 기준 · 가까운 매장순</p>';
       else if (state.scope === 'nearby') html += '<p class="hidden-stock-error">선택한 위치를 확인할 수 없습니다. 창을 닫고 상단에서 지역을 선택하거나 아래 전국 재고 조회를 눌러 주세요.</p>';
       html += '<ul class="hidden-stock-stores">';
-      state.stores.forEach(function (store) {
+      var visibleStores = state.scope === 'nearby' ? state.stores.slice(0, state.visibleStores || 10) : state.stores;
+      visibleStores.forEach(function (store) {
         var qty = typeof store.qty === 'number' && Number.isFinite(store.qty) && store.qty >= 0 ? store.qty : null;
         var dist = typeof store.dist === 'number' && Number.isFinite(store.dist) && store.dist >= 0 ? store.dist : null;
         html += '<li><div><strong>' + HiddenStock._esc(store.name) + '</strong><span class="hidden-stock-distance">' +
@@ -448,6 +461,7 @@ var HiddenStock = {
         this.openStores(option); break;
       }
       case 'panel-more': this.loadPanel(); break;
+      case 'nearby-more': this.showNearbyMore(); break;
       case 'national-stores': this.openNational(); break;
       case 'back-nearby': this.backPanel('nearby'); break;
       case 'back-options': this.backPanel('options'); break;
