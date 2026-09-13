@@ -2417,6 +2417,7 @@ var UI = {
           summary +
           storeHtml +
           allBtnPerOpt +
+          (window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o) : '') +
           '</div>'
         );
       })
@@ -2466,6 +2467,7 @@ var UI = {
       statusBadge +
       priceHtml +
       shareActions +
+      (window.HiddenStock ? HiddenStock.productButtonHtml(goodsNo) : '') +
       optTabs +
       optPanels +
       '<div class="popup-footer"><button type="button" class="btn-oy btn-oy-cta" data-action="openOliveYoung" data-goodsno="' +

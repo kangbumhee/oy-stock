@@ -52,6 +52,22 @@
   - `goodsNo`: 상품 번호
 - Response: 상품 재고 요약. Cloud Run 실시간 응답의 각 `options[]`에는 기존 `name`, `productId`, 재고 필드와 함께 원본에 존재하는 경우 `optionNumber`(`itemNumber`), `priceToPay`, `originalPrice`, Boolean `soldOut`를 포함한다. 누락되거나 잘못된 선택 필드는 추정해 채우지 않는다.
 
+### [GET] `/api/oliveyoung/hidden-stock` (유료, 2026-09-13 구현)
+
+- 인증: 기존 `X-Price-Alert-Device-Id` / `X-Price-Alert-Device-Secret`와 유효한 30일권 또는 평생 이용권. 매 요청 서버가 최신 권한을 확인하며 브라우저 불리언은 권한 근거가 아니다.
+- Query: `action=search&keyword=...` 또는 `action=options&goodsNo=...`, `action=stores&goodsNo=...&productId=...`. `search`/`stores`의 다음 범위는 응답의 `nextCursor`를 요청 `cursor`로 그대로 전달한다. 최초 요청에 빈 cursor를 넣지 않으며 `options`에는 cursor를 넣지 않는다.
+- `search`/`options`: `{success:true,options:[{goodsNo,optionNumber,productId,name,goodsName,hidden:true,stale,discoveredAt}],nextCursor,coverage}`. 공개 목록에서 빠졌으나 공식 공개 자료로 SKU 연결이 확인된 옵션만 반환한다.
+- `stores`: `{success:true,option,stores:[{code,name,qty,region,addr}],nextCursor,coverage}`. 확인된 일반 옵션도 같은 유료 전국 매장 조회를 사용한다. `qty:null`은 수량 미확인이고 `0`과 다르다.
+- `coverage`는 현재 조사 범위·진행률을 나타낸다. 일부 범위 또는 빈 결과를 전체 옵션 없음/전국 품절로 해석하지 않는다. 과거 리뷰의 옵션 존재는 현재 온라인 구매 가능을 뜻하지 않는다.
+- 보안: same-origin, 기기별 요청률 제한, `private, no-store`, CDN 캐시 금지, wildcard CORS 없음. 비회원에게 옵션명·SKU·개수를 미리 내려주지 않는다. 서비스 인증값은 Vercel→Cloud Run에서만 붙인다.
+- 오류: 잘못된 입력 `400`, 기기 인증 `401`, 이용권 없음 `402`, 교차 출처 `403`, 제한 `429`, 저장소/서비스 설정·조회 실패 `502`/`503`/`504`. 응답 오류를 재고0으로 변환하지 않는다.
+- 내부 Cloud Run `/api/hidden-stock`: 동일 GET action은 `Authorization: Bearer <HIDDEN_STOCK_SERVICE_SECRET>` 전용. 아래 운영자 action도 같은 인증이 필요하며 브라우저 gateway에서는 허용하지 않는다. 임의 SKU 열거·리뷰 작성자 정보 수집 없이 공식 확인 SKU만 인덱싱한다.
+  - `GET ?action=status`: 저장된 수집 진행상태만 읽는다. 수집을 시작하지 않는다. `{success:true,collection,scan,coverage}`이며 `collection`은 `phase`, `knownProducts`, `queueRemaining`, `dueProducts`, `checkedProducts`, `failedProducts`, `partialProducts`, `hiddenOptions`, `processed`, `failed`, `pausedUntil`, `pauseReason`, `capacityReached`, `lastRunAt`, `nextRunAt`, `catalog`의 집계다. 비공개 `known`/`queued` 원문은 반환하지 않는다.
+  - `POST ?action=collect`: 재개 가능한 정기 수집을 한정된 단위만 진행한다. 요청당 최대5단위/30초, 숨김 검색·전체 매장 조회 우선, 저장된150초 CAS lease로 중복 실행을 막는다. `{success:true,collection,progress,idle,retryAfterSeconds?}`의 `progress`는 이번 요청의 `phase`, `processed`, `discovered`, `failed`, `workUnits`, `queueRemaining`, `nextRunAt`이다. 집계 누계와 이번 요청 숫자를 혼동하지 않으며 실패/대기는 완료가 아니다.
+  - `POST ?action=scan`: 기존 수동 백필 전용. 보통은 재개·갱신 큐를 관리하는 `collect`를 사용한다.
+- 정기 수집은 옵션 발견 인덱스 갱신이다. 매시 실행되어도 각 SKU를 매시간 갱신하는 것은 아니며, 매장 재고는 `action=stores` 요청 시 별도로 조회한다. 공개 자료에 없는 모든 실물 옵션의 발견·현재 판매 가능을 보장하지 않는다. 운영 방법은 [수집 안내](HIDDEN_STOCK_COLLECTION.md)를 따른다.
+- 상태: 기능 구현과 운영 배포/전체 카탈로그 인덱싱은 별개다. 현재 작업에서 배포와 전체 인덱싱을 완료한 것으로 간주하지 않는다.
+
 ### [POST] Cloud Run `/api/prices`
 
 - 설명: 가격 알림 스케줄러 전용 공개 표시가 일괄 조회. 상품별 재고·쿠폰·회원가는 조회하지 않는다.

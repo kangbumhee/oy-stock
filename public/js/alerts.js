@@ -41,6 +41,7 @@ var PriceAlerts = {
       cache: 'no-store',
       credentials: 'same-origin'
     };
+    if (opts.signal) init.signal = opts.signal;
     if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
     return fetch(url, init).then(async function (response) {
       var data = null;
@@ -97,6 +98,7 @@ var PriceAlerts = {
     var promoButton = document.getElementById('price-alert-promo-button');
     var targetInput = document.getElementById('price-alert-target-input');
     var active = this._hasActiveEntitlement();
+    var accessOnly = !!(this.modalState && this.modalState.accessOnly);
 
     if (status) {
       status.textContent = this.entitlementLoading
@@ -105,10 +107,10 @@ var PriceAlerts = {
       status.classList.toggle('active', active);
     }
     if (paywall) paywall.classList.toggle('hidden', active);
-    if (setup) setup.classList.toggle('hidden', !active);
+    if (setup) setup.classList.toggle('hidden', !active || accessOnly);
     if (targetInput) {
-      targetInput.disabled = !active;
-      targetInput.required = active;
+      targetInput.disabled = !active || accessOnly;
+      targetInput.required = active && !accessOnly;
     }
 
     var configured = this.entitlementEnabled !== false;
@@ -144,6 +146,7 @@ var PriceAlerts = {
     } else if (!active && !this.entitlementLoading && !this.paymentBusy) {
       this._setPaywallMessage('30일 이용권을 결제하거나 프로모션 코드를 적용해 주세요.', false);
     }
+    if (window.HiddenStock) HiddenStock.onEntitlementChange();
   },
 
   refreshEntitlement: function (opts) {
@@ -686,7 +689,7 @@ var PriceAlerts = {
       '<button type="button" class="price-alert-close" data-action="closePriceAlert" aria-label="닫기">✕</button></div>' +
       '<div id="price-alert-entitlement-status" class="price-alert-entitlement-status" role="status">이용권 확인 중…</div>' +
       '<section id="price-alert-paywall" class="price-alert-paywall" aria-labelledby="price-alert-pass-title">' +
-      '<div class="price-alert-pass"><div><span>PRICE WATCH PASS</span><h4 id="price-alert-pass-title">30일 이용권</h4><p>가격 상승·하락과 목표가 도달 Web Push</p></div><div><strong>30,000원</strong><b>자동결제 아님</b></div></div>' +
+      '<div class="price-alert-pass"><div><span>PRICE WATCH PASS</span><h4 id="price-alert-pass-title">30일 이용권</h4><p>가격 알림 + 매장 숨겨진 옵션 조회</p></div><div><strong>30,000원</strong><b>자동결제 아님</b></div></div>' +
       '<p id="price-alert-paywall-message" class="price-alert-paywall-message">이용권 상태를 확인하고 있습니다.</p>' +
       '<button type="button" id="price-alert-pay-button" class="price-alert-pay-button" disabled>카카오페이로 30일 이용권 결제</button>' +
       '<div class="price-alert-promo"><label for="price-alert-promo-input">평생 이용 프로모션 코드</label><div><input id="price-alert-promo-input" type="password" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="코드 입력"><button type="button" id="price-alert-promo-button">적용</button></div></div>' +
@@ -751,6 +754,20 @@ var PriceAlerts = {
     });
   },
 
+  openAccess: function (onAccess) {
+    this._ensureModal();
+    this._bindModalForm();
+    this.modalState = { accessOnly: true, onAccess: onAccess };
+    document.getElementById('price-alert-title').textContent = '숨겨진 옵션 · 가격 알림 이용권';
+    var modal = document.getElementById('price-alert-modal');
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('price-alert-modal-open');
+    this._setModalError('');
+    this._renderEntitlement();
+    this.refreshEntitlement({ silent: true });
+  },
+
   openFromElement: function (el) {
     if (!el) return;
     var goodsNo = String(el.dataset.goodsno || '').trim();
@@ -805,6 +822,12 @@ var PriceAlerts = {
 
   _continueAlertSetup: function (stateRef) {
     if (!stateRef || this.modalState !== stateRef || !this._hasActiveEntitlement()) return;
+    if (stateRef.accessOnly) {
+      var callback = stateRef.onAccess;
+      this.closeModal();
+      if (typeof callback === 'function') callback();
+      return;
+    }
     this._renderEntitlement();
     if (!stateRef.optionsLoaded) {
       stateRef.optionsLoaded = true;

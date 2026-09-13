@@ -24,6 +24,13 @@
       }
     },
     { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
+    {
+      "src": "api/oliveyoung/hidden-stock.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60
+      }
+    },
     { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/view-ranking.js", "use": "@vercel/node" },
     { "src": "api/oliveyoung/hot-ranking-history.js", "use": "@vercel/node" },
@@ -137,6 +144,7 @@
     { "src": "/api/oliveyoung/search", "dest": "/api/oliveyoung/search.js" },
     { "src": "/api/oliveyoung/inventory", "dest": "/api/oliveyoung/inventory.js" },
     { "src": "/api/oliveyoung/options", "dest": "/api/oliveyoung/options.js" },
+    { "src": "/api/oliveyoung/hidden-stock", "dest": "/api/oliveyoung/hidden-stock.js" },
     {
       "src": "/api/oliveyoung/curator-redirect",
       "dest": "/api/oliveyoung/curator-redirect.js"

@@ -76,6 +76,7 @@ var App = {
     document.addEventListener('click', this._onClick.bind(this));
     if (window.PWA) PWA.init();
     if (window.PriceAlerts) PriceAlerts.init(this);
+    if (window.HiddenStock) HiddenStock.init();
     this._syncStickyTabsOffset();
     window.addEventListener('resize', function () {
       self._syncStickyTabsOffset();
@@ -1307,6 +1308,7 @@ var App = {
     if (!kw) return;
 
     var seq = ++self._searchSeq;
+    if (window.HiddenStock) HiddenStock.search(kw);
 
     if (self._searchAbortCtrl) {
       try {

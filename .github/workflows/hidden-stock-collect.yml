@@ -1,0 +1,56 @@
+name: Collect Hidden OliveYoung Options
+
+on:
+  schedule:
+    # Every hour at minute 17 (UTC). GitHub may delay scheduled jobs when busy.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: '이번 실행 최대 처리 단계 (1~500, 저장된 진행 위치에서 이어짐)'
+        required: false
+        type: number
+        default: 100
+
+concurrency:
+  group: hidden-stock-collection
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    if: ${{ vars.HIDDEN_STOCK_COLLECTION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      HIDDEN_STOCK_SERVICE_SECRET: ${{ secrets.HIDDEN_STOCK_SERVICE_SECRET }}
+      HIDDEN_STOCK_SERVICE_URL: ${{ vars.HIDDEN_STOCK_SERVICE_URL || 'https://oy-stock-api-3596046881.asia-northeast3.run.app' }}
+    steps:
+      - name: 수집 인증 설정 확인
+        id: configured
+        shell: bash
+        run: |
+          if [ -z "$HIDDEN_STOCK_SERVICE_SECRET" ]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '::warning::숨겨진 옵션 수집 인증키가 설정되지 않아 실행하지 않았습니다.'
+            echo '## 숨겨진 옵션 수집: 실행 안 됨' >> "$GITHUB_STEP_SUMMARY"
+            echo 'HIDDEN_STOCK_SERVICE_SECRET 설정 후 다시 실행하세요. 수집 완료 상태가 아닙니다.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.configured.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.configured.outputs.ready == 'true'
+        with:
+          node-version: '20'
+
+      - name: 숨겨진 옵션 순차 수집 (최대 8분)
+        if: steps.configured.outputs.ready == 'true'
+        env:
+          COLLECT_STEPS: ${{ inputs.steps || '100' }}
+        run: node scripts/collect-hidden-stock.mjs --steps "$COLLECT_STEPS" --max-seconds 480 --delay-ms 1000

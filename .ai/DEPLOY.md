@@ -17,7 +17,7 @@
 
 ### Vercel
 
-- `main` 브랜치 푸시 시 자동 배포.
+- `vercel.json`의 Git 자동 배포는 현재 비활성화다. 새 코드 반영은 `.github/workflows/deploy-vercel.yml` 수동 실행 등 승인된 production 빌드 경로로 수행한다. 인증 갱신용 기존 배포 재생성만으로 새 기능 소스가 반영되었다고 판단하지 않는다.
 - `vercel.json`에서 `public/**`와 `api/**/*.js`를 빌드한다.
 - 배포 확인:
   - GitHub commit status의 `Vercel`
@@ -86,6 +86,24 @@
 - 운영 안정성 기준: memory `4Gi`, concurrency `4`, max instances `3`, timeout `240s`.
 - `/api/prices`는 Vercel과 공유하는 별도 `PRICE_ALERT_SERVICE_SECRET`으로만 인증한다. `CRON_SECRET`을 재사용하지 않는다.
 
+## 숨겨진 옵션·전국 매장 조회 배포 준비 (2026-09-13)
+
+- 상태: 운영 배포 진행 중. 이 절차 자체는 배포 완료·정기 수집 활성화·전체 카탈로그 인덱싱 완료를 뜻하지 않는다. 실제 완료 ID와 확인 결과는 `HANDOFF.md`에 별도로 남긴다.
+- Vercel에 `HIDDEN_STOCK_SERVICE_SECRET`와 기존 가격알림 권한 저장소 설정이 필요하다. 선택 `HIDDEN_STOCK_SERVICE_URL`은 기본 Cloud Run origin `https://oy-stock-api-3596046881.asia-northeast3.run.app`; HTTPS `*.run.app` origin만 허용하며 path/query를 넣지 않는다.
+- Cloud Run에 동일한 별도 `HIDDEN_STOCK_SERVICE_SECRET`(난수32~256 printable 문자), 비공개 Blob용 `HIDDEN_STOCK_BLOB_TOKEN`을 설정한다. Blob token 미설정 시 `BLOB_READ_WRITE_TOKEN`을 사용한다. `HIDDEN_STOCK_INDEX_NAMESPACE`는 기본 `production`, preview에는 별도 값을 쓴다. 비밀값은 공개 파일·명령 출력·로그에 남기지 않는다.
+- 기존 Cron/가격조회 secret과 분리한다. 이 변경은 실결제 승인·결제금액·기존 이용권 데이터·로그인 자동화를 바꾸지 않는다.
+- 배포 승인 후 Cloud Run 내부 서비스→Vercel gateway/프런트 순으로 반영한다. Vercel은 `api/oliveyoung/hidden-stock.js` 명시적 build/route, 최대60초; gateway 업스트림 제한45초. 운영은 현재 도메인이 가리키는 최신 소스·배포 경계를 확인하고 별도로 검증한다.
+- Cloud Run은 프로젝트 **루트 Dockerfile**을 사용한다. 기존 `server/Dockerfile` 단독 빌드는 새 서버 모듈과 `@vercel/blob`를 포함하지 못한다. 비공개 v2 인덱스는64개 상품 분할과 별도 수집 진행정보를 사용해 전체 카탈로그를 상품마다 재작성하지 않는다.
+- 검증: 무인증 내부 서비스401, 무인증/만료권 gateway401/402, 유효권 search/options/stores, cursor 변조 거부, 일반 옵션 전체 매장 연속 조회, 인증 상실 후 UI 데이터 삭제, CDN/서비스워커 캐시 금지. 응답 실패/부분 결과를 품절로 표시하지 않는다.
+- 매장 연속 조회는 사용자 시작 후 한 번에 한 요청, 약300ms 간격, 활성화당 최대60회다. 일시정지/닫기/인증상실/오류 시 추가 요청을 중단하고 남은 cursor가 있으면 이어서 조회하도록 표시한다. 검색은 수동 페이지 진행을 유지한다.
+- 쉬운 수동/정기 수집: GitHub Actions **Collect Hidden OliveYoung Options**(`.github/workflows/hidden-stock-collect.yml`)에서 **Run workflow**를 누른다. 기본100단계/최대8분, 매시17분 예약, 중복 실행 방지, 중단 위치 재개를 사용한다. 운영자에게 터미널 입력은 필수가 아니다. 상세 절차와 상태 해석은 [수집 안내](HIDDEN_STOCK_COLLECTION.md).
+- 활성화 순서: Cloud Run/Vercel 반영 → 서비스 인증 `GET /api/hidden-stock?action=status` 확인 → GitHub Secret `HIDDEN_STOCK_SERVICE_SECRET` 및 선택 Variable `HIDDEN_STOCK_SERVICE_URL` 확인 → 저장소 Actions Variable `HIDDEN_STOCK_COLLECTION_ENABLED=true` 설정 → 수동1회와 후속 예약 실행 확인. 이 변수는 현재 수동/예약 모두를 제어한다. `.env`에만 넣어서는 켜지지 않는다. 별도 Codex/app 자동화는 만들지 않는다.
+- 수집기는 한 번에 내부 `POST ?action=collect`만 순차 호출한다. Cloud Run 요청당 최대5단위/30초, 숨김 검색·전체 매장 조회 우선,150초 CAS lease; 카탈로그20개 열거→중복 제거 큐→관련 상품 큐 순서로 재개한다. 숨김/부분 상품 하루·일반 상품7일·카탈로그 열거 완료 후24시간 갱신 대상 정책이며, 처리 대기/차단 때문에 실제 완료는 늦어질 수 있다.
+- CLI 선택 사용: 상태만 확인하려면 `node scripts/collect-hidden-stock.mjs --status`; 수집은 `node scripts/collect-hidden-stock.mjs --steps 100 --max-seconds 480 --delay-ms 1000`. 인증값은 환경변수로만 제공하며 인자·출력·문서에 복사하지 않는다.429/503/네트워크 오류 시 대기 또는 백오프한 실행을 전체 수집 성공으로 해석하지 않는다.
+- 기존 백필은 고급 복구용이다: `node scripts/backfill-hidden-stock.mjs --steps 50 --delay-ms 1000`로 내부 `POST ?action=scan` 체크포인트를 재개한다. 명시적 `--refresh`는 기존 scan만 재시작하고 발견 상품 및 `scan.collection`의 정기 수집 대기열/진행정보는 보존한다. 일반 운영은 `collect`를 사용하며 고급 복구 작업을 정기 수집과 겹쳐 실행하지 않는다.
+- 전체 상품명 열거를 끝내도 온라인 미노출 옵션이 공식 자료에 한 번도 남지 않았다면 발견을 보장할 수 없다. 인덱싱 진행률과 `coverage`를 표시하며 '모든 숨겨진 옵션 수집 완료'라고 보고하지 않는다.
+- 매시 수집은 모든 SKU의 매시간 최신화나 모든 매장의 재고 저장을 뜻하지 않는다. 매장 수량은 사용자가 전국 매장 조회를 요청할 때 확인한다. LLM API는 호출하지 않으며, Cloud Run·Blob 사용량 비용은 별도다.
+
 ## 환경변수 전체 목록
 
 | 변수명 | 위치 | 설명 | 발급/설정 위치 |
@@ -112,6 +130,11 @@
 | `GCP_SA_KEY` | GitHub Secrets | Cloud Run 배포 권한 | Google Cloud IAM |
 | `GCP_PROJECT_ID` | GitHub Secrets | GCP 프로젝트 ID | Google Cloud |
 | `BLOB_READ_WRITE_TOKEN` | Vercel env | 암호화된 기기·구독·목표가·outbox·결제의도·이용권 저장 | Vercel Blob 연결 |
+| `HIDDEN_STOCK_SERVICE_SECRET` | Vercel env, Cloud Run env, GitHub Secret | 숨김 조회 gateway·정기 수집 전용 공유 Bearer; 기존 secret과 분리 | 암호학적 난수32~256문자 |
+| `HIDDEN_STOCK_SERVICE_URL` | Vercel env / 운영 CLI env / GitHub Variable, 선택 | 숨김 서비스 HTTPS Cloud Run origin, path/query 없음 | 기본 canonical Cloud Run origin |
+| `HIDDEN_STOCK_BLOB_TOKEN` | Cloud Run env, 배포용 GitHub Secret | 비공개 숨김 인덱스 저장소; 없으면 `BLOB_READ_WRITE_TOKEN` 사용 | 기존 PRIVATE Blob 연결 |
+| `HIDDEN_STOCK_INDEX_NAMESPACE` | Cloud Run env, 선택 | production/preview 인덱스 격리 | 기본 `production` |
+| `HIDDEN_STOCK_COLLECTION_ENABLED` | GitHub Actions repository Variable만 | `true`일 때 수동/정기 수집 job 실행; 설정만으로 코드가 배포되지는 않음 | 서비스 검증 후 활성화 |
 | `CRON_SECRET` | Vercel env | Vercel 가격 알림/인기상품 Cron 인증 | 임의 강력한 비밀값 |
 | `PRICE_ALERT_DATA_KEY` | Vercel env | Blob 레코드 AES-256-GCM 암호화용 32바이트 base64 키 | 암호학적 난수 생성 |
 | `PRICE_ALERT_STORE_NAMESPACE` | Vercel env, 선택 | 같은 Blob store의 production/preview 격리. 기본값은 `VERCEL_ENV` | 보통 미설정 |

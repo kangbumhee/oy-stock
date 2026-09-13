@@ -7,6 +7,8 @@ import {
   parsePriceGoodsNos,
   searchOfficialProducts
 } from './official-search.mjs';
+import { createHiddenOfficialTransport } from './hidden-official-transport.mjs';
+import { createHiddenStockService } from './hidden-stock-service.mjs';
 
 const PORT = Number(process.env.PORT) || 8080;
 const OY = 'https://www.oliveyoung.co.kr';
@@ -190,6 +192,9 @@ let searchPage = null;
 let searchPageInitPromise = null;
 let pricePage = null;
 let pricePageInitPromise = null;
+let hiddenReviewPage = null;
+let hiddenReviewPageInitPromise = null;
+let hiddenStockHandler = null;
 let sessionReady = false;
 let sessionCreatedAt = 0;
 let sessionGeneration = 0;
@@ -557,6 +562,53 @@ async function ensureSearchPage() {
   } finally {
     if (searchPageInitPromise === nextInitPromise) searchPageInitPromise = null;
   }
+}
+
+async function ensureHiddenReviewPage() {
+  await ensureSession();
+  const generation = sessionGeneration;
+  if (hiddenReviewPage && !hiddenReviewPage.isClosed()) {
+    try {
+      if (new URL(hiddenReviewPage.url()).origin === OY_M) return { page: hiddenReviewPage, generation };
+    } catch {}
+  }
+  if (hiddenReviewPageInitPromise) return hiddenReviewPageInitPromise;
+  const contextRef = browserContext;
+  if (!contextRef) throw new Error('hidden_review_context_unavailable');
+  const nextInitPromise = (async () => {
+    const nextPage = await contextRef.newPage();
+    try {
+      await nextPage.route('**/*', (route) => {
+        const type = route.request().resourceType();
+        return ['image', 'media', 'font'].includes(type) ? route.abort() : route.continue();
+      });
+      await nextPage.goto(OY_M + '/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+      if (generation !== sessionGeneration || contextRef !== browserContext || new URL(nextPage.url()).origin !== OY_M) {
+        throw new Error('hidden_review_session_changed');
+      }
+      hiddenReviewPage = nextPage;
+      return { page: nextPage, generation };
+    } catch {
+      try { await nextPage.close(); } catch {}
+      throw new Error('hidden_review_page_unavailable');
+    }
+  })();
+  hiddenReviewPageInitPromise = nextInitPromise;
+  try { return await nextInitPromise; }
+  finally { if (hiddenReviewPageInitPromise === nextInitPromise) hiddenReviewPageInitPromise = null; }
+}
+
+function getHiddenStockHandler() {
+  if (!hiddenStockHandler) {
+    const request = createHiddenOfficialTransport({
+      stockPage: ensureStockPageOrigin,
+      reviewPage: ensureHiddenReviewPage,
+      isCurrent: (work, surface) => work.generation === sessionGeneration &&
+        work.page === (surface === 'review' ? hiddenReviewPage : page)
+    });
+    hiddenStockHandler = createHiddenStockService({ request });
+  }
+  return hiddenStockHandler;
 }
 
 async function ensurePricePage() {
@@ -960,6 +1012,8 @@ async function _createSession() {
   searchPageInitPromise = null;
   pricePage = null;
   pricePageInitPromise = null;
+  hiddenReviewPage = null;
+  hiddenReviewPageInitPromise = null;
   if (page) {
     try {
       await page.close();
@@ -2387,6 +2441,21 @@ async function readJsonBody(req, maxBytes = 256 * 1024) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+  // Paid data is server-to-server only. Dispatch before both wildcard CORS
+  // mechanisms, including the writeHead override used by public stock routes.
+  if (url.pathname === '/api/hidden-stock') {
+    try { await getHiddenStockHandler()(req, res); }
+    catch {
+      if (!res.headersSent) {
+        res.statusCode = 503;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'private, no-store');
+      }
+      if (!res.writableEnded) res.end(JSON.stringify({ success: false, error: 'hidden_stock_unavailable' }));
+    }
+    return;
+  }
   if (applyCors(req, res)) return;
 
   const _origWriteHead = res.writeHead.bind(res);
@@ -2394,8 +2463,6 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     return _origWriteHead(statusCode, headers);
   };
-
-  const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname === '/health') {
     if (url.searchParams.get('warm') === '1' || url.searchParams.get('warm') === 'true') {
