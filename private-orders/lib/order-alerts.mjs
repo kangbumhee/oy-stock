@@ -8,7 +8,7 @@ const WORKFLOW = 'oy-purchase-alert.yml';
 const EMAIL_STEP = 'Send purchase reconnect email';
 const REASONS = new Set(['reconnect_required', 'check_failed', 'connection_test']);
 const AUTH_CODES = new Set(['AUTH_REQUIRED', 'SESSION_INVALID', 'CREDENTIALS_REJECTED', 'ADDITIONAL_VERIFICATION',
-  'CAPTCHA_NOT_CLEARED', 'CAPTCHA_AUTOMATIC_DISABLED', 'AUTO_REFRESH_PAUSED']);
+  'PASSWORD_CHANGE_REQUIRED', 'CAPTCHA_NOT_CLEARED', 'CAPTCHA_AUTOMATIC_DISABLED', 'AUTO_REFRESH_PAUSED']);
 const ATTENTION_CODES = new Set(['DAILY_BUDGET_EXHAUSTED', 'MONTHLY_BUDGET_EXHAUSTED', 'BUDGET_EXHAUSTED']);
 const SKIPPED = new Set(['cancelled', 'busy', 'skipped']);
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
@@ -140,6 +140,9 @@ export function createOrderAlerts({ store, repoRoot, runProcess, env, clock = Da
   async function recordOutcome({ accountId, status, code, source = 'sync' } = {}) {
     if (typeof accountId !== 'string' || !accountId || !['sync', 'health_check'].includes(source)) throw failure('ORDER_ALERT_OUTCOME_INVALID');
     if (SKIPPED.has(status) || code === 'ABORTED' || code === 'ACCOUNT_CHANGED' || code === 'ACCOUNT_DISABLED') return { status: 'ignored' };
+    // A challenge blocks observation; it does not prove authentication failed or
+    // recovered. Preserve existing incidents without generating repeated emails.
+    if (source === 'health_check' && code === 'CHALLENGE_PENDING') return { status: 'deferred' };
     let outcome = { status: 'ignored' };
     await store.update(state => {
       if (!state.accounts.some(account => account.id === accountId && account.enabled !== false)) return;
@@ -249,7 +252,7 @@ export async function sendPurchaseAlert({ env = process.env, createTransport } =
       text: [testing ? '오류 알림 메일의 발송 경로를 확인하는 테스트입니다. 이 메일 자체가 계정 오류를 뜻하지 않으며 재연결할 필요는 없습니다.' : reconnect ? '개인 구매노트의 구매 계정 연결 확인이 필요합니다.' : '개인 구매노트에서 갱신 또는 상태 확인 오류를 감지했습니다.',
         `감지 시각: ${new Date(metadata.detectedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (한국 시간)`,
         '구매노트에 지정된 Google 계정으로 로그인한 뒤 구매 계정별 오류를 확인해 주세요.',
-        'https://orders.cp1.co.kr',
+        'https://orders.olivestock.co.kr',
         '추가 본인인증이 필요하면 직접 인증한 뒤 해당 구매 계정 하나를 갱신해 연결을 확인해 주세요.',
         '주문 수집은 24시간 간격입니다. 같은 장애의 반복 알림은 정상 복구가 확인될 때까지 생략합니다.',
         '반복 인증 보호 상태에서는 확인이 끝날 때까지 자동 갱신이 중지될 수 있습니다.',
