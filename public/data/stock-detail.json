@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-14T06:02:33.372Z",
+  "updatedAt": "2026-09-15T06:01:55.170Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -7,8 +7,8 @@
   },
   "summary": {
     "total": 6,
-    "active": 2,
-    "soldout": 4,
+    "active": 3,
+    "soldout": 3,
     "discontinued": 0,
     "errors": 0
   },
@@ -17,53 +17,55 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 39,
-      "to": 37,
-      "fromQty": 126,
-      "toQty": 121,
-      "date": "2026-09-14T06:02:33.372Z"
+      "from": 37,
+      "to": 38,
+      "fromQty": 121,
+      "toQty": 124,
+      "date": "2026-09-15T06:01:55.170Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 206,
-      "to": 176,
-      "date": "2026-09-14T06:02:33.372Z"
+      "from": 176,
+      "to": 457,
+      "date": "2026-09-15T06:01:55.170Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
       "from": 44,
-      "to": 44,
-      "fromQty": 180,
-      "toQty": 178,
-      "date": "2026-09-14T06:02:33.372Z"
+      "to": 47,
+      "fromQty": 178,
+      "toQty": 182,
+      "date": "2026-09-15T06:01:55.170Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 280,
-      "to": 251,
-      "date": "2026-09-14T06:02:33.372Z"
+      "from": 251,
+      "to": 263,
+      "date": "2026-09-15T06:01:55.170Z"
     },
     {
-      "type": "price_up",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 13900,
-      "to": 14900,
-      "date": "2026-09-14T06:02:33.372Z"
+      "type": "back_in_stock",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 0,
+      "to": 1,
+      "fromQty": 0,
+      "toQty": 4,
+      "date": "2026-09-15T06:01:55.170Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 6249,
-      "to": 6043,
-      "date": "2026-09-14T06:02:33.372Z"
+      "from": 6043,
+      "to": 5868,
+      "date": "2026-09-15T06:01:55.170Z"
     }
   ],
   "products": {
@@ -83,12 +85,12 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 44,
-          "totalQty": 178,
-          "onlineQty": 251,
+          "inStock": 47,
+          "totalQty": 182,
+          "onlineQty": 263,
           "maxOrderQty": 6,
           "deliveredToday": true,
-          "presentable": false,
+          "presentable": true,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -124,8 +126,8 @@
               "name": "김포운양점",
               "code": "D573",
               "dist": 1.57,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -134,8 +136,8 @@
               "name": "걸포북변역점",
               "code": "DCA9",
               "dist": 2.14,
-              "qty": 0,
-              "o2o": 0,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 걸포2로 21 (걸포동 200번지) 올리브영"
@@ -174,8 +176,8 @@
               "name": "김포구래로데오점",
               "code": "DE12",
               "dist": 5.08,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강4로 525"
@@ -211,16 +213,6 @@
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
-            },
-            {
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
@@ -234,8 +226,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 3,
+              "o2o": 2,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -314,8 +306,8 @@
               "name": "정발산로점",
               "code": "D178",
               "dist": 8.03,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
@@ -389,11 +381,21 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 3,
+              "o2o": 2,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         }
       ],
-      "updatedAt": "2026-09-14T06:02:33.372Z"
+      "updatedAt": "2026-09-15T06:01:55.170Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -411,9 +413,9 @@
           "productId": "8809714721858",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
-          "inStock": 34,
-          "totalQty": 109,
-          "onlineQty": 176,
+          "inStock": 35,
+          "totalQty": 112,
+          "onlineQty": 457,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -539,20 +541,10 @@
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
-            },
-            {
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -717,6 +709,16 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 4,
+              "o2o": 3,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         },
@@ -851,16 +853,6 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
-            },
-            {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
             },
             {
               "name": "인천검단센트럴점",
@@ -1031,11 +1023,21 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         }
       ],
-      "updatedAt": "2026-09-14T06:02:33.372Z"
+      "updatedAt": "2026-09-15T06:01:55.170Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1181,16 +1183,6 @@
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
-            },
-            {
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
@@ -1359,11 +1351,21 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         }
       ],
-      "updatedAt": "2026-09-14T06:02:33.372Z"
+      "updatedAt": "2026-09-15T06:01:55.170Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1376,7 +1378,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-14T06:02:33.372Z"
+      "updatedAt": "2026-09-15T06:01:55.170Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1389,7 +1391,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-14T06:02:33.372Z"
+      "updatedAt": "2026-09-15T06:01:55.170Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1399,17 +1401,17 @@
       "discountRate": 30,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/A00000023910264ko.jpg?l=ko",
       "itemCount": 4,
-      "status": "soldout",
-      "statusLabel": "🔴 주변품절",
+      "status": "active",
+      "statusLabel": "✅ 재고있음",
       "options": [
         {
           "name": " 하이퍼 콜라겐 8+1매",
           "productId": "8809936747735",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/6059018786363119327.jpg",
           "totalStores": 50,
-          "inStock": 0,
-          "totalQty": 0,
-          "onlineQty": 3296,
+          "inStock": 1,
+          "totalQty": 4,
+          "onlineQty": 3218,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1535,16 +1537,6 @@
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
             },
             {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
-            },
-            {
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
@@ -1558,8 +1550,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 0,
-              "o2o": 0,
+              "qty": 4,
+              "o2o": 3,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -1713,6 +1705,16 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         },
@@ -1723,7 +1725,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1259,
+          "onlineQty": 1223,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1847,16 +1849,6 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
-            },
-            {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
             },
             {
               "name": "인천검단센트럴점",
@@ -2027,6 +2019,16 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         },
@@ -2037,7 +2039,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 914,
+          "onlineQty": 882,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2161,16 +2163,6 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
-            },
-            {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
             },
             {
               "name": "인천검단센트럴점",
@@ -2341,6 +2333,16 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         },
@@ -2351,7 +2353,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 574,
+          "onlineQty": 545,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2475,16 +2477,6 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
-            },
-            {
-              "name": "인천원당점",
-              "code": "D559",
-              "dist": 5.34,
-              "qty": 0,
-              "o2o": 0,
-              "pickup": false,
-              "open": true,
-              "addr": "인천광역시 검단구 원당대로 854"
             },
             {
               "name": "인천검단센트럴점",
@@ -2655,11 +2647,21 @@
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 고양대로 666 어반스카이 D-2동"
+            },
+            {
+              "name": "김포통진점",
+              "code": "BA49",
+              "dist": 9.12,
+              "qty": 0,
+              "o2o": 0,
+              "pickup": false,
+              "open": true,
+              "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
             }
           ]
         }
       ],
-      "updatedAt": "2026-09-14T06:02:33.372Z"
+      "updatedAt": "2026-09-15T06:01:55.170Z"
     }
   }
 }
