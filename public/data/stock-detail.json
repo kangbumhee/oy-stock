@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-17T05:59:43.989Z",
+  "updatedAt": "2026-09-18T05:46:31.610Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -18,44 +18,52 @@
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 38,
-      "to": 38,
-      "fromQty": 122,
-      "toQty": 121,
-      "date": "2026-09-17T05:59:43.989Z"
+      "to": 36,
+      "fromQty": 121,
+      "toQty": 115,
+      "date": "2026-09-18T05:46:31.610Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 549,
-      "to": 537,
-      "date": "2026-09-17T05:59:43.989Z"
+      "from": 537,
+      "to": 523,
+      "date": "2026-09-18T05:46:31.610Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
       "from": 47,
-      "to": 47,
-      "fromQty": 184,
-      "toQty": 190,
-      "date": "2026-09-17T05:59:43.989Z"
+      "to": 46,
+      "fromQty": 190,
+      "toQty": 188,
+      "date": "2026-09-18T05:46:31.610Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 223,
-      "to": 235,
-      "date": "2026-09-17T05:59:43.989Z"
+      "from": 235,
+      "to": 176,
+      "date": "2026-09-18T05:46:31.610Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 5725,
-      "to": 5600,
-      "date": "2026-09-17T05:59:43.989Z"
+      "from": 5600,
+      "to": 5438,
+      "date": "2026-09-18T05:46:31.610Z"
+    },
+    {
+      "type": "price_down",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 25200,
+      "to": 24900,
+      "date": "2026-09-18T05:46:31.610Z"
     }
   ],
   "products": {
@@ -75,9 +83,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 47,
-          "totalQty": 190,
-          "onlineQty": 235,
+          "inStock": 46,
+          "totalQty": 188,
+          "onlineQty": 176,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": true,
@@ -116,8 +124,8 @@
               "name": "김포운양점",
               "code": "D573",
               "dist": 1.57,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -206,8 +214,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 검단구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -266,7 +274,7 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -385,7 +393,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-17T05:59:43.989Z"
+      "updatedAt": "2026-09-18T05:46:31.610Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -403,9 +411,9 @@
           "productId": "8809714721858",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
-          "inStock": 35,
-          "totalQty": 110,
-          "onlineQty": 537,
+          "inStock": 33,
+          "totalQty": 105,
+          "onlineQty": 523,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -634,7 +642,7 @@
               "name": "웨스턴돔중앙점",
               "code": "DCE8",
               "dist": 8.06,
-              "qty": 16,
+              "qty": 15,
               "o2o": 12,
               "pickup": true,
               "open": true,
@@ -718,7 +726,7 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/8/1583288890856331356.PNG",
           "totalStores": 50,
           "inStock": 3,
-          "totalQty": 11,
+          "totalQty": 10,
           "onlineQty": 0,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -828,8 +836,8 @@
               "name": "김포풍무점",
               "code": "DB7C",
               "dist": 5.2,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
@@ -1027,7 +1035,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-17T05:59:43.989Z"
+      "updatedAt": "2026-09-18T05:46:31.610Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1355,7 +1363,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-17T05:59:43.989Z"
+      "updatedAt": "2026-09-18T05:46:31.610Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1368,7 +1376,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-17T05:59:43.989Z"
+      "updatedAt": "2026-09-18T05:46:31.610Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1381,12 +1389,12 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-17T05:59:43.989Z"
+      "updatedAt": "2026-09-18T05:46:31.610Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "price": 25200,
+      "price": 24900,
       "originalPrice": 36000,
       "discountRate": 30,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/A00000023910264ko.jpg?l=ko",
@@ -1401,7 +1409,7 @@
           "totalStores": 50,
           "inStock": 1,
           "totalQty": 4,
-          "onlineQty": 3106,
+          "onlineQty": 3037,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1715,7 +1723,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1176,
+          "onlineQty": 1153,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2029,7 +2037,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 822,
+          "onlineQty": 795,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2343,7 +2351,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 496,
+          "onlineQty": 453,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2651,7 +2659,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-17T05:59:43.989Z"
+      "updatedAt": "2026-09-18T05:46:31.610Z"
     }
   }
 }
