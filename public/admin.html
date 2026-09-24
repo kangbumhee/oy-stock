@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="same-origin">
+  <title>이용권 관리 | 올리브재고</title>
+  <style>
+    :root{font-family:Pretendard,"Noto Sans KR",Arial,sans-serif;color:#172018;background:#f5faf6}
+    *{box-sizing:border-box}body{margin:0}main{width:min(1080px,calc(100% - 28px));margin:28px auto}a{color:#166534}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}h1{font-size:26px;margin:0 0 8px}h2{font-size:19px;margin:0 0 16px}p{line-height:1.6;color:#475569}.card{padding:24px;border:1px solid #d8eadc;border-radius:16px;background:#fff;margin:16px 0}.muted{font-size:13px;color:#64748b}.status{min-height:24px;line-height:1.6;overflow-wrap:anywhere}.status.error{color:#b91c1c}button,input{font:inherit}button{border:1px solid #b9d7bf;background:#fff;color:#14532d;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700}button.primary{color:#fff;background:#194629;border-color:#194629}button:disabled{cursor:default;opacity:.5}button:focus-visible,input:focus-visible{outline:3px solid #65a30d;outline-offset:3px}input{width:100%;border:1px solid #b9d7bf;border-radius:8px;padding:10px;background:#fff;color:#172018}label{display:block;font-size:14px;font-weight:700;margin:12px 0 6px}.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.toolbar p{margin:0;flex:1}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:14px 10px;border-bottom:1px solid #e5eee7;white-space:nowrap}th{color:#476651;font-size:12px}.account{max-width:270px;overflow:hidden;text-overflow:ellipsis}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#f0fdf4;color:#166534;font-size:12px;font-weight:700}.pill.expired{background:#f1f5f9;color:#64748b}.form-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px}.detail-id{overflow-wrap:anywhere;font-size:12px}.audit{padding:12px 0;border-top:1px solid #e5eee7}.audit p{margin:5px 0;overflow-wrap:anywhere}.empty{padding:25px;text-align:center;color:#64748b}[hidden]{display:none!important}
+    @media(max-width:600px){main{margin:18px auto}.card{padding:18px}header{align-items:flex-start}h1{font-size:23px}.form-row{grid-template-columns:1fr;gap:0}.table-wrap{overflow:visible}table,tbody,tr,td{display:block;width:100%}thead{display:none}tr{padding:10px 0;border-bottom:1px solid #d8eadc}td{display:flex;gap:10px;justify-content:space-between;border:0;padding:7px 0;white-space:normal;text-align:right;overflow-wrap:anywhere}td:before{content:attr(data-label);color:#64748b;font-size:12px;flex-shrink:0}.account{max-width:none;overflow:visible}}
+  </style>
+  <script src="/js/admin.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><div><h1>이용권 관리</h1><div class="muted">올리브재고 · 회원 현황과 수동 기간 연장</div></div><a href="/">사이트로</a></header>
+    <section id="login-panel" class="card">
+      <h2>관리자 로그인</h2>
+      <p>등록된 관리자 Google 계정으로 로그인해 주세요.</p>
+      <div id="google-signin"></div>
+    </section>
+    <p id="status" class="status" role="status" aria-live="polite">로그인 설정을 확인하고 있습니다.</p>
+    <section id="admin-panel" hidden>
+      <div class="toolbar"><p id="admin-identity" class="muted"></p><button id="refresh" type="button">목록 새로고침</button><button id="logout" type="button">로그아웃</button></div>
+      <section class="card" aria-labelledby="members-heading">
+        <h2 id="members-heading">회원 이용 현황</h2>
+        <form id="lookup-form" class="toolbar"><div style="flex:1"><label for="lookup-id">기기 ID로 바로 찾기</label><input id="lookup-id" maxlength="128" placeholder="고객이 알려준 기기 ID" autocomplete="off"></div><button type="submit" style="align-self:end">찾기</button></form>
+        <p id="page-summary" class="muted"></p>
+        <div class="table-wrap"><table><thead><tr><th scope="col">회원 / 기기</th><th scope="col">이용권</th><th scope="col">만료일</th><th scope="col">알림</th><th scope="col">마지막 접속</th><th scope="col">접속 횟수</th><th scope="col">관리</th></tr></thead><tbody id="members"></tbody></table></div>
+        <div class="toolbar" style="margin-top:16px"><button id="first-page" type="button">처음</button><button id="next-page" type="button" disabled>다음 페이지</button></div>
+      </section>
+      <section id="detail-panel" class="card" hidden aria-labelledby="detail-heading">
+        <h2 id="detail-heading">이용권 상세</h2>
+        <p id="detail-account"></p><p id="detail-id" class="detail-id muted"></p><p id="detail-plan"></p>
+        <form id="extend-form">
+          <div class="form-row"><div><label for="extension-days">추가 기간 (일)</label><input id="extension-days" type="number" min="1" max="365" step="1" value="30" required></div><div><label for="extension-reason">연장 사유</label><input id="extension-reason" minlength="3" maxlength="200" required placeholder="예: 장애 보상 7일" autocomplete="off"></div></div>
+          <p class="muted">기존 만료일이 남아 있으면 그 뒤에 기간이 추가됩니다. 만료된 이용권은 오늘부터 시작합니다.</p>
+          <button id="extend-button" class="primary" type="submit">이용기간 추가</button>
+        </form>
+        <h2 style="margin-top:28px">최근 수동 연장 기록</h2><div id="audit-list"></div>
+      </section>
+      <section class="card" aria-labelledby="promotion-heading">
+        <h2 id="promotion-heading">무료 이용 키 관리</h2>
+        <p id="promotion-state" class="muted">설정을 확인하고 있습니다.</p>
+        <p class="muted">키를 변경하면 이후 등록부터 새 키가 적용됩니다. 이미 무료 평생 이용권을 받은 회원은 계속 이용할 수 있습니다.</p>
+        <form id="promotion-form">
+          <label for="promotion-code">새 무료 이용 키</label><input id="promotion-code" type="password" minlength="6" maxlength="160" required autocomplete="new-password" placeholder="6자 이상 입력">
+          <label for="promotion-reason">변경 사유</label><input id="promotion-reason" minlength="3" maxlength="200" required placeholder="예: 무료 이용 초대 키 변경" autocomplete="off">
+          <p class="muted">현재 키는 표시하지 않습니다. 새 키를 필요한 곳에 보관한 뒤 변경해 주세요.</p>
+          <button id="promotion-button" class="primary" type="submit">무료 이용 키 변경</button>
+        </form>
+        <div id="promotion-audit" style="margin-top:16px"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

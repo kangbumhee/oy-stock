@@ -15,6 +15,8 @@ var PriceAlerts = {
     this.app = app || null;
     this._ensureModal();
     this._bindModalForm();
+    this._bindMembershipEntry();
+    if (window.Membership) Membership.init();
     this._bindServiceWorkerMessages();
     this.syncServiceWorkerAuth();
     this.refreshControls();
@@ -35,6 +37,8 @@ var PriceAlerts = {
 
   _request: function (url, opts) {
     opts = opts || {};
+    var self = this;
+    var identityVersion = this._deviceVersion || 0;
     var init = {
       method: opts.method || 'GET',
       headers: this._apiHeaders(),
@@ -48,6 +52,11 @@ var PriceAlerts = {
       try {
         data = await response.json();
       } catch (e) {}
+      if (identityVersion !== (self._deviceVersion || 0)) {
+        var stale = new Error('device_identity_changed');
+        stale.code = 'device_identity_changed';
+        throw stale;
+      }
       if (!response.ok || !data || data.success === false) {
         var message =
           (data && (data.error || data.message)) ||
@@ -63,6 +72,16 @@ var PriceAlerts = {
 
   _hasActiveEntitlement: function () {
     return !!(this.entitlement && this.entitlement.active === true);
+  },
+
+  invalidateDeviceSession: function () {
+    this._deviceVersion = (this._deviceVersion || 0) + 1;
+    this._entitlementPromise = null;
+    this.entitlementLoading = false;
+    this.entitlement = null;
+    this.paymentAvailable = false;
+    this.promotionAvailable = false;
+    this._renderEntitlement();
   },
 
   _entitlementLabel: function () {
@@ -97,8 +116,11 @@ var PriceAlerts = {
     var payButton = document.getElementById('price-alert-pay-button');
     var promoButton = document.getElementById('price-alert-promo-button');
     var targetInput = document.getElementById('price-alert-target-input');
+    var membershipSummary = document.getElementById('price-alert-membership-summary');
+    var membershipEntry = document.getElementById('price-alert-membership-entry');
     var active = this._hasActiveEntitlement();
     var accessOnly = !!(this.modalState && this.modalState.accessOnly);
+    var membershipOnly = !!(this.modalState && this.modalState.membershipOnly);
 
     if (status) {
       status.textContent = this.entitlementLoading
@@ -108,6 +130,8 @@ var PriceAlerts = {
     }
     if (paywall) paywall.classList.toggle('hidden', active);
     if (setup) setup.classList.toggle('hidden', !active || accessOnly);
+    if (membershipSummary) membershipSummary.classList.toggle('hidden', !active || !membershipOnly);
+    if (membershipEntry) membershipEntry.textContent = active ? '내 이용권 확인' : '카카오페이로 30일 이용권 구매';
     if (targetInput) {
       targetInput.disabled = !active || accessOnly;
       targetInput.required = active && !accessOnly;
@@ -144,7 +168,7 @@ var PriceAlerts = {
         true
       );
     } else if (!active && !this.entitlementLoading && !this.paymentBusy) {
-      this._setPaywallMessage((accessOnly ? '매장 재고 조회는 유료 이용자 전용입니다. ' : '') +
+      this._setPaywallMessage((accessOnly && !membershipOnly ? '매장 재고 조회는 유료 이용자 전용입니다. ' : '') +
         '30일 이용권을 결제하거나 프로모션 코드를 적용해 주세요.', false);
     }
     if (window.HiddenStock) HiddenStock.onEntitlementChange();
@@ -158,6 +182,7 @@ var PriceAlerts = {
     var self = this;
     var task = this._request(CONFIG.PRICE_ALERT_ENTITLEMENT_API)
       .then(function (result) {
+        if (self._entitlementPromise !== task) return null;
         self.entitlementEnabled = result.enabled !== false;
         self.paymentAvailable = result.paymentAvailable === true;
         self.promotionAvailable = result.promotionAvailable === true;
@@ -172,6 +197,7 @@ var PriceAlerts = {
         return self.entitlement;
       })
       .catch(function (error) {
+        if (self._entitlementPromise !== task) return null;
         self.entitlement = null;
         self.entitlementEnabled = error && error.status === 503 ? false : null;
         self.paymentAvailable = false;
@@ -182,12 +208,14 @@ var PriceAlerts = {
         return null;
       })
       .finally(function () {
+        if (self._entitlementPromise !== task) return;
         self.entitlementLoading = false;
         self._entitlementPromise = null;
         self._renderEntitlement();
         if (self._hasActiveEntitlement() && self.modalState) {
           self._continueAlertSetup(self.modalState);
         }
+        if (window.Membership) Membership.onEntitlement();
       });
     this._entitlementPromise = task;
     return task;
@@ -355,6 +383,8 @@ var PriceAlerts = {
   startPayment: async function () {
     if (
       this.paymentBusy ||
+      this._emailCheckBusy ||
+      (window.Membership && Membership.busy) ||
       this.entitlementEnabled === false ||
       this.paymentAvailable !== true
     ) {
@@ -365,6 +395,12 @@ var PriceAlerts = {
       this._setPaywallMessage('진행 중인 결제를 서버에서 다시 확인합니다…', false);
       await this._completePayment(attempt.paymentId);
       return;
+    }
+    if (window.Membership) {
+      this._emailCheckBusy = true;
+      try {
+        if (!(await Membership.requireVerifiedEmail())) return;
+      } finally { this._emailCheckBusy = false; }
     }
     if (!attempt) {
       attempt = {
@@ -694,10 +730,14 @@ var PriceAlerts = {
       '<p id="price-alert-paywall-message" class="price-alert-paywall-message">이용권 상태를 확인하고 있습니다.</p>' +
       '<button type="button" id="price-alert-pay-button" class="price-alert-pay-button" disabled>카카오페이로 30일 이용권 결제</button>' +
       '<div class="price-alert-promo"><label for="price-alert-promo-input">평생 이용 프로모션 코드</label><div><input id="price-alert-promo-input" type="password" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="코드 입력"><button type="button" id="price-alert-promo-button">적용</button></div></div>' +
-      '<p class="price-alert-browser-warning"><strong>이 브라우저 전용 이용권입니다.</strong> 사이트 데이터 삭제·시크릿 모드·기기 변경 시 자동 이용권 확인이 어려울 수 있습니다. 결제 기록을 보관하고 <a href="mailto:kbhjjan@naver.com">kbhjjan@naver.com</a>으로 문의해 주세요.</p>' +
+      '<p class="price-alert-browser-warning"><strong>PC 또는 모바일의 한 브라우저에서만 사용할 수 있습니다.</strong> 등록 이메일로 복구 키를 받아 다른 브라우저로 옮길 수 있으며, 이전 브라우저의 권한과 알림 연결은 해제됩니다.</p>' +
       '<div class="price-alert-policy-links"><a href="/payment-info.html" target="_blank" rel="noopener">결제·환불 안내</a><a href="/terms.html" target="_blank" rel="noopener">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener">개인정보 안내</a><button type="button" id="price-alert-entitlement-refresh">이용권 새로고침</button></div>' +
       '<p class="price-alert-seller-info">판매자 뷰티강 · 대표 강범희 · 사업자등록번호 525-08-01159 · 통신판매업 제2022-경기김포-1917호 · 고객센터 031-997-1999</p>' +
       '</section>' +
+      '<section id="price-alert-membership-summary" class="price-alert-notes hidden" aria-label="이용 가능한 유료 기능">' +
+      '<p><strong>이 브라우저에서 유료 기능을 사용할 수 있습니다.</strong></p><p>🔔 상품·옵션별 가격 알림 설정</p><p>🏬 온라인 미노출 옵션의 근처·전국 매장 재고 조회</p>' +
+      '<a id="price-alert-membership-use" class="price-alert-offer-primary" data-action="tabSearch" href="#search-input">상품 검색하고 유료 기능 사용</a>' +
+      '<div class="price-alert-policy-links"><a href="/payment-info.html" target="_blank" rel="noopener">결제·환불 안내</a><button type="button" id="price-alert-membership-refresh">이용권 새로고침</button></div></section>' +
       '<div id="price-alert-setup" class="price-alert-setup hidden">' +
       '<fieldset id="price-alert-option-section" class="price-alert-options hidden" aria-describedby="price-alert-option-help"><legend>알림을 설정할 옵션</legend>' +
       '<div id="price-alert-option-list" class="price-alert-option-list"></div>' +
@@ -745,6 +785,7 @@ var PriceAlerts = {
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       if (PriceAlerts._hasActiveEntitlement()) {
+        if (PriceAlerts.modalState && PriceAlerts.modalState.accessOnly) return;
         PriceAlerts.saveFromModal();
       } else {
         var promoInput = document.getElementById('price-alert-promo-input');
@@ -776,13 +817,40 @@ var PriceAlerts = {
     if (refreshButton) refreshButton.addEventListener('click', function () {
       PriceAlerts.refreshEntitlement({ silent: false });
     });
+    var membershipRefresh = document.getElementById('price-alert-membership-refresh');
+    if (membershipRefresh) membershipRefresh.addEventListener('click', function () {
+      PriceAlerts.refreshEntitlement({ silent: false });
+    });
+    var membershipUse = document.getElementById('price-alert-membership-use');
+    if (membershipUse) membershipUse.addEventListener('click', function () {
+      PriceAlerts.closeModal();
+      window.setTimeout(function () {
+        var searchInput = document.getElementById('search-input');
+        if (searchInput) searchInput.focus();
+      }, 0);
+    });
   },
 
-  openAccess: function (onAccess) {
+  _bindMembershipEntry: function () {
+    var entry = document.getElementById('price-alert-membership-entry');
+    if (!entry || entry.__priceAlertBound) return;
+    entry.__priceAlertBound = true;
+    entry.addEventListener('click', function () {
+      PriceAlerts.openMembership();
+    });
+  },
+
+  openMembership: function () {
+    this.openAccess(null, { membershipOnly: true });
+  },
+
+  openAccess: function (onAccess, opts) {
+    opts = opts || {};
     this._ensureModal();
     this._bindModalForm();
-    this.modalState = { accessOnly: true, onAccess: onAccess, returnFocus: document.activeElement };
-    document.getElementById('price-alert-title').textContent = '유료 이용자만 사용 가능합니다';
+    this.modalState = { accessOnly: true, membershipOnly: opts.membershipOnly === true, onAccess: onAccess, returnFocus: document.activeElement };
+    document.getElementById('price-alert-title').textContent = this.modalState.membershipOnly
+      ? '올리브재고 30일 이용권' : '유료 이용자만 사용 가능합니다';
     var modal = document.getElementById('price-alert-modal');
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
@@ -849,6 +917,10 @@ var PriceAlerts = {
   _continueAlertSetup: function (stateRef) {
     if (!stateRef || this.modalState !== stateRef || !this._hasActiveEntitlement()) return;
     if (stateRef.accessOnly) {
+      if (stateRef.membershipOnly) {
+        this._renderEntitlement();
+        return;
+      }
       var callback = stateRef.onAccess;
       this.closeModal();
       if (typeof callback === 'function') callback();
@@ -1293,9 +1365,9 @@ var PriceAlerts = {
 
   syncServiceWorkerAuth: function () {
     if (!('serviceWorker' in navigator)) return;
-    var device = Storage.getPriceAlertDevice();
     this._serviceWorkerRegistration()
       .then(function (registration) {
+        var device = Storage.getPriceAlertDevice();
         var worker = navigator.serviceWorker.controller || registration.active;
         if (worker) {
           worker.postMessage({

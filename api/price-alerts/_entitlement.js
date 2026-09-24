@@ -65,11 +65,15 @@ function entitlementState(record) {
 function recomputeGrantIntervals(record) {
   const entitlement = entitlementState(record);
   const payments = entitlement.grants
-    .filter((grant) => grant && grant.source === 'payment' && normalizePaymentId(grant.paymentId))
+    .filter((grant) => grant && (
+      (grant.source === 'payment' && normalizePaymentId(grant.paymentId)) ||
+      (grant.source === 'admin' && /^[A-Za-z0-9_-]{16,100}$/.test(grant.actionId || '') &&
+        Number.isInteger(grant.durationDays) && grant.durationDays >= 1 && grant.durationDays <= 365)
+    ))
     .sort((left, right) => {
       const time = Date.parse(left.grantedAt || 0) - Date.parse(right.grantedAt || 0);
       if (Number.isFinite(time) && time) return time;
-      return String(left.paymentId).localeCompare(String(right.paymentId));
+      return String(left.paymentId || left.actionId).localeCompare(String(right.paymentId || right.actionId));
     });
   let cursor = 0;
   payments.forEach((grant) => {
@@ -85,7 +89,7 @@ function recomputeGrantIntervals(record) {
       return;
     }
     const startsAt = Math.max(grantedAt, cursor);
-    const endsAt = startsAt + PASS_DURATION_MS;
+    const endsAt = startsAt + (grant.source === 'admin' ? grant.durationDays * 86400000 : PASS_DURATION_MS);
     grant.startsAt = new Date(startsAt).toISOString();
     grant.endsAt = new Date(endsAt).toISOString();
     cursor = endsAt;
@@ -101,7 +105,7 @@ function publicEntitlement(record, now) {
   );
   let expiresAt = null;
   grants.forEach((grant) => {
-    if (!grant || grant.source !== 'payment' || grant.revokedAt) return;
+    if (!grant || !['payment', 'admin'].includes(grant.source) || grant.revokedAt) return;
     const end = Date.parse(grant.endsAt || '');
     if (Number.isFinite(end) && (!expiresAt || end > Date.parse(expiresAt))) {
       expiresAt = new Date(end).toISOString();
@@ -127,6 +131,33 @@ function requireActiveEntitlement(record, now) {
   const status = publicEntitlement(record, now);
   if (!status.active) throw new HttpError(402, 'entitlement_required');
   return status;
+}
+
+function applyAdminExtension(record, { actionId, durationDays, reason, actorEmail }, now) {
+  if (!/^[A-Za-z0-9_-]{16,100}$/.test(String(actionId || '')) ||
+      !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365 ||
+      typeof reason !== 'string' || reason.trim().length < 3 || reason.trim().length > 200 ||
+      /[\u0000-\u001f\u007f]/.test(reason) || actorEmail !== 'kbhjjan@gmail.com') {
+    throw new HttpError(400, 'invalid_admin_extension');
+  }
+  const normalizedReason = reason.trim();
+  const entitlement = entitlementState(record);
+  const existing = entitlement.grants.find((grant) =>
+    grant && grant.source === 'admin' && grant.actionId === actionId);
+  if (existing) {
+    if (existing.durationDays !== durationDays || existing.reason !== normalizedReason ||
+        existing.actorEmail !== actorEmail) throw new HttpError(409, 'admin_action_conflict');
+    recomputeGrantIntervals(record);
+    return { changed: false, grant: existing, entitlement: publicEntitlement(record) };
+  }
+  const grant = {
+    source: 'admin', actionId, durationDays, reason: normalizedReason, actorEmail,
+    grantedAt: normalizeIso(now) || new Date().toISOString(), revokedAt: null,
+    startsAt: null, endsAt: null
+  };
+  entitlement.grants.push(grant);
+  recomputeGrantIntervals(record);
+  return { changed: true, grant, entitlement: publicEntitlement(record) };
 }
 
 function serviceEntitlementActive(record, now) {
@@ -262,6 +293,7 @@ module.exports = {
   PASS_DURATION_MS,
   PASS_ORDER_NAME,
   PAYMENT_INTENT_TTL_MS,
+  applyAdminExtension,
   applyLifetimePromotion,
   applyPaymentGrant,
   configuredPromotion,

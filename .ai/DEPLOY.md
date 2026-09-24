@@ -171,7 +171,25 @@
 
 Cloud Run 가격 조회 기본값은 `PRICE_LOOKUP_CONCURRENCY=1`, `PRICE_LOOKUP_PACE_MS=1000`, `PRICE_LOOKUP_WINDOW_MAX=20`, `PRICE_LOOKUP_WINDOW_MS=60000`, `PRICE_LOOKUP_TOTAL_TIMEOUT_MS=180000`이다. 정상으로 열린 올리브영 상품 페이지 안에서 상품상세 API를 호출하며, 공개 표시가 `finalPrice`만 사용하고 조건부 `maxBenefitPrice`는 사용하지 않는다. 2026-08-26 로컬의 오래된 50상품 표본 1회에서 첫 25개 응답 뒤 나머지 25개가 HTTP 429였으므로 이 제한은 의도적으로 보수적이며, 같은 실서비스 배치 재검사는 하지 않았다.
 
-PortOne 배포 순서는 Store/Channel/API secret/공개 URL/프로모션 digest·pepper를 먼저 설정하고 `/api/price-alerts/payment/webhook`을 웹훅 URL로 등록한 다음, 마지막에 `PRICE_ALERT_ENTITLEMENT_ENABLED=true`로 전환한다. 결제 상품은 30,000원 30일 단건 이용권뿐이며 빌링키·구독·자동갱신을 사용하지 않는다. 웹훅 본문은 조회 트리거일 뿐이고 실제 권한은 PortOne GET의 일치 검증 후에만 부여한다.
+PortOne 배포 순서는 Store/Channel/API secret/공개 URL/프로모션 digest·pepper를 먼저 설정한 다음, 마지막에 `PRICE_ALERT_ENTITLEMENT_ENABLED=true`로 전환한다. 요청별 `noticeUrls`가 `/api/price-alerts/payment/webhook`을 지정하므로 공유 상점의 기존 콘솔 웹훅 주소를 덮어쓰지 않는다. 결제 상품은 30,000원 30일 단건 이용권뿐이며 빌링키·구독·자동갱신을 사용하지 않는다. 웹훅 본문은 조회 트리거일 뿐이고 실제 권한은 PortOne GET의 일치 검증 후에만 부여한다.
+
+### 이용권 직접 구매 점검
+
+- 홈의 `카카오페이로 30일 이용권 구매` 버튼은 상품 선택 없이 기존 결제창을 연다. 결제 검증 또는 프로모션 적용 후에는 `내 이용권 확인`으로 바뀌며 가격 알림과 온라인 미노출 옵션의 근처·전국 재고 조회를 사용할 수 있다.
+- Store ID/API secret만으로는 결제가 활성화되지 않는다. 같은 상점에 속한 카카오페이 실연동 `PRICE_ALERT_PORTONE_CHANNEL_KEY`도 필수이며 설정 변경 후 재배포해야 한다. 다른 서비스와 채널을 공유할 때에는 해당 PG 계약의 도메인·상품 범위를 운영자가 확인한다.
+- 결제 요청별 `noticeUrls`는 올리브재고의 웹훅을 지정한다. 공유 상점의 다른 서비스 웹훅을 덮어쓰지 않는다.
+- 실제 결제를 승인하지 않는 UI 검증과 서버 결제/취소 모의 테스트를 구분한다. `paymentAvailable:true`만으로 결제 승인·정산까지 검증했다고 보고하지 않는다.
+- 이용권은 현재 브라우저에 귀속된다. 기존 `PRICE_ALERT_DATA_KEY`, Blob 저장소와 기기 인증값을 유지하고 결제 전 브라우저 변경/데이터 삭제 주의사항을 표시한다.
+
+### 이메일 복구 및 운영자 관리
+
+- `PRICE_ALERT_ACCOUNT_RECOVERY_ENABLED=true`로 운영 시 신규 결제 전 인증 이메일이 필수다. 설정이 누락된 상태에서는 신규 결제가 차단되어야 한다.
+- SMTP 필수: `PRICE_ALERT_SMTP_HOST`, `PRICE_ALERT_SMTP_PORT`(465 또는587), `PRICE_ALERT_SMTP_USER`, `PRICE_ALERT_SMTP_PASSWORD`, `PRICE_ALERT_SMTP_FROM`. TLS 검증을 유지한다. 기존 프로젝트 Gmail 발송 Secrets를 재사용할 때 수동 **Configure Membership Email** workflow를 실행하면 정해진 oy-stock Vercel 프로젝트 production에만 비공개 환경값을 전달한다. 비밀값을 출력/파일로 저장하지 않으며 메일을 보내거나 사이트를 자동 배포하지 않는다.
+- 관리자 Google 설정은 `PRICE_ALERT_GOOGLE_CLIENT_ID`에 전용 웹 Client ID만 저장한다. JavaScript origins는 `https://olivestock.co.kr`, `https://www.olivestock.co.kr`. GIS popup 방식이므로 client secret/refresh token/메일함 scope는 사용하지 않는다. 테스트 모드에서는 관리자 Gmail을 테스트 사용자로 추가한다.
+- `/admin`에서 구글 인증 후 목록·무료키 변경·수동 기간 연장을 관리한다. 실제 데이터 API는 고정 관리자 이메일을 검증한다. 관리자 토큰을 localStorage에 저장하지 않는다.
+- 복구는 동일 deviceId의 secret을 원자적으로 회전시킨다. 결제 소유권과 잔여기간은 그대로, 이전 브라우저 접근과 Push/outbox는 해제한다. 기존 회원은 현재 브라우저에서 이메일을 인증해야 셀프 복구를 이용할 수 있다.
+- 무료키 변경은 향후 신규 적용에만 영향을 주며 기존 프로모션 이용권을 회수하지 않는다. 변경 원문은 보관하지 않아 관리자도 다시 조회할 수 없다.
+- 방문 횟수는 30분 비활동 기준 클라이언트 세션 ID를 서버에서 중복 제거한 값이며 과거 기록은 소급 생성하지 않는다. 브라우저 단독 인증은 일반적인 기기 공유를 막지만, 공격자가 로컬 인증값 자체를 훔친 경우까지 물리적 기기 고정을 보장하지 않는다.
 
 ## 로컬 명령어
 

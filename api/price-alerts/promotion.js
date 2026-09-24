@@ -1,11 +1,11 @@
 const { mutateAuthenticatedDevice } = require('./_auth');
 const {
   applyLifetimePromotion,
-  configuredPromotion,
   entitlementFeatureEnabled,
   promotionMatches,
   publicEntitlement
 } = require('./_entitlement');
+const { resolvedPromotion } = require('./_promotion-settings');
 const {
   HttpError,
   assertSameOrigin,
@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     assertSameOrigin(req);
     await consumeRateLimit(req, 'promotion');
     const body = await readJson(req);
-    const configuration = configuredPromotion();
+    const configuration = await resolvedPromotion();
     if (
       !entitlementFeatureEnabled() ||
       !configuration ||

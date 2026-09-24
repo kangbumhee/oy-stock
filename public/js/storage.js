@@ -405,6 +405,19 @@ var Storage = {
     return device;
   },
 
+  setPriceAlertDevice: function (credentials) {
+    if (!credentials || !/^[A-Za-z0-9_-]{16,80}$/.test(String(credentials.deviceId || '')) ||
+      !/^[A-Za-z0-9_-]{32,128}$/.test(String(credentials.deviceSecret || ''))) return false;
+    try {
+      localStorage.setItem(this._key('price_alert_device_v1'), JSON.stringify({
+        deviceId: credentials.deviceId,
+        deviceSecret: credentials.deviceSecret,
+        createdAt: new Date().toISOString()
+      }));
+      return true;
+    } catch (_) { return false; }
+  },
+
   getPriceAlertStore: function () {
     try {
       var parsed = JSON.parse(localStorage.getItem(this._key('price_alerts_v1'))) || {};

@@ -26,6 +26,10 @@ function configuredRatePolicy(scope) {
     };
   }
   const specialized = {
+    account_send: { limit: 5, windowSeconds: 3600 },
+    account_verify: { limit: 20, windowSeconds: 3600 },
+    account_read: { limit: 120, windowSeconds: 3600 },
+    account_visit: { limit: 120, windowSeconds: 3600 },
     payment_create: {
       limit: boundedInteger(process.env.PRICE_ALERT_PAYMENT_CREATE_LIMIT, 5, 1, 100),
       windowSeconds: boundedInteger(

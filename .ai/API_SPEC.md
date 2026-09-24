@@ -260,3 +260,28 @@
 - 인증: 불필요
 - 주의: 새 기능은 가능하면 명시적 API 파일을 만든다.
 
+## 이용권 이메일·한 브라우저 복구·관리자 (2026-09-24)
+
+### [GET/POST] `/api/price-alerts/account`
+
+- 기존 `X-Price-Alert-Device-Id`/`X-Price-Alert-Device-Secret` 헤더를 사용한다. 응답은 `no-store`다.
+- GET: `{success,recoveryEnabled,available,emailRequired,account:{email,verified},entitlement}`. 미등록 브라우저의 조회는 새 계정을 저장하지 않는다.
+- POST는 같은 origin만 허용하며 action별 필드 allowlist와 rate limit을 적용한다.
+  - `request-verification {email}`: 현재 브라우저 등록용 이메일 인증 키 발송.
+  - `verify-email {email,code}`: 이메일을 현재 이용권에 연결. 이미 다른 계정에 연결된 이메일은 새 이용권으로 덮어쓰지 않는다.
+  - `request-recovery {email}`: 등록 여부와 관계없이 동일한 성공 응답. 등록 이메일에는 일회용 복구 키 전달.
+  - `recover {email,code}`: 기존 deviceId·기간·결제·알림을 유지하고 인증 secretHash를 CAS 교체. 이전 Push 연결과 outbox 해제. 성공 요청 한 번만 `credentials:{deviceId,deviceSecret}` 반환. 클라이언트는 로컬 인증값을 교체하고 서버 상태를 재조회한다.
+  - `record-visit {visitId}`: 기존 인증된 계정만 최근 접속시간·방문 세션 수 갱신. 같은 ID는 중복 집계하지 않으며 최근 64개 보관. 미등록 방문자 계정 생성 없음.
+- 키는 24자리 16진수(공백/하이픈 허용), 15분, 검증 최대 5회. 60초 재발송 간격, 이메일당 시간당 5회. 원문은 저장하지 않는다.
+- `PRICE_ALERT_ACCOUNT_RECOVERY_ENABLED=true`면 신규 결제 생성 전에 인증된 이메일과 준비된 SMTP 구성이 필수다. 인증 전 `403 email_verification_required`; SMTP 미구성은 503으로 결제를 차단한다.
+- 복구는 이메일 소유 확인이므로 회전되어 무효화된 이전 기기 인증값도 이메일 복구 요청의 헤더 형식 요건은 만족할 수 있다. 실제 계정 접근은 새 키 또는 기존 유효 키만 허용된다.
+
+### [GET/POST] `/api/price-alerts/admin`
+
+- `GET ?action=config`만 Google 공개 Client ID를 반환한다. 나머지는 `Authorization: Bearer <Google ID token>` 필수.
+- Google 서명·issuer·audience·expiry·verified email을 검증하며 서버 고정 `kbhjjan@gmail.com`만 허용한다. 클라이언트 email 주장이나 query는 권한이 아니다.
+- 목록은 `limit` 기본20/최대50, opaque `cursor` 한 페이지. 기기ID·인증 이메일·활성/만료/평생·무료/유료/수동 출처·최근접속·방문횟수·알림수·최근 수동연장 이력만 반환한다. 암호·복구 키·프로모션 원문·provider 원문은 반환하지 않는다.
+- `POST {action:'extend',deviceId,durationDays,reason,actionId}`: 1~365일, 사유 필수, actionId 멱등, 기존 이용권 이후 연장. Google 관리자와 same-origin 검사 후 변경 이력 저장. 존재하지 않는 계정을 만들지 않는다.
+- `POST {action:'set-promotion',code,reason,actionId}`: 앞으로 등록할 무료 키를 변경한다. 새 키의 HMAC만 암호화 설정에 저장하며 기존 평생 권한은 유지한다. 원문은 로그·응답·관리목록에 표시하지 않는다.
+- 관리자 화면 `/admin`은 로그인을 제공하는 공개 셸이며 사용자 현황 데이터/관리 기능은 위 서버 인증 후에만 반환·실행된다.
+

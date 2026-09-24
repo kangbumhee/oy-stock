@@ -1,0 +1,12 @@
+.git
+.vercel
+.env
+.env.*
+.auth
+.ai
+node_modules
+tests
+scripts
+server
+artifacts
+*.log

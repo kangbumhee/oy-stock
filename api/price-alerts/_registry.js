@@ -115,6 +115,7 @@ function recordHasStoredAlerts(record) {
 
 function recordHasRetainedEntitlement(record, now) {
   return (
+    Boolean(record && record.account && record.account.indexLinked && record.account.verifiedAt) ||
     publicEntitlement(record, Number(now || Date.now())).active ||
     pendingPaymentActive(record && record.pendingPayment, Number(now || Date.now()))
   );
@@ -129,11 +130,13 @@ function recordIsDisposable(record) {
   );
   const hasEntitlementHistory = entitlementGrants(record).length > 0;
   const hasPendingPayment = Boolean(record && record.pendingPayment);
+  const hasVerifiedAccount = Boolean(record && record.account && record.account.indexLinked && record.account.verifiedAt);
   return (
     !hasAlerts &&
     !subscribed &&
     !hasEntitlementHistory &&
     !hasPendingPayment &&
+    !hasVerifiedAccount &&
     pendingNotifications(record).length === 0
   );
 }

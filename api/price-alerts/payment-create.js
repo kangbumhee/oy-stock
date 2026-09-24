@@ -1,5 +1,7 @@
 const { createPayment } = require('./_payment-service');
 const { configuredPortOne } = require('./_portone');
+const { authenticateDevice } = require('./_auth');
+const { accountRecoveryEnabled, requireVerifiedAccount } = require('./_account-service');
 const {
   HttpError,
   assertSameOrigin,
@@ -26,6 +28,10 @@ module.exports = async function handler(req, res) {
     }
     const config = configuredPortOne();
     if (!config) throw new HttpError(503, 'payment_not_configured');
+    if (accountRecoveryEnabled()) {
+      const loaded = await authenticateDevice(req, { allowCreate: true });
+      requireVerifiedAccount(loaded.record);
+    }
     const result = await createPayment(req, config, body.idempotencyKey);
     return sendJson(res, 200, { success: true, ...result });
   } catch (error) {

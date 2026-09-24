@@ -1,18 +1,20 @@
 const { authenticateDevice } = require('./_auth');
 const {
-  configuredPromotion,
   entitlementFeatureEnabled,
   publicEntitlement
 } = require('./_entitlement');
 const { handleHttpError, methodNotAllowed, sendJson } = require('./_http');
 const { configuredPortOne } = require('./_portone');
 const { activeDeviceCapacity } = require('./_registry');
+const { resolvedPromotion } = require('./_promotion-settings');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   try {
     const loaded = await authenticateDevice(req, { allowCreate: true });
     const paymentConfiguration = configuredPortOne();
+    const promotionConfiguration = entitlementFeatureEnabled()
+      ? await resolvedPromotion().catch(() => null) : null;
     let capacityAvailable = false;
     if (paymentConfiguration) {
       try {
@@ -26,7 +28,7 @@ module.exports = async function handler(req, res) {
       enabled: entitlementFeatureEnabled(),
       paymentAvailable: Boolean(paymentConfiguration && capacityAvailable),
       promotionAvailable: Boolean(
-        entitlementFeatureEnabled() && configuredPromotion()
+        entitlementFeatureEnabled() && promotionConfiguration
       ),
       entitlement: publicEntitlement(loaded.record)
     });

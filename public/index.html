@@ -32,7 +32,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="https://olivestock.co.kr/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#193d22">
-  <link rel="stylesheet" href="/css/style.css?v=20260913-store-product-cards-1">
+  <link rel="stylesheet" href="/css/style.css?v=20260924-membership-1">
   <script>
     (function () {
       try {
@@ -289,13 +289,14 @@
         <ul>
           <li>이용기간: 결제일부터 30일간</li>
           <li>1회 결제 · 자동결제·자동연장 없음</li>
+          <li>온라인 미노출 옵션의 근처·전국 매장 재고 조회 포함</li>
           <li>쿠폰·회원·카드·장바구니 할인가는 가격 기준에서 제외</li>
         </ul>
       </div>
       <div class="price-alert-offer-buy">
         <small>판매가격</small>
         <strong>30,000원</strong>
-        <a class="price-alert-offer-primary" href="#search-input">상품 검색 후 알림 설정</a>
+        <button type="button" id="price-alert-membership-entry" class="price-alert-offer-primary" aria-haspopup="dialog">카카오페이로 30일 이용권 구매</button>
         <a class="price-alert-offer-detail" href="/payment-info.html">상품 상세·결제·환불 안내</a>
       </div>
     </section>
@@ -348,14 +349,15 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
   <script src="/js/config.js?v=20260913-stock-recovery-2"></script>
   <script src="/js/pwa.js?v=20260906-curator-shortlink-2"></script>
-  <script src="/js/storage.js?v=20260906-curator-shortlink-2"></script>
+  <script src="/js/storage.js?v=20260924-membership-1"></script>
   <script src="/js/api.js?v=20260820-search-completeness-1"></script>
   <script src="/js/ui.js?v=20260913-stock-recovery-2"></script>
   <script src="/js/options.js?v=20260531-5"></script>
   <script src="/js/search.js?v=20260609-1"></script>
   <script src="/js/regions.js?v=20260531-5"></script>
   <script src="/js/inventory.js?v=20260531-5"></script>
-  <script src="/js/alerts.js?v=20260913-hidden-cards-1"></script>
+  <script src="/js/membership.js?v=20260924-membership-1"></script>
+  <script src="/js/alerts.js?v=20260924-membership-1"></script>
   <script src="/js/hidden-stock.js?v=20260913-stock-recovery-2"></script>
   <script src="/js/app.js?v=20260913-stock-recovery-2"></script>
   <script>
