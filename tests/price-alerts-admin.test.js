@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const { Readable } = require('node:stream');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticateAdmin } = require('../api/price-alerts/_admin-auth');
@@ -16,6 +18,15 @@ const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const publicKey = keys.publicKey.export({ type: 'spki', format: 'pem' });
 const googleClient = new OAuth2Client();
 googleClient.getFederatedSignonCertsAsync = async () => ({ certs: { 'test-key': publicKey } });
+
+test('admin Google sign-in keeps origin referrer for cross-origin Google Identity Services requests', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../public/admin.html'), 'utf8');
+  const referrerTags = (html.match(/<meta\b[^>]*>/gi) || []).filter((tag) =>
+    /\bname\s*=\s*["']referrer["']/i.test(tag));
+  assert.equal(referrerTags.length, 1, 'admin must define exactly one referrer policy');
+  assert.match(referrerTags[0], /\bcontent\s*=\s*["']strict-origin-when-cross-origin["']/i,
+    'GSI needs the site origin on cross-origin requests; same-origin suppresses it');
+});
 
 function token(changes = {}, signingKey = keys.privateKey) {
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: 'test-key' })).toString('base64url');
