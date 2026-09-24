@@ -209,6 +209,15 @@ PortOne 배포 순서는 Store/Channel/API secret/공개 URL/프로모션 digest
 - 무료키 변경은 향후 신규 적용에만 영향을 주며 기존 프로모션 이용권을 회수하지 않는다. 변경 원문은 보관하지 않아 관리자도 다시 조회할 수 없다.
 - 방문 횟수는 30분 비활동 기준 클라이언트 세션 ID를 서버에서 중복 제거한 값이며 과거 기록은 소급 생성하지 않는다. 브라우저 단독 인증은 일반적인 기기 공유를 막지만, 공격자가 로컬 인증값 자체를 훔친 경우까지 물리적 기기 고정을 보장하지 않는다.
 
+### 결제·취소 운영자 메일
+
+- `PRICE_ALERT_PAYMENT_OWNER_MAIL_ENABLED=true`와 `PRICE_ALERT_PAYMENT_OWNER_MAIL_START_AT`(UTC ISO 시각)를 설정하고 재배포한다. 기본은 비활성화다. 수신자는 서버 코드에서 `kbhjjan@gmail.com`으로 고정하며 기존 SMTP/TLS 설정을 재사용한다. 설정 시작시각은 최초 활성화 이후 유지하여 재배포 중 거래가 누락되지 않게 한다.
+- 올리브재고의 로컬 결제의도가 있고 PortOne GET으로 정확한 계약과 최종 상태를 확인한 거래만 발송한다. 기존 결제별 `noticeUrls`를 그대로 사용하며 공용 PortOne 상점 웹훅이나 다른 서비스 설정을 변경하지 않는다.
+- 이용권 처리 후 별도 암호화 Blob outbox에 발송할 정보를 저장한다. 승인/취소누계별 고정 키와 영수증, ETag CAS 임대로 중복 실행을 억제한다. SMTP 장애는 시간별 cron에서 최대 5회 재시도하고 소진된 항목은 실패 영수증으로 남긴다. 취소된 회원도 활성 인덱스와 무관하게 재시도한다.
+- 대기열 저장 실패는 웹훅에 503을 반환해 재전달을 요청한다. SMTP 성공 직후 상태 저장 전 서버 종료 시 재발송될 수 있으므로 정확히 한 번 도착을 보장하지 않는다. SMTP 접수 성공과 수신함 도착 확인은 구분한다.
+- 설정 검증용 메일은 운영자의 별도 승인 후 `_payment-owner-mail.sendOwnerPaymentTest()`를 1회 호출한다. 테스트임을 표시하며 실제 결제·취소 API를 실행하지 않는다. SMTP 인증값·이메일 원문·복구키는 로그에 남기지 않는다.
+- 보안 환경값은 로컬 `vercel pull`에서 빈 값으로 내려올 수 있다. 수동 **Test Payment Owner Email** workflow에 `confirmation=SEND_ONE_TEST`를 입력하면 기존 **Configure Membership Email**과 같은 GitHub 메일 Secrets를 이용해 고정 수신자에게 테스트 1통을 보낸다. main에서만 수동 실행하고 자동 재시도하지 않는다.
+
 ## 로컬 명령어
 
 ```bash

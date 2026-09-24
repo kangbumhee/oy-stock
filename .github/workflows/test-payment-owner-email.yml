@@ -1,0 +1,29 @@
+name: Test Payment Owner Email
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Send one labeled test to kbhjjan@gmail.com: type SEND_ONE_TEST'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: payment-owner-email-test
+  cancel-in-progress: false
+jobs:
+  send-one-test:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'SEND_ONE_TEST'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --omit=dev
+      - name: Send one fixed-recipient test using the existing membership SMTP secrets
+        env:
+          ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
+          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+        run: node scripts/test-payment-owner-email.mjs

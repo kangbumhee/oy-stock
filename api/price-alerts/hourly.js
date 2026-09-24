@@ -24,6 +24,7 @@ const {
 } = require('./_registry');
 const { mutateDevice, purgeTombstone, readDevice } = require('./_store');
 const { serviceEntitlementActive } = require('./_entitlement');
+const { retryOwnerPaymentNotifications } = require('./_payment-owner-mail');
 
 const PRICE_BATCH_SIZE = 50;
 const PRICE_BATCH_TIMEOUT_MS = Math.max(
@@ -505,6 +506,8 @@ module.exports = async function handler(req, res) {
   if (!auth.ok) return sendJson(res, auth.statusCode, { success: false, error: auth.error });
 
   try {
+    // Cancelled customers leave the active index, but their mail still needs retry.
+    const ownerPaymentMail = await retryOwnerPaymentNotifications();
     const loaded = await loadActiveDeviceEntries();
     const entries = loaded.devices;
     const work = collectActivePriceWork(entries);
@@ -514,6 +517,7 @@ module.exports = async function handler(req, res) {
       const maintenance = await cleanupInactiveDevices(Date.now());
       return sendJson(res, 200, {
         success: true,
+        ownerPaymentMail,
         devices: entries.length,
         alerts: 0,
         pending: 0,
@@ -580,6 +584,7 @@ module.exports = async function handler(req, res) {
     storageErrors += maintenance.storageErrors;
 
     const stats = {
+      ownerPaymentMail,
       devices: entries.length,
       alerts: activeAlertCount,
       pendingAtStart: pendingCount,

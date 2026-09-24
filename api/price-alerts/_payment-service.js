@@ -14,6 +14,7 @@ const {
 } = require('./_entitlement');
 const { HttpError } = require('./_http');
 const { mutateIntent, readIntent } = require('./_payment-store');
+const { notifyOwnerPayment } = require('./_payment-owner-mail');
 const {
   PortOneSafeError,
   getPayment,
@@ -548,13 +549,16 @@ async function reconcilePayment(paymentId, ownerDeviceId, config, dependencies) 
     dependencies
   );
   const mutatePaymentIntent = (dependencies && dependencies.mutateIntent) || mutateIntent;
-  await mutatePaymentIntent(
+  const savedIntent = await mutatePaymentIntent(
     intent.paymentId,
     (current) => {
       if (!current || current.ownerDeviceId !== intent.ownerDeviceId) {
         throw new HttpError(404, 'payment_not_found');
       }
       if (current.status === 'cancelled' && decision.action !== 'cancelled') {
+        return { changed: false, intent: current };
+      }
+      if (current.decisionReason === 'partial_cancellation' && decision.action === 'paid') {
         return { changed: false, intent: current };
       }
       current.status = decision.action;
@@ -579,12 +583,29 @@ async function reconcilePayment(paymentId, ownerDeviceId, config, dependencies) 
     },
     dependencies && dependencies.intentStore
   );
+  // Financial reconciliation must finish before enqueueing the independent mail.
+  // Use the final CAS result so a concurrent cancellation cannot send stale PAID mail.
+  let ownerNotification;
+  try {
+    const notify = (dependencies && dependencies.notifyOwnerPayment) || notifyOwnerPayment;
+    ownerNotification = await notify({
+      payment,
+      intent: savedIntent.intent,
+      decision,
+      ownerRecord: deviceResult.record,
+      now: nowMs
+    }, dependencies && dependencies.ownerMail);
+  } catch (_) {
+    // Do not roll back a verified grant/revocation for a notification outage.
+    ownerNotification = { state: 'queue_error' };
+  }
   return {
     unknown: false,
     paymentId: intent.paymentId,
     status: decision.action,
     idempotent: Boolean(deviceResult.value && deviceResult.value.idempotent),
-    entitlement: deviceResult.value && deviceResult.value.entitlement
+    entitlement: deviceResult.value && deviceResult.value.entitlement,
+    ...(ownerNotification && ownerNotification.state !== 'disabled' ? { ownerNotification } : {})
   };
 }
 

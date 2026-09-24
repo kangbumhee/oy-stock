@@ -35,6 +35,12 @@ module.exports = async function handler(req, res) {
     if (!config) return sendJson(res, 503, { success: false, error: 'payment_not_configured' });
     const result = await reconcilePayment(paymentId, null, config);
     if (result.unknown) return sendJson(res, 202, { success: true, accepted: false });
+    if (result.ownerNotification && result.ownerNotification.state === 'queue_error') {
+      // The verified financial state is saved. Ask PortOne to redeliver until
+      // its notification can be durably queued; SMTP retries use our own outbox.
+      res.setHeader('Retry-After', '60');
+      return sendJson(res, 503, { success: false, error: 'payment_notification_queue_unavailable' });
+    }
     return sendJson(res, 200, {
       success: true,
       accepted: true,
