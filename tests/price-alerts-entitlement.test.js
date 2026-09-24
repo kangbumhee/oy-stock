@@ -164,6 +164,17 @@ function inMemoryPaymentDependencies(initialDevice) {
   };
 }
 
+async function capturePaymentDiagnostics(run) {
+  const original = console.error;
+  const entries = [];
+  console.error = (...args) => entries.push(args);
+  try {
+    await run(entries);
+  } finally {
+    console.error = original;
+  }
+}
+
 test('payment creation fixes the one-time 30-day contract and replays one pending idempotently', async () => {
   await withEnv(portOneEnv(), async () => {
     const config = configuredPortOne();
@@ -285,6 +296,182 @@ test('non-retryable pre-registration failure abandons intent and releases paymen
     assert.equal(memory.getIntent(PAYMENT_ONE).status, 'abandoned');
     assert.equal(memory.getDevice().pendingPayment, null);
     assert.equal(memory.activeReserved(), false);
+  });
+});
+
+test('a new intent after pre-registration rejection gets a new provider key even with the same client attempt', async () => {
+  await withEnv(portOneEnv(), async () => {
+    const memory = inMemoryPaymentDependencies(baseRecord());
+    const requests = [];
+    const paymentIds = [PAYMENT_ONE, PAYMENT_TWO];
+    const clientKey = 'strong-idempotency-key-123456';
+    memory.dependencies.newPaymentId = () => paymentIds.shift();
+    delete memory.dependencies.preRegisterPayment;
+    memory.dependencies.portone = {
+      async fetch(url, options) {
+        requests.push({ url, key: JSON.parse(options.headers['Idempotency-Key']) });
+        return { status: requests.length === 1 ? 400 : 200 };
+      }
+    };
+
+    await assert.rejects(
+      createPayment({}, configuredPortOne(), clientKey, memory.dependencies),
+      /portone_pre_register_failed/
+    );
+    assert.equal(memory.getDevice().pendingPayment, null);
+    const created = await createPayment({}, configuredPortOne(), clientKey, memory.dependencies);
+
+    assert.equal(created.paymentId, PAYMENT_TWO);
+    assert.equal(memory.getIntent(PAYMENT_ONE).status, 'abandoned');
+    assert.equal(memory.getIntent(PAYMENT_TWO).status, 'prepared');
+    assert.equal(requests.length, 2);
+    assert.notEqual(requests[0].url, requests[1].url);
+    assert.notEqual(requests[0].key, requests[1].key);
+    assert.equal(requests[0].key, `price-alert-pre-register:${PAYMENT_ONE}`);
+    assert.equal(requests[1].key, `price-alert-pre-register:${PAYMENT_TWO}`);
+    assert.notEqual(requests[0].key, clientKey);
+  });
+});
+
+test('retryable pre-registration failure preserves the existing intent and provider key', async () => {
+  await withEnv(portOneEnv(), async () => {
+    const memory = inMemoryPaymentDependencies(baseRecord());
+    const requests = [];
+    const paymentIds = [PAYMENT_ONE, PAYMENT_TWO];
+    const clientKey = 'strong-idempotency-key-123456';
+    memory.dependencies.newPaymentId = () => paymentIds.shift();
+    delete memory.dependencies.preRegisterPayment;
+    memory.dependencies.portone = {
+      async fetch(url, options) {
+        requests.push({ url, key: JSON.parse(options.headers['Idempotency-Key']) });
+        return { status: requests.length === 1 ? 503 : 200 };
+      }
+    };
+
+    await assert.rejects(
+      createPayment({}, configuredPortOne(), clientKey, memory.dependencies),
+      /portone_pre_register_failed/
+    );
+    assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+    assert.equal(memory.getIntent(PAYMENT_ONE).status, 'created');
+    const resumed = await createPayment({}, configuredPortOne(), clientKey, memory.dependencies);
+
+    assert.equal(resumed.paymentId, PAYMENT_ONE);
+    assert.equal(resumed.idempotent, true);
+    assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+    assert.equal(memory.getIntent(PAYMENT_ONE).status, 'prepared');
+    assert.equal(memory.getIntent(PAYMENT_TWO), null);
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests[1], requests[0]);
+    assert.equal(requests[0].key, `price-alert-pre-register:${PAYMENT_ONE}`);
+  });
+});
+
+test('cleanup failure preserves the primary provider failure and surviving pending payment', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async (logs) => {
+      const memory = inMemoryPaymentDependencies(baseRecord());
+      const mutate = memory.dependencies.mutateIntent;
+      let mutations = 0;
+      memory.dependencies.mutateIntent = async (...args) => {
+        mutations += 1;
+        if (mutations === 2) {
+          const error = new Error('synthetic-sensitive-cleanup-message');
+          error.name = 'synthetic-sensitive-error-name';
+          throw error;
+        }
+        return mutate(...args);
+      };
+      memory.dependencies.preRegisterPayment = async () => {
+        const error = new PortOneSafeError('portone_pre_register_failed', false, 401);
+        error.message = 'synthetic-sensitive-provider-response';
+        throw error;
+      };
+
+      await assert.rejects(
+        createPayment({}, configuredPortOne(), 'strong-idempotency-key-123456', memory.dependencies),
+        (error) => error.statusCode === 502 && error.code === 'portone_pre_register_failed'
+      );
+      assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+      assert.equal(memory.getIntent(PAYMENT_ONE).status, 'created');
+      assert.equal(publicEntitlement(memory.getDevice()).active, false);
+      assert.deepEqual(logs.map((entry) => entry[1]), [
+        { phase: 'pre_register', errorClass: 'PortOneSafeError', providerCode: 'portone_pre_register_failed', providerHttpStatus: 401 },
+        { phase: 'abandon_payment', errorClass: 'UnknownError' }
+      ]);
+      const serialized = JSON.stringify(logs);
+      for (const forbidden of ['synthetic-sensitive', PAYMENT_ONE, DEVICE_ID, configuredPortOne().apiSecret]) {
+        assert.equal(serialized.includes(forbidden), false);
+      }
+    });
+  });
+});
+
+test('unexpected intent and prepared writes log only their fixed phase and never return checkout', async () => {
+  await withEnv(portOneEnv(), async () => {
+    for (const phase of ['ensure_intent', 'mark_prepared']) {
+      await capturePaymentDiagnostics(async (logs) => {
+        const memory = inMemoryPaymentDependencies(baseRecord());
+        const mutate = memory.dependencies.mutateIntent;
+        const failure = new TypeError('synthetic-sensitive-store-message');
+        let mutations = 0;
+        memory.dependencies.mutateIntent = async (...args) => {
+          mutations += 1;
+          if (mutations === (phase === 'ensure_intent' ? 1 : 2)) throw failure;
+          return mutate(...args);
+        };
+
+        await assert.rejects(
+          createPayment({}, configuredPortOne(), 'strong-idempotency-key-123456', memory.dependencies),
+          (error) => error === failure
+        );
+        assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+        assert.equal(publicEntitlement(memory.getDevice()).active, false);
+        assert.equal(memory.preRegisterCalls(), phase === 'ensure_intent' ? 0 : 1);
+        assert.deepEqual(logs, [['[price-alerts/payment]', { phase, errorClass: 'TypeError' }]]);
+        assert.equal(JSON.stringify(logs).includes('synthetic-sensitive'), false);
+      });
+    }
+  });
+});
+
+test('unexpected pre-registration errors have bounded diagnostics without exposing raw names or IDs', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async (logs) => {
+      const memory = inMemoryPaymentDependencies(baseRecord());
+      const failure = new Error(`synthetic-sensitive-${PAYMENT_ONE}`);
+      failure.name = 'synthetic-sensitive-error-name';
+      memory.dependencies.preRegisterPayment = async () => { throw failure; };
+      await assert.rejects(
+        createPayment({}, configuredPortOne(), 'strong-idempotency-key-123456', memory.dependencies),
+        (error) => error === failure
+      );
+      assert.deepEqual(logs, [['[price-alerts/payment]', { phase: 'pre_register', errorClass: 'UnknownError' }]]);
+      assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+      assert.equal(publicEntitlement(memory.getDevice()).active, false);
+    });
+  });
+});
+
+test('PortOne errors retain only valid numeric HTTP status without reading a failed response body', async () => {
+  await withEnv(portOneEnv(), async () => {
+    const response = (status) => ({
+      status,
+      async text() { throw new Error('must not read sensitive provider response'); }
+    });
+    await assert.rejects(
+      preRegisterPayment(configuredPortOne(), { paymentId: PAYMENT_ONE }, 'strong-idempotency-key-123456', {
+        fetch: async () => response(401)
+      }),
+      (error) => error instanceof PortOneSafeError && error.providerHttpStatus === 401 && !error.retryable
+    );
+    await assert.rejects(
+      getPayment(configuredPortOne(), PAYMENT_ONE, { fetch: async () => response(503) }),
+      (error) => error instanceof PortOneSafeError && error.providerHttpStatus === 503 && error.retryable
+    );
+    for (const invalid of [undefined, 'synthetic-sensitive-status', 99, 600, Infinity]) {
+      assert.equal(new PortOneSafeError('portone_unavailable', true, invalid).providerHttpStatus, null);
+    }
   });
 });
 

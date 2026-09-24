@@ -11,6 +11,7 @@ const {
   sendJson
 } = require('./_http');
 const { consumeRateLimit } = require('./_limits');
+const { unexpectedPaymentDiagnostic } = require('./_payment-diagnostics');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
@@ -35,6 +36,9 @@ module.exports = async function handler(req, res) {
     const result = await createPayment(req, config, body.idempotencyKey);
     return sendJson(res, 200, { success: true, ...result });
   } catch (error) {
+    if (!(error instanceof HttpError)) {
+      console.error('[price-alert-payment]', JSON.stringify(unexpectedPaymentDiagnostic(error)));
+    }
     return handleHttpError(res, error);
   }
 };

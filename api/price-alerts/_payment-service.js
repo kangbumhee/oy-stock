@@ -29,6 +29,38 @@ const {
 } = require('./_registry');
 const { mutateDevice } = require('./_store');
 
+const DIAGNOSTIC_PHASES = new Set(['ensure_intent', 'pre_register', 'mark_prepared', 'abandon_payment']);
+const DIAGNOSTIC_ERROR_CLASSES = new Set([
+  'Error', 'TypeError', 'RangeError', 'SyntaxError', 'HttpError', 'PortOneSafeError',
+  'PaymentIntentConflictError', 'DeviceWriteConflictError', 'BlobError',
+  'BlobPreconditionFailedError', 'BlobUnknownError', 'BlobAccessError',
+  'BlobServiceNotAvailable', 'BlobServiceRateLimited'
+]);
+const DIAGNOSTIC_PROVIDER_CODES = new Set([
+  'portone_invalid_response', 'portone_unavailable', 'portone_request_pending',
+  'portone_pre_register_failed', 'portone_lookup_failed', 'payment_not_found'
+]);
+
+function logPaymentFailure(phase, error) {
+  // Only fixed categories and numeric HTTP status reach server logs. Never log
+  // the exception, message, stack, payment/device IDs, credentials, or response.
+  try {
+    const diagnostic = {
+      phase: DIAGNOSTIC_PHASES.has(phase) ? phase : 'unknown',
+      errorClass: DIAGNOSTIC_ERROR_CLASSES.has(error && error.name) ? error.name : 'UnknownError'
+    };
+    if (error instanceof PortOneSafeError) {
+      diagnostic.providerCode = DIAGNOSTIC_PROVIDER_CODES.has(error.code) ? error.code : 'unknown';
+      if (Number.isInteger(error.providerHttpStatus) && error.providerHttpStatus >= 100 && error.providerHttpStatus <= 599) {
+        diagnostic.providerHttpStatus = error.providerHttpStatus;
+      }
+    }
+    console.error('[price-alerts/payment]', diagnostic);
+  } catch (_) {
+    // Diagnostic failure must not replace the operation's original error.
+  }
+}
+
 function sameContract(left, right) {
   const keys = [
     'amount',
@@ -245,27 +277,48 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
     throw error;
   }
   const pending = saved.value.pending;
-  const ensured = await ensureIntent(pending, dependencies);
+  let ensured;
+  try {
+    ensured = await ensureIntent(pending, dependencies);
+  } catch (error) {
+    logPaymentFailure('ensure_intent', error);
+    throw error;
+  }
   const currentIntent = ensured.intent;
   if (currentIntent.status !== 'prepared') {
     const preRegister = (dependencies && dependencies.preRegisterPayment) || preRegisterPayment;
+    // Client attempts may survive an abandoned intent. Provider keys must instead
+    // identify the immutable payment request, while retries keep its existing ID.
+    const providerIdempotencyKey = `price-alert-pre-register:${currentIntent.paymentId}`;
     try {
-      await preRegister(config, currentIntent, normalizedKey, dependencies && dependencies.portone);
+      await preRegister(config, currentIntent, providerIdempotencyKey, dependencies && dependencies.portone);
     } catch (error) {
+      logPaymentFailure('pre_register', error);
       if (error instanceof PortOneSafeError) {
         if (!error.retryable) {
-          await abandonPayment(
-            currentIntent,
-            now,
-            error.code || 'portone_pre_register_failed',
-            dependencies
-          );
+          try {
+            await abandonPayment(
+              currentIntent,
+              now,
+              error.code || 'portone_pre_register_failed',
+              dependencies
+            );
+          } catch (cleanupError) {
+            // Leave any surviving pending state for a retry; do not reset the
+            // device or create another payment to conceal this cleanup failure.
+            logPaymentFailure('abandon_payment', cleanupError);
+          }
         }
         throw new HttpError(error.retryable ? 503 : 502, error.code, error.retryable ? 60 : null);
       }
       throw error;
     }
-    await markPrepared(currentIntent.paymentId, currentIntent.ownerDeviceId, now, dependencies);
+    try {
+      await markPrepared(currentIntent.paymentId, currentIntent.ownerDeviceId, now, dependencies);
+    } catch (error) {
+      logPaymentFailure('mark_prepared', error);
+      throw error;
+    }
     currentIntent.status = 'prepared';
   }
   return {

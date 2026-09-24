@@ -133,6 +133,8 @@
 ### [POST] `/api/price-alerts/payment/create`
 
 - 설명: 고정 30일 이용권의 PortOne V2 카카오페이 결제 의도를 만들고 PortOne 사전등록 완료 후 SDK `requestPayment` payload를 반환한다.
+- 사전등록 재시도는 서버 `paymentId`별 PortOne 멱등키를 사용한다. 같은 pending 주문은 유지하고, 새 주문이 이전 주문의 멱등키를 재사용하지 않는다.
+- 진단 로그에는 고정 단계·오류 종류·제공사 HTTP 상태·허용된 소스 파일 위치만 남긴다. 이메일, 기기 인증정보, 결제번호, 제공사 응답 본문/오류 메시지는 기록하지 않는다. 예상 밖 오류의 공개 응답은 `internal_error`를 유지한다.
 - 인증/입력: 기기 인증과 same-origin 필수. 클라이언트 Body는 강한 `idempotencyKey` 하나만 허용한다. 금액·통화·주문명·Store ID·Channel Key·채널 유형·결제수단·카카오페이는 서버가 고정한다.
 - 저장: 결제 의도는 소유 기기, 예상 계약, 24시간 만료, 상태를 포함해 AES-256-GCM 암호화된 고정 Blob 경로에 ETag CAS로 저장한다. 기기당 활성 결제 의도는 하나이고 동일 키만 같은 결제 ID로 재시도할 수 있다.
 - 결제 요청: 응답의 `requestPayment`는 `currency:"KRW"`, `payMethod:"EASY_PAY"`, 카카오페이, 고정 상품 1개, 고정 동일-origin `redirectUrl`과 `noticeUrls`를 포함한다. 평생 이용권 기기에는 결제의도를 만들지 않고 `409 lifetime_entitlement_active`를 반환한다.

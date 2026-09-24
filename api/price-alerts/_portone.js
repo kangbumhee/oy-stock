@@ -7,11 +7,13 @@ const {
 const PORTONE_API_ORIGIN = 'https://api.portone.io';
 
 class PortOneSafeError extends Error {
-  constructor(code, retryable) {
+  constructor(code, retryable, providerHttpStatus) {
     super(code);
     this.name = 'PortOneSafeError';
     this.code = code;
     this.retryable = Boolean(retryable);
+    this.providerHttpStatus = Number.isInteger(providerHttpStatus) &&
+      providerHttpStatus >= 100 && providerHttpStatus <= 599 ? providerHttpStatus : null;
   }
 }
 
@@ -164,7 +166,8 @@ async function preRegisterPayment(config, intent, idempotencyKey, dependencies) 
   if ([200, 201, 204].includes(Number(response.status))) return;
   throw new PortOneSafeError(
     Number(response.status) === 409 ? 'portone_request_pending' : 'portone_pre_register_failed',
-    [408, 409, 425, 429].includes(Number(response.status)) || Number(response.status) >= 500
+    [408, 409, 425, 429].includes(Number(response.status)) || Number(response.status) >= 500,
+    Number(response.status)
   );
 }
 
@@ -224,7 +227,8 @@ async function getPayment(config, paymentId, dependencies) {
   if (Number(response.status) !== 200) {
     throw new PortOneSafeError(
       'portone_lookup_failed',
-      [408, 409, 425, 429].includes(Number(response.status)) || Number(response.status) >= 500
+      [408, 409, 425, 429].includes(Number(response.status)) || Number(response.status) >= 500,
+      Number(response.status)
     );
   }
   return normalizePortOnePayment(await safeResponseJson(response));
