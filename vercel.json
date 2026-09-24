@@ -82,6 +82,20 @@
     }
   ],
   "routes": [
+    {
+      "src": "/(?!api/|js/|css/|data/|sw\\.js|site\\.webmanifest)(.*)",
+      "has": [{ "type": "host", "value": "oy-stock.vercel.app" }],
+      "methods": ["GET", "HEAD"],
+      "status": 307,
+      "headers": { "Location": "https://olivestock.co.kr/$1", "Cache-Control": "no-store" }
+    },
+    {
+      "src": "/(?!api/|js/|css/|data/|sw\\.js|site\\.webmanifest)(.*)",
+      "has": [{ "type": "host", "value": "www.olivestock.co.kr" }],
+      "methods": ["GET", "HEAD"],
+      "status": 307,
+      "headers": { "Location": "https://olivestock.co.kr/$1", "Cache-Control": "no-store" }
+    },
     { "src": "/guide/?", "dest": "/public/guide/index.html" },
     { "src": "/guide/([^/]+)/?", "dest": "/public/guide/$1/index.html" },
     { "src": "/blog/?", "dest": "/public/blog/index.html" },

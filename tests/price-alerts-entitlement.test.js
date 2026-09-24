@@ -1056,7 +1056,7 @@ test('TTL cleanup preserves a lifetime entitlement even when it has no alerts', 
 });
 
 test('payment and promotion rate policies are independently bounded', () => {
-  assert.equal(configuredRatePolicy('payment_create').limit, 5);
+  assert.equal(configuredRatePolicy('payment_create').limit, 20);
   assert.equal(configuredRatePolicy('payment_complete').limit, 30);
   assert.equal(configuredRatePolicy('payment_webhook').limit, 600);
   assert.equal(configuredRatePolicy('promotion').limit, 10);

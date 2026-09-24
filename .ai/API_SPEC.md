@@ -137,7 +137,11 @@
 - SDK payload 반환 전 기기의 pending 주문과 실제 저장된 주문번호·소유자·`prepared` 상태를 재확인한다. 중간에 취소/실패했거나 다른 주문으로 바뀐 경우 `409 payment_not_pending`으로 차단하며 새 주문이나 이용권을 임의 생성하지 않는다.
 - 진단 로그에는 고정 단계·오류 종류·제공사 HTTP 상태·허용된 소스 파일 위치만 남긴다. 이메일, 기기 인증정보, 결제번호, 제공사 응답 본문/오류 메시지는 기록하지 않는다. 예상 밖 오류의 공개 응답은 `internal_error`를 유지한다.
 - 인증/입력: 기기 인증과 same-origin 필수. 클라이언트 Body는 강한 `idempotencyKey` 하나만 허용한다. 금액·통화·주문명·Store ID·Channel Key·채널 유형·결제수단·카카오페이는 서버가 고정한다.
-- 저장: 결제 의도는 소유 기기, 예상 계약, 24시간 만료, 상태를 포함해 AES-256-GCM 암호화된 고정 Blob 경로에 ETag CAS로 저장한다. 기기당 활성 결제 의도는 하나이고 동일 키만 같은 결제 ID로 재시도할 수 있다.
+- 저장: 결제 의도는 소유 기기, 예상 계약, 24시간 만료, 상태를 포함해 AES-256-GCM 암호화된 고정 Blob 경로에 ETag CAS로 저장한다. 기기당 활성 결제 의도는 하나이고 일반 재시도는 동일 키만 허용한다. 이메일 복구로 인증정보가 교체된 소유자는 아래 복구 절차로 같은 결제 ID를 재개할 수 있다.
+- 복구: `recoveredAt`이 기존 의도 생성 이후이고 복구된 인증정보가 유효한 경우에만 다른 클라이언트 키를 허용한다. 결제 ID·원 멱등 해시는 변경하지 않는다. PortOne GET의 READY 또는 404와 미만료 의도를 확인해야 같은 ID의 SDK payload를 반환한다. 최종/처리 중 상태는 서버 검증 후 `{resumed:true,requestPayment:null,reconciliation:{paymentId,status,entitlement,...}}`를 반환하며 클라이언트는 SDK를 다시 열지 않는다. 조회 뒤 소유자 인증을 재확인한다. 만료 후 상태가 불확실하면 `409 payment_reconciliation_required`로 새 결제를 차단한다.
+- 요청 제한: JSON·설정·기기 인증·필수 이메일 확인 뒤 저장된 인증 기기별 HMAC v2 카운터를 사용한다(기본 20회/1시간). 같은 네트워크의 다른 이용자와 공유하지 않으며 IP/호스트 변경으로 우회되지 않는다. 원 기기 ID·이메일은 카운터 경로에 저장하지 않는다. 레거시 미등록 기기는 기존 네트워크 보호를 유지한다. 제한 초과 시 `429 rate_limit_exceeded`와 `Retry-After`; 브라우저는 대기시간을 표시하고 즉시 반복 클릭을 차단한다. 기존 네트워크 카운터·회원 데이터는 삭제하지 않는다.
+- 카운터도 압축 없는 본문과 강한 ETag를 같은 GET에서 읽고 CAS로 갱신한다. 약한/누락 ETag는 덮어쓰기하지 않고 `503 rate_limit_unavailable`로 실패한다.
+- 인증 비용 보호: 결제 create/complete는 별도의 `payment_auth` 카운터(정확한 IP·호스트 HMAC, 120회/60초)를 인증 전에 적용한다. 이는 저장된 이용자의 시간당 결제 한도와 공유되지 않으며 인접한 `/24` 네트워크를 묶지 않는다. 원 IP는 저장하지 않는다.
 - 결제 의도 조회는 `Accept-Encoding: identity`로 압축되지 않은 본문과 강한 ETag를 같은 응답에서 읽는다. 압축 응답의 약한 ETag(`W/`)를 저장 조건으로 사용하거나 별도 HEAD의 ETag로 바꾸지 않으며, 유효한 강한 ETag를 얻지 못하면 저장을 중단한다.
 - 결제 요청: 응답의 `requestPayment`는 `currency:"KRW"`, `payMethod:"EASY_PAY"`, 카카오페이, 고정 상품 1개, 고정 동일-origin `redirectUrl`과 `noticeUrls`를 포함한다. 평생 이용권 기기에는 결제의도를 만들지 않고 `409 lifetime_entitlement_active`를 반환한다.
 - 용량보호: 결제의도를 저장하기 전에 활성 인덱스 슬롯을 CAS 방식으로 실제 예약한다. 같은 기기의 멱등 재시도는 같은 슬롯을 재사용하며, 슬롯이 가득 찼거나 Blob 확인이 실패하면 PortOne 사전등록 전에 `503`으로 중단한다. 예약은 의도 만료·비재시도 실패·`abandoned`·전액취소 때 조건부 해제되고, `PAID` 권한이나 활성 알림을 사용할 동안 유지된다.
@@ -151,6 +155,7 @@
 - 유효시각: 권한 시작은 reconcile 실행시각이 아니라 PortOne의 권위 `paidAt`이다. 로컬 의도가 뒤늦게 조회됐더라도 `paidAt`이 의도 생성~24시간 만료 안이면 승인할 수 있다.
 - 취소/검토: 전액 `CANCELLED`는 해당 paymentId의 권한을 취소하고 남은 30일권을 원 결제시각 기준으로 다시 쌓는다. `PARTIAL_CANCELLED`는 결제 전·후 모두 즉시 해당 paymentId를 취소 tombstone 처리하고 이미 부여된 grant를 revoke하며 대기 Push를 비운 뒤 `review_required`로 운영 검토에 남긴다. 다른 계약 불일치도 `review_required`이며 새 권한을 부여하지 않는다.
 - 멱등성: 기기 레코드 CAS에서 paymentId당 한 번만 30일을 부여하므로 complete와 webhook 동시 실행도 중복 연장하지 않는다.
+- 요청 제한: 소유 기기 인증 후 기기별 HMAC 카운터를 사용한다(기본 30회/1시간). 결제 생성 한도와 별개이며 같은 와이파이의 다른 구매자와 공유하지 않는다.
 
 ### [POST] `/api/price-alerts/payment/webhook`
 

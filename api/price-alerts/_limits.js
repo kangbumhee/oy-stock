@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const net = require('node:net');
 const { BlobPreconditionFailedError, get, put } = require('@vercel/blob');
 const { configuredDataKey } = require('./_crypto');
+const { normalizeDeviceId } = require('./_core');
 const { HttpError } = require('./_http');
 const { configuredStoreRoot } = require('./_registry');
 
@@ -26,12 +27,14 @@ function configuredRatePolicy(scope) {
     };
   }
   const specialized = {
+    // Short, generous pre-auth protection, separate from a buyer's checkout quota.
+    payment_auth: { limit: 120, windowSeconds: 60 },
     account_send: { limit: 5, windowSeconds: 3600 },
     account_verify: { limit: 20, windowSeconds: 3600 },
     account_read: { limit: 120, windowSeconds: 3600 },
     account_visit: { limit: 120, windowSeconds: 3600 },
     payment_create: {
-      limit: boundedInteger(process.env.PRICE_ALERT_PAYMENT_CREATE_LIMIT, 5, 1, 100),
+      limit: boundedInteger(process.env.PRICE_ALERT_PAYMENT_CREATE_LIMIT, 20, 1, 100),
       windowSeconds: boundedInteger(
         process.env.PRICE_ALERT_PAYMENT_CREATE_WINDOW_SECONDS,
         3600,
@@ -97,11 +100,11 @@ function normalizeNetwork(value) {
   return 'unknown';
 }
 
-function requestRateIdentity(req) {
+function requestRateIdentity(req, exactAddress = false) {
   const headers = (req && req.headers) || {};
-  const network = normalizeNetwork(
-    headers['x-vercel-forwarded-for'] || headers['x-forwarded-for'] || ''
-  );
+  const forwarded = headers['x-vercel-forwarded-for'] || headers['x-forwarded-for'] || '';
+  const address = String(forwarded).split(',')[0].trim().replace(/^\[|\]$/g, '').toLowerCase();
+  const network = exactAddress ? (net.isIP(address) ? address : 'unknown') : normalizeNetwork(forwarded);
   const host = String(headers['x-forwarded-host'] || headers.host || 'unknown')
     .split(',')[0]
     .trim()
@@ -110,13 +113,18 @@ function requestRateIdentity(req) {
   return `${network}|${host || 'unknown'}`;
 }
 
-function rateSubjectHash(req, scope, key) {
+function rateSubjectHash(req, scope, key, authenticatedDeviceId) {
+  // This identifier must come from a successful server-side authentication,
+  // never directly from a request header. Other scopes retain network limits.
+  const deviceId = ['payment_create', 'payment_complete'].includes(scope)
+    ? normalizeDeviceId(authenticatedDeviceId)
+    : '';
   return crypto
     .createHmac('sha256', key || configuredDataKey())
-    .update('price-alert-rate:v1:')
+    .update(deviceId ? 'price-alert-rate:device:v2:' : 'price-alert-rate:v1:')
     .update(String(scope || 'mutation'))
     .update(':')
-    .update(requestRateIdentity(req))
+    .update(deviceId || requestRateIdentity(req, scope === 'payment_auth'))
     .digest('hex');
 }
 
@@ -138,7 +146,7 @@ async function readCounter(pathname, dependencies) {
   const result = await read(pathname, {
     access: 'private',
     useCache: false,
-    headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
+    headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache', 'Accept-Encoding': 'identity' }
   });
   if (!result) return null;
   const body = JSON.parse(await streamText(result.stream));
@@ -150,7 +158,11 @@ async function readCounter(pathname, dependencies) {
   ) {
     throw new Error('invalid rate counter');
   }
-  return { body, etag: result.blob && result.blob.etag };
+  const etag = String((result.blob && result.blob.etag) || '');
+  if (!/^"[\x21\x23-\x7e]*"$/.test(etag)) {
+    throw new Error('rate counter strong ETag required');
+  }
+  return { body, etag };
 }
 
 async function writeCounter(pathname, body, etag, dependencies) {
@@ -170,7 +182,8 @@ async function consumeRateLimit(req, scope, dependencies) {
   const now = Number(
     dependencies && Number.isFinite(dependencies.now) ? dependencies.now : Date.now()
   );
-  const subjectHash = rateSubjectHash(req, scope);
+  const subjectHash = rateSubjectHash(req, scope, undefined,
+    dependencies && dependencies.authenticatedDeviceId);
   const pathname = `${configuredStoreRoot()}limits/${scope}/${subjectHash}.json`;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {

@@ -84,6 +84,7 @@ var Membership = {
 
   refresh: async function () {
     this.recoveryAfterRevocation = false;
+    this._refreshError = null;
     var identityVersion = PriceAlerts._deviceVersion || 0;
     try {
       var state = await PriceAlerts._request('/api/price-alerts/account');
@@ -94,6 +95,7 @@ var Membership = {
       if (identityVersion !== (PriceAlerts._deviceVersion || 0)) return this.state;
       this.state = null;
       this.account = null;
+      this._refreshError = error;
       this.recoveryAfterRevocation = !!(error && error.status === 401);
     }
     this.render();
@@ -124,13 +126,27 @@ var Membership = {
     var state = await this.refresh();
     if (state && state.recoveryEnabled === false) return true;
     if (state && state.available && this.account && this.account.verified) return true;
+    if (!state && this._refreshError) {
+      if (this._refreshError.status === 429) PriceAlerts._setPaymentCooldown(this._refreshError);
+      this.message(this.errorMessage(this._refreshError.code, this._refreshError), true);
+      return false;
+    }
+    if (state && !state.available) {
+      this.message('이메일 서비스를 확인할 수 없어 결제를 시작하지 않았습니다. 잠시 후 다시 확인해 주세요.', true);
+      return false;
+    }
     this.message('결제 전에 이메일 인증을 완료해 주세요. 복구 키를 받을 주소입니다.', true);
     var email = document.getElementById('membership-email');
     if (email) { email.scrollIntoView({ block: 'center' }); email.focus(); }
     return false;
   },
 
-  errorMessage: function (code) {
+  errorMessage: function (code, error) {
+    if ((error && error.status === 429) || code === 'rate_limited' || code === 'rate_limit_exceeded') {
+      var seconds = Math.max(1, Math.min(86400, Number(error && error.retryAfter) || 60));
+      return '요청이 많습니다. 약 ' + (seconds >= 60 ? Math.ceil(seconds / 60) + '분' : Math.ceil(seconds) + '초') +
+        ' 후에 다시 시도해 주세요.';
+    }
     var messages = {
       invalid_email: '올바른 이메일 주소를 입력해 주세요.',
       account_code_invalid: '키가 올바르지 않거나 만료되었습니다. 새 키를 받아 주세요.',
@@ -144,14 +160,14 @@ var Membership = {
       account_mail_unavailable: '메일 전송에 실패했습니다. 잠시 후 다시 요청해 주세요.',
       account_recovery_disabled: '이메일 복구 기능 준비 중입니다.',
       device_auth_failed: '다른 브라우저로 이전되었거나 인증이 만료되었습니다. 아래 이메일 복구를 이용해 주세요.',
-      rate_limited: '요청이 많습니다. 잠시 기다린 후 다시 시도해 주세요.',
-      rate_limit_exceeded: '요청이 많습니다. 잠시 기다린 후 다시 시도해 주세요.'
+      credential_storage_failed: '복구한 인증정보를 저장하지 못했습니다. 브라우저 저장공간 설정을 확인해 주세요.'
     };
     return messages[code] || '요청을 처리하지 못했습니다. 키와 이메일을 확인하거나 잠시 후 다시 시도해 주세요.';
   },
 
   submit: async function (action) {
     if (this.busy || PriceAlerts.paymentBusy) return;
+    if (!PriceAlerts._ensurePaymentSite()) return;
     var recovering = action === 'request-recovery' || action === 'recover';
     var email = document.getElementById(recovering ? 'membership-recovery-email' : 'membership-email');
     if (!email.value.trim() || !email.checkValidity()) {
@@ -197,7 +213,7 @@ var Membership = {
       }
     } catch (error) {
       if (input) input.value = '';
-      this.message(this.errorMessage(error && error.code), true);
+      this.message(this.errorMessage(error && (error.code || error.message), error), true);
     } finally {
       body.code = '';
       this.busy = false;

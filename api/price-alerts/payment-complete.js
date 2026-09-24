@@ -16,7 +16,6 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
   try {
     assertSameOrigin(req);
-    await consumeRateLimit(req, 'payment_complete');
     const body = await readJson(req);
     if (
       !body ||
@@ -30,7 +29,11 @@ module.exports = async function handler(req, res) {
     }
     const config = configuredPortOne();
     if (!config) throw new HttpError(503, 'payment_not_configured');
+    await consumeRateLimit(req, 'payment_auth');
     const loaded = await authenticateDevice(req);
+    await consumeRateLimit(req, 'payment_complete', {
+      authenticatedDeviceId: loaded.record.deviceId
+    });
     const result = await reconcilePayment(
       body && body.paymentId,
       loaded.record.deviceId,

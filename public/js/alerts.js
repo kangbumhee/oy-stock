@@ -10,6 +10,8 @@ var PriceAlerts = {
   paymentBusy: false,
   _portOnePromise: null,
   _messageBound: false,
+  _paymentRetryAt: 0,
+  _paymentRetryTimer: null,
 
   init: function (app) {
     this.app = app || null;
@@ -64,6 +66,11 @@ var PriceAlerts = {
         var err = new Error(message);
         err.status = response.status;
         err.code = data && data.error ? String(data.error) : '';
+        var retryHeader = response.headers && typeof response.headers.get === 'function'
+          ? String(response.headers.get('Retry-After') || '').trim() : '';
+        var retrySeconds = /^\d+(?:\.\d+)?$/.test(retryHeader)
+          ? Number(retryHeader) : (Date.parse(retryHeader) - Date.now()) / 1000;
+        if (isFinite(retrySeconds)) err.retryAfter = Math.max(1, Math.min(86400, Math.ceil(retrySeconds)));
         throw err;
       }
       return data;
@@ -109,6 +116,81 @@ var PriceAlerts = {
     target.classList.toggle('error', isError === true);
   },
 
+  _ensurePaymentSite: function () {
+    var current;
+    try { current = new URL(location.href || location.origin); } catch (_) { return false; }
+    if (current.origin === 'https://olivestock.co.kr') return true;
+    if (['localhost', '127.0.0.1', '[::1]'].indexOf(current.hostname) !== -1 &&
+        ['http:', 'https:'].indexOf(current.protocol) !== -1) return true;
+    var knownAlias = ['oy-stock.vercel.app', 'www.olivestock.co.kr'].indexOf(current.hostname) !== -1;
+    var message = knownAlias
+      ? '결제와 이메일 복구를 위해 공식 주소 olivestock.co.kr로 이동합니다. 기존 이메일은 이동 후 이용권 복구로 연결해 주세요.'
+      : '결제와 이메일 복구는 공식 주소 https://olivestock.co.kr에서 시작해 주세요.';
+    this._setPaywallMessage(message, true);
+    if (window.Membership && typeof Membership.message === 'function') Membership.message(message, true);
+    if (knownAlias && !this._canonicalNavigationPending) {
+      this._canonicalNavigationPending = true;
+      // Never forward account keys, payment-return parameters, or other URL data across origins.
+      location.assign('https://olivestock.co.kr/');
+    }
+    return false;
+  },
+
+  _paymentRetrySeconds: function () {
+    return Math.max(0, Math.ceil((this._paymentRetryAt - Date.now()) / 1000));
+  },
+
+  _paymentCooldownMessage: function () {
+    var seconds = this._paymentRetrySeconds();
+    var wait = seconds >= 60 ? Math.ceil(seconds / 60) + '분' : seconds + '초';
+    return '결제 요청이 많아 잠시 제한되었습니다. 약 ' + wait + ' 후에 다시 시도할 수 있습니다.';
+  },
+
+  _setPaymentCooldown: function (error) {
+    var seconds = Math.max(1, Math.min(86400, Number(error && error.retryAfter) || 60));
+    this._paymentRetryAt = Math.max(this._paymentRetryAt, Date.now() + seconds * 1000);
+    if (this._paymentRetryTimer !== null) clearTimeout(this._paymentRetryTimer);
+    var self = this;
+    function tick() {
+      self._paymentRetryTimer = null;
+      self._renderEntitlement();
+      if (self._paymentRetrySeconds()) self._paymentRetryTimer = setTimeout(tick, 1000);
+    }
+    tick();
+  },
+
+  _paymentErrorMessage: function (error) {
+    if (error && (error.status === 429 || error.code === 'rate_limit_exceeded')) {
+      return this._paymentCooldownMessage();
+    }
+    var code = error && (error.code || error.message);
+    var messages = {
+      payment_contract_mismatch: '결제 요청 정보가 고정 이용권 조건과 일치하지 않아 결제를 시작하지 않았습니다. 공식 주소 olivestock.co.kr에서 다시 확인해 주세요.',
+      payment_not_configured: '결제 기능이 아직 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.',
+      active_device_capacity_reached: '현재 신규 이용권 수용량이 모두 사용 중입니다. 결제를 시작하지 않았으며, 잠시 후 다시 확인해 주세요.',
+      payment_already_pending: '기존 결제 요청이 남아 있습니다. 이메일로 이 브라우저를 복구한 뒤 다시 눌러 같은 결제를 확인해 주세요.',
+      payment_reconciliation_required: '이전 결제 상태를 확인해야 합니다. 중복 결제를 막기 위해 새 결제를 시작하지 않았습니다. 이용권 새로고침 후 다시 확인해 주세요.',
+      payment_not_pending: '기존 결제 상태가 변경되었습니다. 이용권 새로고침으로 먼저 확인해 주세요.',
+      payment_intent_conflict: '기존 결제 정보가 일치하지 않습니다. 새 결제를 반복하지 말고 이용권 새로고침으로 확인해 주세요.',
+      lifetime_entitlement_active: '이미 평생 이용권이 활성화되어 있습니다. 이용권 새로고침으로 확인해 주세요.',
+      email_verification_required: '결제 전에 이메일 인증을 완료해 주세요.',
+      device_auth_failed: '다른 브라우저로 이전되었거나 인증이 만료되었습니다. 이메일로 이 브라우저를 복구해 주세요.',
+      device_identity_changed: '사용 중인 브라우저 인증이 변경되었습니다. 이용권 새로고침으로 확인해 주세요.',
+      payment_state_unavailable: '브라우저에 결제 상태를 저장하지 못했습니다. 브라우저 저장공간 설정을 확인해 주세요.'
+    };
+    return messages[code] || '결제 요청을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  },
+
+  _paymentProviderMessage: function (error) {
+    var code = String(error && error.code || '').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 64);
+    var message = String(error && error.message || '').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 180);
+    if (message === 'payment_sdk_unavailable' || message === 'payment_sdk_not_configured') {
+      return '카카오페이 결제창을 불러오지 못했습니다. 네트워크 연결과 콘텐츠 차단 설정을 확인해 주세요.';
+    }
+    return '카카오페이 결제창에서 오류가 발생했습니다' + (code ? ' (' + code + ')' : '') +
+      (message ? ': ' + message : '.');
+  },
+
   _renderEntitlement: function () {
     var status = document.getElementById('price-alert-entitlement-status');
     var paywall = document.getElementById('price-alert-paywall');
@@ -139,9 +221,11 @@ var PriceAlerts = {
 
     var configured = this.entitlementEnabled !== false;
     var controlsDisabled = this.entitlementLoading || this.paymentBusy || !configured;
-    if (payButton) payButton.disabled = controlsDisabled || this.paymentAvailable !== true;
+    if (payButton) payButton.disabled = controlsDisabled || this.paymentAvailable !== true || this._paymentRetrySeconds() > 0;
     if (promoButton) promoButton.disabled = controlsDisabled || this.promotionAvailable !== true;
-    if (!active && this.entitlementEnabled === false) {
+    if (this._paymentRetrySeconds() > 0 && !this.paymentBusy) {
+      this._setPaywallMessage(this._paymentCooldownMessage(), true);
+    } else if (!active && this.entitlementEnabled === false) {
       this._setPaywallMessage(
         '가격 알림 이용권 결제가 아직 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.',
         true
@@ -381,6 +465,11 @@ var PriceAlerts = {
   },
 
   startPayment: async function () {
+    if (!this._ensurePaymentSite()) return;
+    if (this._paymentRetrySeconds() > 0) {
+      this._setPaywallMessage(this._paymentCooldownMessage(), true);
+      return;
+    }
     if (
       this.paymentBusy ||
       this._emailCheckBusy ||
@@ -408,18 +497,29 @@ var PriceAlerts = {
         paymentId: '',
         providerInvoked: false
       };
-      Storage.setPriceAlertPaymentAttempt(attempt);
     }
     this.paymentBusy = true;
     this._setPaywallMessage('안전한 결제 요청을 준비하고 있습니다…', false);
     this._renderEntitlement();
     var paymentId = '';
     var retryAllowed = false;
+    var providerMessage = '';
     try {
+      if (!Storage.setPriceAlertPaymentAttempt(attempt)) throw new Error('payment_state_unavailable');
       var created = await this._request(CONFIG.PRICE_ALERT_PAYMENT_CREATE_API, {
         method: 'POST',
         body: { idempotencyKey: attempt.idempotencyKey }
       });
+      if (created && created.resumed === true && created.requestPayment === null && created.reconciliation) {
+        if (!/^oypa_[A-Za-z0-9_-]{20,96}$/.test(String(created.paymentId || '')) ||
+            created.reconciliation.paymentId !== created.paymentId) throw new Error('payment_contract_mismatch');
+        paymentId = created.paymentId;
+        attempt.paymentId = paymentId;
+        attempt.providerInvoked = true;
+        if (!Storage.setPriceAlertPaymentAttempt(attempt)) throw new Error('payment_state_unavailable');
+        await this._completePayment(paymentId, { result: created.reconciliation });
+        return;
+      }
       var contract = this._validPaymentContract(created);
       if (!contract) throw new Error('payment_contract_mismatch');
       paymentId = contract.paymentId;
@@ -438,15 +538,19 @@ var PriceAlerts = {
         attempt.providerInvoked = false;
         Storage.setPriceAlertPaymentAttempt(attempt);
         retryAllowed = true;
+        providerMessage = this._paymentProviderMessage(providerError);
         throw providerError;
       }
       try {
-        await Promise.resolve(providerResult);
+        var returned = await Promise.resolve(providerResult);
+        if (returned && returned.code) providerMessage = this._paymentProviderMessage(returned);
       } catch (providerError) {
         // Promise 거절은 결제창이 열렸을 수도 있어 중복 handoff를 허용하지 않는다.
+        providerMessage = this._paymentProviderMessage(providerError);
       }
     } catch (error) {
       this.paymentBusy = false;
+      if (error && (error.status === 429 || error.code === 'rate_limit_exceeded')) this._setPaymentCooldown(error);
       if (
         error &&
         (error.code === 'payment_not_configured' ||
@@ -457,37 +561,33 @@ var PriceAlerts = {
       this._renderEntitlement();
       if (paymentId) {
         await this._completePayment(paymentId, {
-          retryAllowed: retryAllowed || attempt.providerInvoked !== true
+          retryAllowed: retryAllowed || attempt.providerInvoked !== true,
+          providerMessage: providerMessage || this._paymentProviderMessage(error)
         });
         return;
       }
-      this._setPaywallMessage(
-        error && error.message === 'payment_contract_mismatch'
-          ? '결제 요청 정보가 고정 이용권 조건과 일치하지 않아 결제를 시작하지 않았습니다.'
-          : error && error.code === 'payment_not_configured'
-            ? '결제 기능이 아직 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.'
-            : error && error.code === 'active_device_capacity_reached'
-              ? '현재 신규 이용권 수용량이 모두 사용 중입니다. 결제를 시작하지 않았으며, 잠시 후 다시 확인해 주세요.'
-            : '결제 요청을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-        true
-      );
+      this._setPaywallMessage(this._paymentErrorMessage(error), true);
       return;
     }
     this.paymentBusy = false;
     this._renderEntitlement();
-    await this._completePayment(paymentId);
+    await this._completePayment(paymentId, { providerMessage: providerMessage });
   },
 
   _completePayment: async function (paymentId, opts) {
     opts = opts || {};
     if (!/^oypa_[A-Za-z0-9_-]{20,96}$/.test(String(paymentId || ''))) return null;
+    if (!opts.result && this._paymentRetrySeconds() > 0) {
+      this._setPaywallMessage(this._paymentCooldownMessage(), true);
+      return null;
+    }
     this.paymentBusy = true;
     this._setPaywallMessage('결제 결과를 서버에서 확인하고 있습니다…', false);
     this._renderEntitlement();
     var completionMessage = '';
     var completionError = false;
     try {
-      var result = await this._request(CONFIG.PRICE_ALERT_PAYMENT_COMPLETE_API, {
+      var result = opts.result || await this._request(CONFIG.PRICE_ALERT_PAYMENT_COMPLETE_API, {
         method: 'POST',
         body: { paymentId: paymentId }
       });
@@ -513,10 +613,19 @@ var PriceAlerts = {
             ? '결제창이 열리지 않아 같은 결제를 안전하게 다시 시도할 수 있습니다.'
             : '결제가 아직 확인되지 않았습니다. 중복 결제를 피하려면 이용권 새로고침으로 먼저 확인해 주세요.';
       }
+      if (opts.providerMessage && result.status !== 'paid') {
+        completionMessage = opts.providerMessage + ' ' + completionMessage;
+        completionError = true;
+      }
       return result;
     } catch (error) {
-      completionMessage =
-        '결제 결과를 확인하지 못했습니다. 재결제하지 말고 이용권 새로고침을 먼저 눌러 주세요.';
+      if (error && (error.status === 429 || error.code === 'rate_limit_exceeded')) {
+        this._setPaymentCooldown(error);
+        completionMessage = this._paymentCooldownMessage() + ' 기존 결제 정보는 유지됩니다.';
+      } else {
+        completionMessage = (opts.providerMessage ? opts.providerMessage + ' ' : '') +
+          '결제 결과를 확인하지 못했습니다. 재결제하지 말고 이용권 새로고침을 먼저 눌러 주세요.';
+      }
       completionError = true;
       return null;
     } finally {

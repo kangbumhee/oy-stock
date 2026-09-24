@@ -1,5 +1,16 @@
 # 배포 설정
 
+## 2026-09-24 다른 기기 카카오페이 진입 복구
+
+- 공식 결제 origin은 `https://olivestock.co.kr`로 유지한다. 알려진 별칭 `oy-stock.vercel.app`, `www.olivestock.co.kr`의 페이지 GET/HEAD는 307로 공식 주소에 연결한다. API, JS/CSS/data, 서비스워커 요청 및 POST/웹훅은 리디렉션하지 않는다. 임의 preview origin을 결제 allowlist에 추가하지 않는다.
+- 기존 별칭에 열린 화면도 결제·이메일 제출 전에 공식 주소로 이동한다. 인증정보를 URL로 전달하거나 origin 검증을 완화하지 않는다. 별칭에서 인증한 사용자는 공식 사이트의 이메일 복구로 연결할 수 있다.
+- 결제 생성 제한 기본값은 저장된 인증 기기별 20회/1시간(`PRICE_ALERT_PAYMENT_CREATE_LIMIT`, 기존 5에서 변경)이며 완료 조회는 기기별 30회/1시간이다. 해당 환경변수를 별도로 설정한 프로젝트는 설정값이 우선한다. 이메일 전송·검증과 웹훅의 남용방지 정책은 유지한다.
+- 기존 네트워크 기반 카운터는 삭제하지 않고 기기별 v2 HMAC 카운터로 분리한다. 강한 ETag를 같은 압축 없는 응답에서 읽어 조건부 갱신한다. 제한 초과 화면은 `Retry-After`를 표시하고 버튼 재시도를 대기시킨다.
+- 인증 전에는 별도의 정확한 IP별 짧은 버스트 제한(120회/60초)을 적용해 잘못된 인증정보로 반복적인 Blob 읽기·검증 연산을 유발하는 요청을 제한한다. 이용자의 결제 한도와는 별도이며 IP 대역을 공유하지 않는다.
+- 복구된 브라우저는 원 결제 ID/멱등 해시를 유지하며 공급자 상태 확인 후 재개한다. 승인/취소/실패/처리 중 결과는 SDK 재호출 없이 반영한다. 만료된 의도가 READY/404처럼 불확실하면 관리자 확인이 필요하며 강제로 지우지 않는다.
+- 정적 캐시 버전: `20260924-checkout-recovery-2`(membership/alerts와 SW). 실제 승인 없이 모의 provider/Blob 회귀를 실행한 뒤 운영 빌드 상태와 공식/별칭 브라우저 진입을 확인한다.
+- Git 자동배포는 비활성화 상태이므로 소스 커밋과 Vercel production CLI 배포를 함께 수행한다. 다른 작업 디렉터리의 미완료 변경은 배포하지 않는다.
+
 ## 2026-09-13 일반 매장 재고 조회 복구
 
 - `server/server.mjs`, `server/stock-request-runner.mjs` 변경은 main push의 `deploy-server.yml`로 Cloud Run에 반영한다. UI/app/config/SW 변경도 Vercel production 사전 빌드·검증·promote가 필요하다. 한쪽 배포만으로 완료 처리하지 않는다.

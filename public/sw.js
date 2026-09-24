@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260924-membership-1';
+const CACHE_NAME = 'olivestock-app-v20260924-checkout-recovery-2';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -20,8 +20,8 @@ const CORE_ASSETS = [
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
-  '/js/membership.js?v=20260924-membership-1',
-  '/js/alerts.js?v=20260924-membership-1',
+  '/js/membership.js?v=20260924-checkout-recovery-2',
+  '/js/alerts.js?v=20260924-checkout-recovery-2',
   '/js/hidden-stock.js?v=20260913-stock-recovery-2',
   '/js/app.js?v=20260913-stock-recovery-2'
 ];

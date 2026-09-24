@@ -111,6 +111,55 @@ function appendIntentEvent(intent, type, at, status, reason) {
   intent.events = events.slice(-50);
 }
 
+function recoveredPendingPayment(record) {
+  const pending = record && record.pendingPayment;
+  const account = record && record.account;
+  const recoveredAt = Date.parse(account && account.recoveredAt || '');
+  const createdAt = Date.parse(pending && pending.createdAt || '');
+  return Boolean(pending && normalizePaymentId(pending.paymentId) &&
+    ['created', 'prepared', 'pending', 'review_required'].includes(pending.status) &&
+    account && account.indexLinked === true && Number(account.credentialVersion) > 0 &&
+    Number.isFinite(recoveredAt) && Number.isFinite(createdAt) && recoveredAt >= createdAt);
+}
+
+async function checkRecoveredPayment(intent, config, nowMs, dependencies) {
+  const lookup = (dependencies && dependencies.getPayment) || getPayment;
+  let payment;
+  let providerNotFound = false;
+  try {
+    payment = await lookup(config, intent.paymentId, dependencies && dependencies.portone);
+  } catch (error) {
+    // Pre-registration does not necessarily create a payment GET resource. Only
+    // an authoritative 404 permits reopening that SAME, unexpired payment ID.
+    if (!(error instanceof PortOneSafeError) || error.code !== 'portone_lookup_failed' ||
+        error.providerHttpStatus !== 404) {
+      if (error instanceof PortOneSafeError) {
+        throw new HttpError(error.retryable ? 503 : 502, error.code, error.retryable ? 60 : null);
+      }
+      throw error;
+    }
+    providerNotFound = true;
+  }
+  if (!providerNotFound && (!payment || typeof payment !== 'object' || Array.isArray(payment))) {
+    throw new HttpError(502, 'portone_invalid_response');
+  }
+  if (providerNotFound || (payment.paymentId === intent.paymentId && payment.status === 'READY')) {
+    if (!['created', 'pending', 'prepared'].includes(intent.status) ||
+        !Number.isFinite(Date.parse(intent.expiresAt || '')) ||
+        Date.parse(intent.expiresAt) <= nowMs) {
+      // Do not replace an expired/ambiguous intent while another browser may
+      // still be completing it. A verified terminal provider result resolves it.
+      throw new HttpError(409, 'payment_reconciliation_required');
+    }
+    return null;
+  }
+  return reconcilePayment(intent.paymentId, intent.ownerDeviceId, config, {
+    ...dependencies,
+    // Reuse the authoritative result, not a client-supplied payment status.
+    getPayment: async () => payment
+  });
+}
+
 async function ensureIntent(pending, dependencies) {
   const mutate = (dependencies && dependencies.mutateIntent) || mutateIntent;
   return mutate(
@@ -259,14 +308,22 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
           registrationReserved = true;
         }
         const idempotencyHash = paymentIdempotencyHash(record.deviceId, normalizedKey);
-        if (pendingPaymentActive(record.pendingPayment, nowMs)) {
-          if (record.pendingPayment.idempotencyHash !== idempotencyHash) {
+        const recovered = recoveredPendingPayment(record);
+        if (pendingPaymentActive(record.pendingPayment, nowMs) || recovered) {
+          if (record.pendingPayment.ownerDeviceId !== record.deviceId ||
+              !sameContract(record.pendingPayment.contract, contract)) {
+            throw new HttpError(409, 'payment_intent_conflict');
+          }
+          const differentKey = record.pendingPayment.idempotencyHash !== idempotencyHash;
+          if (differentKey && !recovered) {
             throw new HttpError(409, 'payment_already_pending');
           }
           return {
             changed: false,
             record,
-            value: { pending: record.pendingPayment, idempotent: true }
+            // Recovery rotates the secret but retains the canonical device.
+            // Never rewrite the original idempotency hash or payment ID.
+            value: { pending: record.pendingPayment, idempotent: true, resumed: recovered }
           };
         }
         const pending = {
@@ -297,7 +354,8 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
   let ensured;
   try {
     ensured = await ensureIntent(pending, dependencies);
-    if (!ensured.intent || !['created', 'pending', 'prepared'].includes(ensured.intent.status)) {
+    if (!ensured.intent || (!saved.value.resumed &&
+        !['created', 'pending', 'prepared'].includes(ensured.intent.status))) {
       throw new HttpError(409, 'payment_not_pending');
     }
   } catch (error) {
@@ -305,6 +363,26 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
     throw error;
   }
   let currentIntent = ensured.intent;
+  if (saved.value.resumed) {
+    const reconciliation = await checkRecoveredPayment(currentIntent, config, nowMs, dependencies);
+    // Re-authenticate after the provider lookup: a subsequent recovery must not
+    // let this now-revoked browser receive a checkout handoff.
+    await mutateAuth(req, { allowCreate: false }, (record) => {
+      if (record.deviceId !== currentIntent.ownerDeviceId) throw new HttpError(404, 'payment_not_found');
+      return { changed: false, record };
+    });
+    if (reconciliation) {
+      return {
+        paymentId: currentIntent.paymentId,
+        idempotent: true,
+        resumed: true,
+        expiresAt: currentIntent.expiresAt,
+        reconciliation,
+        requestPayment: null,
+        plan: { amount: PASS_AMOUNT_KRW, currency: 'KRW', durationDays: PASS_DURATION_DAYS, autoRenew: false }
+      };
+    }
+  }
   if (currentIntent.status !== 'prepared') {
     const preRegister = (dependencies && dependencies.preRegisterPayment) || preRegisterPayment;
     // Client attempts may survive an abandoned intent. Provider keys must instead
@@ -343,6 +421,7 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
   return {
     paymentId: currentIntent.paymentId,
     idempotent: saved.value.idempotent || !ensured.written,
+    ...(saved.value.resumed ? { resumed: true } : {}),
     expiresAt: currentIntent.expiresAt,
     requestPayment: requestPaymentPayload(currentIntent, config),
     plan: { amount: PASS_AMOUNT_KRW, currency: 'KRW', durationDays: PASS_DURATION_DAYS, autoRenew: false }

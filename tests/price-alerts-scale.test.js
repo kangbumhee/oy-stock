@@ -81,7 +81,7 @@ function memoryBlob() {
         error.status = 412;
         throw error;
       }
-      const etag = `etag-${++etagSequence}`;
+      const etag = `"etag-${++etagSequence}"`;
       objects.set(pathname, { body: String(body), etag });
       return { pathname, etag };
     },
