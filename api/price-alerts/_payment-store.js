@@ -54,13 +54,17 @@ async function readIntent(paymentId, dependencies) {
   const result = await read(pathname, {
     access: 'private',
     useCache: false,
-    headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
+    // Compressed delivery can weaken the response ETag (W/), which cannot be
+    // used for a conditional overwrite. Keep body and validator in one GET.
+    headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache', 'Accept-Encoding': 'identity' }
   });
   if (!result) return { intent: null, pathname, etag: '' };
   const intent = decryptJson(await streamText(result.stream), configuredDataKey());
   if (!validIntent(intent, paymentId)) throw new Error('invalid payment intent record');
   const etag = String((result.blob && result.blob.etag) || '');
-  if (!etag) throw new Error('payment intent ETag missing');
+  if (!/^"[\x21\x23-\x7e]*"$/.test(etag)) {
+    throw new Error('payment intent strong ETag required');
+  }
   return { intent, pathname, etag };
 }
 

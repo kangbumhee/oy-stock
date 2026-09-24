@@ -37,7 +37,11 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, { success: true, ...result });
   } catch (error) {
     if (!(error instanceof HttpError)) {
-      console.error('[price-alert-payment]', JSON.stringify(unexpectedPaymentDiagnostic(error)));
+      try {
+        console.error('[price-alert-payment]', JSON.stringify(unexpectedPaymentDiagnostic(error)));
+      } catch (_) {
+        // Logging must not replace the original response or expose its data.
+      }
     }
     return handleHttpError(res, error);
   }

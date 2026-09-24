@@ -134,15 +134,15 @@ async function ensureIntent(pending, dependencies) {
 
 async function markPrepared(paymentId, ownerDeviceId, now, dependencies) {
   const mutatePaymentIntent = (dependencies && dependencies.mutateIntent) || mutateIntent;
-  await mutatePaymentIntent(
+  const prepared = await mutatePaymentIntent(
     paymentId,
     (intent) => {
-      if (!intent || intent.ownerDeviceId !== ownerDeviceId) {
+      if (!intent || intent.paymentId !== paymentId || intent.ownerDeviceId !== ownerDeviceId) {
         throw new HttpError(404, 'payment_not_found');
       }
       if (intent.status === 'prepared') return { changed: false, intent };
       if (!['created', 'pending'].includes(intent.status)) {
-        return { changed: false, intent };
+        throw new HttpError(409, 'payment_not_pending');
       }
       intent.status = 'prepared';
       intent.updatedAt = now;
@@ -151,16 +151,33 @@ async function markPrepared(paymentId, ownerDeviceId, now, dependencies) {
     },
     dependencies
   );
+  if (!prepared || !prepared.intent || prepared.intent.paymentId !== paymentId ||
+      prepared.intent.ownerDeviceId !== ownerDeviceId || prepared.intent.status !== 'prepared') {
+    throw new HttpError(409, 'payment_not_pending');
+  }
   const mutate = (dependencies && dependencies.mutateDevice) || mutateDevice;
   await mutate(ownerDeviceId, (record) => {
-    if (!record || !record.pendingPayment || record.pendingPayment.paymentId !== paymentId) {
-      return { changed: false, record };
+    if (!record || record.deviceId !== ownerDeviceId || !record.pendingPayment ||
+        record.pendingPayment.paymentId !== paymentId ||
+        record.pendingPayment.ownerDeviceId !== ownerDeviceId ||
+        !['created', 'pending', 'prepared'].includes(record.pendingPayment.status)) {
+      throw new HttpError(409, 'payment_not_pending');
     }
+    if (record.pendingPayment.status === 'prepared') return { changed: false, record };
     record.pendingPayment.status = 'prepared';
     record.pendingPayment.updatedAt = now;
     record.updatedAt = now;
     return { changed: true, record };
   }, dependencies && dependencies.deviceStore);
+  // Reconciliation may finish between the intent and device CAS operations.
+  // Never turn a terminal canonical record back into a checkout response.
+  const read = (dependencies && dependencies.readIntent) || readIntent;
+  const latest = await read(paymentId, dependencies && dependencies.intentStore);
+  if (!latest || !latest.intent || latest.intent.paymentId !== paymentId ||
+      latest.intent.ownerDeviceId !== ownerDeviceId || latest.intent.status !== 'prepared') {
+    throw new HttpError(409, 'payment_not_pending');
+  }
+  return latest.intent;
 }
 
 async function abandonPayment(intent, now, reason, dependencies) {
@@ -280,11 +297,14 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
   let ensured;
   try {
     ensured = await ensureIntent(pending, dependencies);
+    if (!ensured.intent || !['created', 'pending', 'prepared'].includes(ensured.intent.status)) {
+      throw new HttpError(409, 'payment_not_pending');
+    }
   } catch (error) {
     logPaymentFailure('ensure_intent', error);
     throw error;
   }
-  const currentIntent = ensured.intent;
+  let currentIntent = ensured.intent;
   if (currentIntent.status !== 'prepared') {
     const preRegister = (dependencies && dependencies.preRegisterPayment) || preRegisterPayment;
     // Client attempts may survive an abandoned intent. Provider keys must instead
@@ -313,13 +333,12 @@ async function createPayment(req, config, idempotencyKey, dependencies) {
       }
       throw error;
     }
-    try {
-      await markPrepared(currentIntent.paymentId, currentIntent.ownerDeviceId, now, dependencies);
-    } catch (error) {
-      logPaymentFailure('mark_prepared', error);
-      throw error;
-    }
-    currentIntent.status = 'prepared';
+  }
+  try {
+    currentIntent = await markPrepared(currentIntent.paymentId, currentIntent.ownerDeviceId, now, dependencies);
+  } catch (error) {
+    logPaymentFailure('mark_prepared', error);
+    throw error;
   }
   return {
     paymentId: currentIntent.paymentId,

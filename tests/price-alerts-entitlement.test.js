@@ -407,6 +407,149 @@ test('cleanup failure preserves the primary provider failure and surviving pendi
   });
 });
 
+test('partial abandonment cannot reopen the surviving pending payment as a checkout', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async () => {
+      const memory = inMemoryPaymentDependencies(baseRecord());
+      const mutateDevice = memory.dependencies.mutateDevice;
+      let preRegisterCalls = 0;
+      memory.dependencies.preRegisterPayment = async () => {
+        preRegisterCalls += 1;
+        throw new PortOneSafeError('portone_pre_register_failed', false, 401);
+      };
+      memory.dependencies.mutateDevice = async () => { throw new Error('synthetic cleanup failure'); };
+      const clientKey = 'strong-idempotency-key-123456';
+      await assert.rejects(
+        createPayment({}, configuredPortOne(), clientKey, memory.dependencies),
+        (error) => error.statusCode === 502
+      );
+      assert.equal(memory.getIntent(PAYMENT_ONE).status, 'abandoned');
+      assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+      memory.dependencies.mutateDevice = mutateDevice;
+      memory.dependencies.newPaymentId = () => PAYMENT_TWO;
+      memory.dependencies.preRegisterPayment = async () => { preRegisterCalls += 1; };
+
+      await assert.rejects(
+        createPayment({}, configuredPortOne(), clientKey, memory.dependencies),
+        (error) => error.statusCode === 409 && error.code === 'payment_not_pending'
+      );
+      assert.equal(preRegisterCalls, 1);
+      assert.equal(memory.getIntent(PAYMENT_ONE).status, 'abandoned');
+      assert.equal(memory.getIntent(PAYMENT_TWO), null);
+      assert.equal(memory.getDevice().pendingPayment.paymentId, PAYMENT_ONE);
+      assert.equal(publicEntitlement(memory.getDevice()).active, false);
+    });
+  });
+});
+
+test('terminal intent races during pre-registration never return checkout or grant access', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async () => {
+      for (const status of ['paid', 'cancelled', 'abandoned', 'review_required']) {
+        const memory = inMemoryPaymentDependencies(baseRecord());
+        memory.dependencies.preRegisterPayment = async () => {
+          const intent = memory.getIntent(PAYMENT_ONE);
+          intent.status = status;
+          memory.setIntent(intent);
+        };
+        await assert.rejects(
+          createPayment({}, configuredPortOne(), 'strong-idempotency-key-123456', memory.dependencies),
+          (error) => error.statusCode === 409 && error.code === 'payment_not_pending'
+        );
+        assert.equal(memory.getIntent(PAYMENT_ONE).status, status);
+        assert.equal(memory.getDevice().pendingPayment.status, 'created');
+        assert.equal(publicEntitlement(memory.getDevice()).active, false);
+      }
+    });
+  });
+});
+
+test('prepared replay rechecks canonical state and does not revive a concurrent cancellation', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async () => {
+      const memory = inMemoryPaymentDependencies(baseRecord());
+      const clientKey = 'strong-idempotency-key-123456';
+      await createPayment({}, configuredPortOne(), clientKey, memory.dependencies);
+      const mutate = memory.dependencies.mutateIntent;
+      let mutations = 0;
+      memory.dependencies.mutateIntent = async (...args) => {
+        const result = await mutate(...args);
+        if (++mutations === 1) {
+          const intent = memory.getIntent(PAYMENT_ONE);
+          intent.status = 'cancelled';
+          memory.setIntent(intent);
+        }
+        return result;
+      };
+      await assert.rejects(
+        createPayment({}, configuredPortOne(), clientKey, memory.dependencies),
+        (error) => error.statusCode === 409 && error.code === 'payment_not_pending'
+      );
+      assert.equal(memory.getIntent(PAYMENT_ONE).status, 'cancelled');
+      assert.equal(memory.preRegisterCalls(), 1);
+      assert.equal(publicEntitlement(memory.getDevice()).active, false);
+    });
+  });
+});
+
+test('prepared checkout fails closed if the device pending payment is cleared or replaced', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async () => {
+      for (const change of ['cleared', 'different_id', 'terminal']) {
+        const memory = inMemoryPaymentDependencies(baseRecord());
+        memory.dependencies.preRegisterPayment = async () => {
+          await memory.dependencies.mutateDevice(DEVICE_ID, (record) => {
+            if (change === 'cleared') record.pendingPayment = null;
+            if (change === 'different_id') record.pendingPayment.paymentId = PAYMENT_TWO;
+            if (change === 'terminal') record.pendingPayment.status = 'cancelled';
+            return { changed: true, record };
+          });
+        };
+        await assert.rejects(
+          createPayment({}, configuredPortOne(), 'strong-idempotency-key-123456', memory.dependencies),
+          (error) => error.statusCode === 409 && error.code === 'payment_not_pending'
+        );
+        const pending = memory.getDevice().pendingPayment;
+        if (change === 'cleared') assert.equal(pending, null);
+        if (change === 'different_id') assert.equal(pending.paymentId, PAYMENT_TWO);
+        if (change === 'terminal') assert.equal(pending.status, 'cancelled');
+        assert.equal(publicEntitlement(memory.getDevice()).active, false);
+      }
+    });
+  });
+});
+
+test('checkout verifies the final canonical payment identity and prepared status after device CAS', async () => {
+  await withEnv(portOneEnv(), async () => {
+    await capturePaymentDiagnostics(async () => {
+      for (const change of ['terminal', 'different_id', 'different_owner']) {
+        const memory = inMemoryPaymentDependencies(baseRecord());
+        const mutateDevice = memory.dependencies.mutateDevice;
+        memory.dependencies.mutateDevice = async (...args) => {
+          const result = await mutateDevice(...args);
+          const intent = memory.getIntent(PAYMENT_ONE);
+          if (change === 'terminal') intent.status = 'cancelled';
+          if (change === 'different_owner') intent.ownerDeviceId = 'OtherDevice1234567890';
+          if (change === 'different_id') {
+            const read = memory.dependencies.readIntent;
+            memory.dependencies.readIntent = async (...readArgs) => {
+              const loaded = await read(...readArgs);
+              loaded.intent.paymentId = PAYMENT_TWO;
+              return loaded;
+            };
+          } else memory.setIntent(intent);
+          return result;
+        };
+        await assert.rejects(
+          createPayment({}, configuredPortOne(), 'strong-idempotency-key-123456', memory.dependencies),
+          (error) => error.statusCode === 409 && error.code === 'payment_not_pending'
+        );
+        assert.equal(publicEntitlement(memory.getDevice()).active, false);
+      }
+    });
+  });
+});
+
 test('unexpected intent and prepared writes log only their fixed phase and never return checkout', async () => {
   await withEnv(portOneEnv(), async () => {
     for (const phase of ['ensure_intent', 'mark_prepared']) {
@@ -532,8 +675,8 @@ test('encrypted canonical payment intent Blob hides ownership and uses ETag CAS'
     await writeIntent(intent, { etag: '' }, {
       async put(pathname, body, options) {
         assert.equal(options.access, 'private');
-        stored = { pathname, body: String(body), options, etag: 'etag-1' };
-        return { pathname, etag: 'etag-1' };
+        stored = { pathname, body: String(body), options, etag: '"etag-1"' };
+        return { pathname, etag: '"etag-1"' };
       }
     });
     assert.equal(stored.body.includes(DEVICE_ID), false);
@@ -544,11 +687,12 @@ test('encrypted canonical payment intent Blob hides ownership and uses ETag CAS'
         assert.equal(pathname, stored.pathname);
         assert.equal(options.access, 'private');
         assert.equal(options.useCache, false);
-        return { stream: Readable.from([stored.body]), blob: { etag: 'etag-1' } };
+        assert.equal(options.headers['Accept-Encoding'], 'identity');
+        return { stream: Readable.from([stored.body]), blob: { etag: '"etag-1"' } };
       }
     });
     assert.equal(loaded.intent.ownerDeviceId, DEVICE_ID);
-    assert.equal(loaded.etag, 'etag-1');
+    assert.equal(loaded.etag, '"etag-1"');
   });
 });
 
