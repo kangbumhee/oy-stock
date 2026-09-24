@@ -1,5 +1,12 @@
 # 배포 설정
 
+## Git 작성자 계정 확인 (2026-09-24)
+
+- 저장소 소유자 및 인증된 GitHub 계정은 `kangbumhee`(ID `205318381`)이다. Vercel `oy-stock` 프로젝트도 이 계정의 GitHub Login Connection을 사용한다.
+- 로컬 전역 이메일이 다른 GitHub 계정으로 귀속되어 `TEAM_ACCESS_REQUIRED`가 발생했다. 사용자 승인으로 이 저장소의 `user.email`만 본인 계정의 GitHub 전용 주소 `205318381+kangbumhee@users.noreply.github.com`으로 정정했다. 다른 저장소의 전역 설정은 변경하지 않는다.
+- 기존 커밋 작성자와 이력을 재작성하지 않는다. 정정 후 새 커밋의 GitHub `author.login`/`committer.login`이 `kangbumhee`인지 확인한 다음 정상 배포를 수행한다. Vercel 팀 권한 변경, Git 메타데이터 제거 또는 작성자 검증 우회는 하지 않는다.
+- 빌드 `READY`와 운영 별칭을 확인하기 전에는 배포 완료로 보고하지 않는다.
+
 ## 2026-09-24 다른 기기 카카오페이 진입 복구
 
 - 공식 결제 origin은 `https://olivestock.co.kr`로 유지한다. 알려진 별칭 `oy-stock.vercel.app`, `www.olivestock.co.kr`의 페이지 GET/HEAD는 307로 공식 주소에 연결한다. API, JS/CSS/data, 서비스워커 요청 및 POST/웹훅은 리디렉션하지 않는다. 임의 preview origin을 결제 allowlist에 추가하지 않는다.
