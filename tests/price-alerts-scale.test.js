@@ -330,7 +330,7 @@ test('pending payment keeps its reserved active slot, expiry releases it, and PA
     applyPaymentGrant(
       paid,
       'oypa_1234567890abcdefghijklmnop',
-      '2026-08-26T00:00:00.000Z'
+      new Date(Date.now() - 86400000).toISOString()
     );
     await reserveActiveDevice(paid, blob);
     await syncDeviceIndexes(paid, blob);

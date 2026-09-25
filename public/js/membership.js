@@ -2,7 +2,7 @@ var Membership = {
   account: null,
   state: null,
   busy: false,
-  visitShown: false,
+  dailyNoticeDay: '',
 
   init: function () {
     this.mount();
@@ -224,12 +224,53 @@ var Membership = {
   onEntitlement: function () {
     this.render();
     this.trackVisit();
-    if (this.visitShown || !PriceAlerts._hasActiveEntitlement()) return;
-    this.visitShown = true;
-    if (PriceAlerts.modalState || /priceAlertPayment=/.test(window.location.search)) return;
-    var days = Math.max(0, Math.ceil((Date.parse(PriceAlerts.entitlement.expiresAt) - Date.now()) / 86400000));
-    PriceAlerts.openMembership();
+    if (this._dailyNoticeTask) return this._dailyNoticeTask;
+    var show = function () { return Membership._showDailyNotice(); };
+    // Serialize simultaneous tabs when supported; this lock contains no credentials.
+    if (window.navigator && window.navigator.locks) {
+      var task = window.navigator.locks.request(Storage._key('membership_notice_day_v1'), show)
+        .catch(function () { return show(); });
+      this._dailyNoticeTask = task;
+      return task.finally(function () {
+        if (Membership._dailyNoticeTask === task) Membership._dailyNoticeTask = null;
+      });
+    }
+    return show();
+  },
+
+  _showDailyNotice: function () {
+    if (!PriceAlerts._hasActiveEntitlement() || PriceAlerts.modalState ||
+        /priceAlertPayment=/.test(window.location.search) || document.visibilityState === 'hidden') return false;
+    var now = Date.now();
+    // One automatic notice per Korean calendar day, including lifetime passes.
+    var day = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (this.dailyNoticeDay === day) return false;
+    var key = Storage._key('membership_notice_day_v1');
+    var alreadyShown = false;
+    try { alreadyShown = localStorage.getItem(key) === day; } catch (_) {}
+    try { alreadyShown = alreadyShown || sessionStorage.getItem(key) === day; } catch (_) {}
+    if (alreadyShown) {
+      this.dailyNoticeDay = day;
+      return false;
+    }
+    var previousDay = this.dailyNoticeDay;
+    this.dailyNoticeDay = day;
+    try {
+      PriceAlerts.openMembership();
+      if (!PriceAlerts.modalState || !PriceAlerts.modalState.membershipOnly) {
+        this.dailyNoticeDay = previousDay;
+        return false;
+      }
+    } catch (_) {
+      this.dailyNoticeDay = previousDay;
+      return false;
+    }
+    // Persist only after opening; unrelated dialogs/payment returns do not use the day.
+    try { localStorage.setItem(key, day); } catch (_) {}
+    try { sessionStorage.setItem(key, day); } catch (_) {}
+    var days = Math.max(0, Math.ceil((Date.parse(PriceAlerts.entitlement.expiresAt) - now) / 86400000));
     var title = document.getElementById('price-alert-title');
-    title.textContent = PriceAlerts.entitlement.lifetime ? '평생 이용권 사용 중입니다' : '유료 이용기간 ' + days + '일 남았어요';
+    if (title) title.textContent = PriceAlerts.entitlement.lifetime ? '평생 이용권 사용 중입니다' : '유료 이용기간 ' + days + '일 남았어요';
+    return true;
   }
 };

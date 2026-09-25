@@ -587,12 +587,15 @@ def main():
             assert page.locator("#price-alert-modal").is_hidden()
             assert len(state["visit_ids"]) == previous_visits
             page.reload(wait_until="networkidle")
+            page.wait_for_function("PriceAlerts.entitlementLoading === false")
+            assert page.locator("#price-alert-modal").is_hidden(), "automatic membership notice is once per Korean day"
+            page.locator("#price-alert-membership-entry").click()
             page.locator("#price-alert-membership-summary").wait_for(state="visible")
             assert len(set(state["visit_ids"])) == 1, "reload must retain the same visit id for backend deduplication"
             assert state["create_count"] == 0
             assert page.evaluate("window.__sdkCalls") == 0
             context.close()
-        print("e2e: active visits show remaining days or lifetime and deduplicate focus/reload visits", flush=True)
+        print("e2e: active visits show daily notice once, preserve manual access and deduplicate focus/reload visits", flush=True)
 
         reset_state()
         context, page = new_page(browser)
