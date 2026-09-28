@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-27T06:29:44.891Z",
+  "updatedAt": "2026-09-28T06:37:40.536Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,45 +17,45 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 40,
-      "to": 39,
-      "fromQty": 150,
-      "toQty": 132,
-      "date": "2026-09-27T06:29:44.891Z"
+      "from": 39,
+      "to": 40,
+      "fromQty": 132,
+      "toQty": 141,
+      "date": "2026-09-28T06:37:40.536Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 367,
-      "to": 338,
-      "date": "2026-09-27T06:29:44.891Z"
+      "from": 338,
+      "to": 280,
+      "date": "2026-09-28T06:37:40.536Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 47,
-      "to": 44,
-      "fromQty": 187,
-      "toQty": 177,
-      "date": "2026-09-27T06:29:44.891Z"
+      "from": 44,
+      "to": 43,
+      "fromQty": 177,
+      "toQty": 165,
+      "date": "2026-09-28T06:37:40.536Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 283,
-      "to": 248,
-      "date": "2026-09-27T06:29:44.891Z"
+      "from": 248,
+      "to": 223,
+      "date": "2026-09-28T06:37:40.536Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 4426,
-      "to": 4207,
-      "date": "2026-09-27T06:29:44.891Z"
+      "from": 4207,
+      "to": 4037,
+      "date": "2026-09-28T06:37:40.536Z"
     }
   ],
   "products": {
@@ -75,9 +75,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 44,
-          "totalQty": 177,
-          "onlineQty": 248,
+          "inStock": 43,
+          "totalQty": 165,
+          "onlineQty": 223,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -106,7 +106,7 @@
               "name": "김포장기점",
               "code": "D300",
               "dist": 1.4,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -186,8 +186,8 @@
               "name": "김포풍무점",
               "code": "DB7C",
               "dist": 5.2,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 풍무로 107 장호프라자 101호, 104호"
@@ -276,8 +276,8 @@
               "name": "라페스타사거리점",
               "code": "B126",
               "dist": 7.96,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
@@ -286,8 +286,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -316,8 +316,8 @@
               "name": "마두역점",
               "code": "DB4E",
               "dist": 8.52,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
@@ -385,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-27T06:29:44.891Z"
+      "updatedAt": "2026-09-28T06:37:40.536Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -403,9 +403,9 @@
           "productId": "8809714721858",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
-          "inStock": 36,
-          "totalQty": 123,
-          "onlineQty": 338,
+          "inStock": 37,
+          "totalQty": 132,
+          "onlineQty": 280,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -424,8 +424,8 @@
               "name": "김포한강로점",
               "code": "DEC6",
               "dist": 1.23,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강1로78번길 6-2"
@@ -534,8 +534,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 검단구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -614,8 +614,8 @@
               "name": "라페스타점",
               "code": "D057",
               "dist": 7.98,
-              "qty": 0,
-              "o2o": 0,
+              "qty": 14,
+              "o2o": 11,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로1275번길 38-31 라페스타 A동 102호"
@@ -1027,7 +1027,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-27T06:29:44.891Z"
+      "updatedAt": "2026-09-28T06:37:40.536Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1355,7 +1355,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-27T06:29:44.891Z"
+      "updatedAt": "2026-09-28T06:37:40.536Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1368,7 +1368,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-27T06:29:44.891Z"
+      "updatedAt": "2026-09-28T06:37:40.536Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1381,7 +1381,7 @@
       "status": "soldout",
       "statusLabel": "🔴 주변품절",
       "options": [],
-      "updatedAt": "2026-09-27T06:29:44.891Z"
+      "updatedAt": "2026-09-28T06:37:40.536Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1401,10 +1401,10 @@
           "totalStores": 50,
           "inStock": 1,
           "totalQty": 3,
-          "onlineQty": 2381,
+          "onlineQty": 2237,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -1715,10 +1715,10 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 911,
+          "onlineQty": 916,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -2029,10 +2029,10 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 606,
+          "onlineQty": 594,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -2343,10 +2343,10 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 309,
+          "onlineQty": 290,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -2651,7 +2651,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-09-27T06:29:44.891Z"
+      "updatedAt": "2026-09-28T06:37:40.536Z"
     }
   }
 }
