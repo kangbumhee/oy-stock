@@ -85,7 +85,7 @@ def screenshot(page, width, label):
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True)
     for width in [390, 1440]:
-        state = {'online': [], 'nearby': [], 'national': [], 'held': [], 'external': []}
+        state = {'online': [], 'nearby': [], 'national': [], 'held': [], 'external': [], 'paid': False}
         errors = []
         context = browser.new_context(viewport={'width': width, 'height': 960}, service_workers='block')
         page = context.new_page()
@@ -111,13 +111,18 @@ with sync_playwright() as playwright:
                 state['nearby'].append(query)
                 state['held'].append((route, goods_no, 'nearby'))
                 return
-            if path == '/api/stock-all':
+            if path == '/api/oliveyoung/hidden-stock' and query.get('action') == ['all-stores']:
                 goods_no = query['goodsNo'][0]
+                assert state['paid'], 'Nationwide request requires the paid test fixture'
+                assert goods_no in FIXTURES, query
+                assert route.request.headers.get('x-price-alert-device-id'), 'Missing device authentication'
+                assert route.request.headers.get('x-price-alert-device-secret'), 'Missing device authentication'
                 state['national'].append(query)
                 state['held'].append((route, goods_no, 'national'))
                 return
             if path.startswith('/api/'):
-                return route.fulfill(json={'success': True, 'enabled': True, 'entitlement': {'active': False},
+                return route.fulfill(json={'success': True, 'enabled': True,
+                    'entitlement': {'active': state['paid'], 'lifetime': state['paid']},
                     'alerts': [], 'products': [], 'options': [], 'data': {}, 'summary': {}})
             return route.continue_()
 
@@ -206,6 +211,12 @@ with sync_playwright() as playwright:
         expect(popup.locator('.opt-panel.active .store-name').first).to_have_text('모의 인살몬 재고점')
         assert not state['national']
 
+        # Use a synthetic paid account only for the explicit nationwide lifecycle checks.
+        state['paid'] = True
+        page.evaluate('''() => {
+            PriceAlerts.entitlement = {active: true, lifetime: true};
+            HiddenStock.onEntitlementChange();
+        }''')
         # Nationwide is user initiated and tied to the current SKU. Failure is never empty stock.
         start = len(state['held'])
         all_button = popup.locator('.opt-panel.active [data-action="loadAllStockOpt"]')

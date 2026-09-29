@@ -72,7 +72,8 @@ var HiddenStock = {
       return false;
     }
     if (!this._hasAccess()) {
-      if (this._premiumRequests.length || (this.panelState && this.panelState.mode === 'stores')) this.clearPremium();
+      if (this._premiumRequests.length || (this.panelState && this.panelState.mode === 'stores') ||
+          (window.UI && UI._allStockVisible)) this.clearPremium();
       return false;
     }
     return true;
@@ -85,6 +86,7 @@ var HiddenStock = {
 
   clearPremium: function () {
     this._generation++;
+    if (window.UI && UI.clearAllStock) UI.clearAllStock();
     this._premiumRequests.splice(0).forEach(function (controller) { controller.abort(); });
     var state = this.panelState;
     if (state && state.mode === 'stores') {
@@ -147,7 +149,7 @@ var HiddenStock = {
   },
 
   _request: async function (params) {
-    var premium = params.action === 'stores';
+    var premium = params.action === 'stores' || params.action === 'all-stores';
     if (premium && !this._guard()) { var denied = new Error('access_required'); denied.status = 402; throw denied; }
     var generation = this._generation, identity = this._identity;
     var query = new URLSearchParams();

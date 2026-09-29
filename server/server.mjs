@@ -8,7 +8,7 @@ import {
   searchOfficialProducts
 } from './official-search.mjs';
 import { createHiddenOfficialTransport } from './hidden-official-transport.mjs';
-import { createHiddenStockService } from './hidden-stock-service.mjs';
+import { authorizedHiddenService, createHiddenStockService } from './hidden-stock-service.mjs';
 import {
   createStockRequestRunner,
   isCompleteStockResult,
@@ -2355,7 +2355,54 @@ async function getStockAllRegionsBody(goodsNo, targetProductId) {
   return JSON.parse(JSON.stringify(response));
 }
 
-/** CORS — 모든 응답에 동일 헤더 (Vercel 등 크로스 오리진 + 프리플라이트) */
+function createNationalStockHandler(dependencies = {}) {
+  const ready = dependencies.ensureSession || ensureSession;
+  const lookup = dependencies.getStockAllRegions || getStockAllRegions;
+  const secret = dependencies.secret || (() => process.env.HIDDEN_STOCK_SERVICE_SECRET);
+  return async function nationalStockHandler(req, res, url) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.removeHeader('Access-Control-Allow-Origin');
+    res.removeHeader('Access-Control-Allow-Credentials');
+    const fail = (status, error) => {
+      res.statusCode = status;
+      res.end(JSON.stringify({ success: false, error }));
+    };
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET');
+      return fail(405, 'method_not_allowed');
+    }
+    if (!authorizedHiddenService(req, secret())) return fail(401, 'unauthorized');
+    const seen = new Set();
+    for (const [key] of url.searchParams) {
+      if (!['goodsNo', 'productId'].includes(key) || seen.has(key)) return fail(400, 'invalid_query');
+      seen.add(key);
+    }
+    const goodsNo = String(url.searchParams.get('goodsNo') || '').trim().toUpperCase();
+    const productId = String(url.searchParams.get('productId') || '').trim();
+    if (!/^[AB]\d{6,20}$/.test(goodsNo)) return fail(400, 'invalid_goods_no');
+    if (!/^\d{6,20}$/.test(productId)) return fail(400, 'invalid_product_id');
+    try {
+      await withTimeout(ready(), STOCK_SESSION_READY_TIMEOUT_MS, 'stock session ready');
+      const result = await withTimeout(lookup(goodsNo, productId), STOCK_DETAIL_TOTAL_TIMEOUT_MS, 'national stock lookup');
+      if (result.retryAfterSeconds) res.setHeader('Retry-After', String(result.retryAfterSeconds));
+      res.writeHead(stockLookupHttpStatus(result));
+      res.end(JSON.stringify(result));
+    } catch (_) {
+      // Transport/session failures may contain provider URLs or credentials.
+      res.setHeader('Retry-After', '5');
+      return fail(503, 'stock_unavailable');
+    }
+  };
+}
+
+const nationalStockHandler = createNationalStockHandler();
+
+/** CORS — 공개 응답에 동일 헤더 (Vercel 등 크로스 오리진 + 프리플라이트) */
 function applyCors(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -2431,6 +2478,10 @@ const server = http.createServer(async (req, res) => {
       }
       if (!res.writableEnded) res.end(JSON.stringify({ success: false, error: 'hidden_stock_unavailable' }));
     }
+    return;
+  }
+  if (url.pathname === '/api/stock-all') {
+    await nationalStockHandler(req, res, url);
     return;
   }
   if (applyCors(req, res)) return;
@@ -2745,34 +2796,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (url.pathname === '/api/stock-all') {
-    const goodsNo = url.searchParams.get('goodsNo');
-    const productId = url.searchParams.get('productId');
-    if (!goodsNo) {
-      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: 'goodsNo 필요' }));
-      return;
-    }
-
-    try {
-      await withTimeout(ensureSession(), STOCK_SESSION_READY_TIMEOUT_MS, 'stock session ready');
-      const result = await withTimeout(getStockAllRegions(goodsNo, productId || null), STOCK_DETAIL_TOTAL_TIMEOUT_MS, 'national stock lookup');
-      res.writeHead(stockLookupHttpStatus(result), {
-        'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store, max-age=0',
-        ...(result.retryAfterSeconds ? { 'Retry-After': String(result.retryAfterSeconds) } : {})
-      });
-      res.end(JSON.stringify(result));
-    } catch (e) {
-      console.error('전국재고 에러:', e.message);
-      res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store, max-age=0', 'Retry-After': '5' });
-      res.end(JSON.stringify({ success: false, error: e.message || String(e), goodsNo,
-        storeLookupStatus: 'unavailable', storeLookupError: 'stock_unavailable', retryAfterSeconds: 5, retryAfterMs: 5000 }));
-    }
-    return;
-  }
-
   res.writeHead(404);
   res.end('Not Found');
 });
@@ -2794,6 +2817,7 @@ if (String(process.env.OY_SERVER_DISABLE_START || '') !== '1') {
 
 export {
   calculatePriceStartAt,
+  createNationalStockHandler,
   priceFromOfficialDetail,
   publicFieldsFromStockOption,
   server,

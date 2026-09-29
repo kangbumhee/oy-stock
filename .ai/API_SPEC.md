@@ -8,11 +8,12 @@
 
 ## 엔드포인트 목록
 
-### [GET] Cloud Run `/api/stock`, `/api/stock-all` (2026-09-13 조회 복구)
+### [GET] Cloud Run `/api/stock`, `/api/stock-all` (2026-09-29 전국 조회 이용권 적용)
 
-- 일반 상품 근처 조회는 `/api/stock?goodsNo=...&lat=...&lng=...&withOnline=true`, 온라인 우선 응답은 `onlineOnly=true`, 선택 SKU 전국 조회는 `/api/stock-all?goodsNo=...&productId=...`다. 기존 공개 범위와 숨김 옵션 유료 서버 권한은 바꾸지 않는다.
+- 일반 상품 근처 조회는 공개 `/api/stock?goodsNo=...&lat=...&lng=...&withOnline=true`, 온라인 우선 응답은 `onlineOnly=true`다. 기존 팝업의 `이 옵션 전국 재고 보기`는 유효한 이용권 전용이며 브라우저는 아래 Vercel gateway의 `action=all-stores`를 사용한다.
+- 선택 SKU 전국 조회 `/api/stock-all?goodsNo=...&productId=...`는 이제 `Authorization: Bearer <HIDDEN_STOCK_SERVICE_SECRET>` 서버 간 인증 전용이다. 두 식별자는 필수 단일 값이며 알 수 없는 필드·중복 필드·잘못된 형식은400, GET 외 메서드는405, 서비스 키 미설정·불일치는401이다. 인증·입력 검사 전에 조회나 캐시 반환을 하지 않는다. 공개 CORS 처리 전에 분기하여 성공·실패 모두 wildcard CORS 없이 `private, no-store`와 CDN 캐시 금지를 적용한다. 일반 근처 `/api/stock`와 온라인 조회는 계속 무료다.
 - 응답과 `options[]`의 `storeLookupStatus`는 `ok`/`partial`/`unavailable`, 온라인 전용 옵션은 `skipped`다. `partial`은 확인된 옵션/지역만 표시하고 나머지는 미확인이다. 온라인 수량0이나 매장 요청 실패를 오프라인 품절로 해석하지 않는다.
-- 완전/부분 성공 HTTP200, 전체 매장 요청 제한 HTTP429, 전체 조회 불가/시간 초과 HTTP503. 오류에 `storeLookupError`, `retryAfterSeconds`, `retryAfterMs`를 포함하고 HTTP `Retry-After` 및 `Cache-Control: no-store`를 보낸다. 일부 옵션 정보가 있는 전체 실패도 오류 상태를 우선한다. 확인된 빈 매장 목록만 재고 없음으로 해석한다.
+- 완전/부분 성공 HTTP200, 전체 매장 요청 제한 HTTP429, 전체 조회 불가/시간 초과 HTTP503. 일반 조회 오류에 `storeLookupError`, `retryAfterSeconds`, `retryAfterMs`를 포함하고 HTTP `Retry-After` 및 `Cache-Control: no-store`를 보낸다. 전국 조회의 예외는 민감한 원문 대신 `{success:false,error:"stock_unavailable"}`와 HTTP503/`Retry-After: 5`를 반환한다. 일부 옵션 정보가 있는 전체 실패도 오류 상태를 우선한다. 확인된 빈 매장 목록만 재고 없음으로 해석한다.
 - 전국 옵션에는 `completedRegions`/`totalRegions`가 포함된다. 기존 일반 전국 조회는10개 기준 지역의 검색 결과 합집합이며 전체 실물 매장·모든 페이지 수집 보장이 아니다. 부분 조회는 완료 캐시에 저장하지 않는다.
 - 일반 근처·전국 및 권한 검사 후 숨김 재고 조회는 인스턴스별 공통 직렬 요청 큐(시작 간격1초)를 사용한다. 동일 SKU/좌표/페이지 요청을 합치고 검증된 정상 응답만3분 재사용한다. 429는 서버의 대기 시간(없으면60초)을 존중하고 나머지 작업을 중단한다. 네트워크 실패·빈 응답을 이유로 로그인 세션을 재생성하지 않는다.
 - 온라인에 노출되지만 품절된 일반 옵션도 기존 유료 `/api/oliveyoung/hidden-stock?action=stores`에서 동일 goodsNo/productId로 근처·전국 페이지 조회가 가능하다. 온라인 수량0/soldOut는 매장 API 접근 차단 조건이 아니다. UI는 무료 사용자에게 기존 이용권 안내, 유료 사용자에게 근처 우선 팝업과 전국 확장 버튼을 제공한다. 온라인 미노출 옵션 검색 결과에 억지로 편입하거나 다른 SKU로 대체하지 않는다.
@@ -61,10 +62,11 @@
   - `goodsNo`: 상품 번호
 - Response: 상품 재고 요약. Cloud Run 실시간 응답의 각 `options[]`에는 기존 `name`, `productId`, 재고 필드와 함께 원본에 존재하는 경우 `optionNumber`(`itemNumber`), `priceToPay`, `originalPrice`, Boolean `soldOut`를 포함한다. 누락되거나 잘못된 선택 필드는 추정해 채우지 않는다.
 
-### [GET] `/api/oliveyoung/hidden-stock` (옵션 미리보기 무료·매장 재고 유료, 2026-09-13 갱신)
+### [GET] `/api/oliveyoung/hidden-stock` (옵션 미리보기 무료·매장 재고 유료, 2026-09-29 갱신)
 
 - 인증: `search`/`options`의 사진·상품명·옵션명 미리보기는 기기 등록·로그인·결제 없이 허용한다. `stores`는 기존 `X-Price-Alert-Device-Id` / `X-Price-Alert-Device-Secret`와 유효한 30일권 또는 평생 이용권이 필요하다. 근처/전국/후속 cursor 매 요청 서버가 최신 권한을 확인한 뒤에만 재고를 조회하며 브라우저 불리언이나 공개된 SKU는 권한 근거가 아니다. 최신 UI는 사진·상품명·옵션명·참고가격 카드로 표시하고 무료 사용자가 사진/상품명을 누르면 `유료 이용자만 사용 가능합니다` 이용권 결제 팝업을 표시한다. API 공개 필드는 그대로이며 참고가격은 이미 받은 일반 검색/공개 상세의 동일 상품·SKU 정보만 재사용한다. 확정 매장가격이 아니고 정보가 없으면 확인 필요로 표시한다.
 - Query: `action=search&keyword=...` 또는 `action=options&goodsNo=...`, `action=stores&goodsNo=...&productId=...`. `search`/`stores`의 다음 범위는 응답의 `nextCursor`를 요청 `cursor`로 그대로 전달한다. 최초 요청에 빈 cursor를 넣지 않으며 `options`에는 cursor를 넣지 않는다.
+- `action=all-stores&goodsNo=...&productId=...`: 기존 일반 상품 팝업의 선택 옵션 전국 조회다. 이 세 필드만 허용하며 cursor/scope/좌표·중복 필드는 거부한다. `stores`와 동일한 기기 인증 및 유효한30일/평생 이용권을 확인하고, 고정 Cloud Run `/api/stock-all`로 goodsNo/productId와 서버 서비스 키만 전달한다. 응답은 기존 `{success,goodsNo,options,storeLookupStatus,...}` 형식을 유지한다. 반환 전 기기·이용권을 다시 읽어 조회 도중 만료·회수된 권한의 재고 응답을 폐기한다. 무료/미등록 사용자는401/402이며 업스트림을 조회하지 않는다. 서버 캐시 결과에도 같은 권한 검사를 적용하고 기존 `search`/`options` 무료 미리보기 및 `stores` 페이지 조회 계약은 유지한다.
 - `search`/`options`: `{success:true,options:[{goodsNo,optionNumber,productId,name,goodsName,image,hidden:true,stale,discoveredAt,onlineStatus}],nextCursor,coverage:{complete}}`. 공개 목록에서 빠졌으나 공식 공개 자료로 SKU 연결이 확인된 옵션만 반환한다. 무료/유료 사용자 모두 같은 표시용 응답을 받는다. Vercel gateway는 이 필드만 명시적으로 새 객체에 복사하며, 상위/옵션/coverage의 추가 필드·중첩 매장/수량·evidence·수집 내부 메타데이터를 그대로 전달하지 않는다. 식별자는 형식 검사, 표시 필드는 문자열만, `onlineStatus`는 `not_listed`/`not_checked`만 허용한다. `image`는 사용자정보·별도 포트 없는 공식 `https://*.oliveyoung.co.kr` 옵션 또는 상품 이미지이며 확인하지 못하면 빈 문자열이다. `coverage.complete`는 이번 옵션 탐색 범위의 완료 여부이며 전체 오프라인 재고 보장이 아니다.
 - `stores`: `{success:true,scope,option,stores:[{code,name,qty,region,addr,dist}],nextCursor,coverage}`. 확인된 일반 옵션도 같은 유료 매장 조회를 사용한다. `qty:null`은 수량 미확인이고 `0`과 다르다. `dist`는 기존 재고 조회와 동일한 공식 `distance`의 km 숫자이며 유효하지 않거나 누락되면 `null`이다. 서버 응답 묶음은 거리 오름차순, 미확인 거리 마지막이다. 클라이언트는 여러 묶음을 합칠 때 중복 제거 후 근처 조회는 거리 오름차순, 전국 조회는 재고 수량 내림차순(동률은 거리 오름차순)으로 표시한다. 수량 미확인 `null`은 0개보다 뒤에 표시한다. 확인되지 않은 매장 좌표는 만들어서 반환하지 않는다.
   - `scope=nearby&lat=37.6152&lng=126.7156`: 좌표 두 개가 필수이며 위도 ±90, 경도 ±180 범위의 유한한 수만 허용한다. 공식 `stock-stores`에 검색어 공백과 요청 좌표를 전달하여 근처 재고부터 조회한다. 요청당 최대3페이지, 이후는 `nextCursor`로 이어가며 확인된 빈 페이지 전에는 완료로 표시하지 않는다.
@@ -73,7 +75,7 @@
 - `coverage`는 현재 조사 범위·진행률을 나타낸다. 일부 범위 또는 빈 결과를 전체 옵션 없음/전국 품절로 해석하지 않는다. 과거 리뷰의 옵션 존재는 현재 온라인 구매 가능을 뜻하지 않는다.
 - 보안: 무료 미리보기와 유료 매장 조회 모두 same-origin, 기존 IP 대역·호스트 기반 HMAC 요청률 제한, `private, no-store`, CDN 캐시 금지, wildcard CORS 없음을 유지한다. 미리보기는 기기 레코드를 생성하거나 읽지 않는다. `stores`는 인증 실패/이용권 만료 시 upstream 호출 전에 거부한다. query 필드 허용목록과 중복 action 거부로 공개 action에 재고 요청을 섞을 수 없으며, 응답 크기·cursor 길이·서비스 Secret 반사 검사도 무료 응답에 동일 적용한다. 서비스 인증값은 Vercel→Cloud Run에서만 붙이며 내부 서비스의 Bearer 인증은 변경하지 않는다.
 - 오류: 잘못된 입력 `400`, 기기 인증 `401`, 이용권 없음 `402`, 교차 출처 `403`, 제한 `429`, 저장소/서비스 설정·조회 실패 `502`/`503`/`504`. 응답 오류를 재고0으로 변환하지 않는다.
-- 내부 Cloud Run `/api/hidden-stock`: 동일 GET action은 `Authorization: Bearer <HIDDEN_STOCK_SERVICE_SECRET>` 전용. 아래 운영자 action도 같은 인증이 필요하며 브라우저 gateway에서는 허용하지 않는다. 임의 SKU 열거·리뷰 작성자 정보 수집 없이 공식 확인 SKU만 인덱싱한다.
+- 내부 Cloud Run `/api/hidden-stock`: 기존 `search`/`options`/`stores` GET action은 `Authorization: Bearer <HIDDEN_STOCK_SERVICE_SECRET>` 전용. `all-stores`는 gateway에서 별도 `/api/stock-all` 경로로 변환되며 이 내부 hidden-stock action에 추가되지 않는다. 아래 운영자 action도 같은 인증이 필요하며 브라우저 gateway에서는 허용하지 않는다. 임의 SKU 열거·리뷰 작성자 정보 수집 없이 공식 확인 SKU만 인덱싱한다.
   - `GET ?action=status`: 저장된 수집 진행상태만 읽는다. 수집을 시작하지 않는다. `{success:true,collection,scan,coverage}`이며 `collection`은 `phase`, `knownProducts`, `queueRemaining`, `dueProducts`, `checkedProducts`, `failedProducts`, `partialProducts`, `hiddenOptions`, `processed`, `failed`, `pausedUntil`, `pauseReason`, `capacityReached`, `lastRunAt`, `nextRunAt`, `catalog`의 집계다. 비공개 `known`/`queued` 원문은 반환하지 않는다.
   - `POST ?action=collect`: 재개 가능한 정기 수집을 한정된 단위만 진행한다. 요청당 최대5단위/30초, 숨김 검색·전체 매장 조회 우선, 저장된150초 CAS lease로 중복 실행을 막는다. `{success:true,collection,progress,idle,retryAfterSeconds?}`의 `progress`는 이번 요청의 `phase`, `processed`, `discovered`, `failed`, `workUnits`, `queueRemaining`, `nextRunAt`이다. 집계 누계와 이번 요청 숫자를 혼동하지 않으며 실패/대기는 완료가 아니다.
   - `POST ?action=scan`: 기존 수동 백필 전용. 보통은 재개·갱신 큐를 관리하는 `collect`를 사용한다.

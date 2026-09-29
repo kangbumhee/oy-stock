@@ -6,6 +6,8 @@ var UI = {
   _allStockInflight: {},
   _allStockFailures: {},
   _allStockCacheAt: {},
+  _allStockGeneration: 0,
+  _allStockVisible: false,
   _stockPopupSession: 0,
   _stockSelectionVersion: 0,
   _stockPopupDetail: null,
@@ -1918,84 +1920,103 @@ var UI = {
     if (action === 'loadAllStockOpt') {
       e.preventDefault();
       e.stopPropagation();
-      var gno = el.dataset.goodsno;
-      var pid = el.dataset.productid;
-      if (!gno || !pid || el.classList.contains('loading')) return;
-      if (!CONFIG.REALTIME_API) return;
-      var session = UI._stockPopupSession;
-      var selectionVersion = UI._stockSelectionVersion;
-      var selected = UI._selectedStockOption;
-      var stillSelected = function () {
-        return el.isConnected && session === UI._stockPopupSession && selectionVersion === UI._stockSelectionVersion &&
-          UI._sameStockOption(selected, UI._selectedStockOption);
-      };
-      el.classList.add('loading');
-      el.textContent = '🗺️ 전국 조회 중...';
-
-      UI.fetchAllStock(gno, pid)
-        .then(function (d) {
-          if (!stillSelected()) return;
-          if (UI._hasAllStockResult(d)) {
-            UI.showAllStockPanel(d);
-            el.textContent = d.storeLookupStatus === 'partial' ? '⚠️ 전국 재고 일부 확인 · 다시 조회' : '🗺️ 전국 재고 (조회완료)';
-            el.classList.remove('loading');
-          } else {
-            el.textContent = '⚠️ 전국 재고 미확인 · 잠시 후 다시 눌러 주세요';
-            el.classList.remove('loading');
-          }
-        })
-        .catch(function () {
-          if (!stillSelected()) return;
-          el.textContent = '⚠️ 전국 재고 미확인 · 잠시 후 다시 눌러 주세요';
-          el.classList.remove('loading');
-        });
+      UI._loadAllStockOption(el);
     }
   },
 
-  fetchAllStock: function (goodsNo, productId, timeoutMs) {
+  _hasAllStockAccess: function () {
+    return !!(window.HiddenStock && HiddenStock._guard());
+  },
+
+  clearAllStock: function () {
+    UI._allStockGeneration++;
+    UI._allStockVisible = false;
+    UI._allStockCache = {};
+    UI._allStockCacheAt = {};
+    UI._allStockInflight = {};
+    UI._allStockFailures = {};
+    var panel = document.getElementById('all-stock-panel');
+    if (panel) panel.remove();
+    document.querySelectorAll('[data-action="loadAllStockOpt"]').forEach(function (button) {
+      button.classList.remove('loading');
+      button.textContent = '🗺️ 이 옵션 전국 재고 보기 · 유료';
+    });
+  },
+
+  _loadAllStockOption: function (el) {
+    var gno = el.dataset.goodsno;
+    var pid = el.dataset.productid;
+    if (!gno || !pid || el.classList.contains('loading')) return;
+    if (!CONFIG.REALTIME_API) return;
+    var session = UI._stockPopupSession;
+    var selectionVersion = UI._stockSelectionVersion;
+    var selected = UI._selectedStockOption;
+    var stillSelected = function () {
+      return el.isConnected && session === UI._stockPopupSession && selectionVersion === UI._stockSelectionVersion &&
+        UI._sameStockOption(selected, UI._selectedStockOption);
+    };
+    var requestAccess = function () {
+      if (window.PriceAlerts && PriceAlerts.openAccess) {
+        PriceAlerts.openAccess(function () { if (stillSelected()) UI._loadAllStockOption(el); });
+      }
+    };
+    if (!UI._hasAllStockAccess()) { requestAccess(); return; }
+    el.classList.add('loading');
+    el.textContent = '🗺️ 전국 조회 중...';
+
+    UI.fetchAllStock(gno, pid)
+      .then(function (d) {
+        if (!stillSelected() || !UI._hasAllStockAccess()) return;
+        if (UI._hasAllStockResult(d)) {
+          UI.showAllStockPanel(d);
+          el.textContent = d.storeLookupStatus === 'partial' ? '⚠️ 전국 재고 일부 확인 · 다시 조회' : '🗺️ 전국 재고 (조회완료)';
+          el.classList.remove('loading');
+        } else {
+          el.textContent = '⚠️ 전국 재고 미확인 · 잠시 후 다시 눌러 주세요';
+          el.classList.remove('loading');
+        }
+      })
+      .catch(function (error) {
+        if (!stillSelected()) return;
+        if (error.discarded) return;
+        if ([401, 402, 403].indexOf(error.status) !== -1) {
+          el.classList.remove('loading');
+          el.textContent = '🗺️ 이 옵션 전국 재고 보기 · 유료';
+          requestAccess();
+          return;
+        }
+        el.textContent = '⚠️ 전국 재고 미확인 · 잠시 후 다시 눌러 주세요';
+        el.classList.remove('loading');
+      });
+  },
+
+  fetchAllStock: function (goodsNo, productId) {
     var gno = String(goodsNo || '').trim();
     var pid = String(productId || '').trim();
     var key = gno + '|' + pid;
     if (!gno || !pid || !CONFIG.REALTIME_API) {
       return Promise.resolve({ success: false, error: 'invalid_request' });
     }
-    if (UI._allStockCache[key] && Date.now() - UI._allStockCacheAt[key] < 60000) return Promise.resolve(UI._allStockCache[key]);
+    if (!UI._hasAllStockAccess()) {
+      var denied = new Error('entitlement_required'); denied.status = 402;
+      return Promise.reject(denied);
+    }
     if (UI._allStockInflight[key]) return UI._allStockInflight[key];
     if (UI._allStockFailures[key] > Date.now()) return Promise.reject(new Error('매장 요청 제한 · 잠시 후 다시 조회해 주세요.'));
 
-    var allUrl =
-      CONFIG.REALTIME_API.replace('/api/stock', '/api/stock-all') +
-      '?goodsNo=' +
-      encodeURIComponent(gno) +
-      '&productId=' +
-      encodeURIComponent(pid);
-    var controller = new AbortController();
-    var tid = setTimeout(function () {
-      controller.abort();
-    }, timeoutMs || 45000);
-
-    UI._allStockInflight[key] = fetch(allUrl, { signal: controller.signal })
-      .then(function (r) {
-        return r.json().then(function (d) {
-          if (!r.ok) {
-            var error = new Error('전국 매장 재고 응답을 확인하지 못했습니다.');
-            error.retryAfterMs = Math.max(Number(d && d.retryAfterMs) || 0,
-              (Number(d && d.retryAfterSeconds) || 0) * 1000,
-              r.headers && r.headers.get ? (Number(r.headers.get('Retry-After')) || 0) * 1000 : 0);
-            throw error;
-          }
-          return d;
-        });
-      })
+    var generation = UI._allStockGeneration;
+    // Every click is authorized server-side; never serve a previous member's cached inventory.
+    var task = HiddenStock._request({ action: 'all-stores', goodsNo: gno, productId: pid })
       .then(function (d) {
+        if (!UI._hasAllStockAccess() || generation !== UI._allStockGeneration) {
+          var stale = new Error('discarded_response'); stale.discarded = true; throw stale;
+        }
         if (!UI._hasAllStockResult(d)) {
           var error = new Error('전국 재고 조회를 완료하지 못했습니다.');
           error.retryAfterMs = Number(d && d.retryAfterMs) || 0;
           throw error;
         }
         if (d.storeLookupStatus !== 'partial' && d.options.every(function (option) { return UI._storeLookupState(d, option) === 'ok'; })) {
-          UI._allStockCache[key] = d;
-          UI._allStockCacheAt[key] = Date.now();
           UI.markAllStockButtonReady(gno, pid);
         } else {
           UI._allStockFailures[key] = Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(d.retryAfterMs) || 0);
@@ -2003,14 +2024,16 @@ var UI = {
         return d;
       })
       .catch(function (error) {
-        UI._allStockFailures[key] = Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(error.retryAfterMs) || 0);
+        if (!error.discarded && [401, 402, 403].indexOf(error.status) === -1 && generation === UI._allStockGeneration) {
+          UI._allStockFailures[key] = Date.now() + Math.max(CONFIG.STOCK_RETRY_COOLDOWN_MS || 30000, Number(error.retryAfterMs) || 0, (Number(error.retryAfter) || 0) * 1000);
+        }
         throw error;
       })
       .finally(function () {
-        clearTimeout(tid);
-        delete UI._allStockInflight[key];
+        if (UI._allStockInflight[key] === task) delete UI._allStockInflight[key];
       });
-    return UI._allStockInflight[key];
+    UI._allStockInflight[key] = task;
+    return task;
   },
 
   _hasAllStockResult: function (detail) {
@@ -2518,7 +2541,7 @@ var UI = {
               UI.esc(goodsNo) +
               '" data-productid="' +
               UI.esc(pidStr) +
-              '">🗺️ 이 옵션 전국 재고 보기</button>'
+              '">🗺️ 이 옵션 전국 재고 보기 · 유료</button>'
             : '';
         var paidStockButton = window.HiddenStock ? HiddenStock.normalStoreButtonHtml(goodsNo, o, detail) : '';
         var paidNearbyFirst = window.HiddenStock && typeof HiddenStock.isOnlineSoldOutOption === 'function' && HiddenStock.isOnlineSoldOutOption(o);
@@ -2603,6 +2626,8 @@ var UI = {
   },
 
   showAllStockPanel: function (detail) {
+    if (!UI._hasAllStockAccess()) return;
+    UI._allStockVisible = true;
     var old = document.getElementById('all-stock-panel');
     if (old) old.remove();
 

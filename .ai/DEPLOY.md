@@ -113,6 +113,9 @@
 
 ## 숨겨진 옵션·전국 매장 조회 배포 준비 (2026-09-13)
 
+- 2026-09-29 일반 팝업 전국 조회 이용권 적용: 기존 `HIDDEN_STOCK_SERVICE_SECRET`를 재사용하며 새 환경변수는 없다. Vercel `hidden-stock?action=all-stores`가 최신 기기·이용권 확인 후 Cloud Run `/api/stock-all`에 서버 인증을 전달한다. Cloud Run `/api/stock-all`은 공개 CORS 이전에 서비스 키를 검사하며 키 누락도 닫힌 상태로 처리한다. `/api/stock` 근처·온라인 무료 조회와 기존 숨김 재고 action 계약은 유지한다.
+- 이 변경은 Cloud Run 보호가 먼저 적용되어야 직접 API 호출 우회가 닫힌다. Cloud Run 배포 완료 → 무인증 `/api/stock-all`401·private/no-store·CORS 없음 확인 → Vercel gateway/프런트 배포 순서로 진행한다. 중간 구버전 프런트의 전국 요청은 일시적으로401이 될 수 있다. Cloud Run이 이전 버전이면 UI 잠금만으로 유료 전환 완료를 선언하지 않는다.
+- 추가 검증: 무료/만료/회수 기기 gateway401/402 및 upstream 미호출, 유효30일/평생 이용권의 선택 SKU 응답, 조회 도중 권한 상실 응답 폐기, goodsNo/productId 누락·중복·추가 필드400, 일반 근처 무료 유지. 서버 내부 캐시·브라우저 메모리/응답 모두 권한 우회가 없어야 한다. 실제 유효권 재고 확인과 로컬 모의 응답 테스트를 구분한다.
 - 상태: 운영 배포 진행 중. 이 절차 자체는 배포 완료·정기 수집 활성화·전체 카탈로그 인덱싱 완료를 뜻하지 않는다. 실제 완료 ID와 확인 결과는 `HANDOFF.md`에 별도로 남긴다.
 - Vercel에 `HIDDEN_STOCK_SERVICE_SECRET`와 기존 가격알림 권한 저장소 설정이 필요하다. 선택 `HIDDEN_STOCK_SERVICE_URL`은 기본 Cloud Run origin `https://oy-stock-api-3596046881.asia-northeast3.run.app`; HTTPS `*.run.app` origin만 허용하며 path/query를 넣지 않는다.
 - Cloud Run에 동일한 별도 `HIDDEN_STOCK_SERVICE_SECRET`(난수32~256 printable 문자), 비공개 Blob용 `HIDDEN_STOCK_BLOB_TOKEN`을 설정한다. Blob token 미설정 시 `BLOB_READ_WRITE_TOKEN`을 사용한다. `HIDDEN_STOCK_INDEX_NAMESPACE`는 기본 `production`, preview에는 별도 값을 쓴다. 비밀값은 공개 파일·명령 출력·로그에 남기지 않는다.

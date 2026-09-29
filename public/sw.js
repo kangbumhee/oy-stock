@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olivestock-app-v20260925-membership-daily-1';
+const CACHE_NAME = 'olivestock-app-v20260929-national-paid-1';
 const CORE_ASSETS = [
   '/',
   '/site.webmanifest',
@@ -15,14 +15,14 @@ const CORE_ASSETS = [
   '/js/pwa.js?v=20260906-curator-shortlink-2',
   '/js/storage.js?v=20260924-membership-1',
   '/js/api.js?v=20260820-search-completeness-1',
-  '/js/ui.js?v=20260913-stock-recovery-2',
+  '/js/ui.js?v=20260929-national-paid-1',
   '/js/options.js?v=20260531-5',
   '/js/search.js?v=20260609-1',
   '/js/regions.js?v=20260531-5',
   '/js/inventory.js?v=20260531-5',
   '/js/membership.js?v=20260925-membership-daily-1',
   '/js/alerts.js?v=20260924-checkout-recovery-2',
-  '/js/hidden-stock.js?v=20260913-stock-recovery-2',
+  '/js/hidden-stock.js?v=20260929-national-paid-1',
   '/js/app.js?v=20260913-stock-recovery-2'
 ];
 

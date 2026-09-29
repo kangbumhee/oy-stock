@@ -10,7 +10,8 @@ const MAX_CURSOR_LENGTH = 2048;
 const REQUEST_FIELDS = {
   search: new Set(['action', 'keyword', 'cursor']),
   options: new Set(['action', 'goodsNo']),
-  stores: new Set(['action', 'goodsNo', 'productId', 'cursor', 'scope', 'lat', 'lng'])
+  stores: new Set(['action', 'goodsNo', 'productId', 'cursor', 'scope', 'lat', 'lng']),
+  'all-stores': new Set(['action', 'goodsNo', 'productId'])
 };
 const PUBLIC_ERRORS = new Set([
   'device_auth_required', 'device_auth_failed', 'entitlement_required',
@@ -89,10 +90,12 @@ function normalizedQuery(req) {
     if (!/^[AB]\d{6,20}$/.test(goodsNo)) throw new HttpError(400, 'invalid_goods_no');
     query.set('goodsNo', goodsNo);
   }
-  if (action === 'stores') {
+  if (action === 'stores' || action === 'all-stores') {
     const productId = String(fields.productId || '').trim();
     if (!/^\d{6,20}$/.test(productId)) throw new HttpError(400, 'invalid_product_id');
     query.set('productId', productId);
+  }
+  if (action === 'stores') {
     const scope = Object.hasOwn(fields, 'scope') ? fields.scope : 'national';
     if (!['nearby', 'national'].includes(scope)) throw new HttpError(400, 'invalid_scope');
     if (Object.hasOwn(fields, 'scope')) query.set('scope', scope);
@@ -239,7 +242,8 @@ function createHiddenStockHandler(dependencies = {}) {
     try {
       assertSameOrigin(req);
       const query = normalizedQuery(req);
-      const isStoreRequest = query.get('action') === 'stores';
+      const isAllStoreRequest = query.get('action') === 'all-stores';
+      const isStoreRequest = query.get('action') === 'stores' || isAllStoreRequest;
       if (isStoreRequest) {
         // Only store inventory is paid. Authorization always uses the latest
         // stored record; preview identifiers and client flags cannot unlock it.
@@ -250,6 +254,10 @@ function createHiddenStockHandler(dependencies = {}) {
       const service = configuredService(getEnvironment());
       await rateLimit(req, 'hidden_stock');
       const target = new URL(service.url);
+      if (isAllStoreRequest) {
+        target.pathname = '/api/stock-all';
+        query.delete('action');
+      }
       target.search = query.toString();
       const controller = new AbortController();
       timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
@@ -274,12 +282,32 @@ function createHiddenStockHandler(dependencies = {}) {
         const status = [400, 404, 409, 429, 502, 503, 504].includes(upstream.status)
           ? upstream.status : 502;
         const code = UPSTREAM_ERRORS.has(body.error) ? body.error : 'hidden_stock_unavailable';
+        if (isAllStoreRequest && [429, 503].includes(status)) {
+          const rawRetry = String(upstream.headers.get('retry-after') || '').trim();
+          const headerRetry = /^\d+(?:\.\d+)?$/.test(rawRetry)
+            ? Number(rawRetry) : (Date.parse(rawRetry) - Date.now()) / 1000;
+          const candidates = [headerRetry, Number(body.retryAfterSeconds), Number(body.retryAfterMs) / 1000]
+            .filter((value) => Number.isFinite(value) && value > 0);
+          if (candidates.length) {
+            const retryAfterSeconds = Math.min(86400, Math.max(1, Math.ceil(Math.max(...candidates))));
+            res.setHeader('Retry-After', String(retryAfterSeconds));
+            return sendPrivateJson(res, status, { success: false, error: code,
+              retryAfterSeconds, retryAfterMs: retryAfterSeconds * 1000 });
+          }
+        }
         return sendPrivateJson(res, status, { success: false, error: code });
       }
       const serialized = JSON.stringify(body);
       const escapedSecret = JSON.stringify(service.secret).slice(1, -1);
       if (body.success !== true || serialized.includes(service.secret) || serialized.includes(escapedSecret)) {
         throw new HttpError(502, 'hidden_stock_invalid_response');
+      }
+      if (isAllStoreRequest) {
+        // National lookups can outlast expiry or account recovery. Re-read the
+        // record before releasing the result, including an upstream cache hit.
+        const latest = await authenticate(req, { allowCreate: false });
+        if (!latest || !latest.record) throw new HttpError(401, 'device_auth_failed');
+        requireEntitlement(latest.record);
       }
       return sendPrivateJson(res, 200, isStoreRequest ? body : publicPreview(body));
     } catch (error) {

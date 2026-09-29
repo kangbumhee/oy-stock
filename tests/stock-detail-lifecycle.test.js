@@ -42,6 +42,12 @@ function environment() {
       querySelectorAll(selector) { return selector === '.opt-tab' || selector === '.opt-panel' ? controls() : []; }
     },
     Storage: { isFavorite() { return false; }, getOnlineDetails() { return {}; }, setOnlineDetail() {} },
+    // Authorization is exercised with the real modules in national-stock-ui.test.js.
+    HiddenStock: {
+      _guard() { return true; },
+      _request() { throw new Error('Unexpected authenticated nationwide request'); },
+      productButtonHtml() { return ''; }, normalStoreButtonHtml() { return ''; }
+    },
     setTimeout(fn, ms) { timers.set(++timerId, { fn, at: now + ms }); return timerId; },
     clearTimeout(id) { timers.delete(id); }, console,
     fetch() { throw new Error('Unexpected network request'); }
@@ -207,12 +213,16 @@ test('rendering and option switching do not request nationwide data', () => {
 
 test('national HTTP failure is not cached and retries are bounded by cooldown', async () => {
   const env = environment(); let calls = 0;
-  env.context.fetch = async () => { calls++; return { ok: false, status: 429, headers: { get() { return '30'; } }, async json() { return { success: true, options: [option('SKU-A', 'ok')] }; } }; };
+  env.context.HiddenStock._request = async params => {
+    calls++;
+    assert.deepEqual({ ...params }, { action: 'all-stores', goodsNo: 'A0001', productId: 'SKU-A' });
+    throw Object.assign(new Error('stock_rate_limited'), { status: 429, retryAfterMs: 30000 });
+  };
   await assert.rejects(env.ui.fetchAllStock('A0001', 'SKU-A'));
   await assert.rejects(env.ui.fetchAllStock('A0001', 'SKU-A'));
   assert.equal(calls, 1); assert.equal(Object.keys(env.ui._allStockCache).length, 0);
   env.advance(30001);
-  env.context.fetch = async () => { calls++; return { ok: true, async json() { return fullDetail({ options: [option('SKU-A', 'ok')] }); } }; };
+  env.context.HiddenStock._request = async () => { calls++; return fullDetail({ options: [option('SKU-A', 'ok')] }); };
   const result = await env.ui.fetchAllStock('A0001', 'SKU-A');
   assert.equal(result.storeLookupStatus, 'ok'); assert.equal(calls, 2);
 });
@@ -220,7 +230,7 @@ test('national HTTP failure is not cached and retries are bounded by cooldown', 
 test('national success with unavailable or ambiguous empty option is rejected', async () => {
   for (const result of [fullDetail({ storeLookupStatus: 'unavailable', options: [option('SKU-A', 'unavailable')] }),
     fullDetail({ storeLookupStatus: undefined, options: [{ productId: 'SKU-A', stores: [] }] })]) {
-    const env = environment(); env.context.fetch = async () => ({ ok: true, async json() { return result; } });
+    const env = environment(); env.context.HiddenStock._request = async () => result;
     await assert.rejects(env.ui.fetchAllStock('A0001', 'SKU-A'));
     assert.equal(Object.keys(env.ui._allStockCache).length, 0);
   }
@@ -229,19 +239,20 @@ test('national success with unavailable or ambiguous empty option is rejected', 
 test('national partial keeps explicit failure state and is not cached as complete', async () => {
   const env = environment();
   const partial = fullDetail({ storeLookupStatus: 'partial', options: [option('SKU-A', 'partial', [{ name: '확인', qty: 2 }])] });
-  env.context.fetch = async () => ({ ok: true, async json() { return partial; } });
+  env.context.HiddenStock._request = async () => partial;
   assert.equal((await env.ui.fetchAllStock('A0001', 'SKU-A')).storeLookupStatus, 'partial');
   assert.equal(Object.keys(env.ui._allStockCache).length, 0);
 });
 
 test('nationwide completion is ignored after switching away and back to original option', async () => {
   const env = environment(); env.ui.showDetailPopup(fullDetail(), 'A0001');
-  const response = deferred(); let panels = 0;
-  env.ui.fetchAllStock = () => response.promise;
+  const response = deferred(); let panels = 0; let calls = 0;
+  env.ui.fetchAllStock = () => { calls++; return response.promise; };
   env.ui.showAllStockPanel = () => { panels++; };
   const button = { dataset: { action: 'loadAllStockOpt', goodsno: 'A0001', productid: 'SKU-A' }, isConnected: true,
     classList: { contains() { return false; }, add() {}, remove() {} } };
   env.ui._handlePopupRootClick({ target: { closest() { return button; } }, preventDefault() {}, stopPropagation() {} });
+  assert.equal(calls, 1);
   env.ui.switchTab(1); env.ui.switchTab(0);
   response.resolve(fullDetail()); await tick();
   assert.equal(panels, 0);

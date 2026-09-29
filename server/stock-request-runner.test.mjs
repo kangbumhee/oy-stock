@@ -264,5 +264,5 @@ test('normal stock routes no longer reset the shared browser on a timeout or nat
   assert.doesNotMatch(handlers, /sessionReady\s*=\s*false/);
   assert.doesNotMatch(source, /oyPostWithRetry/);
   assert.match(handlers, /res\.writeHead\(stockLookupHttpStatus\(out\)/);
-  assert.match(handlers, /res\.writeHead\(stockLookupHttpStatus\(result\)/);
+  assert.match(source, /res\.writeHead\(stockLookupHttpStatus\(result\)/);
 });
