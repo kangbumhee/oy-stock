@@ -42,8 +42,13 @@ jobs:
           OY_PURCHASE_ALERT_REASON: ${{ inputs.reason }}
           OY_PURCHASE_ALERT_DETECTED_AT: ${{ inputs.detectedAt }}
         run: node private-orders/lib/order-alerts.mjs --send-email
-      - name: Mark purchase attention required for GitHub failure notifications
-        if: always() && inputs.reason != 'connection_test'
+      - name: Record successful purchase attention notification
+        if: success() && inputs.reason != 'connection_test'
         run: |
-          echo "::error::Private purchase connection or collection requires attention."
-          exit 1
+          echo "::notice::Purchase account attention was detected and the notification email was sent successfully."
+          {
+            echo "### Purchase account notification sent"
+            echo "The purchase account requires attention; this notification job delivered its email successfully."
+            echo "Review the current account status at https://orders.olivestock.co.kr."
+            echo "This successful notification does not mean the account connection has recovered."
+          } >> "$GITHUB_STEP_SUMMARY"
