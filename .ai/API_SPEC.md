@@ -195,7 +195,9 @@
   - 기본: `302 Location`
   - `format=json`: `shortenedUrl`, `longUrl`, `redirectUrl`, `source`, `affiliateActivityId`
   - `format=debug`: 캐시 URL, 캐시 항목, 선택된 리다이렉트 정보
-- 주의: 캐시가 없으면 기본 모바일 affiliate URL로 fallback 할 수 있으므로 수익 검증 시 `source`를 확인한다.
+- 링크 목록은 GitHub Contents API의 `application/vnd.github.raw+json` 응답으로 읽는다. 1 MB를 넘는 파일도 최신 Git ref에서 읽으며, 기존 base64 응답도 호환한다. API 실패 시 raw CDN과 배포 정적 파일을 차례로 확인하되 각 소스는 본문 읽기까지 8초로 제한한다.
+- `refresh=1&noTrigger=1&noLive=1`은 생성 요청 없는 최신 목록 재확인이다. 응답은 `Cache-Control: no-store`이며 `ready=true`일 때만 검증된 `https://oy.run/` 링크로 이동한다. 일반 상품 URL이나 UTM만 있는 URL로 대체 이동하지 않는다.
+- 미준비 HTML은 30초 요청 제한·120초 자동 확인 제한과 중복 요청 방지를 적용한다. 지연/미발급을 표시하고 수동 재확인 또는 검색 복귀를 제공한다. 제한 도달 시 스피너를 중지하며 실제 생성 성공 전에는 이동 성공으로 표시하지 않는다.
 
 ### [GET] `/api/oliveyoung/landing-proxy?check=1`
 

@@ -8,6 +8,7 @@
 const FALLBACK_WWW =
   'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=';
 const CURATOR_CACHE_TTL_MS = 60 * 1000;
+const CURATOR_SOURCE_TIMEOUT_MS = 8000;
 const GENERATION_REQUEST_TTL_MS = 10 * 60 * 1000;
 const ON_DEMAND_WORKFLOW_FILE = 'curator-link-on-demand.yml';
 const LIVE_CURATOR_TIMEOUT_MS = Math.max(
@@ -213,7 +214,7 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
 </head>
 <body>
   <main>
-    <div class="spinner" aria-hidden="true"></div>
+    <div class="spinner" id="spinner" aria-hidden="true"></div>
     <h1>상품페이지로 이동중</h1>
     <p>상품번호 ${safeGoodsNo}의 올리브영 상품페이지로 이동하고 있습니다.</p>
     <div class="status" id="status">${htmlEscape(statusText)}</div>
@@ -228,14 +229,38 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
       var checkUrl = ${JSON.stringify(checkUrl)};
       var statusEl = document.getElementById('status');
       var retryBtn = document.getElementById('retry');
+      var spinner = document.getElementById('spinner');
       var tries = 0;
       var timer = null;
+      var deadlineTimer = null;
+      var requestTimer = null;
+      var controller = null;
+      var inFlight = false;
+      var stopped = false;
+      var requestId = 0;
+
+      function stop(text, canRetry, buttonLabel) {
+        stopped = true;
+        requestId += 1;
+        clearTimeout(timer);
+        clearTimeout(deadlineTimer);
+        clearTimeout(requestTimer);
+        if (controller) controller.abort();
+        inFlight = false;
+        if (spinner) spinner.hidden = true;
+        setStatus(text);
+        if (retryBtn) {
+          retryBtn.disabled = !canRetry;
+          retryBtn.textContent = buttonLabel || '지금 다시 확인';
+        }
+      }
 
       function setStatus(text) {
         if (statusEl) statusEl.textContent = text;
       }
 
       function schedule(delay) {
+        if (stopped) return;
         if (timer) clearTimeout(timer);
         timer = setTimeout(check, delay);
       }
@@ -254,39 +279,66 @@ function pendingCuratorHtml({ goodsNo, queueStatus, queueOk, queueDetail }) {
       }
 
       function check() {
+        if (stopped || inFlight) return;
+        clearTimeout(timer);
+        inFlight = true;
+        if (retryBtn) retryBtn.disabled = true;
+        var currentRequest = ++requestId;
+        controller = new AbortController();
         tries += 1;
         setStatus(tries <= 1 ? '상품페이지 확인 중...' : '상품페이지 연결을 다시 확인 중...');
-        fetch(checkUrl, { cache: 'no-store' })
+        requestTimer = setTimeout(function () {
+          stop('상품페이지 확인 응답이 늦어지고 있습니다. 잠시 후 다시 확인해 주세요.', true);
+        }, 30000);
+        fetch(checkUrl, { cache: 'no-store', signal: controller.signal })
           .then(function (res) { return res.ok ? res.json() : null; })
           .then(function (data) {
+            if (stopped || currentRequest !== requestId) return;
+            clearTimeout(requestTimer);
+            inFlight = false;
+            if (retryBtn) retryBtn.disabled = false;
             var url = readyUrl(data);
             if (url) {
-              setStatus('상품페이지로 이동합니다.');
+              stop('상품페이지로 이동합니다.', false, '상품페이지로 이동 중');
               window.location.replace(url);
               return;
             }
             if (data && data.unavailable === true) {
-              setStatus(data.queueStatus || '현재 이 상품은 큐레이터 링크 발급 대상이 아닙니다.');
-              if (retryBtn) {
-                retryBtn.disabled = true;
-                retryBtn.textContent = '발급 대상 아님';
-              }
+              stop(data.queueStatus || '현재 이 상품은 큐레이터 링크 발급 대상이 아닙니다.', false, '발급 대상 아님');
               return;
             }
             schedule(tries < 12 ? 5000 : 10000);
           })
           .catch(function () {
+            if (stopped || currentRequest !== requestId) return;
+            clearTimeout(requestTimer);
+            inFlight = false;
+            if (retryBtn) retryBtn.disabled = false;
             setStatus('확인에 실패했습니다. 다시 시도 중...');
             schedule(10000);
           });
       }
 
+      function start() {
+        stopped = false;
+        tries = 0;
+        if (spinner) spinner.hidden = false;
+        clearTimeout(deadlineTimer);
+        deadlineTimer = setTimeout(function () {
+          stop('링크 준비가 지연되고 있습니다. 잠시 후 다시 확인해 주세요.', true);
+        }, 120000);
+        check();
+      }
+
       if (retryBtn) {
         retryBtn.addEventListener('click', function () {
-          check();
+          if (!inFlight) start();
         });
       }
-      schedule(3000);
+      window.addEventListener('pagehide', function () {
+        stop('상품페이지 확인을 종료했습니다.', true);
+      });
+      timer = setTimeout(start, 3000);
     })();
   </script>
 </body>
@@ -487,9 +539,13 @@ async function fetchCuratorLinksFrom(url, source) {
     source === 'github_raw'
       ? url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now()
       : url;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CURATOR_SOURCE_TIMEOUT_MS);
   try {
     const headers = {
-      Accept: source === 'github_api' ? 'application/vnd.github+json' : 'application/json',
+      // The contents JSON envelope omits content once this file exceeds 1 MB.
+      // Raw media reads the current Git ref without the raw CDN propagation delay.
+      Accept: source === 'github_api' ? 'application/vnd.github.raw+json' : 'application/json',
       'User-Agent': 'oy-stock-curator-redirect'
     };
     if (source === 'github_api' && githubToken()) {
@@ -498,13 +554,17 @@ async function fetchCuratorLinksFrom(url, source) {
     }
     const r = await fetch(requestUrl, {
       headers,
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: controller.signal
     });
     if (!r.ok) {
       return { url: requestUrl, source, data: null, error: 'HTTP ' + r.status };
     }
     const data = await r.json();
     if (source === 'github_api') {
+      if (data && data.links && typeof data.links === 'object') {
+        return { url: requestUrl, source, data, error: null };
+      }
       const content = String(data && data.content ? data.content : '').replace(/\s+/g, '');
       if (!content) return { url: requestUrl, source, data: null, error: 'empty github content' };
       const decoded = Buffer.from(content, 'base64').toString('utf8');
@@ -512,7 +572,9 @@ async function fetchCuratorLinksFrom(url, source) {
     }
     return { url: requestUrl, source, data, error: null };
   } catch (e) {
-    return { url: requestUrl, source, data: null, error: String(e.message || e) };
+    return { url: requestUrl, source, data: null, error: controller.signal.aborted ? 'source_timeout' : String(e.message || e) };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -699,6 +761,7 @@ async function createCloudRunCuratorLink(goodsNo, categoryNumber) {
 }
 
 module.exports = async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

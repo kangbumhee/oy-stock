@@ -1,5 +1,12 @@
 # 트러블슈팅 - 에러 해결 모음
 
+### 생성된 구매 바로가기에서 상품페이지 확인 중으로 멈춤
+
+- 확인일: 2026-10-01. 상품 `A000000267668` 생성 작업과 `oy.run`·`affiliateActivityId` 저장은 성공했지만 운영 redirect는 이전 목록을 읽고 `pending:true`를 반환했다.
+- 원인: 링크 목록이 약 14.9 MB로 증가하여 GitHub Contents JSON이 `encoding:none`, 빈 `content`를 반환했다. base64만 읽던 코드가 raw CDN으로 우회한 뒤 이전 데이터에 머물렀고 대기 화면에는 시간 제한이 없었다.
+- 수정: 공식 raw media type으로 최신 Contents 본문을 읽고 기존 base64 응답도 지원한다. 소스별 본문 포함 8초 제한, API 응답 no-store, 브라우저 단일 요청·30초 응답 제한·120초 확인 제한을 적용한다. 수익 링크 생성이나 인증 설정은 변경하지 않는다.
+- 검증: `node --test tests/curator-link-generation.test.js tests/affiliate-link.test.js`, `python tests/curator-redirect-browser.py`. 실제 확인은 `format=json&refresh=1&noTrigger=1&noLive=1` 응답과 `landing-proxy?check=1`로 하며 생성 작업을 불필요하게 재실행하지 않는다.
+
 ### 구매 계정 안내 메일 발송 성공 후에도 GitHub Run failed 메일이 옴
 
 - 확인일: 2026-10-01.

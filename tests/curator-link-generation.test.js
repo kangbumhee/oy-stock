@@ -75,6 +75,161 @@ function saveEnvironment(names) {
   };
 }
 
+test('raw GitHub content serves a newly generated link before the stale raw CDN', async () => {
+  const goodsNo = 'A000000267668';
+  const activityId = '3027737958114a358eab572a491ff271';
+  const shortUrl = 'https://oy.run/MYJBJIbmIQoujj';
+  const originalUrl =
+    'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+    goodsNo +
+    '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' + activityId;
+  const fresh = {
+    updatedAt: '2026-10-01T05:10:53.776Z',
+    links: {
+      [goodsNo]: { shortenedUrl: shortUrl, originalUrl, affiliateActivityId: activityId }
+    }
+  };
+  const stale = { updatedAt: '2026-10-01T04:53:32.924Z', links: {} };
+  const calls = [];
+  const previousFetch = global.fetch;
+  const restoreEnv = saveEnvironment(['CURATOR_GITHUB_TOKEN', 'GITHUB_TOKEN']);
+  process.env.CURATOR_GITHUB_TOKEN = 'test-token';
+  delete process.env.GITHUB_TOKEN;
+  global.fetch = async function (input, init) {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes('/contents/public/data/curator-links.json')) {
+      const accept = String(init.headers.Accept || '');
+      return response(accept.includes('raw')
+        ? fresh
+        : { encoding: 'none', content: '', size: 15177044 });
+    }
+    if (url.includes('raw.githubusercontent.com/')) return response(stale);
+    throw new Error('unexpected fetch: ' + url);
+  };
+  delete require.cache[require.resolve(REDIRECT_MODULE)];
+
+  try {
+    const handler = require(REDIRECT_MODULE);
+    const res = resultCapture();
+    await handler(request('GET', {
+      goodsNo, format: 'json', refresh: '1', noTrigger: '1', noLive: '1'
+    }), res);
+    const body = JSON.parse(res.body);
+    assert.equal(body.ready, true);
+    assert.equal(body.pending, false);
+    assert.equal(body.curatorLinksSource, 'github_api');
+    assert.equal(body.cacheUpdatedAt, fresh.updatedAt);
+    assert.equal(body.redirectUrl, shortUrl);
+    assert.equal(body.longUrl, originalUrl);
+    assert.equal(body.affiliateActivityId, activityId);
+    assert.equal(new URL(body.longUrl).searchParams.get('utm_content'), 'OY_' + activityId);
+    assert.equal(calls.length, 1, 'a fresh API result must not be replaced by the stale CDN');
+    assert.equal(res.headers['cache-control'], 'no-store');
+  } finally {
+    global.fetch = previousFetch;
+    restoreEnv();
+    delete require.cache[require.resolve(REDIRECT_MODULE)];
+  }
+});
+
+test('legacy GitHub base64 content remains a ready attributed cache source', async () => {
+  const goodsNo = 'A000000267668';
+  const activityId = 'legacy_activity';
+  const shortUrl = 'https://oy.run/legacyAttributed';
+  const originalUrl =
+    'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
+    goodsNo +
+    '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' + activityId;
+  const data = {
+    updatedAt: '2026-10-01T05:10:53.776Z',
+    links: {
+      [goodsNo]: { shortenedUrl: shortUrl, originalUrl, affiliateActivityId: activityId }
+    }
+  };
+  const previousFetch = global.fetch;
+  global.fetch = async function (input) {
+    const url = String(input);
+    assert.match(url, /\/contents\/public\/data\/curator-links\.json/);
+    return response({ encoding: 'base64', ...githubContent(data) });
+  };
+  delete require.cache[require.resolve(REDIRECT_MODULE)];
+
+  try {
+    const handler = require(REDIRECT_MODULE);
+    const res = resultCapture();
+    await handler(request('GET', {
+      goodsNo, format: 'json', noTrigger: '1', noLive: '1'
+    }), res);
+    const body = JSON.parse(res.body);
+    assert.equal(body.ready, true);
+    assert.equal(body.curatorLinksSource, 'github_api');
+    assert.equal(body.shortenedUrl, shortUrl);
+    assert.equal(body.longUrl, originalUrl);
+    assert.equal(body.affiliateActivityId, activityId);
+  } finally {
+    global.fetch = previousFetch;
+    delete require.cache[require.resolve(REDIRECT_MODULE)];
+  }
+});
+
+for (const stalledPhase of ['response', 'body']) {
+  test('a stalled GitHub ' + stalledPhase + ' is aborted before trying the fallback source', async (t) => {
+    const goodsNo = 'A000000267668';
+    const shortUrl = 'https://oy.run/timeoutRecovered';
+    const data = { links: { [goodsNo]: { shortenedUrl: shortUrl } } };
+    const previousFetch = global.fetch;
+    let firstSignal;
+    const sources = [];
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    global.fetch = async function (input, init) {
+      const url = String(input);
+      if (url.includes('/contents/public/data/curator-links.json')) {
+        sources.push('github_api');
+        firstSignal = init.signal;
+        const stalled = new Promise((resolve, reject) => {
+          if (firstSignal) firstSignal.addEventListener('abort', function () {
+            reject(firstSignal.reason || new Error('aborted'));
+          }, { once: true });
+        });
+        if (stalledPhase === 'response') return stalled;
+        return { ...response(null), json: function () { return stalled; } };
+      }
+      if (url.includes('raw.githubusercontent.com/')) {
+        sources.push('github_raw');
+        return response(data);
+      }
+      throw new Error('unexpected fetch: ' + url);
+    };
+    delete require.cache[require.resolve(REDIRECT_MODULE)];
+
+    try {
+      const handler = require(REDIRECT_MODULE);
+      const res = resultCapture();
+      const pending = handler(request('GET', {
+        goodsNo, format: 'json', noTrigger: '1', noLive: '1'
+      }), res);
+      await new Promise(setImmediate);
+      assert.ok(firstSignal, 'cache reads must carry an abort signal');
+      assert.deepEqual(sources, ['github_api']);
+      assert.equal(res.body, '');
+      t.mock.timers.tick(8000);
+      await new Promise(setImmediate);
+      assert.equal(firstSignal.aborted, true, 'the entire cache read must have an 8 second deadline');
+      await pending;
+      const body = JSON.parse(res.body);
+      assert.equal(body.ready, true);
+      assert.equal(body.redirectUrl, shortUrl);
+      assert.equal(body.curatorLinksSource, 'github_raw');
+      assert.deepEqual(sources, ['github_api', 'github_raw']);
+    } finally {
+      global.fetch = previousFetch;
+      t.mock.timers.reset();
+      delete require.cache[require.resolve(REDIRECT_MODULE)];
+    }
+  });
+}
+
 test('original-only click queues once, waits, then becomes ready only with oy.run', async () => {
   const goodsNo = 'A000000227282';
   const originalUrl =
