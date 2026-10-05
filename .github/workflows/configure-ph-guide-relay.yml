@@ -1,0 +1,48 @@
+name: Configure PH Guide Relay and Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  configure-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: team_kCYpXTZeNpSxqcelRRUUSUKy
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test bounded production configuration
+        run: node --test tests/ph-guide-relay-deployment.test.mjs tests/ph-guide-relay.test.mjs
+
+      - name: Save only the PH relay secret and site origin
+        env:
+          PH_GUIDE_RELAY_SECRET: ${{ secrets.PH_GUIDE_RELAY_SECRET }}
+        run: node scripts/configure-ph-guide-relay.mjs
+
+      - name: Pull production settings
+        run: npx --yes vercel@50.32.5 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build production bundle
+        run: npx --yes vercel@50.32.5 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy production bundle
+        run: npx --yes vercel@50.32.5 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Check SMTP authentication and PortOne configuration without sending
+        env:
+          PH_GUIDE_RELAY_SECRET: ${{ secrets.PH_GUIDE_RELAY_SECRET }}
+        run: node scripts/check-ph-guide-relay-status.mjs

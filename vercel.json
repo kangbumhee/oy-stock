@@ -69,7 +69,8 @@
         "maxDuration": 800
       }
     },
-    { "src": "api/kakao/geo.js", "use": "@vercel/node" }
+    { "src": "api/kakao/geo.js", "use": "@vercel/node" },
+    { "src": "api/ph-guide.js", "use": "@vercel/node", "config": { "maxDuration": 120 } }
   ],
   "crons": [
     {
@@ -130,6 +131,7 @@
       },
       "dest": "/public/data/$1"
     },
+    { "src": "/api/ph-guide", "dest": "/api/ph-guide.js" },
     { "src": "/api/favorites/sync", "dest": "/api/favorites/sync.js" },
     {
       "src": "/api/price-alerts/public-key",
