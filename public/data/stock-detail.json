@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-16T05:43:27.893Z",
+  "updatedAt": "2026-10-17T05:29:14.574Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,43 +19,43 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 41,
       "to": 41,
-      "fromQty": 180,
-      "toQty": 186,
-      "date": "2026-10-16T05:43:27.893Z"
+      "fromQty": 186,
+      "toQty": 187,
+      "date": "2026-10-17T05:29:14.574Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 624,
-      "to": 704,
-      "date": "2026-10-16T05:43:27.893Z"
+      "from": 704,
+      "to": 1678,
+      "date": "2026-10-17T05:29:14.574Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
       "from": 48,
-      "to": 48,
-      "fromQty": 200,
-      "toQty": 197,
-      "date": "2026-10-16T05:43:27.893Z"
+      "to": 49,
+      "fromQty": 197,
+      "toQty": 204,
+      "date": "2026-10-17T05:29:14.574Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 383,
-      "to": 367,
-      "date": "2026-10-16T05:43:27.893Z"
+      "from": 367,
+      "to": 451,
+      "date": "2026-10-17T05:29:14.574Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1202,
-      "to": 1540,
-      "date": "2026-10-16T05:43:27.893Z"
+      "from": 1540,
+      "to": 4004,
+      "date": "2026-10-17T05:29:14.574Z"
     }
   ],
   "products": {
@@ -75,9 +75,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 50,
-          "inStock": 48,
-          "totalQty": 197,
-          "onlineQty": 367,
+          "inStock": 49,
+          "totalQty": 204,
+          "onlineQty": 451,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": true,
@@ -136,8 +136,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 0,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -156,8 +156,8 @@
               "name": "김포구래점",
               "code": "D511",
               "dist": 4.94,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강9로76번길 21"
@@ -236,8 +236,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 1,
-              "o2o": 0,
+              "qty": 5,
+              "o2o": 4,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -246,8 +246,8 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 1,
-              "o2o": 0,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
@@ -256,8 +256,8 @@
               "name": "일산주엽점",
               "code": "DE0D",
               "dist": 7.66,
-              "qty": 0,
-              "o2o": 0,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1425 삼부르네상스 올리브영"
@@ -336,8 +336,8 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
@@ -366,8 +366,8 @@
               "name": "김포통진점",
               "code": "BA49",
               "dist": 9.12,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": false,
               "open": true,
               "addr": "경기도 김포시 통진읍 조강로 46-1 1층, B1층"
@@ -385,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-16T05:43:27.893Z"
+      "updatedAt": "2026-10-17T05:29:14.574Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -404,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 50,
           "inStock": 39,
-          "totalQty": 180,
-          "onlineQty": 704,
+          "totalQty": 181,
+          "onlineQty": 1678,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -644,8 +644,8 @@
               "name": "마두역점",
               "code": "DB4E",
               "dist": 8.52,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
@@ -664,8 +664,8 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 1,
-              "o2o": 0,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
@@ -674,8 +674,8 @@
               "name": "김포고촌점",
               "code": "BA34",
               "dist": 8.97,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
@@ -1027,7 +1027,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-16T05:43:27.893Z"
+      "updatedAt": "2026-10-17T05:29:14.574Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1355,7 +1355,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-16T05:43:27.893Z"
+      "updatedAt": "2026-10-17T05:29:14.574Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1367,7 +1367,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-10-16T05:43:27.893Z"
+      "updatedAt": "2026-10-17T05:29:14.574Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1379,7 +1379,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-10-16T05:43:27.893Z"
+      "updatedAt": "2026-10-17T05:29:14.574Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1399,7 +1399,7 @@
           "totalStores": 50,
           "inStock": 1,
           "totalQty": 5,
-          "onlineQty": 1130,
+          "onlineQty": 3508,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1713,7 +1713,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 266,
+          "onlineQty": 253,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2027,7 +2027,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 115,
+          "onlineQty": 239,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2341,7 +2341,7 @@
           "totalStores": 50,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 29,
+          "onlineQty": 4,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2649,7 +2649,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-16T05:43:27.893Z"
+      "updatedAt": "2026-10-17T05:29:14.574Z"
     }
   }
 }
