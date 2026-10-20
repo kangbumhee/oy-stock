@@ -1,5 +1,12 @@
 # 배포 설정
 
+## 현재 운영 주소와 배포 원칙 (2026-10-20)
+
+- 회원 주소는 `https://oy-stock.vercel.app`이다. 접속 전에는 공통 비밀번호 입력칸만 표시하며 `olivestock.co.kr`로 이동시키지 않는다. 기존 `olivestock.co.kr` 및 `www.olivestock.co.kr`의 공개 접속 차단은 유지한다.
+- 운영 배포는 최신 `origin/main`을 기반으로 한다. 오래된 기능 브랜치의 전체 소스나 고정 과거 배포를 새 운영 버전으로 승격하지 않는다. 다른 작업의 변경이 필요하면 해당 커밋만 최신 main 위에 보존하고 잠금 회귀·실제 빌드 검증을 함께 수행한다.
+- 배포 직전 `node scripts/verify-site-access-build.mjs`가 소스의 proxy 설정, 회원 주소의 기존 도메인행 리디렉션 금지, 빌드의 전 경로 잠금 및 정적 산출물을 모두 통과해야 한다. 배포 뒤 canonical 회원 alias의 배포 ID와 실제 비밀번호 화면·비인증 데이터/API 차단을 확인한다. READY만으로 완료 처리하지 않는다.
+- GitHub 자동화·PC 예약 작업·기존 결제 공급자 및 환경 설정은 이 주소 복구 작업에서 중단하거나 변경하지 않는다.
+
 ## Git 작성자 계정 확인 (2026-09-24)
 
 - 저장소 소유자 및 인증된 GitHub 계정은 `kangbumhee`(ID `205318381`)이다. Vercel `oy-stock` 프로젝트도 이 계정의 GitHub Login Connection을 사용한다.
@@ -9,8 +16,8 @@
 
 ## 2026-09-24 다른 기기 카카오페이 진입 복구
 
-- 공식 결제 origin은 `https://olivestock.co.kr`로 유지한다. 알려진 별칭 `oy-stock.vercel.app`, `www.olivestock.co.kr`의 페이지 GET/HEAD는 307로 공식 주소에 연결한다. API, JS/CSS/data, 서비스워커 요청 및 POST/웹훅은 리디렉션하지 않는다. 임의 preview origin을 결제 allowlist에 추가하지 않는다.
-- 기존 별칭에 열린 화면도 결제·이메일 제출 전에 공식 주소로 이동한다. 인증정보를 URL로 전달하거나 origin 검증을 완화하지 않는다. 별칭에서 인증한 사용자는 공식 사이트의 이메일 복구로 연결할 수 있다.
+- 이 항목은 2026-09-24의 결제 진입 복구 이력이다. 2026-10-20 회원 주소 이전 이후 `oy-stock.vercel.app`에서 기존 도메인으로 보내던 307은 폐기했으며, 회원 페이지를 결제·이메일 제출 전에 기존 도메인으로 이동시키지 않는다. 임의 preview origin을 결제 allowlist에 추가하거나 인증정보를 URL로 전달하지 않는다.
+- 기존 결제 환경값·공급자 계약·웹훅은 별도 검토 없이 변경하지 않는다. 기존 도메인의 공개 복귀 화면은 차단되어 있으므로, 회원 주소 잠금 검증만으로 새 결제 승인·복귀까지 검증되었다고 보고하지 않는다.
 - 결제 생성 제한 기본값은 저장된 인증 기기별 20회/1시간(`PRICE_ALERT_PAYMENT_CREATE_LIMIT`, 기존 5에서 변경)이며 완료 조회는 기기별 30회/1시간이다. 해당 환경변수를 별도로 설정한 프로젝트는 설정값이 우선한다. 이메일 전송·검증과 웹훅의 남용방지 정책은 유지한다.
 - 기존 네트워크 기반 카운터는 삭제하지 않고 기기별 v2 HMAC 카운터로 분리한다. 강한 ETag를 같은 압축 없는 응답에서 읽어 조건부 갱신한다. 제한 초과 화면은 `Retry-After`를 표시하고 버튼 재시도를 대기시킨다.
 - 인증 전에는 별도의 정확한 IP별 짧은 버스트 제한(120회/60초)을 적용해 잘못된 인증정보로 반복적인 Blob 읽기·검증 연산을 유발하는 요청을 제한한다. 이용자의 결제 한도와는 별도이며 IP 대역을 공유하지 않는다.
@@ -43,7 +50,7 @@
 ### Vercel
 
 - `vercel.json`의 Git 자동 배포는 현재 비활성화다. 새 코드 반영은 `.github/workflows/deploy-vercel.yml` 수동 실행 등 승인된 production 빌드 경로로 수행한다. 인증 갱신용 기존 배포 재생성만으로 새 기능 소스가 반영되었다고 판단하지 않는다.
-- `vercel.json`에서 `public/**`와 `api/**/*.js`를 빌드한다.
+- `vercel.json`의 `outputDirectory: public`, `functions`와 전 경로 `proxy`로 정적 파일 및 API를 빌드한다. 게이트가 누락되는 legacy `builds`로 되돌리지 않는다.
 - 배포 확인:
   - GitHub commit status의 `Vercel`
   - `https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1`
@@ -242,7 +249,7 @@ node scripts/generate-curator-links.mjs
 - 기존 자동화의 읽기 전용 `landing-proxy?check=1|true` GET/HEAD, 인기순위 읽기 GET/HEAD, 기존 인증을 유지하는 cron 및 PH relay, 결제 완료/취소 동기화 POST만 예외다. `landing-proxy` POST와 일반 전체 `/api/*`는 예외가 아니다.
 - 결제 provider 웹훅은 유지되지만 홈페이지 결제 복귀 화면은 차단된다. 새 결제 또는 기존 사이트의 사용자 화면을 계속 제공한다는 의미가 아니다. 실제 결제/취소 테스트는 수행하지 않았다.
 - GitHub 자동화 7개와 PC의 기존 15분 상태 점검·일일 갱신 예약은 활성 상태를 유지했다. 작업을 수동 실행하지 않았다.
-- 기본 Vercel 주소에서 기존 도메인으로 이동하는 기존 307 규칙은 이번 요청에서 수정하지 않았다. 따라서 회원 주소 이전·복구 검증·안내 메일 발송은 아직 완료 상태가 아니다.
+- 이 WAF 차단 단계에서는 기존 307 규칙을 유지했으나, 아래 공통 비밀번호 입장 단계에서 회원 주소의 기존 도메인행 307을 제거했다. 회원 안내 메일 발송 완료를 뜻하지는 않는다.
 - 설정 요청과 mock 회귀 검증: `reports/olivestock-domain-block-firewall-20261020.json`, `tests/domain-block-firewall.test.js`. 요청 JSON을 반복 INSERT하면 중복 규칙이 생성될 수 있으므로 재실행하지 않는다. 차단을 해제할 때는 Vercel Firewall에서 해당 이름/ID의 규칙만 비활성화하며 전체 방화벽이나 다른 보안 기능을 끄지 않는다.
 - 온라인 새 접속의 차단을 확인했으나, 이미 내려받은 완전 오프라인 설치앱 화면까지 원격 삭제한 것은 아니다.
 
@@ -258,7 +265,7 @@ node scripts/generate-curator-links.mjs
 - 앱의 service-worker HTML/asset 캐시는 중단하며 `olivestock-app-*` 기존 캐시를 지운다. 기존 Push 이벤트는 유지한다. 게이트 페이지의 캐시 정리도 온라인 진입 때에만 동작한다.
 - 서버 잠금이 Vercel CDN 캐시보다 앞서 실행되는지 실제 배포에서 검증해야 한다. 단위 테스트 또는 `vercel.json` 설정만으로 완료라고 보고하지 않는다.
 - 이 변경은 Vercel 사이트 입장을 제한하는 조치다. 기존 공개 Cloud Run 근처 조회, GitHub 이력 또는 과거 고정 배포 URL의 자료를 모두 삭제한 것이 아니며, 외부 소명에서 서비스·자동화의 전면 중단으로 표현하지 않는다.
-- GitHub 자동화·PC 예약을 유지한다. 새 소스가 main에 반영되지 않은 상태에서 과거 소스로 다시 배포하면 게이트가 사라질 수 있다. main 반영은 사용자 승인 후 별도로 수행한다. 회원별 이전 안내 메일은 검증 및 대상 확인 전 발송하지 않는다.
+- GitHub 자동화·PC 예약을 유지한다. 사용자 승인으로 잠금 소스를 main에 반영했다. 이후에는 최신 main을 기반으로 빌드하고, 다른 작업의 오래된 전체 브랜치 상태로 운영 별칭을 덮어쓰지 않는다. 회원별 이전 안내 메일은 검증 및 대상 확인 전 발송하지 않는다.
 
 - Secret 값은 절대 커밋하지 않는다.
 - `public/data/*.json`은 공개 파일이다.
