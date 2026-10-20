@@ -107,28 +107,26 @@ function environment(options = {}) {
   };
 }
 
-test('checkout redirects exact aliases before account/create requests without forwarding query credentials', async () => {
-  for (const host of ['oy-stock.vercel.app', 'www.olivestock.co.kr']) {
-    const env = environment({ url: `https://${host}/?paymentId=private-return&key=private-key#private-fragment` });
-    await env.alerts.startPayment();
-    await env.alerts.startPayment();
-    assert.deepEqual(env.calls.navigations, ['https://olivestock.co.kr/']);
-    assert.equal(env.calls.verified, 0);
-    assert.equal(env.calls.requests.length, 0);
-    assert.equal(env.calls.sdk, 0);
-    assert.equal(env.attempt(), null);
-  }
+test('legacy www checkout redirects only to the member host without forwarding URL credentials', async () => {
+  const env = environment({ url: 'https://www.olivestock.co.kr/?paymentId=private-return&key=private-key#private-fragment' });
+  await env.alerts.startPayment();
+  await env.alerts.startPayment();
+  assert.deepEqual(env.calls.navigations, ['https://oy-stock.vercel.app/']);
+  assert.equal(env.calls.verified, 0);
+  assert.equal(env.calls.requests.length, 0);
+  assert.equal(env.calls.sdk, 0);
+  assert.equal(env.attempt(), null);
 });
 
 test('unknown hosts cannot redirect or create payment while canonical and loopback origins work', async () => {
-  for (const url of ['https://oy-stock.vercel.app.attacker.example/', 'https://preview.example/', 'https://olivestock.co.kr:444/']) {
+  for (const url of ['https://oy-stock.vercel.app.attacker.example/', 'https://preview.example/', 'https://olivestock.co.kr:444/', 'https://oy-stock.vercel.app:444/', 'http://oy-stock.vercel.app/', 'http://www.olivestock.co.kr/']) {
     const env = environment({ url });
     await env.alerts.startPayment();
     assert.equal(env.calls.requests.length, 0);
     assert.equal(env.calls.navigations.length, 0);
-    assert.match(env.message(), /공식 주소/);
+    assert.match(env.message(), /공식 회원 주소/);
   }
-  for (const url of ['https://olivestock.co.kr/', 'http://localhost:5173/', 'http://127.0.0.1:5173/', 'http://[::1]:5173/']) {
+  for (const url of ['https://olivestock.co.kr/', 'https://oy-stock.vercel.app/', 'http://localhost:5173/', 'http://127.0.0.1:5173/', 'http://[::1]:5173/']) {
     const env = environment({ url });
     await env.alerts.startPayment();
     assert.equal(env.calls.create, 1);
@@ -254,12 +252,25 @@ test('a server-approved resumed checkout uses its existing payment identity afte
   assert.equal(env.attempt().providerInvoked, true);
 });
 
-test('account actions on an alias navigate before sending email or recovery requests', async () => {
-  const env = environment({ url: 'https://oy-stock.vercel.app/' });
+test('legacy www account actions navigate before sending email or recovery requests', async () => {
+  const env = environment({ url: 'https://www.olivestock.co.kr/' });
   const membership = env.loadMembership();
   await membership.submit('request-recovery');
-  assert.deepEqual(env.calls.navigations, ['https://olivestock.co.kr/']);
+  assert.deepEqual(env.calls.navigations, ['https://oy-stock.vercel.app/']);
   assert.equal(env.calls.account, 0);
+});
+
+test('member-host recovery stays same-origin and does not return to the retired domain', async () => {
+  const env = environment({ url: 'https://oy-stock.vercel.app/', account: { success: true, sent: true } });
+  const membership = env.loadMembership();
+  membership.render = () => {};
+  env.element('membership-recovery-email').value = 'fixture@example.com';
+  await membership.submit('request-recovery');
+  assert.deepEqual(env.calls.navigations, []);
+  assert.equal(env.calls.account, 1);
+  assert.equal(env.calls.sdk, 0);
+  assert.equal(env.calls.requests[0].target, '/api/price-alerts/account');
+  assert.deepEqual(JSON.parse(env.calls.requests[0].body), { action: 'request-recovery', email: 'fixture@example.com' });
 });
 
 test('an account-read 429 is not misreported as unverified email and prevents checkout retries', async () => {

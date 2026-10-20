@@ -149,15 +149,38 @@ test('completion authenticates before applying its own device quota', async () =
   assert.deepEqual(JSON.parse(JSON.stringify(h.calls)), [{ scope: 'payment_auth' }, 'auth', { scope: 'payment_complete', authenticatedDeviceId: DEVICE_A }, 'reconcile']);
 });
 
-test('known alias navigation redirects, but API, assets and POST never redirect', () => {
+test('member host no longer redirects to the retired domain and middleware gates every path', () => {
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8'));
-  const redirects = config.routes.filter(route => route.status === 307 && route.has);
-  assert.deepEqual(redirects.map(route => route.has[0].value).sort(), ['oy-stock.vercel.app', 'www.olivestock.co.kr']);
+  assert.equal(config.routes, undefined, 'legacy custom routes must not run before the entry proxy');
+  const redirects = config.redirects.filter(route => route.has);
+  assert.deepEqual(redirects.map(route => route.has[0].value).sort(), ['www.olivestock.co.kr']);
+  assert.equal(config.proxy.entrypoint, 'site-access-proxy.ts');
+  assert.equal(config.proxy.matcher, undefined);
   for (const route of redirects) {
-    const pattern = new RegExp(`^${route.src}$`);
+    const pattern = new RegExp('^' + route.source.replace('/:path(', '/(') + '$');
     for (const url of ['/', '/index.html', '/payment-info.html']) assert.ok(pattern.test(url));
     for (const url of ['/api/price-alerts/account', '/js/alerts.js', '/sw.js']) assert.equal(pattern.test(url), false);
-    assert.deepEqual(route.methods, ['GET', 'HEAD']);
-    assert.equal(route.headers.Location, 'https://olivestock.co.kr/$1');
+    assert.equal(route.permanent, false);
+    assert.equal(route.destination, 'https://olivestock.co.kr/:path');
   }
+});
+
+test('modern rewrites target generated functions and scheduled machine endpoints remain configured', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8'));
+  for (const action of ['create', 'complete', 'webhook']) {
+    const rewrite = config.rewrites.find(route => route.source === '/api/price-alerts/payment/' + action);
+    assert.equal(rewrite?.destination, '/api/price-alerts/payment-' + action);
+    assert.ok(fs.existsSync(path.join(__dirname, '..', rewrite.destination + '.js')));
+  }
+  for (const [endpoint, schedule] of [
+    ['/api/oliveyoung/hot-ranking-cron', '0 * * * *'],
+    ['/api/price-alerts/hourly', '7 * * * *']
+  ]) {
+    const functionPath = endpoint.slice(1) + '.js';
+    assert.ok(fs.existsSync(path.join(__dirname, '..', functionPath)));
+    assert.equal(config.functions[functionPath].maxDuration, 800);
+    assert.ok(config.crons.some(cron => cron.path === endpoint && cron.schedule === schedule));
+  }
+  const dataHeaders = config.headers.find(route => route.source === '/data/:path*');
+  assert.ok(dataHeaders.headers.some(header => header.key === 'Cache-Control' && header.value === 'private, no-store'));
 });

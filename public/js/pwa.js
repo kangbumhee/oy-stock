@@ -32,7 +32,7 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20260906-curator-shortlink-2')
+      .register('/sw.js?v=20261020-private-entry-1', { updateViaCache: 'none' })
       .then(function (registration) {
         self.registration = registration;
         if (registration && registration.update) {

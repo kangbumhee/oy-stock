@@ -2,9 +2,18 @@
 
 ## 인증
 
-- 공개 웹 API 대부분은 별도 사용자 인증이 없다.
+- Vercel 사이트의 HTML·자산·데이터·일반 API는 공통 입장 비밀번호 인증이 선행되어야 한다. 아래 개별 API의 `인증: 불필요`는 추가 이용권 인증이 없다는 뜻이며 사이트 입장 잠금을 우회하지 않는다.
 - 올리브영 큐레이터 API 호출은 서버 환경변수의 `linkageString` 또는 JWT를 사용한다.
 - 민감값은 GitHub Secrets 또는 Vercel Environment Variables에만 저장한다.
+
+### 공통 입장 잠금 (2026-10-20)
+
+- 모든 Vercel alias에서 Routing Middleware가 캐시 및 라우팅보다 먼저 공통 입장 쿠키를 확인한다. 인증 없는 웹 탐색에는 제목·상품·이미지 없이 가운데 비밀번호 입력칸만 반환한다. API/JSON 직접 요청은401이며 데이터가 포함되지 않는다.
+- `POST /_entry`: 같은 origin의 URL-encoded `password`만 수신한다. 기존 프로모션 HMAC digest/pepper와 timing-safe 비교하고 원문을 저장·로그·클라이언트 코드에 넣지 않는다. 성공은303 `/`와 host-bound 서명 쿠키, 실패는401, 빈 설정/저장소 장애는503, 동일 IP+host의10회/15분 한도는429다.
+- 쿠키는 `__Host-` 접두사, Secure, HttpOnly, SameSite=Strict, Path=/이며 서명 내부12시간 만료와 브라우저 세션 수명을 사용한다. 프로모션 digest/pepper 회전 시 기존 입장 세션도 무효다. `POST /_entry/logout`은 동일 출처에서만 쿠키를 지운다.
+- 이것은 공통 암호 기반 사이트 입장 제한이지 개인별 평생회원 조회가 아니다. 기존 이용권·관리자·기기 인증은 별도로 유지한다. Cloud Run의 기존 공개 근처 재고 API, 과거 공개 배포/저장소 파일까지 폐기하는 변경은 아니다.
+- 서비스워커는 기존 Web Push 기능만 유지하고 앱 HTML/자산을 더 이상 캐시하지 않는다. 진입 화면과 갱신된 워커는 이전 `olivestock-app-*` 캐시를 정리한다. 완전히 오프라인인 기존 기기에 이미 저장된 내용을 원격 회수한다고 보장하지 않는다.
+- 예외는 기존 운영용 landing-proxy `check=1|true` GET/HEAD, 인기순위 GET/HEAD, cron GET/POST, 결제 webhook/complete POST, PH relay POST 및 캐시 정리 워커 GET/HEAD뿐이다. 예외가 각 API의 기존 서비스 인증을 대체하지 않는다. 일반 `/api/*` 전체 예외는 없다.
 
 ## 엔드포인트 목록
 

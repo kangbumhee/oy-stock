@@ -119,19 +119,19 @@ var PriceAlerts = {
   _ensurePaymentSite: function () {
     var current;
     try { current = new URL(location.href || location.origin); } catch (_) { return false; }
-    if (current.origin === 'https://olivestock.co.kr') return true;
+    if (['https://olivestock.co.kr', 'https://oy-stock.vercel.app'].indexOf(current.origin) !== -1) return true;
     if (['localhost', '127.0.0.1', '[::1]'].indexOf(current.hostname) !== -1 &&
         ['http:', 'https:'].indexOf(current.protocol) !== -1) return true;
-    var knownAlias = ['oy-stock.vercel.app', 'www.olivestock.co.kr'].indexOf(current.hostname) !== -1;
+    var knownAlias = current.origin === 'https://www.olivestock.co.kr';
     var message = knownAlias
-      ? '결제와 이메일 복구를 위해 공식 주소 olivestock.co.kr로 이동합니다. 기존 이메일은 이동 후 이용권 복구로 연결해 주세요.'
-      : '결제와 이메일 복구는 공식 주소 https://olivestock.co.kr에서 시작해 주세요.';
+      ? '결제와 이메일 복구를 위해 회원 전용 주소 oy-stock.vercel.app으로 이동합니다. 기존 이메일은 이동 후 이용권 복구로 연결해 주세요.'
+      : '결제와 이메일 복구는 공식 회원 주소 https://oy-stock.vercel.app에서 시작해 주세요.';
     this._setPaywallMessage(message, true);
     if (window.Membership && typeof Membership.message === 'function') Membership.message(message, true);
     if (knownAlias && !this._canonicalNavigationPending) {
       this._canonicalNavigationPending = true;
       // Never forward account keys, payment-return parameters, or other URL data across origins.
-      location.assign('https://olivestock.co.kr/');
+      location.assign('https://oy-stock.vercel.app/');
     }
     return false;
   },
@@ -165,7 +165,7 @@ var PriceAlerts = {
     }
     var code = error && (error.code || error.message);
     var messages = {
-      payment_contract_mismatch: '결제 요청 정보가 고정 이용권 조건과 일치하지 않아 결제를 시작하지 않았습니다. 공식 주소 olivestock.co.kr에서 다시 확인해 주세요.',
+      payment_contract_mismatch: '결제 요청 정보가 고정 이용권 조건과 일치하지 않아 결제를 시작하지 않았습니다. 공식 회원 주소 oy-stock.vercel.app에서 다시 확인해 주세요.',
       payment_not_configured: '결제 기능이 아직 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.',
       active_device_capacity_reached: '현재 신규 이용권 수용량이 모두 사용 중입니다. 결제를 시작하지 않았으며, 잠시 후 다시 확인해 주세요.',
       payment_already_pending: '기존 결제 요청이 남아 있습니다. 이메일로 이 브라우저를 복구한 뒤 다시 눌러 같은 결제를 확인해 주세요.',

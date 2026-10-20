@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Validate Vercel credentials
         run: |
@@ -32,10 +32,13 @@ jobs:
           fi
 
       - name: Pull production settings
-        run: npx --yes vercel@50.32.5 pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@64.7.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build production bundle
-        run: npx --yes vercel@50.32.5 build --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@64.7.0 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Refuse deployment without the site access gate
+        run: node scripts/verify-site-access-build.mjs
 
       - name: Deploy production bundle
-        run: npx --yes vercel@50.32.5 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@64.7.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"

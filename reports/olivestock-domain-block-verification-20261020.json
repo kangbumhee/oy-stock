@@ -1,0 +1,34 @@
+{
+  "verifiedAt": "2026-10-20T14:31:16+09:00",
+  "project": "oy-stock",
+  "projectId": "prj_Sj0zepEyW8AB3956ssl7zx163DOP",
+  "changeType": "project_firewall_rule",
+  "firewallConfigId": "waf_NjSRS3ZLHLB2",
+  "firewallVersion": 1,
+  "ruleId": "rule_block_retired_olivestock_public_website_aeK3Rz",
+  "active": true,
+  "providerValidationErrors": null,
+  "browserChecks": [
+    { "url": "https://olivestock.co.kr/", "observedTitle": "403: Forbidden", "observedText": "This request was blocked" },
+    { "url": "https://www.olivestock.co.kr/", "observedTitle": "403: Forbidden", "observedText": "This request was blocked" },
+    { "url": "https://olivestock.co.kr/data/stock-detail.json", "observedTitle": "403: Forbidden", "observedText": "This request was blocked" },
+    { "url": "https://olivestock.co.kr/api/oliveyoung/landing-proxy?check=1", "applicationJsonReceived": true, "jwtStatusFieldPresent": true, "upstreamLoginOrIssuanceInvoked": false }
+  ],
+  "mockTests": { "passed": 3, "failed": 0 },
+  "githubWorkflows": { "previouslyRestoredCount": 7, "allStillActive": true, "manuallyDispatched": false },
+  "pcTasks": [
+    { "name": "OY Login Health Every 15 Minutes", "state": "Ready" },
+    { "name": "OY Refresh Cookie Daily", "state": "Ready" }
+  ],
+  "paymentWebhookPathPreserved": true,
+  "realPaymentOrRefundTested": false,
+  "dnsOrAliasesChanged": false,
+  "applicationDeploymentCreated": false,
+  "memberMigrationCompleted": false,
+  "memberNoticeEmailsSent": 0,
+  "limitations": [
+    "Existing machine endpoints are narrowly exempted; this is public website blocking, not total TCP/DNS shutdown.",
+    "The existing Vercel default-domain redirect to the blocked domain remains unchanged.",
+    "Previously downloaded completely offline pages cannot be remotely erased."
+  ]
+}

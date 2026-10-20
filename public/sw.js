@@ -1,42 +1,19 @@
-const CACHE_NAME = 'olivestock-app-v20260929-national-paid-1';
-const CORE_ASSETS = [
-  '/',
-  '/site.webmanifest',
-  '/favicon.svg',
-  '/favicon-48x48.png',
-  '/favicon-192x192.png',
-  '/favicon-512x512.png',
-  '/apple-touch-icon.png',
-  '/payment-info.html',
-  '/terms.html',
-  '/privacy.html',
-  '/css/style.css?v=20260924-membership-1',
-  '/js/config.js?v=20260913-stock-recovery-2',
-  '/js/pwa.js?v=20260906-curator-shortlink-2',
-  '/js/storage.js?v=20260924-membership-1',
-  '/js/api.js?v=20260820-search-completeness-1',
-  '/js/ui.js?v=20260929-national-paid-1',
-  '/js/options.js?v=20260531-5',
-  '/js/search.js?v=20260609-1',
-  '/js/regions.js?v=20260531-5',
-  '/js/inventory.js?v=20260531-5',
-  '/js/membership.js?v=20260925-membership-daily-1',
-  '/js/alerts.js?v=20260924-checkout-recovery-2',
-  '/js/hidden-stock.js?v=20260929-national-paid-1',
-  '/js/app.js?v=20260913-stock-recovery-2'
-];
+// Private entry v20261020: push only. Every page/API request must reach the server gate.
+// Do not unregister: that would discard existing Web Push subscriptions.
+function purgePrivateAppCaches() {
+  return caches.keys().then(function (keys) {
+    return Promise.all(keys.filter(function (key) {
+      return key.indexOf('olivestock-app-') === 0;
+    }).map(function (key) {
+      return caches.delete(key);
+    }));
+  });
+}
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then(function (cache) {
-        return cache.addAll(CORE_ASSETS);
-      })
+    purgePrivateAppCaches()
       .then(function () {
-        return self.skipWaiting();
-      })
-      .catch(function () {
         return self.skipWaiting();
       })
   );
@@ -44,69 +21,10 @@ self.addEventListener('install', function (event) {
 
 self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches
-      .keys()
-      .then(function (keys) {
-        return Promise.all(
-          keys
-            .filter(function (key) {
-              return key !== CACHE_NAME;
-            })
-            .map(function (key) {
-              return caches.delete(key);
-            })
-        );
-      })
+    purgePrivateAppCaches()
       .then(function () {
         return self.clients.claim();
       })
-  );
-});
-
-self.addEventListener('fetch', function (event) {
-  var request = event.request;
-  if (request.method !== 'GET') return;
-  var url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-  // Preview metadata and authenticated inventory are always fetched fresh, never cached here.
-  if (url.pathname === '/api/oliveyoung/hidden-stock') return;
-  if (url.pathname.indexOf('/api/') === 0) return;
-  var isNavigation =
-    request.mode === 'navigate' ||
-    (request.headers.get('accept') || '').indexOf('text/html') >= 0;
-
-  if (isNavigation) {
-    event.respondWith(
-      fetch(request, { cache: 'no-store' }).catch(function () {
-        return caches.match('/');
-      })
-    );
-    return;
-  }
-
-  if (url.pathname.indexOf('/blog/') === 0 || url.pathname.indexOf('/data/') === 0) {
-    event.respondWith(fetch(request, { cache: 'no-store' }));
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request).then(function (cached) {
-      if (cached) return cached;
-      return fetch(request)
-        .then(function (response) {
-          var copy = response.clone();
-          if (response.ok) {
-            caches.open(CACHE_NAME).then(function (cache) {
-              cache.put(request, copy);
-            });
-          }
-          return response;
-        })
-        .catch(function () {
-          if (request.mode === 'navigate') return caches.match('/');
-          return cached;
-        });
-    })
   );
 });
 

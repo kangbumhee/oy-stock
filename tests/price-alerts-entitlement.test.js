@@ -213,13 +213,14 @@ test('payment creation fixes the one-time 30-day contract and replays one pendin
       fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8')
     );
     assert.ok(
-      vercelConfig.routes.some(
+      vercelConfig.rewrites.some(
         (route) =>
-          route.src === noticePath &&
-          route.dest === '/api/price-alerts/payment-webhook.js'
+          route.source === noticePath &&
+          route.destination === '/api/price-alerts/payment-webhook'
       ),
       `PortOne notice URL must resolve through vercel.json: ${noticePath}`
     );
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'api/price-alerts/payment-webhook.js')));
     assert.equal(memory.getIntent(PAYMENT_ONE).status, 'prepared');
     assert.deepEqual(
       memory.getIntent(PAYMENT_ONE).events.map((event) => event.type),

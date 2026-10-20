@@ -27,6 +27,7 @@ function configuredRatePolicy(scope) {
     };
   }
   const specialized = {
+    site_entry: { limit: 10, windowSeconds: 900 },
     // Short, generous pre-auth protection, separate from a buyer's checkout quota.
     payment_auth: { limit: 120, windowSeconds: 60 },
     account_send: { limit: 5, windowSeconds: 3600 },
@@ -124,7 +125,7 @@ function rateSubjectHash(req, scope, key, authenticatedDeviceId) {
     .update(deviceId ? 'price-alert-rate:device:v2:' : 'price-alert-rate:v1:')
     .update(String(scope || 'mutation'))
     .update(':')
-    .update(deviceId || requestRateIdentity(req, scope === 'payment_auth'))
+    .update(deviceId || requestRateIdentity(req, ['payment_auth', 'site_entry'].includes(scope)))
     .digest('hex');
 }
 

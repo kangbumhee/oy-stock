@@ -360,11 +360,11 @@ test('premium markup escapes option text and no premium data is persisted or bak
   assert.doesNotMatch(env.html(), /<img src=x/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|caches\.put|8800289469145|A000000255680/);
   const sw = fs.readFileSync(path.join(root, 'public/sw.js'), 'utf8');
-  assert.match(sw, /url\.pathname === '\/api\/oliveyoung\/hidden-stock'\) return/);
+  assert.doesNotMatch(sw, /addEventListener\('fetch'|caches\.(?:open|match)|cache\.(?:put|addAll)/);
   const index = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
   for (const asset of ['js/alerts.js', 'js/hidden-stock.js', 'js/ui.js', 'js/app.js', 'js/config.js', 'css/style.css']) {
     const assetVersion = index.match(new RegExp('/' + asset.replace(/\./g, '\\.') + '\\?v=([^"\']+)'))[1];
-    assert.ok(sw.includes('/' + asset + '?v=' + assetVersion), asset + ' must use the same version in the page and service worker');
+    assert.ok(assetVersion, asset + ' must remain versioned on the authenticated page');
   }
 });
 

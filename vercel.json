@@ -3,75 +3,22 @@
   "git": {
     "deploymentEnabled": false
   },
-  "builds": [
-    { "src": "public/**", "use": "@vercel/static" },
-    { "src": "api/proxy.js", "use": "@vercel/node" },
-    { "src": "api/archive-embed.js", "use": "@vercel/node" },
-    { "src": "api/archive-file.js", "use": "@vercel/node" },
-    { "src": "api/archive-rom.js", "use": "@vercel/node" },
-    {
-      "src": "api/oliveyoung/search.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
-    },
-    {
-      "src": "api/oliveyoung/inventory.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
-    },
-    { "src": "api/oliveyoung/options.js", "use": "@vercel/node" },
-    {
-      "src": "api/oliveyoung/hidden-stock.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
-    },
-    { "src": "api/oliveyoung/stock.js", "use": "@vercel/node" },
-    { "src": "api/oliveyoung/view-ranking.js", "use": "@vercel/node" },
-    { "src": "api/oliveyoung/hot-ranking-history.js", "use": "@vercel/node" },
-    {
-      "src": "api/oliveyoung/hot-ranking-cron.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 800
-      }
-    },
-    {
-      "src": "api/oliveyoung/curator-redirect.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
-    },
-    { "src": "api/oliveyoung/curator-queue.js", "use": "@vercel/node" },
-    { "src": "api/oliveyoung/shorten-proxy.js", "use": "@vercel/node" },
-    { "src": "api/oliveyoung/landing-proxy.js", "use": "@vercel/node" },
-    { "src": "api/favorites/sync.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/public-key.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/subscription.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/alerts.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/entitlement.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/account.js", "use": "@vercel/node", "config": { "maxDuration": 60 } },
-    { "src": "api/price-alerts/admin.js", "use": "@vercel/node", "config": { "maxDuration": 60 } },
-    { "src": "api/price-alerts/promotion.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/payment-create.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/payment-complete.js", "use": "@vercel/node" },
-    { "src": "api/price-alerts/payment-webhook.js", "use": "@vercel/node" },
-    {
-      "src": "api/price-alerts/hourly.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 800
-      }
-    },
-    { "src": "api/kakao/geo.js", "use": "@vercel/node" },
-    { "src": "api/ph-guide.js", "use": "@vercel/node", "config": { "maxDuration": 120 } }
-  ],
+  "proxy": {
+    "entrypoint": "site-access-proxy.ts"
+  },
+  "outputDirectory": "public",
+  "functions": {
+    "api/oliveyoung/search.js": { "maxDuration": 60 },
+    "api/oliveyoung/inventory.js": { "maxDuration": 60 },
+    "api/oliveyoung/hidden-stock.js": { "maxDuration": 60 },
+    "api/oliveyoung/hot-ranking-cron.js": { "maxDuration": 800 },
+    "api/oliveyoung/curator-redirect.js": { "maxDuration": 60 },
+    "api/price-alerts/account.js": { "maxDuration": 60 },
+    "api/price-alerts/admin.js": { "maxDuration": 60 },
+    "api/price-alerts/hourly.js": { "maxDuration": 800 },
+    "api/ph-guide.js": { "maxDuration": 120 },
+    "api/**/*.js": { "excludeFiles": "{public/images,public/blog,tests,scripts,server,reports}/**" }
+  },
   "crons": [
     {
       "path": "/api/oliveyoung/hot-ranking-cron",
@@ -82,110 +29,43 @@
       "schedule": "7 * * * *"
     }
   ],
-  "routes": [
+  "redirects": [
     {
-      "src": "/(?!api/|js/|css/|data/|sw\\.js|site\\.webmanifest)(.*)",
-      "has": [{ "type": "host", "value": "oy-stock.vercel.app" }],
-      "methods": ["GET", "HEAD"],
-      "status": 307,
-      "headers": { "Location": "https://olivestock.co.kr/$1", "Cache-Control": "no-store" }
-    },
-    {
-      "src": "/(?!api/|js/|css/|data/|sw\\.js|site\\.webmanifest)(.*)",
+      "source": "/:path((?!api/|js/|css/|data/|sw\\.js|site\\.webmanifest).*)",
       "has": [{ "type": "host", "value": "www.olivestock.co.kr" }],
-      "methods": ["GET", "HEAD"],
-      "status": 307,
-      "headers": { "Location": "https://olivestock.co.kr/$1", "Cache-Control": "no-store" }
-    },
-    { "src": "/guide/?", "dest": "/public/guide/index.html" },
-    { "src": "/guide/([^/]+)/?", "dest": "/public/guide/$1/index.html" },
-    { "src": "/blog/?", "dest": "/public/blog/index.html" },
-    { "src": "/blog/([^/]+)/?", "dest": "/public/blog/$1/index.html" },
+      "destination": "https://olivestock.co.kr/:path",
+      "permanent": false
+    }
+  ],
+  "headers": [
     {
-      "src": "/game/?",
-      "headers": {
-        "Cache-Control": "no-store"
-      },
-      "dest": "/public/game/index.html"
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
     },
     {
-      "src": "/game/(.*)",
-      "headers": {
-        "Cache-Control": "no-store"
-      },
-      "dest": "/public/game/$1"
-    },
-    { "src": "/site-map/?", "dest": "/public/site-map.html" },
-    {
-      "src": "/sw.js",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate"
-      },
-      "dest": "/public/sw.js"
+      "source": "/data/:path*",
+      "headers": [{ "key": "Cache-Control", "value": "private, no-store" }]
     },
     {
-      "src": "/data/(.*)",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=60, s-maxage=300"
-      },
-      "dest": "/public/data/$1"
-    },
-    { "src": "/api/ph-guide", "dest": "/api/ph-guide.js" },
-    { "src": "/api/favorites/sync", "dest": "/api/favorites/sync.js" },
-    {
-      "src": "/api/price-alerts/public-key",
-      "dest": "/api/price-alerts/public-key.js"
+      "source": "/game/:path*",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
     },
     {
-      "src": "/api/price-alerts/subscription",
-      "dest": "/api/price-alerts/subscription.js"
-    },
-    { "src": "/api/price-alerts/alerts", "dest": "/api/price-alerts/alerts.js" },
-    { "src": "/api/price-alerts/entitlement", "dest": "/api/price-alerts/entitlement.js" },
-    { "src": "/api/price-alerts/account", "dest": "/api/price-alerts/account.js" },
-    { "src": "/api/price-alerts/admin", "dest": "/api/price-alerts/admin.js" },
-    { "src": "/admin/?", "headers": { "Cache-Control": "no-store" }, "dest": "/public/admin.html" },
-    { "src": "/api/price-alerts/promotion", "dest": "/api/price-alerts/promotion.js" },
-    { "src": "/api/price-alerts/payment/create", "dest": "/api/price-alerts/payment-create.js" },
-    { "src": "/api/price-alerts/payment/complete", "dest": "/api/price-alerts/payment-complete.js" },
-    { "src": "/api/price-alerts/payment/webhook", "dest": "/api/price-alerts/payment-webhook.js" },
-    { "src": "/api/price-alerts/hourly", "dest": "/api/price-alerts/hourly.js" },
-    { "src": "/api/kakao/geo", "dest": "/api/kakao/geo.js" },
-    { "src": "/api/oliveyoung/stock", "dest": "/api/oliveyoung/stock.js" },
-    { "src": "/api/oliveyoung/view-ranking", "dest": "/api/oliveyoung/view-ranking.js" },
-    {
-      "src": "/api/oliveyoung/hot-ranking-history",
-      "dest": "/api/oliveyoung/hot-ranking-history.js"
-    },
-    {
-      "src": "/api/oliveyoung/hot-ranking-cron",
-      "dest": "/api/oliveyoung/hot-ranking-cron.js"
-    },
-    { "src": "/api/oliveyoung/search", "dest": "/api/oliveyoung/search.js" },
-    { "src": "/api/oliveyoung/inventory", "dest": "/api/oliveyoung/inventory.js" },
-    { "src": "/api/oliveyoung/options", "dest": "/api/oliveyoung/options.js" },
-    { "src": "/api/oliveyoung/hidden-stock", "dest": "/api/oliveyoung/hidden-stock.js" },
-    {
-      "src": "/api/oliveyoung/curator-redirect",
-      "dest": "/api/oliveyoung/curator-redirect.js"
-    },
-    {
-      "src": "/api/oliveyoung/curator-queue",
-      "dest": "/api/oliveyoung/curator-queue.js"
-    },
-    {
-      "src": "/api/oliveyoung/shorten-proxy",
-      "dest": "/api/oliveyoung/shorten-proxy.js"
-    },
-    {
-      "src": "/api/oliveyoung/landing-proxy",
-      "dest": "/api/oliveyoung/landing-proxy.js"
-    },
-    { "src": "/api/archive-embed", "dest": "/api/archive-embed.js" },
-    { "src": "/api/archive-file", "dest": "/api/archive-file.js" },
-    { "src": "/api/archive-rom", "dest": "/api/archive-rom.js" },
-    { "src": "/api/proxy(.*)", "dest": "/api/proxy.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
+      "source": "/admin",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
+  ],
+  "rewrites": [
+    { "source": "/guide", "destination": "/guide/index.html" },
+    { "source": "/guide/:slug", "destination": "/guide/:slug/index.html" },
+    { "source": "/blog", "destination": "/blog/index.html" },
+    { "source": "/blog/:slug", "destination": "/blog/:slug/index.html" },
+    { "source": "/game", "destination": "/game/index.html" },
+    { "source": "/site-map", "destination": "/site-map.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/api/price-alerts/payment/create", "destination": "/api/price-alerts/payment-create" },
+    { "source": "/api/price-alerts/payment/complete", "destination": "/api/price-alerts/payment-complete" },
+    { "source": "/api/price-alerts/payment/webhook", "destination": "/api/price-alerts/payment-webhook" },
+    { "source": "/api/proxy:tail(.*)", "destination": "/api/proxy" }
   ]
 }

@@ -85,9 +85,9 @@ test('workflow is manual, serialized with existing production deploys and uses c
   assert.match(source, /on:\s*\n\s+workflow_dispatch:/);
   assert.doesNotMatch(source, /\n\s+(?:push|pull_request|schedule|workflow_run):/);
   assert.match(source, /group: vercel-production-deploy/); assert.match(source, /cancel-in-progress: false/);
-  const stages = ['node scripts/configure-ph-guide-relay.mjs', 'vercel@50.32.5 pull', 'vercel@50.32.5 build', 'vercel@50.32.5 deploy', 'node scripts/check-ph-guide-relay-status.mjs'];
+  const stages = ['node scripts/configure-ph-guide-relay.mjs', 'vercel@64.7.0 pull', 'vercel@64.7.0 build', 'node scripts/verify-site-access-build.mjs', 'vercel@64.7.0 deploy', 'node scripts/check-ph-guide-relay-status.mjs'];
   let previous = -1; for (const stage of stages) { const index = source.indexOf(stage); assert.ok(index > previous); previous = index; }
-  assert.equal((source.match(/vercel@50\.32\.5 /g) || []).length, 3);
+  assert.equal((source.match(/vercel@64\.7\.0 /g) || []).length, 3);
   assert.doesNotMatch(source, /(?:ALERT_EMAIL_PASSWORD|PRICE_ALERT_SMTP_PASSWORD|PORTONE_API_SECRET|sendMail|env\s+ls|env\s+rm)/);
 });
 

@@ -235,6 +235,31 @@ node scripts/generate-curator-links.mjs
 
 ## 배포 시 주의사항
 
+### 2026-10-20: 기존 공개 도메인 차단
+
+- 사용자의 요청으로 Vercel 프로젝트 `oy-stock`의 WAF에 `Block retired olivestock public website` 규칙을 활성화했다. 규칙 ID는 `rule_block_retired_olivestock_public_website_aeK3Rz`, 최초 활성 버전은 1이다.
+- 대상 호스트는 정확히 `olivestock.co.kr`, `www.olivestock.co.kr`이며 홈페이지·정적 자산·재고 JSON·검색/구매 등 일반 이용 경로를 403으로 차단한다. DNS, 도메인 alias 및 앱 배포는 변경하지 않았다. 이 방화벽 설정은 소스 배포와 별개이므로 후속 자동 재배포에서도 임의로 제거하지 않는다.
+- 기존 자동화의 읽기 전용 `landing-proxy?check=1|true` GET/HEAD, 인기순위 읽기 GET/HEAD, 기존 인증을 유지하는 cron 및 PH relay, 결제 완료/취소 동기화 POST만 예외다. `landing-proxy` POST와 일반 전체 `/api/*`는 예외가 아니다.
+- 결제 provider 웹훅은 유지되지만 홈페이지 결제 복귀 화면은 차단된다. 새 결제 또는 기존 사이트의 사용자 화면을 계속 제공한다는 의미가 아니다. 실제 결제/취소 테스트는 수행하지 않았다.
+- GitHub 자동화 7개와 PC의 기존 15분 상태 점검·일일 갱신 예약은 활성 상태를 유지했다. 작업을 수동 실행하지 않았다.
+- 기본 Vercel 주소에서 기존 도메인으로 이동하는 기존 307 규칙은 이번 요청에서 수정하지 않았다. 따라서 회원 주소 이전·복구 검증·안내 메일 발송은 아직 완료 상태가 아니다.
+- 설정 요청과 mock 회귀 검증: `reports/olivestock-domain-block-firewall-20261020.json`, `tests/domain-block-firewall.test.js`. 요청 JSON을 반복 INSERT하면 중복 규칙이 생성될 수 있으므로 재실행하지 않는다. 차단을 해제할 때는 Vercel Firewall에서 해당 이름/ID의 규칙만 비활성화하며 전체 방화벽이나 다른 보안 기능을 끄지 않는다.
+- 온라인 새 접속의 차단을 확인했으나, 이미 내려받은 완전 오프라인 설치앱 화면까지 원격 삭제한 것은 아니다.
+
+### 2026-10-20: Vercel 주소 공통 비밀번호 입장
+
+- `oy-stock.vercel.app`의 기존 도메인행307을 제거하고 `site-access-proxy.ts`를 전 경로 Routing Middleware로 사용한다. 기존 도메인의 WAF 차단은 유지한다.
+- Routing Middleware의 `proxy` 설정은 legacy `builds`와 함께 사용할 수 없어, 기존 API별 최대 실행시간을 `functions`로 옮기고 `outputDirectory: public` 및 정적 라우트를 맞췄다. `functions`의 상세 패턴을 먼저, 포괄 패턴을 마지막에 둔다. Vercel CLI64.7.0 이상으로 빌드하고 산출물에서 middleware 포함을 확인한다.
+- legacy `routes`의 종료형 `dest` 재작성은 자동 생성 middleware보다 먼저 실행되어 인증을 우회할 수 있다. 따라서 `rewrites`·`headers`·`redirects`만 사용하며, `scripts/verify-site-access-build.mjs`에서 middleware가 filesystem 및 모든 destination 재작성보다 앞서는지 검사한다. 실제 비인증 데이터/API 요청도 배포 후 재검증한다.
+- 기존 `PRICE_ALERT_PROMO_CODE_DIGEST`/`PRICE_ALERT_PROMO_CODE_PEPPER`로 입장 비밀번호를 검증한다. 원문 코드는 파일이나 브라우저 저장소로 배포하지 않는다. 별도 환경값 추가나 기존 암호화 데이터 키 교체는 없다.
+- 성공한 브라우저는 host-bound HttpOnly 서명 쿠키로 최대12시간 입장한다. 브라우저 세션 쿠키이므로 종료/삭제 시 재입력이 필요하며 코드 변경 시 기존 쿠키가 무효화된다. 공통 비밀번호를 공유받은 사람도 입장하므로 개인별 회원 식별이나 복제 방지는 보장하지 않는다. 기존 유료 기능의 이용권 확인은 별도로 유지한다.
+- 관리자 화면의 무료코드 교체(Blob override)는 입장 비밀번호를 바꾸지 않는다. 입장은 환경변수의 기존 digest/pepper 기준이며 그 값 회전 후 재배포해야 변경된다. 세션 만료 중 Web Push 메시지 수신은 유지되나 알림 끄기 등 API 동작에는 재입장이 필요하다.
+- 일반 API 및 `/data`, `/public/data`, 정적 HTML 직접 경로도 잠금 대상이다. 결제/자동화의 필요한 기존 예외만 유지하고 각 API의 기존 인증을 제거하지 않는다. 잠금 설정 또는 rate-limit 저장소가 없으면 열린 화면 대신503으로 닫힌다.
+- 앱의 service-worker HTML/asset 캐시는 중단하며 `olivestock-app-*` 기존 캐시를 지운다. 기존 Push 이벤트는 유지한다. 게이트 페이지의 캐시 정리도 온라인 진입 때에만 동작한다.
+- 서버 잠금이 Vercel CDN 캐시보다 앞서 실행되는지 실제 배포에서 검증해야 한다. 단위 테스트 또는 `vercel.json` 설정만으로 완료라고 보고하지 않는다.
+- 이 변경은 Vercel 사이트 입장을 제한하는 조치다. 기존 공개 Cloud Run 근처 조회, GitHub 이력 또는 과거 고정 배포 URL의 자료를 모두 삭제한 것이 아니며, 외부 소명에서 서비스·자동화의 전면 중단으로 표현하지 않는다.
+- GitHub 자동화·PC 예약을 유지한다. 새 소스가 main에 반영되지 않은 상태에서 과거 소스로 다시 배포하면 게이트가 사라질 수 있다. main 반영은 사용자 승인 후 별도로 수행한다. 회원별 이전 안내 메일은 검증 및 대상 확인 전 발송하지 않는다.
+
 - Secret 값은 절대 커밋하지 않는다.
 - `public/data/*.json`은 공개 파일이다.
 - 큐레이터 링크 관련 배포 후 `landing-proxy?check=1`에서 `jwtValid`, `selectedSource`, `candidateSources`를 확인한다.

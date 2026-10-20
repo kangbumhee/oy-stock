@@ -1,0 +1,53 @@
+{
+  "action": "rules.insert",
+  "id": null,
+  "value": {
+    "name": "Block retired olivestock public website",
+    "description": "Owner-requested custom-domain website block; preserve existing machine checks, scheduled collection, PH relay and payment reconciliation. No bypass on other hosts.",
+    "active": true,
+    "conditionGroup": [
+      {
+        "conditions": [
+          { "type": "host", "op": "re", "value": "^(www\\.)?olivestock\\.co\\.kr$" },
+          { "type": "path", "op": "re", "neg": true, "value": "^/(?:api/oliveyoung/(?:landing-proxy|hot-ranking-history|hot-ranking-cron)|api/price-alerts/(?:payment/(?:webhook|complete)|hourly)|api/ph-guide)(?:\\.js)?$" }
+        ]
+      },
+      {
+        "conditions": [
+          { "type": "host", "op": "re", "value": "^(www\\.)?olivestock\\.co\\.kr$" },
+          { "type": "path", "op": "re", "value": "^/api/oliveyoung/(?:landing-proxy|hot-ranking-history)(?:\\.js)?$" },
+          { "type": "method", "op": "re", "neg": true, "value": "^(GET|HEAD)$" }
+        ]
+      },
+      {
+        "conditions": [
+          { "type": "host", "op": "re", "value": "^(www\\.)?olivestock\\.co\\.kr$" },
+          { "type": "path", "op": "re", "value": "^/api/oliveyoung/landing-proxy(?:\\.js)?$" },
+          { "type": "query", "key": "check", "op": "re", "neg": true, "value": "^(1|true)$" }
+        ]
+      },
+      {
+        "conditions": [
+          { "type": "host", "op": "re", "value": "^(www\\.)?olivestock\\.co\\.kr$" },
+          { "type": "path", "op": "re", "value": "^/(?:api/price-alerts/payment/(?:webhook|complete)|api/ph-guide)(?:\\.js)?$" },
+          { "type": "method", "op": "re", "neg": true, "value": "^POST$" }
+        ]
+      },
+      {
+        "conditions": [
+          { "type": "host", "op": "re", "value": "^(www\\.)?olivestock\\.co\\.kr$" },
+          { "type": "path", "op": "re", "value": "^/api/(?:oliveyoung/hot-ranking-cron|price-alerts/hourly)(?:\\.js)?$" },
+          { "type": "method", "op": "re", "neg": true, "value": "^(GET|POST)$" }
+        ]
+      }
+    ],
+    "action": {
+      "mitigate": {
+        "action": "deny",
+        "rateLimit": null,
+        "redirect": null,
+        "actionDuration": null
+      }
+    }
+  }
+}
