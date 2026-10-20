@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture, env, secret, SITE_ORIGIN, prereg, paymentId, message, rawPayment } from './helpers/relay-fixture.mjs';
+import { buildTransactionalMail, makeServiceUrl } from '../lib/ph-guide-mail.mjs';
 test('unique relay authorization fails before storage, provider, or SMTP side effects', async () => {
   const f = fixture(); assert.equal((await f.invoke({ action: 'status' }, 'wrong')).status, 401); assert.equal(f.writes.length, 0); assert.equal(f.providerCalls.length, 0); assert.equal(f.smtpCalls.length, 0);
   assert.equal((await f.invoke({ action: 'status' }, undefined, { method: 'GET' })).status, 405);
@@ -31,11 +32,32 @@ test('SMTP accepted receipt is persistent, idempotent, encrypted, and scoped out
   assert.ok(f.writes.some(item => item.options.ifMatch)); assert.match(f.smtpCalls[0].mail.messageId, /^<[a-f0-9]{64}@ph-pro-guide\.kbhjjan100\.chatgpt\.site>$/);
   assert.equal(f.smtpCalls[0].options.requireTLS, true); assert.equal(f.smtpCalls[0].mail.disableFileAccess, true); assert.equal(f.smtpCalls[0].mail.disableUrlAccess, true);
 });
-test('HTML mail keeps safe purchase CTA, Windows-PC restriction and separate OpenAI fee while escaping body HTML', async () => {
+test('HTML mail keeps one safe purchase CTA and replaces legacy markup with clean purpose-specific instructions', async () => {
   const f = fixture(); const input = { ...message(1), text: '이메일 확인 완료. <img src=x onerror=alert(1)>\n구매하기: ' + SITE_ORIGIN + '/checkout?token=synthetic-token\n이메일 확인 자체는 결제 승인이 아닙니다.' };
   assert.equal((await f.invoke(input)).status, 200); const mail = f.smtpCalls[0].mail;
-  assert.ok(mail.html.includes('50,000원 안내 구매하기')); assert.ok(mail.html.includes('Windows PC 전용')); assert.ok(mail.html.includes('ChatGPT 구독료는 OpenAI에 별도로 결제')); assert.ok(mail.html.includes('&lt;img')); assert.ok(!mail.html.includes('<img src=x'));
+  assert.ok(mail.html.includes('포트원·카카오페이로 50,000원 결제하기')); assert.ok(mail.html.includes('Windows PC 전용')); assert.ok(mail.html.includes('ChatGPT 구독료는 OpenAI에 별도로 결제')); assert.ok(!mail.html.includes('<img src=x'));
   assert.ok(mail.html.includes(SITE_ORIGIN + '/checkout?token=synthetic-token')); assert.ok(mail.text.includes('50,000원'));
+  assert.equal((mail.html.match(/href=/g) || []).length, 1);
+  assert.equal((mail.html.match(/\/checkout\?token=/g) || []).length, 1);
+});
+
+test('SMTP accepts the full eleven-chapter inline guide within existing payload limits and preserves one signed action', async () => {
+  const f = fixture();
+  const actionUrl = makeServiceUrl(SITE_ORIGIN, '/guide', 's'.repeat(1200));
+  const full = buildTransactionalMail({ kind: 'paid-guide', publicUrl: SITE_ORIGIN, actionUrl });
+  const input = { ...message(1), subject: '[PH 연결 가이드] 결제 확인 · 이용 안내', text: full.text };
+  assert.ok(Buffer.byteLength(input.text) < 12000);
+  assert.ok(Buffer.byteLength(JSON.stringify(input)) < 16384);
+  assert.equal((await f.invoke(input)).status, 200);
+  const sent = f.smtpCalls[0].mail;
+  assert.match(sent.html, /1\. 시작 전 준비/);
+  assert.match(sent.html, /11\. 진행이 어려울 때/);
+  assert.match(sent.text, /STOP\.cmd/);
+  assert.match(sent.text, /실제 유효한 번호와 적용 자격/);
+  assert.match(sent.text, /결제 시점이 아니라.*연결 시작 버튼.*1시간/);
+  assert.equal((sent.html.match(/href=/g) || []).length, 1);
+  assert.equal((sent.html.match(/\/guide\?token=/g) || []).length, 1);
+  assert.ok(sent.html.includes(actionUrl));
 });
 test('concurrent same-event mail requests acquire one strong-CAS lease and transmit once', async () => {
   let calls = 0, release; const gate = new Promise(resolve => { release = resolve; });
