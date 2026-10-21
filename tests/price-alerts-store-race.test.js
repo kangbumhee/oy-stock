@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  DeviceMutationCommittedError,
   DeviceWriteConflictError,
   mutateDevice
 } = require('../api/price-alerts/_store');
@@ -265,4 +266,64 @@ test('CAS retry makes concurrent payment grant application exact-once', async ()
   assert.equal(retried.written, false);
   assert.equal(store.getState().entitlement.grants.length, 1);
   assert.equal(store.getState().entitlement.grants[0].paymentId, paymentId);
+});
+
+function postCommitFailureStore(syncError) {
+  let state = initialRecord();
+  const calls = { reads: 0, writes: 0, mutations: 0, syncs: 0 };
+  return {
+    calls,
+    getState: () => clone(state),
+    async run() {
+      return mutateDevice(DEVICE_ID, (record) => {
+        calls.mutations += 1;
+        record.alerts[0].targetPrice = 7654;
+        return { changed: true, record };
+      }, {
+        maxAttempts: 4,
+        async readDevice() {
+          calls.reads += 1;
+          return { record: clone(state), blobs: [] };
+        },
+        async writeDevice(record) {
+          calls.writes += 1;
+          state = clone(record);
+          return { pathname: 'memory/device.enc', etag: '"committed-1"' };
+        },
+        async syncDeviceIndexes(record) {
+          calls.syncs += 1;
+          assert.deepEqual(record, state);
+          throw syncError;
+        }
+      });
+    }
+  };
+}
+
+test('post-commit index failure marks the persisted mutation privately without writing or mutating twice', async () => {
+  const store = postCommitFailureStore(new Error('synthetic index failure'));
+  await assert.rejects(store.run(), (error) => {
+    assert.ok(error instanceof DeviceMutationCommittedError);
+    assert.deepEqual(error.deviceMutationCommitted, { deviceId: DEVICE_ID, revision: 1 });
+    assert.equal(Object.getOwnPropertyDescriptor(error, 'deviceMutationCommitted').enumerable, false);
+    const publicError = JSON.stringify(error);
+    assert.equal(publicError.includes(DEVICE_ID), false);
+    assert.equal(publicError.includes('deviceMutationCommitted'), false);
+    return true;
+  });
+  assert.deepEqual(store.calls, { reads: 1, writes: 1, mutations: 1, syncs: 1 });
+  assert.equal(store.getState().revision, 1);
+  assert.equal(store.getState().alerts[0].targetPrice, 7654);
+});
+
+test('an index-sync DeviceWriteConflictError after commit never retries the successful record write', async () => {
+  const store = postCommitFailureStore(new DeviceWriteConflictError());
+  await assert.rejects(store.run(), (error) => {
+    assert.ok(error instanceof DeviceMutationCommittedError);
+    assert.deepEqual(error.deviceMutationCommitted, { deviceId: DEVICE_ID, revision: 1 });
+    return true;
+  });
+  assert.deepEqual(store.calls, { reads: 1, writes: 1, mutations: 1, syncs: 1 });
+  assert.equal(store.getState().revision, 1);
+  assert.equal(store.getState().alerts[0].targetPrice, 7654);
 });

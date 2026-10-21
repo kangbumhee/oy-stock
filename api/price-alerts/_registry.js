@@ -115,6 +115,10 @@ function recordHasStoredAlerts(record) {
 
 function recordHasRetainedEntitlement(record, now) {
   return (
+    // A password invitation is once per stored browser identity. Keep its
+    // consumed marker even after expiry/revocation so maintenance cannot make
+    // the same identity eligible again. Optional account recovery is separate.
+    entitlementGrants(record).some((grant) => grant && grant.source === 'promotion') ||
     Boolean(record && record.account && record.account.indexLinked && record.account.verifiedAt) ||
     publicEntitlement(record, Number(now || Date.now())).active ||
     pendingPaymentActive(record && record.pendingPayment, Number(now || Date.now()))
@@ -358,6 +362,28 @@ async function releaseActiveDeviceReservation(record, dependencies) {
   );
 }
 
+async function releaseDeviceRegistrationReservation(record, dependencies) {
+  if (!record || !record.deviceId) return false;
+  const pathname = deviceIndexPath(record.deviceId, 'registered');
+  const maximumRevision = Math.max(0, Number(record.revision || 0));
+  const remove = (dependencies && dependencies.del) || del;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const current = await readIndexPath(pathname, dependencies);
+    // Never remove an existing/committed registration while rolling back a
+    // failed invitation, including one committed during an ETag conflict.
+    if (!current || !Number.isFinite(Date.parse(current.entry.reservedAt || '')) ||
+        Number(current.entry.revision || 0) > maximumRevision) return false;
+    try {
+      await remove(pathname, { ifMatch: current.etag });
+      return true;
+    } catch (error) {
+      if (isConflict(error) && attempt < 4) continue;
+      throw error;
+    }
+  }
+  return false;
+}
+
 async function reserveIndexSlot(record, kind, maximum, capacityError, dependencies) {
   const pathname = deviceIndexPath(record.deviceId, kind);
   const existing = await readIndexPath(pathname, dependencies);
@@ -502,6 +528,7 @@ module.exports = {
   recordClaimsActiveCapacity,
   registeredDeviceCount,
   releaseActiveDeviceReservation,
+  releaseDeviceRegistrationReservation,
   requireActiveDeviceCapacity,
   reserveActiveDevice,
   reserveDeviceRegistration,

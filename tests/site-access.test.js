@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   COOKIE_NAME,
   SESSION_SECONDS,
@@ -123,7 +125,7 @@ test('all inventory, API and raw alias paths deny unauthenticated access', async
     '/api/oliveyoung/landing-proxy', '/api/oliveyoung/landing-proxy.js?check=0',
     '/api/price-alerts/payment-webhook.js', '/api/_site-access.js',
     '/data/stock-detail.json', '/public/data/stock-detail.json',
-    '/js/app.js', '/public/js/app.js', '/css/style.css'
+    '/js/app.js', '/public/js/app.js', '/css/style.css', '/site.webmanifest'
   ]) {
     const response = await handler(request(path));
     assert.equal(response.status, 401, path);
@@ -132,6 +134,15 @@ test('all inventory, API and raw alias paths deny unauthenticated access', async
   const response = await handler(request('/public/index.html'));
   assert.equal(response.status, 200);
   assert.match(await response.text(), /type="password"/);
+});
+
+test('protected install manifest includes the existing entry cookie instead of bypassing the gate', async () => {
+  const index = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(index, /<link\b(?=[^>]*\brel="manifest")(?=[^>]*\bcrossorigin="use-credentials")[^>]*>/);
+  const token = createSessionToken(HOST, configuration, NOW);
+  assert.equal(await createHandler()(request('/site.webmanifest', {
+    headers: { cookie: `${COOKIE_NAME}=${token}` }
+  })), null);
 });
 
 test('only exact operational methods and safe health queries pass through', async () => {

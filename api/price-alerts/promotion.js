@@ -1,4 +1,5 @@
 const { mutateAuthenticatedDevice } = require('./_auth');
+const { DeviceMutationCommittedError } = require('./_store');
 const {
   applyThirtyDayPromotion,
   configuredPromotion,
@@ -7,7 +8,6 @@ const {
   publicEntitlement
 } = require('./_entitlement');
 const { resolvedPromotion } = require('./_promotion-settings');
-const { publicAccount } = require('./_account-service');
 const {
   HttpError,
   assertSameOrigin,
@@ -19,7 +19,10 @@ const {
 const { consumeRateLimit } = require('./_limits');
 const {
   releaseActiveDeviceReservation,
-  reserveActiveDevice
+  releaseDeviceRegistrationReservation,
+  reserveActiveDevice,
+  reserveDeviceRegistration,
+  syncDeviceIndexes
 } = require('./_registry');
 
 function createPromotionHandler(dependencies = {}) {
@@ -45,20 +48,25 @@ function createPromotionHandler(dependencies = {}) {
       }
       const now = new Date(Number.isFinite(dependencies.now) ? dependencies.now : Date.now()).toISOString();
       let activeReservation = null;
+      let registrationReservation = null;
       let saved;
       try {
         saved = await (dependencies.mutateAuthenticatedDevice || mutateAuthenticatedDevice)(
           req,
-          { allowCreate: false },
-          async (record) => {
-            const previousPromotion = record.entitlement && Array.isArray(record.entitlement.grants) &&
-              record.entitlement.grants.some((grant) => grant && grant.source === 'promotion');
-            // Email verification creates and canonically links the account. It
-            // is required even if optional payment-email enforcement is disabled.
-            if (!previousPromotion && !publicAccount(record).verified) {
-              throw new HttpError(403, 'email_verification_required');
-            }
+          { allowCreate: true },
+          async (record, context) => {
             const result = applyThirtyDayPromotion(record, now);
+            // The invitation is browser-bound; optional linked email/recovery
+            // state is preserved, but is not required to redeem the password.
+            if (result.changed && context.created) {
+              const registration = await (dependencies.reserveDeviceRegistration || reserveDeviceRegistration)(record);
+              if (registration && registration.created) {
+                registrationReservation = {
+                  deviceId: record.deviceId,
+                  revision: Math.max(0, Number(record.revision || 0))
+                };
+              }
+            }
             const reservation = result.changed ?
               await (dependencies.reserveActiveDevice || reserveActiveDevice)(record) : null;
             if (reservation && reservation.created) {
@@ -82,10 +90,18 @@ function createPromotionHandler(dependencies = {}) {
           }
         );
       } catch (error) {
-        if (activeReservation) {
+        if (!(error instanceof DeviceMutationCommittedError) && activeReservation) {
           await (dependencies.releaseActiveDeviceReservation || releaseActiveDeviceReservation)(activeReservation).catch(() => {});
         }
+        if (!(error instanceof DeviceMutationCommittedError) && registrationReservation) {
+          await (dependencies.releaseDeviceRegistrationReservation || releaseDeviceRegistrationReservation)(registrationReservation).catch(() => {});
+        }
         throw error;
+      }
+      if (saved.value.idempotent) {
+        // A prior request may have committed the grant but failed its index
+        // sync. Finish that projection before acknowledging a no-write replay.
+        await (dependencies.syncDeviceIndexes || syncDeviceIndexes)(saved.record);
       }
       return sendJson(res, 200, {
         success: true,

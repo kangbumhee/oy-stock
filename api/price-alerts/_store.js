@@ -19,6 +19,19 @@ class DeviceWriteConflictError extends Error {
   }
 }
 
+class DeviceMutationCommittedError extends Error {
+  constructor(deviceId, revision) {
+    super('price alert device index synchronization failed after commit');
+    this.name = 'DeviceMutationCommittedError';
+    // Internal rollback signal only. Do not serialize identifiers into API
+    // errors, logs or responses; the durable record must never be rolled back.
+    Object.defineProperty(this, 'deviceMutationCommitted', {
+      value: Object.freeze({ deviceId, revision }),
+      enumerable: false
+    });
+  }
+}
+
 function normalizeStoreNamespace(value) {
   const normalized = String(value || '')
     .trim()
@@ -190,13 +203,21 @@ async function mutateDevice(deviceId, mutation, options) {
       )
     );
     nextRecord.revision = previousRevision + 1;
+    let blob;
     try {
-      const blob = await write(nextRecord, loaded.blobs || []);
-      await syncIndexes(nextRecord);
-      return { ...outcome, record: nextRecord, blob, attempts: attempt, written: true };
+      blob = await write(nextRecord, loaded.blobs || []);
     } catch (error) {
       if (!(error instanceof DeviceWriteConflictError) || attempt === maxAttempts) throw error;
+      continue;
     }
+    try {
+      await syncIndexes(nextRecord);
+    } catch (_) {
+      // The device CAS is already durable. An index conflict/outage is not a
+      // write conflict and must not rerun the mutation or release its slots.
+      throw new DeviceMutationCommittedError(deviceId, nextRecord.revision);
+    }
+    return { ...outcome, record: nextRecord, blob, attempts: attempt, written: true };
   }
   throw new DeviceWriteConflictError();
 }
@@ -279,6 +300,7 @@ async function listLatestDevices() {
 }
 
 module.exports = {
+  DeviceMutationCommittedError,
   DeviceWriteConflictError,
   configuredDeviceRoot,
   listLatestDevices,

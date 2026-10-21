@@ -30,11 +30,11 @@ function environment(options = {}) {
   let timerId = 0;
   let attempt = options.attempt || null;
   const elements = new Map();
-  const calls = { create: 0, complete: 0, account: 0, sdk: 0, sdkLoad: 0, verified: 0, navigations: [], requests: [] };
+  const calls = { create: 0, complete: 0, account: 0, promotion: 0, sdk: 0, sdkLoad: 0, verified: 0, navigations: [], requests: [] };
   function element(id) {
     if (!elements.has(id)) elements.set(id, {
       value: '', textContent: '', disabled: false, checked: false, open: false,
-      classList: { toggle() {} }, focus() {}, scrollIntoView() {}, checkValidity() { return true; }
+      classList: { toggle() {} }, focus() { this.focused = true; }, scrollIntoView() {}, checkValidity() { return true; }
     });
     return elements.get(id);
   }
@@ -49,7 +49,7 @@ function environment(options = {}) {
     location: { href: url.href, origin: url.origin, search: url.search, assign(target) { calls.navigations.push(target); } },
     document: { getElementById(id) { return elements.get(id) || null; } },
     UI: { showSyncStatus() {} },
-    CONFIG: { PRICE_ALERT_PAYMENT_CREATE_API: '/api/price-alerts/payment/create', PRICE_ALERT_PAYMENT_COMPLETE_API: '/api/price-alerts/payment/complete' },
+    CONFIG: { PRICE_ALERT_PAYMENT_CREATE_API: '/api/price-alerts/payment/create', PRICE_ALERT_PAYMENT_COMPLETE_API: '/api/price-alerts/payment/complete', PRICE_ALERT_PROMOTION_API: '/api/price-alerts/promotion' },
     Storage: {
       getPriceAlertDevice: () => ({ deviceId: 'FixtureDevice000000001', deviceSecret: 'FixtureSecret000000000000000000001' }),
       setPriceAlertDevice() { return true; }, replacePriceAlerts() {},
@@ -68,6 +68,10 @@ function environment(options = {}) {
       } else if (target.endsWith('/complete')) {
         calls.complete++;
         body = options.completed || { success: true, paymentId: PAYMENT_ID, status: 'pending', entitlement: { active: false } };
+      } else if (target === '/api/price-alerts/promotion') {
+        calls.promotion++;
+        body = { success: true, idempotent: false, entitlement: { active: true, lifetime: false,
+          expiresAt: new Date(clock.now + 30 * 86400000).toISOString() } };
       } else if (target === '/api/price-alerts/account') {
         calls.account++;
         if (options.accountError) return { ok: false, status: options.accountError.status, headers: { get: () => options.accountError.retryAfter || null }, json: async () => ({ success: false, error: options.accountError.code }) };
@@ -285,36 +289,78 @@ test('an account-read 429 is not misreported as unverified email and prevents ch
   assert.equal(env.calls.account, 1);
 });
 
-test('promotion email checks cannot use the legacy recovery-disabled payment bypass', async () => {
+test('payment retains the legacy recovery-disabled behavior independently of free code redemption', async () => {
   const env = environment({ account: { success: true, available: true, recoveryEnabled: false, account: { verified: false } } });
   const membership = env.loadMembership();
   assert.equal(await membership.requireVerifiedEmail(), true);
-  assert.equal(await membership.requireVerifiedEmail({ purpose: 'promotion' }), false);
-  assert.match(env.element('membership-message').textContent, /무료 30일권 적용 전에 이메일 인증/);
   assert.equal(env.calls.create, 0);
   assert.equal(env.calls.sdk, 0);
 });
 
-test('verified promotion checks read current email state without sending any email or payment', async () => {
+test('verified payment checks still read current email state before creating a payment', async () => {
   const env = environment();
   const membership = env.loadMembership();
-  assert.equal(await membership.requireVerifiedEmail({ purpose: 'promotion' }), true);
+  assert.equal(await membership.requireVerifiedEmail(), true);
   assert.equal(env.calls.account, 1);
   assert.deepEqual(env.calls.requests.map(request => request.method), ['GET']);
   assert.equal(env.calls.create, 0);
   assert.equal(env.calls.sdk, 0);
 });
 
-test('a promotion email-read 429 retains rate-limit guidance and never posts the invitation code', async () => {
+test('an email-service 429 cannot block or trigger account requests during free code redemption', async () => {
   const env = environment({ accountError: { status: 429, code: 'rate_limit_exceeded', retryAfter: '120' } });
   env.loadMembership();
   env.alerts.promotionAvailable = true;
   env.element('price-alert-promo-input').value = 'fixture-invitation';
   await env.alerts.applyPromotion();
-  assert.match(env.message(), /2분/);
-  assert.doesNotMatch(env.message(), /인증을 완료/);
-  assert.equal(env.element('price-alert-promo-input').value, 'fixture-invitation');
+  assert.equal(env.alerts._hasActiveEntitlement(), true);
+  assert.equal(env.calls.account, 0);
+  assert.equal(env.calls.promotion, 1);
+  assert.equal(env.element('price-alert-promo-input').value, '');
   assert.equal(env.calls.requests.length, 1);
-  assert.equal(env.calls.requests[0].method, 'GET');
+  assert.equal(env.calls.requests[0].method, 'POST');
+  assert.equal(env.calls.requests[0].target, '/api/price-alerts/promotion');
   assert.equal(env.calls.create, 0);
+});
+
+test('unverified paid checkout opens optional email controls and does not create a payment', async () => {
+  const env = environment({ account: { success: true, available: true, recoveryEnabled: true, account: { verified: false } } });
+  const membership = env.loadMembership();
+  membership.render = () => {};
+  const optional = env.element('membership-account');
+  const email = env.element('membership-email');
+  assert.equal(optional.open, false);
+  await env.alerts.startPayment();
+  assert.equal(optional.open, true);
+  assert.equal(email.focused, true);
+  assert.match(env.element('membership-message').textContent, /결제 전에 이메일 인증/);
+  assert.equal(env.calls.account, 1);
+  assert.equal(env.calls.create, 0);
+  assert.equal(env.calls.sdk, 0);
+});
+
+test('email and recovery controls mount closed and preserve their authenticated actions', () => {
+  const env = environment();
+  const membership = env.loadMembership();
+  const actions = [];
+  membership.submit = action => actions.push(action);
+  let mounted;
+  env.context.document.createElement = tagName => ({
+    tagName, open: false, setAttribute() {}, innerHTML: ''
+  });
+  const paywall = env.element('price-alert-paywall');
+  paywall.parentNode = { insertBefore(node, anchor) { assert.equal(anchor, paywall); mounted = node; } };
+  for (const id of ['membership-email-send', 'membership-email-verify', 'membership-recovery-send', 'membership-recover']) {
+    env.element(id).addEventListener = (type, listener) => { env.element(id)[type] = listener; };
+  }
+  membership.mount();
+  assert.equal(mounted.tagName, 'details');
+  assert.equal(mounted.id, 'membership-account');
+  assert.equal(mounted.open, false);
+  assert.match(mounted.innerHTML, /^<summary>결제·이용권 복구\(선택\)<\/summary>/);
+  assert.match(mounted.innerHTML, /기존 브라우저 사용을 해제하고 이 브라우저로 옮깁니다/);
+  assert.match(mounted.innerHTML, /무료 30일 코드는 이메일 인증 없이 바로 적용/);
+  env.element('membership-email-verify').click();
+  env.element('membership-recover').click();
+  assert.deepEqual(actions, ['verify-email', 'recover']);
 });
