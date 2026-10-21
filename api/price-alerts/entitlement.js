@@ -1,6 +1,7 @@
 const { authenticateDevice } = require('./_auth');
 const {
   entitlementFeatureEnabled,
+  configuredPromotion,
   publicEntitlement
 } = require('./_entitlement');
 const { handleHttpError, methodNotAllowed, sendJson } = require('./_http');
@@ -14,7 +15,7 @@ module.exports = async function handler(req, res) {
     const loaded = await authenticateDevice(req, { allowCreate: true });
     const paymentConfiguration = configuredPortOne();
     const promotionConfiguration = entitlementFeatureEnabled()
-      ? await resolvedPromotion().catch(() => null) : null;
+      ? configuredPromotion() || await resolvedPromotion().catch(() => null) : null;
     let capacityAvailable = false;
     if (paymentConfiguration) {
       try {

@@ -193,8 +193,8 @@
 | `PRICE_ALERT_PORTONE_EXPECTED_CHANNEL_TYPE` | Vercel env, 선택 | 허용 채널 유형 | 기본 `LIVE` |
 | `PRICE_ALERT_PORTONE_TIMEOUT_MS` | Vercel env, 선택 | PortOne 읽기 제한 | 기본 `65000`, 최소 60초 |
 | `PRICE_ALERT_PUBLIC_SITE_URL` | Vercel env | 결제 완료 redirect HTTPS origin | `https://olivestock.co.kr` |
-| `PRICE_ALERT_PROMO_CODE_DIGEST` | Vercel env | 평생 코드의 HMAC-SHA256 digest | 서버 밖에서 생성 |
-| `PRICE_ALERT_PROMO_CODE_PEPPER` | Vercel env | 평생 코드 HMAC 서버 전용 pepper | 암호학적 난수 생성 |
+| `PRICE_ALERT_PROMO_CODE_DIGEST` | Vercel env | 공통 입장 및 1회 무료30일 초대 코드의 HMAC-SHA256 digest | 서버 밖에서 생성 |
+| `PRICE_ALERT_PROMO_CODE_PEPPER` | Vercel env | 공통 입장·초대 코드 HMAC 서버 전용 pepper | 암호학적 난수 생성 |
 | `PRICE_ALERT_PAYMENT_WEBHOOK_LIMIT` / `PRICE_ALERT_PAYMENT_WEBHOOK_WINDOW_SECONDS` | Vercel env, 선택 | PortOne 웹훅 재시도용 별도 요청률 제한 | 기본 `600` / `3600` |
 
 Cloud Run 가격 조회 기본값은 `PRICE_LOOKUP_CONCURRENCY=1`, `PRICE_LOOKUP_PACE_MS=1000`, `PRICE_LOOKUP_WINDOW_MAX=20`, `PRICE_LOOKUP_WINDOW_MS=60000`, `PRICE_LOOKUP_TOTAL_TIMEOUT_MS=180000`이다. 정상으로 열린 올리브영 상품 페이지 안에서 상품상세 API를 호출하며, 공개 표시가 `finalPrice`만 사용하고 조건부 `maxBenefitPrice`는 사용하지 않는다. 2026-08-26 로컬의 오래된 50상품 표본 1회에서 첫 25개 응답 뒤 나머지 25개가 HTTP 429였으므로 이 제한은 의도적으로 보수적이며, 같은 실서비스 배치 재검사는 하지 않았다.
@@ -216,7 +216,13 @@ PortOne 배포 순서는 Store/Channel/API secret/공개 URL/프로모션 digest
 - 관리자 Google 설정은 `PRICE_ALERT_GOOGLE_CLIENT_ID`에 전용 웹 Client ID만 저장한다. JavaScript origins는 `https://olivestock.co.kr`, `https://www.olivestock.co.kr`. GIS popup 방식이므로 client secret/refresh token/메일함 scope는 사용하지 않는다. 테스트 모드에서는 관리자 Gmail을 테스트 사용자로 추가한다.
 - `/admin`에서 구글 인증 후 목록·무료키 변경·수동 기간 연장을 관리한다. 실제 데이터 API는 고정 관리자 이메일을 검증한다. 관리자 토큰을 localStorage에 저장하지 않는다.
 - 복구는 동일 deviceId의 secret을 원자적으로 회전시킨다. 결제 소유권과 잔여기간은 그대로, 이전 브라우저 접근과 Push/outbox는 해제한다. 기존 회원은 현재 브라우저에서 이메일을 인증해야 셀프 복구를 이용할 수 있다.
-- 무료키 변경은 향후 신규 적용에만 영향을 주며 기존 프로모션 이용권을 회수하지 않는다. 변경 원문은 보관하지 않아 관리자도 다시 조회할 수 없다.
+- 무료키 변경은 향후 신규 적용에만 영향을 주며 기존 프로모션 이용권을 회수하지 않는다. 변경 원문은 보관하지 않아 관리자도 다시 조회할 수 없다. 이 관리자 관리 키는 공통 사이트 입장 비밀번호와 별개이며, 관리 키 변경으로 입장 비밀번호가 바뀌거나 동일 계정에 무료 기간이 다시 지급되지 않는다.
+
+### 공통 비밀번호의 1회 무료 30일 이용권 (2026-10-21)
+
+- 기존 입장 비밀번호를 그대로 사용한다. 비밀번호 원문·새 환경변수·관리자 키 재설정 없이, 신규 프로모션 적용을 평생권에서 인증 이메일 계정당1회30일권으로 변경한다. 입장 쿠키만으로 기능 이용권을 자동 부여하지 않는다.
+- 기존 평생 이용권·결제·관리자 연장·기기 단독 사용과 이메일 복구는 유지한다. 이미 프로모션 이력이 있는 계정은 신규 지급하지 않는다. 실제 결제·취소·메일 발송을 이 변경의 검증 단계에서 실행하지 않는다.
+- 단위 검증에서30일 만료, 중복·동시 요청, 만료 후 재입력, 코드 회전, 다른 브라우저 복구, 평생권 유지 및 관리자 코드 저장소 실패를 확인한다. 모의 검증과 운영에서 실제 계정에 기간을 지급한 사실을 구분하여 보고한다.
 - 방문 횟수는 30분 비활동 기준 클라이언트 세션 ID를 서버에서 중복 제거한 값이며 과거 기록은 소급 생성하지 않는다. 브라우저 단독 인증은 일반적인 기기 공유를 막지만, 공격자가 로컬 인증값 자체를 훔친 경우까지 물리적 기기 고정을 보장하지 않는다.
 
 ### 결제·취소 운영자 메일

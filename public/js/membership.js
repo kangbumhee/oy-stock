@@ -55,7 +55,7 @@ var Membership = {
       '<div id="membership-enroll"><label for="membership-email">결제 및 이용권 복구 이메일</label>' +
       '<div class="membership-row"><input id="membership-email" type="email" autocomplete="email" maxlength="254" placeholder="이메일 주소"><button type="button" id="membership-email-send">인증 키 받기</button></div>' +
       '<label for="membership-email-code">메일로 받은 인증 키</label><div class="membership-row"><input id="membership-email-code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="80" placeholder="메일의 인증 키 입력"><button type="button" id="membership-email-verify">이메일 인증</button></div>' +
-      '<p>결제 전에 이메일을 인증해 주세요. 이메일은 이용권 확인과 복구 안내에만 사용합니다.</p></div>' +
+      '<p>결제 또는 무료 30일권 적용 전에 이메일을 인증해 주세요. 이메일은 이용권 확인과 복구 안내에만 사용합니다.</p></div>' +
       '<details id="membership-recovery"><summary>다른 브라우저에서 이용권 복구 / 키를 잊었어요</summary>' +
       '<p>등록한 이메일로 일회용 복구 키를 보내드립니다. 복구하면 이 브라우저만 사용할 수 있으며 이전 브라우저는 즉시 권한이 해제됩니다.</p>' +
       '<label for="membership-recovery-email">등록한 이메일</label><div class="membership-row"><input id="membership-recovery-email" type="email" autocomplete="email" maxlength="254"><button type="button" id="membership-recovery-send">복구 키 받기</button></div>' +
@@ -114,7 +114,7 @@ var Membership = {
       ? '인증된 이메일: ' + this.account.email
       : this.recoveryAfterRevocation ? '다른 브라우저로 이용권이 이전되었습니다. 아래 이메일 복구로 다시 옮길 수 있습니다.'
         : !this.state ? '이메일 서비스를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.'
-        : this.state.available ? '이메일 인증 후 결제할 수 있습니다.' : '이메일 복구 서비스 준비 중입니다. 결제는 아직 시작할 수 없습니다.';
+        : this.state.available ? '이메일 인증 후 결제하거나 무료 30일권을 적용할 수 있습니다.' : '이메일 복구 서비스 준비 중입니다. 결제와 무료 30일권 적용은 아직 시작할 수 없습니다.';
     var unavailable = !this.state || !this.state.available;
     section.querySelectorAll('button').forEach(function (button) {
       var recovery = button.id === 'membership-recovery-send' || button.id === 'membership-recover';
@@ -122,9 +122,10 @@ var Membership = {
     });
   },
 
-  requireVerifiedEmail: async function () {
+  requireVerifiedEmail: async function (options) {
+    var promotion = options && options.purpose === 'promotion';
     var state = await this.refresh();
-    if (state && state.recoveryEnabled === false) return true;
+    if (state && state.recoveryEnabled === false && !promotion) return true;
     if (state && state.available && this.account && this.account.verified) return true;
     if (!state && this._refreshError) {
       if (this._refreshError.status === 429) PriceAlerts._setPaymentCooldown(this._refreshError);
@@ -132,10 +133,10 @@ var Membership = {
       return false;
     }
     if (state && !state.available) {
-      this.message('이메일 서비스를 확인할 수 없어 결제를 시작하지 않았습니다. 잠시 후 다시 확인해 주세요.', true);
+      this.message('이메일 서비스를 확인할 수 없어 ' + (promotion ? '무료 30일권을 적용하지' : '결제를 시작하지') + ' 않았습니다. 잠시 후 다시 확인해 주세요.', true);
       return false;
     }
-    this.message('결제 전에 이메일 인증을 완료해 주세요. 복구 키를 받을 주소입니다.', true);
+    this.message((promotion ? '무료 30일권 적용' : '결제') + ' 전에 이메일 인증을 완료해 주세요. 복구 키를 받을 주소입니다.', true);
     var email = document.getElementById('membership-email');
     if (email) { email.scrollIntoView({ block: 'center' }); email.focus(); }
     return false;
@@ -209,7 +210,7 @@ var Membership = {
         await PriceAlerts.refreshFromServer({ silent: true });
         this._lastVisitCheck = 0;
         this.trackVisit();
-        this.message(recovering ? '이 브라우저로 복구했습니다. 이전 브라우저는 더 이상 사용할 수 없습니다. 가격 알림은 이 브라우저에서 알림 허용을 다시 설정해 주세요.' : '이메일 인증을 완료했습니다. 이제 결제할 수 있습니다.', false);
+        this.message(recovering ? '이 브라우저로 복구했습니다. 이전 브라우저는 더 이상 사용할 수 없습니다. 가격 알림은 이 브라우저에서 알림 허용을 다시 설정해 주세요.' : '이메일 인증을 완료했습니다. 이제 결제하거나 무료 30일권을 적용할 수 있습니다.', false);
       }
     } catch (error) {
       if (input) input.value = '';

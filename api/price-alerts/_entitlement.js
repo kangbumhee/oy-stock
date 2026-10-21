@@ -6,6 +6,7 @@ const PASS_DURATION_DAYS = 30;
 const PASS_DURATION_MS = PASS_DURATION_DAYS * 24 * 60 * 60 * 1000;
 const PAYMENT_INTENT_TTL_MS = 24 * 60 * 60 * 1000;
 const PASS_ORDER_NAME = '올리브재고 가격 알림 30일 이용권';
+const PROMOTION_PASS_CLAIM_ID = 'one-time-30-day-v1';
 
 function enabledFlag(value) {
   return /^(?:1|true|yes|on)$/i.test(String(value || '').trim());
@@ -62,18 +63,24 @@ function entitlementState(record) {
   return record.entitlement;
 }
 
+function isTimedPromotionGrant(grant) {
+  return Boolean(grant && grant.source === 'promotion' && grant.lifetime === false &&
+    grant.claimId === PROMOTION_PASS_CLAIM_ID && grant.durationDays === PASS_DURATION_DAYS);
+}
+
 function recomputeGrantIntervals(record) {
   const entitlement = entitlementState(record);
   const payments = entitlement.grants
     .filter((grant) => grant && (
       (grant.source === 'payment' && normalizePaymentId(grant.paymentId)) ||
+      isTimedPromotionGrant(grant) ||
       (grant.source === 'admin' && /^[A-Za-z0-9_-]{16,100}$/.test(grant.actionId || '') &&
         Number.isInteger(grant.durationDays) && grant.durationDays >= 1 && grant.durationDays <= 365)
     ))
     .sort((left, right) => {
       const time = Date.parse(left.grantedAt || 0) - Date.parse(right.grantedAt || 0);
       if (Number.isFinite(time) && time) return time;
-      return String(left.paymentId || left.actionId).localeCompare(String(right.paymentId || right.actionId));
+      return String(left.paymentId || left.actionId || left.claimId).localeCompare(String(right.paymentId || right.actionId || right.claimId));
     });
   let cursor = 0;
   payments.forEach((grant) => {
@@ -105,7 +112,7 @@ function publicEntitlement(record, now) {
   );
   let expiresAt = null;
   grants.forEach((grant) => {
-    if (!grant || !['payment', 'admin'].includes(grant.source) || grant.revokedAt) return;
+    if (!grant || (!['payment', 'admin'].includes(grant.source) && !isTimedPromotionGrant(grant)) || grant.revokedAt) return;
     const end = Date.parse(grant.endsAt || '');
     if (Number.isFinite(end) && (!expiresAt || end > Date.parse(expiresAt))) {
       expiresAt = new Date(end).toISOString();
@@ -273,6 +280,28 @@ function applyLifetimePromotion(record, promotionId, now) {
   return { changed: true, grant, entitlement: publicEntitlement(record) };
 }
 
+function applyThirtyDayPromotion(record, now) {
+  const entitlement = entitlementState(record);
+  // One invitation claim per canonical account, not one per code/digest. Keep
+  // expired/revoked claims and legacy lifetime grants so rotation or recovery
+  // cannot turn another submission into a new entitlement.
+  const existing = entitlement.grants.find((grant) => grant && grant.source === 'promotion');
+  if (existing) return { changed: false, grant: existing, entitlement: publicEntitlement(record) };
+  const grant = {
+    source: 'promotion',
+    claimId: PROMOTION_PASS_CLAIM_ID,
+    grantedAt: normalizeIso(now) || new Date().toISOString(),
+    lifetime: false,
+    durationDays: PASS_DURATION_DAYS,
+    revokedAt: null,
+    startsAt: null,
+    endsAt: null
+  };
+  entitlement.grants.push(grant);
+  recomputeGrantIntervals(record);
+  return { changed: true, grant, entitlement: publicEntitlement(record) };
+}
+
 function pendingPaymentActive(pending, now) {
   if (!pending || !normalizePaymentId(pending.paymentId)) return false;
   if (!['created', 'prepared', 'pending', 'review_required'].includes(pending.status)) return false;
@@ -295,6 +324,7 @@ module.exports = {
   PAYMENT_INTENT_TTL_MS,
   applyAdminExtension,
   applyLifetimePromotion,
+  applyThirtyDayPromotion,
   applyPaymentGrant,
   configuredPromotion,
   entitlementFeatureEnabled,

@@ -284,3 +284,37 @@ test('an account-read 429 is not misreported as unverified email and prevents ch
   await env.alerts.startPayment();
   assert.equal(env.calls.account, 1);
 });
+
+test('promotion email checks cannot use the legacy recovery-disabled payment bypass', async () => {
+  const env = environment({ account: { success: true, available: true, recoveryEnabled: false, account: { verified: false } } });
+  const membership = env.loadMembership();
+  assert.equal(await membership.requireVerifiedEmail(), true);
+  assert.equal(await membership.requireVerifiedEmail({ purpose: 'promotion' }), false);
+  assert.match(env.element('membership-message').textContent, /무료 30일권 적용 전에 이메일 인증/);
+  assert.equal(env.calls.create, 0);
+  assert.equal(env.calls.sdk, 0);
+});
+
+test('verified promotion checks read current email state without sending any email or payment', async () => {
+  const env = environment();
+  const membership = env.loadMembership();
+  assert.equal(await membership.requireVerifiedEmail({ purpose: 'promotion' }), true);
+  assert.equal(env.calls.account, 1);
+  assert.deepEqual(env.calls.requests.map(request => request.method), ['GET']);
+  assert.equal(env.calls.create, 0);
+  assert.equal(env.calls.sdk, 0);
+});
+
+test('a promotion email-read 429 retains rate-limit guidance and never posts the invitation code', async () => {
+  const env = environment({ accountError: { status: 429, code: 'rate_limit_exceeded', retryAfter: '120' } });
+  env.loadMembership();
+  env.alerts.promotionAvailable = true;
+  env.element('price-alert-promo-input').value = 'fixture-invitation';
+  await env.alerts.applyPromotion();
+  assert.match(env.message(), /2분/);
+  assert.doesNotMatch(env.message(), /인증을 완료/);
+  assert.equal(env.element('price-alert-promo-input').value, 'fixture-invitation');
+  assert.equal(env.calls.requests.length, 1);
+  assert.equal(env.calls.requests[0].method, 'GET');
+  assert.equal(env.calls.create, 0);
+});

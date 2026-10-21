@@ -12,7 +12,14 @@ function environment() {
   const context = {
     Date, Promise, String, Number, Error, setTimeout,
     CONFIG: { PRICE_ALERT_PAYMENT_COMPLETE_API: '/payment/complete', PRICE_ALERT_PROMOTION_API: '/promotion' },
-    UI: { showSyncStatus() {} },
+    UI: { showSyncStatus(message) { context.notices.push(message); } },
+    notices: [],
+    Membership: { busy: false, async requireVerifiedEmail(options) {
+      assert.equal(options.purpose, 'promotion');
+      context.verificationChecks++;
+      return true;
+    } },
+    verificationChecks: 0,
     Storage: { clearPriceAlertPaymentAttempt() { context.clearedAttempts++; } },
     clearedAttempts: 0,
     document: { activeElement: null, getElementById(id) { return elements.get(id) || null; } }
@@ -123,20 +130,109 @@ test('only a verified paid response activates membership; pending and mismatched
   }
 });
 
-test('promotion remains available through direct checkout and lifetime access is visible after activation', async () => {
-  const { alerts, get } = environment();
+test('a verified code response activates a finite 30-day pass and displays its real expiry', async () => {
+  const { alerts, context, get } = environment();
+  const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
   alerts.openMembership();
   get('price-alert-promo-input').value = 'fixture-code';
   alerts._request = async (url, opts) => {
     assert.equal(url, '/promotion');
     assert.equal(opts.body.code, 'fixture-code');
-    return { entitlement: { active: true, lifetime: true } };
+    return { idempotent: false, entitlement: { active: true, lifetime: false, expiresAt } };
   };
   await alerts.applyPromotion();
+  assert.equal(context.verificationChecks, 1);
   assert.equal(get('price-alert-promo-input').value, '');
-  assert.equal(get('price-alert-entitlement-status').textContent, '평생 이용권 활성');
+  assert.match(get('price-alert-entitlement-status').textContent, /이용권 만료/);
+  assert.equal(alerts.entitlement.expiresAt, expiresAt);
+  assert.match(context.notices[0], /무료 30일 이용권이 적용/);
   assert.equal(get('price-alert-membership-summary').classList.contains('hidden'), false);
   assert.equal(alerts.modalState.membershipOnly, true);
+});
+
+test('existing lifetime responses remain lifetime and are never described as a new free grant', async () => {
+  const { alerts, context, get } = environment();
+  alerts.openMembership();
+  get('price-alert-promo-input').value = 'fixture-code';
+  alerts._request = async () => ({ idempotent: true, entitlement: { active: true, lifetime: true, expiresAt: null } });
+  await alerts.applyPromotion();
+  assert.equal(get('price-alert-entitlement-status').textContent, '평생 이용권 활성');
+  assert.match(context.notices[0], /기존 평생 이용권이 유지/);
+  assert.doesNotMatch(context.notices[0], /적용되었습니다/);
+});
+
+test('unverified or unavailable email never posts the code and preserves input for verification', async () => {
+  for (const outcome of [false, new Error('fixture email outage')]) {
+    const { alerts, context, get } = environment();
+    alerts.openMembership();
+    context.Membership.requireVerifiedEmail = async () => {
+      if (outcome instanceof Error) throw outcome;
+      return outcome;
+    };
+    get('price-alert-promo-input').value = 'fixture-code';
+    alerts._request = async () => { throw new Error('must not request a grant'); };
+    await alerts.applyPromotion();
+    assert.equal(get('price-alert-promo-input').value, 'fixture-code');
+    assert.equal(alerts.paymentBusy, false);
+    assert.equal(alerts._emailCheckBusy, false);
+    assert.match(get('price-alert-paywall-message').textContent, outcome instanceof Error ? /인증 서비스를 확인하지 못해/ : /이메일 인증을 완료/);
+    assert.equal(context.notices.length, 0);
+  }
+});
+
+test('replaying an expired one-time pass does not claim activation or resume paid access', async () => {
+  const { alerts, context, get } = environment();
+  let resumed = 0;
+  alerts.openAccess(() => { resumed++; });
+  get('price-alert-promo-input').value = 'fixture-code';
+  alerts._request = async () => ({ idempotent: true, entitlement: { active: false, lifetime: false, expiresAt: '2020-01-01T00:00:00Z' } });
+  await alerts.applyPromotion();
+  assert.equal(resumed, 0);
+  assert.equal(alerts._hasActiveEntitlement(), false);
+  assert.equal(context.notices.length, 0);
+  assert.match(get('price-alert-paywall-message').textContent, /이미 사용한 무료 30일 이용권/);
+});
+
+test('malformed and expired active promotion responses fail closed rather than granting UI access', async () => {
+  for (const entitlement of [{ active: true, lifetime: false }, { active: true, expiresAt: 'invalid' },
+    { active: true, lifetime: false, expiresAt: '2020-01-01T00:00:00Z' }]) {
+    const { alerts, context, get } = environment();
+    alerts.openMembership();
+    get('price-alert-promo-input').value = 'fixture-code';
+    alerts._request = async () => ({ idempotent: false, entitlement });
+    await alerts.applyPromotion();
+    assert.equal(alerts._hasActiveEntitlement(), false);
+    assert.equal(context.notices.length, 0);
+    assert.equal(get('price-alert-promo-input').value, '');
+  }
+});
+
+test('concurrent clicks share the verification stage and identity changes prevent redemption', async () => {
+  const { alerts, context, get } = environment();
+  let release;
+  let requests = 0;
+  context.Membership.requireVerifiedEmail = () => new Promise(resolve => { release = resolve; });
+  alerts.openMembership();
+  get('price-alert-promo-input').value = 'fixture-code';
+  alerts._request = async () => { requests++; };
+  const applying = alerts.applyPromotion();
+  assert.equal(get('price-alert-promo-button').disabled, true);
+  await alerts.applyPromotion();
+  alerts._deviceVersion = 1;
+  release(true);
+  await applying;
+  assert.equal(requests, 0);
+  assert.equal(alerts._emailCheckBusy, false);
+});
+
+test('promotion copy promises one finite invitation and preserves the separate site-password boundary', () => {
+  const admin = fs.readFileSync(path.join(root, 'public/admin.html'), 'utf8');
+  assert.match(source, /30일 무료 이용 코드/);
+  assert.match(source, /이메일 인증 후 사이트 입장 비밀번호/);
+  assert.match(source, /한 계정당 한 번만/);
+  assert.doesNotMatch(source, /평생 이용 프로모션 코드|평생 가격 알림 이용권이 활성화되었습니다/);
+  assert.match(admin, /초대 코드를 변경해도 사이트 입장 비밀번호는 변경되지/);
+  assert.match(admin, /이미 사용한 계정에 30일권이 다시 지급되지/);
 });
 
 test('existing paid-stock access still resumes its callback and restores originating focus', () => {
