@@ -354,9 +354,18 @@ var PriceAlerts = {
       var messages = {
         promotion_invalid: '유효하지 않은 무료 이용 코드입니다.',
         promotion_already_used: '이미 사용한 무료 30일 이용권입니다. 코드를 다시 입력해도 이용기간은 늘어나지 않습니다.',
+        active_device_capacity_reached: '현재 이용 가능 인원이 가득 찼습니다. 관리자에게 이용 한도 확대를 요청해 주세요.',
+        device_capacity_reached: '현재 등록 가능한 브라우저 수가 가득 찼습니다. 관리자에게 등록 한도 확대를 요청해 주세요.',
+        device_registry_unavailable: '이용권 수용량을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
         device_auth_failed: '브라우저 인증정보를 확인하지 못했습니다. 이메일을 등록한 이용권은 ‘결제·이용권 복구(선택)’에서 복구해 주세요.'
       };
-      this._setPaywallMessage(messages[error && error.code] || '무료 이용 코드를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.', true);
+      var message = messages[error && error.code] || '무료 이용 코드를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      if (error && (error.status === 429 || error.code === 'rate_limited' || error.code === 'rate_limit_exceeded')) {
+        var seconds = Math.max(1, Math.min(86400, Number(error.retryAfter) || 60));
+        var wait = seconds >= 60 ? Math.ceil(seconds / 60) + '분' : Math.ceil(seconds) + '초';
+        message = '무료 이용 코드 요청이 많아 잠시 제한되었습니다. 약 ' + wait + ' 후에 다시 시도해 주세요.';
+      }
+      this._setPaywallMessage(message, true);
     }
   },
 

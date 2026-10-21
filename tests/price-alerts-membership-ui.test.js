@@ -193,6 +193,57 @@ test('code redemption is independent of missing, unverified, busy or unavailable
   }
 });
 
+test('promotion capacity and registry failures explain the actual limit without granting access', async () => {
+  for (const [code, message] of [
+    ['active_device_capacity_reached', /현재 이용 가능 인원이 가득 찼습니다.*관리자에게 이용 한도 확대/],
+    ['device_capacity_reached', /현재 등록 가능한 브라우저 수가 가득 찼습니다.*관리자에게 등록 한도 확대/],
+    ['device_registry_unavailable', /이용권 수용량을 확인하지 못했습니다.*잠시 후 다시 시도/]
+  ]) {
+    const { alerts, context, get } = environment();
+    alerts.openMembership();
+    get('price-alert-promo-input').value = 'fixture-code';
+    let requests = 0;
+    alerts._request = async () => {
+      requests++;
+      throw Object.assign(new Error('fixture internal failure'), { status: 503, code, retryAfter: 3600 });
+    };
+    await alerts.applyPromotion();
+    assert.match(get('price-alert-paywall-message').textContent, message);
+    assert.doesNotMatch(get('price-alert-paywall-message').textContent, /유효하지 않은|이메일 인증|fixture internal/);
+    assert.equal(get('price-alert-paywall-message').classList.contains('error'), true);
+    assert.equal(alerts._hasActiveEntitlement(), false);
+    assert.equal(alerts.paymentBusy, false);
+    assert.equal(alerts.paymentAvailable, true);
+    assert.equal(alerts.promotionAvailable, true);
+    assert.equal(requests, 1);
+    assert.equal(context.verificationChecks, 0);
+    assert.equal(context.notices.length, 0);
+  }
+});
+
+test('promotion rate-limit codes and HTTP 429 show Retry-After without changing payment cooldown rules', async () => {
+  for (const [error, wait] of [
+    [{ code: 'rate_limited', retryAfter: 37 }, /약 37초 후/],
+    [{ code: 'rate_limit_exceeded', retryAfter: 120 }, /약 2분 후/],
+    [{ status: 429 }, /약 1분 후/],
+    [{ status: 429, code: 'unknown_response', retryAfter: 61 }, /약 2분 후/]
+  ]) {
+    const { alerts, context, get } = environment();
+    alerts.openMembership();
+    get('price-alert-promo-input').value = 'fixture-code';
+    alerts._request = async () => { throw Object.assign(new Error('fixture internal failure'), error); };
+    await alerts.applyPromotion();
+    assert.match(get('price-alert-paywall-message').textContent, /무료 이용 코드 요청이 많아 잠시 제한/);
+    assert.match(get('price-alert-paywall-message').textContent, wait);
+    assert.equal(alerts._hasActiveEntitlement(), false);
+    assert.equal(alerts.paymentBusy, false);
+    assert.equal(alerts._paymentRetryAt, 0);
+    assert.equal(get('price-alert-promo-button').disabled, false);
+    assert.equal(context.verificationChecks, 0);
+    assert.equal(context.notices.length, 0);
+  }
+});
+
 test('replaying an expired one-time pass does not claim activation or resume paid access', async () => {
   const { alerts, context, get } = environment();
   let resumed = 0;
