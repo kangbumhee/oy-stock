@@ -26,13 +26,14 @@ try {
   foreach ($line in $result) {
     try {
       $state = [string]$line | ConvertFrom-Json
-      if ($state.status -in @('healthy', 'reconnect_required', 'check_failed', 'busy') -and
+      if ($state.status -in @('healthy', 'reconnect_required', 'check_failed', 'busy', 'publication_pending') -and
           $state.notification -in @('not_needed', 'sent', 'already_sent', 'pending', 'dispatch_failed')) {
         Write-HealthLog ('Status=' + $state.status + '; Notification=' + $state.notification)
       }
     } catch { }
   }
   if ($exitCode -eq 75) { Write-HealthLog 'Skipped: refresh or another health report is running'; exit 0 }
+  if ($exitCode -eq 76) { Write-HealthLog 'Publication pending; confirmation continues on the next check'; exit 0 }
   if ($exitCode -eq 0) { exit 0 }
   if ($exitCode -eq 42) { Write-HealthLog 'Reconnect required'; exit 42 }
   Write-HealthLog 'Health check or alert dispatch failed'

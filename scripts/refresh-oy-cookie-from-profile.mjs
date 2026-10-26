@@ -20,7 +20,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { spawnSync } from 'child_process';
 import { chromium } from 'playwright';
 import { loadLoginSecrets } from './lib/oy-login-secrets.mjs';
 import { readCaptchaConfig, TwoCaptchaClient, createCaptchaBudget, abortableSleep } from './lib/oy-captcha-client.mjs';
@@ -29,11 +28,8 @@ import { createCaptchaHandler } from './lib/oy-captcha-flow.mjs';
 import { OY_LOGIN_URL, runAutoLogin, assertLoginHost, isLoginUrl, inspectLoginOutcome } from './lib/oy-auto-login.mjs';
 import { acquireRefreshLock } from './lib/oy-refresh-lock.mjs';
 import { extractCookies, jwtExpFromLinkageHex, authFingerprintFromCookie } from './lib/cookie-extractor.mjs';
-import { waitForPublishedAuth } from './verify-oy-publication.mjs';
-import {
-  githubRepoArgs,
-  updateGitHubSecret
-} from './lib/secret-manager.mjs';
+import { startAuthPublication, inspectAuthPublication } from './lib/oy-auth-publication-state.mjs';
+import { updateGitHubSecret } from './lib/secret-manager.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -80,19 +76,6 @@ if (args.has('--help') || args.has('-h')) {
 
 function log(message) {
   console.log(`[INFO] ${message}`);
-}
-
-function runGh(argsToRun) {
-  const r = spawnSync('gh', argsToRun, {
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
-    timeout: 30000,
-    windowsHide: true
-  });
-  if (r.status !== 0) {
-    throw new Error('GITHUB_COMMAND_FAILED');
-  }
-  return (r.stdout || '').trim();
 }
 
 async function wait(ms) {
@@ -398,29 +381,6 @@ async function setupProfile(context, page) {
   throw new Error('Setup timed out before required OliveYoung cookies appeared.');
 }
 
-function dispatchRefreshWorkflow() {
-  const workflow = (process.env.OY_REFRESH_WORKFLOW || 'refresh-oy-linkage.yml').trim();
-  runGh(['workflow', 'run', workflow, '-f', 'deployVercel=true', ...githubRepoArgs()]);
-  log(`GitHub workflow '${workflow}' dispatched`);
-
-  try {
-    const latest = runGh([
-      'run',
-      'list',
-      '--workflow',
-      workflow,
-      '--limit',
-      '1',
-      '--json',
-      'databaseId,status,conclusion,url,createdAt',
-      ...githubRepoArgs()
-    ]);
-    if (latest) log(`latest run: ${latest}`);
-  } catch {
-    log('workflow dispatched; latest run lookup skipped');
-  }
-}
-
 async function main() {
   process.once('SIGINT', cancel);
   process.once('SIGTERM', cancel);
@@ -543,9 +503,17 @@ async function main() {
       return;
     }
 
-    dispatchRefreshWorkflow();
-    log('waiting for the new authentication to reach production');
-    await waitForPublishedAuth(state.exp, { expectedFingerprint: authFingerprintFromCookie(state.cookies.raw) });
+    const publication = await startAuthPublication({ repoRoot, expectedExpiry: state.exp,
+      expectedFingerprint: authFingerprintFromCookie(state.cookies.raw) });
+    log(`GitHub authentication publication requested: ${publication.requestId}`);
+    const outcome = await inspectAuthPublication({ repoRoot });
+    if (outcome.status === 'pending') {
+      // The runner queue is outside this PC's 20-minute task budget. Persist the
+      // request and let read-only 15-minute health checks confirm this exact run.
+      log('authentication publication pending; periodic health checks will confirm completion');
+      throw Object.assign(new Error('OY_PUBLICATION_PENDING'), { code: 'OY_PUBLICATION_PENDING', exitCode: 76 });
+    }
+    if (outcome.status !== 'published') throw new Error('OY_PUBLICATION_NOT_CONFIRMED');
     log('production authentication publication confirmed');
   } finally {
     if (context && previousLinkageCookies.length && !linkageReissueValidated) {
@@ -562,6 +530,10 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((err) => {
   // Never expose Playwright call logs, which can echo entered secrets.
+  if (err.code === 'OY_PUBLICATION_PENDING' && err.exitCode === 76) {
+    console.log('[INFO] OY_PUBLICATION_PENDING');
+    process.exit(76);
+  }
   console.error(`[ERROR] ${signal.aborted ? 'ABORTED' : err.exitCode === HUMAN_LOGIN_EXIT_CODE ? err.message : err.code === 'OY_REFRESH_BUSY' ? 'OY_REFRESH_BUSY' : 'COOKIE_REFRESH_FAILED'}`);
   process.exit(Number.isInteger(err.exitCode) ? err.exitCode : 1);
 });

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { acquireRefreshLock } from './oy-refresh-lock.mjs';
+import { inspectAuthPublication } from './oy-auth-publication-state.mjs';
 
 const execute = promisify(execFile);
 const REASONS = new Set(['reconnect_required', 'check_failed']);
@@ -152,7 +153,8 @@ async function writeState(filename, state) {
 }
 
 async function recordOutcome({ repoRoot, exitCode, source, immediate = false, dispatchAlert, now = Date.now, statePath }) {
-  const status = exitCode === 0 ? 'healthy' : exitCode === 42 ? 'reconnect_required' : exitCode === 75 ? 'busy' : 'check_failed';
+  const status = exitCode === 0 ? 'healthy' : exitCode === 42 ? 'reconnect_required' : exitCode === 75 ? 'busy'
+    : exitCode === 76 ? 'publication_pending' : 'check_failed';
   if (exitCode === 75) return { exitCode: 75, status, notification: 'not_needed' };
   const filename = statePath || path.join(repoRoot, '.auth', 'oy-login-health.json');
   await fs.mkdir(path.dirname(filename), { recursive: true });
@@ -166,6 +168,12 @@ async function recordOutcome({ repoRoot, exitCode, source, immediate = false, di
     const state = await readState(filename);
     const at = timestamp(now);
     state.lastCheckedAt = at;
+    if (exitCode === 76) {
+      // A queued publication is neither a new outage nor confirmed recovery.
+      // Preserve existing deduplication, failures, and last healthy evidence.
+      await writeState(filename, state);
+      return { exitCode: 76, status, notification: 'not_needed', consecutiveFailures: state.consecutiveFailures };
+    }
     if (exitCode === 0) {
       state.lastHealthyAt = at;
       state.consecutiveFailures = 0;
@@ -198,11 +206,23 @@ async function recordOutcome({ repoRoot, exitCode, source, immediate = false, di
   } finally { await release(); }
 }
 
-export async function runLoginHealthCheck({ repoRoot, runCheck, checkProduction, ...options }) {
+export async function runLoginHealthCheck({ repoRoot, runCheck, checkProduction, checkPublication, ...options }) {
   let local;
   try { local = await (runCheck || (() => checkLocalLogin({ repoRoot })))(); }
   catch { local = 1; }
   if (![0, 42, 75].includes(local)) local = 1;
+  if (local === 0) {
+    let publication;
+    try {
+      publication = await (checkPublication || (() => inspectAuthPublication({ repoRoot, now: options.now || Date.now })))();
+    } catch { publication = { status: 'failed' }; }
+    if (publication?.status === 'pending') {
+      return recordOutcome({ repoRoot, ...options, exitCode: 76, source: 'periodic_check' });
+    }
+    if (!['none', 'published'].includes(publication?.status)) {
+      return recordOutcome({ repoRoot, ...options, exitCode: 1, source: 'periodic_check', immediate: true });
+    }
+  }
   let exitCode = local;
   if (local !== 75 && local !== 42) {
     let production;
@@ -217,7 +237,7 @@ export async function runLoginHealthCheck({ repoRoot, runCheck, checkProduction,
 }
 
 export async function reportRefreshFailure({ repoRoot, exitCode, ...options }) {
-  const normalized = exitCode === 42 ? 42 : exitCode === 75 ? 75 : 1;
+  const normalized = exitCode === 42 ? 42 : exitCode === 75 ? 75 : exitCode === 76 ? 76 : 1;
   return recordOutcome({ repoRoot, ...options, exitCode: normalized, source: 'daily_refresh', immediate: true });
 }
 

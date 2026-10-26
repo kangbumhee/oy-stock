@@ -73,6 +73,10 @@ test('Windows canonical paths contend while health-state and refresh scopes stay
   const health = await acquireRefreshLock(root, { scope: 'health-state' });
   t.after(health);
   await assert.rejects(acquireRefreshLock(root, { scope: 'health-state' }), { code: 'OY_REFRESH_BUSY' });
+  const publication = await acquireRefreshLock(root, { scope: 'publication-state' });
+  t.after(publication);
+  await assert.rejects(acquireRefreshLock(root, { scope: 'publication-state' }), { code: 'OY_REFRESH_BUSY' });
+  await publication();
   await health(); await refresh();
   await assert.rejects(acquireRefreshLock(root, { scope: 'unknown' }), { code: 'OY_REFRESH_LOCK_FAILED' });
 });
@@ -127,7 +131,7 @@ test('Windows vault Setup owns the same mutex and process termination releases i
   const { root, acquireRefreshLock } = await fixture(t);
   const vaultScript = path.join(__dirname, '../scripts/oy-login-secrets.ps1');
   const command = `
-$fixture = [Console]::In.ReadLine() | ConvertFrom-Json
+$fixture = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadLine())) | ConvertFrom-Json
 function global:Read-Host {
   param($Prompt, [switch]$AsSecureString)
   [Console]::Out.WriteLine('VAULT_FIXTURE_HELD')
@@ -140,7 +144,8 @@ function global:Read-Host {
   const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(command, 'utf16le').toString('base64')], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   t.after(() => stopChild(child));
   child.stdin.on('error', () => {});
-  child.stdin.write(JSON.stringify({ script: vaultScript, vault: path.join(root, '.auth', 'oy-login-secrets.json') }) + '\n');
+  child.stdin.write(Buffer.from(JSON.stringify({ script: vaultScript,
+    vault: path.join(root, '.auth', 'oy-login-secrets.json') }), 'utf8').toString('base64') + '\n');
   await childReady(child, 'VAULT_FIXTURE_HELD');
   await assert.rejects(acquireRefreshLock(root), { code: 'OY_REFRESH_BUSY' });
   await stopChild(child);

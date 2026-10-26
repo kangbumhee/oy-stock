@@ -95,6 +95,10 @@ try {
   }
 
   if ($exitCode -ne 0) {
+    if ($exitCode -eq 76) {
+      Write-Log 'PublicationPending=true; GitHub publication is tracked by the periodic health check'
+      exit 0
+    }
     if ($exitCode -eq 75) {
       Write-Log 'Another refresh/settings operation is active; skipping this run'
       exit 0

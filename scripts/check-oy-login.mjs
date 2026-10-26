@@ -7,7 +7,7 @@ const args = process.argv.slice(2);
 try {
   let result;
   if (args.length === 0) result = await runLoginHealthCheck({ repoRoot });
-  else if (args.length === 2 && args[0] === '--refresh-failed' && /^(?:1|42|75)$/.test(args[1])) {
+  else if (args.length === 2 && args[0] === '--refresh-failed' && /^(?:1|42|75|76)$/.test(args[1])) {
     result = await reportRefreshFailure({ repoRoot, exitCode: Number(args[1]) });
   } else if (args.length === 1 && args[0] === '--refresh-succeeded') {
     result = await reportRefreshSuccess({ repoRoot });

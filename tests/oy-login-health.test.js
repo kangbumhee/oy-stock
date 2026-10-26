@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url');
 
 const healthUrl = pathToFileURL(path.join(__dirname, '..', 'scripts', 'lib', 'oy-login-health.mjs'));
 const mailUrl = pathToFileURL(path.join(__dirname, '..', 'scripts', 'send-oy-login-alert.mjs'));
+const publicationUrl = pathToFileURL(path.join(__dirname, '..', 'scripts', 'lib', 'oy-auth-publication-state.mjs'));
 const AT = '2026-09-06T01:00:00.000Z';
 const SAFE = { reason: 'reconnect_required', source: 'periodic_check', detectedAt: AT };
 
@@ -17,7 +18,8 @@ async function fixture(t) {
   let time = Date.parse(AT);
   return {
     repoRoot, calls,
-    options: { repoRoot, now: () => time, checkProduction: async () => 0, dispatchAlert: async (metadata) => { calls.push(metadata); return true; } },
+    options: { repoRoot, now: () => time, checkProduction: async () => 0, checkPublication: async () => ({ status: 'none' }),
+      dispatchAlert: async (metadata) => { calls.push(metadata); return true; } },
     advance: () => { time += 900000; },
     statePath: path.join(repoRoot, '.auth', 'oy-login-health.json'),
   };
@@ -117,6 +119,142 @@ test('daily failures alert immediately and only confirmed publication success re
   assert.equal((await reportRefreshSuccess(f.options)).exitCode, 0);
   assert.equal((await reportRefreshFailure({ ...f.options, exitCode: 42 })).notification, 'sent');
   assert.equal(f.calls.length, 2);
+});
+
+test('queued publication across periodic checks does not alert or accept an older valid deployment as recovery', async (t) => {
+  const { runLoginHealthCheck } = await import(healthUrl);
+  const f = await fixture(t);
+  let productionChecks = 0;
+  const options = { ...f.options, runCheck: async () => 0,
+    checkPublication: async () => ({ status: 'pending', runId: 123 }),
+    checkProduction: async () => { productionChecks++; return 0; } };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const result = await runLoginHealthCheck(options);
+    assert.deepEqual(result, { exitCode: 76, status: 'publication_pending', notification: 'not_needed', consecutiveFailures: 0 });
+    const state = JSON.parse(await fs.readFile(f.statePath, 'utf8'));
+    assert.equal(state.lastHealthyAt, null);
+    assert.equal(state.incident, null);
+    assert.equal(state.lastCheckedAt, new Date(f.options.now()).toISOString());
+    f.advance();
+  }
+  assert.equal(productionChecks, 0);
+  assert.equal(f.calls.length, 0);
+});
+
+test('pending publication preserves an existing incident until exact publication confirmation and local health', async (t) => {
+  const { reportRefreshFailure, reportRefreshSuccess, runLoginHealthCheck } = await import(healthUrl);
+  const f = await fixture(t);
+  await reportRefreshSuccess(f.options);
+  f.advance();
+  await reportRefreshFailure({ ...f.options, exitCode: 1 });
+  const before = JSON.parse(await fs.readFile(f.statePath, 'utf8'));
+  let publication = 'pending';
+  let production = 0;
+  const options = { ...f.options, runCheck: async () => 0,
+    checkPublication: async () => ({ status: publication }), checkProduction: async () => production };
+  f.advance();
+  assert.equal((await runLoginHealthCheck(options)).exitCode, 76);
+  const pending = JSON.parse(await fs.readFile(f.statePath, 'utf8'));
+  assert.deepEqual(pending.incident, before.incident);
+  assert.equal(pending.lastHealthyAt, before.lastHealthyAt);
+  assert.equal(pending.consecutiveFailures, before.consecutiveFailures);
+  assert.notEqual(pending.lastCheckedAt, before.lastCheckedAt);
+  assert.equal(f.calls.length, 1);
+  publication = 'published';
+  production = 1;
+  assert.equal((await runLoginHealthCheck(options)).status, 'check_failed');
+  assert.ok(JSON.parse(await fs.readFile(f.statePath, 'utf8')).incident);
+  production = 0;
+  assert.equal((await runLoginHealthCheck(options)).status, 'healthy');
+  const recovered = JSON.parse(await fs.readFile(f.statePath, 'utf8'));
+  assert.equal(recovered.incident, null);
+  assert.equal(recovered.consecutiveFailures, 0);
+  assert.equal(recovered.lastHealthyAt, new Date(f.options.now()).toISOString());
+});
+
+test('deferred daily publication retains health evidence and never sends a failure email', async (t) => {
+  const { reportRefreshFailure, reportRefreshSuccess } = await import(healthUrl);
+  const f = await fixture(t);
+  await reportRefreshSuccess(f.options);
+  f.advance();
+  await reportRefreshFailure({ ...f.options, exitCode: 1 });
+  const before = JSON.parse(await fs.readFile(f.statePath, 'utf8'));
+  f.advance();
+  const deferred = await reportRefreshFailure({ ...f.options, exitCode: 76 });
+  assert.equal(deferred.status, 'publication_pending');
+  assert.equal(deferred.exitCode, 76);
+  assert.equal(deferred.notification, 'not_needed');
+  const after = JSON.parse(await fs.readFile(f.statePath, 'utf8'));
+  assert.equal(after.lastHealthyAt, before.lastHealthyAt);
+  assert.equal(after.consecutiveFailures, before.consecutiveFailures);
+  assert.deepEqual(after.incident, before.incident);
+  assert.equal(f.calls.length, 1);
+});
+
+test('terminal or timed out publication alerts immediately and keeps email deduplication', async (t) => {
+  const { runLoginHealthCheck } = await import(healthUrl);
+  const f = await fixture(t);
+  for (const reason of ['workflow_failed', 'publication_timeout']) {
+    const options = { ...f.options, runCheck: async () => 0,
+      checkPublication: async () => ({ status: 'failed', reason, runId: 123 }) };
+    const result = await runLoginHealthCheck(options);
+    assert.equal(result.status, 'check_failed');
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.notification, f.calls.length === 1 && reason === 'workflow_failed' ? 'sent' : 'already_sent');
+    assert.equal(f.calls[0].reason, 'check_failed');
+    f.advance();
+  }
+  assert.equal(f.calls.length, 1);
+});
+
+test('pending publication cannot mask local reconnect, busy, or local check failures', async (t) => {
+  const { runLoginHealthCheck } = await import(healthUrl);
+  const f = await fixture(t);
+  let publicationChecks = 0;
+  const options = { ...f.options, checkPublication: async () => { publicationChecks++; return { status: 'pending' }; } };
+  assert.equal((await runLoginHealthCheck({ ...options, runCheck: async () => 75 })).status, 'busy');
+  assert.equal((await runLoginHealthCheck({ ...options, runCheck: async () => 42 })).status, 'reconnect_required');
+  assert.equal(f.calls.length, 1);
+  assert.equal((await runLoginHealthCheck({ ...options, runCheck: async () => 1 })).status, 'check_failed');
+  assert.equal(publicationChecks, 0);
+});
+
+test('real publication tracking tolerates delayed runner start and requires the exact deployed authentication before recovery', async (t) => {
+  const { reportRefreshFailure, runLoginHealthCheck } = await import(healthUrl);
+  const { startAuthPublication, inspectAuthPublication } = await import(publicationUrl);
+  const f = await fixture(t);
+  await reportRefreshFailure({ ...f.options, exitCode: 1 });
+  const originalIncident = JSON.parse(await fs.readFile(f.statePath, 'utf8')).incident;
+  const record = await startAuthPublication({ repoRoot: f.repoRoot, now: f.options.now,
+    expectedExpiry: f.options.now() / 1000 + 86400, expectedFingerprint: 'a'.repeat(64),
+    env: { GITHUB_REPOSITORY: 'owner/repo' },
+    runProcess: async () => ({ stdout: 'https://github.com/owner/repo/actions/runs/123' }) });
+  let status = 'queued';
+  let payload = { jwtValid: true, jwtExpSeconds: record.expectedExpiry - 100, authFingerprint: 'b'.repeat(64) };
+  let productionChecks = 0;
+  const options = { ...f.options, runCheck: async () => 0,
+    checkProduction: async () => { productionChecks++; return 0; },
+    checkPublication: () => inspectAuthPublication({ repoRoot: f.repoRoot, now: f.options.now,
+      runProcess: async () => ({ stdout: JSON.stringify({ id: 123, display_title: `OY auth publication ${record.requestId}`, status, conclusion: status === 'completed' ? 'success' : null }) }),
+      fetchImpl: async () => ({ ok: true, json: async () => payload }) }) };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    assert.equal((await runLoginHealthCheck(options)).status, 'publication_pending');
+    assert.deepEqual(JSON.parse(await fs.readFile(f.statePath, 'utf8')).incident, originalIncident);
+    f.advance();
+    status = 'in_progress';
+  }
+  status = 'completed';
+  payload = { ...payload, jwtExpSeconds: record.expectedExpiry };
+  assert.equal((await runLoginHealthCheck(options)).exitCode, 76);
+  payload = { ...payload, jwtExpSeconds: record.expectedExpiry - 1, authFingerprint: record.expectedFingerprint };
+  assert.equal((await runLoginHealthCheck(options)).exitCode, 76);
+  assert.equal(productionChecks, 0);
+  payload = { ...payload, jwtExpSeconds: record.expectedExpiry };
+  assert.equal((await runLoginHealthCheck(options)).status, 'healthy');
+  assert.equal(productionChecks, 1);
+  assert.equal(JSON.parse(await fs.readFile(f.statePath, 'utf8')).incident, null);
+  assert.equal(f.calls.length, 1);
+  assert.equal((await inspectAuthPublication({ repoRoot: f.repoRoot })).status, 'none');
 });
 
 test('dispatch failure stays pending and retries with original safe incident metadata', async (t) => {

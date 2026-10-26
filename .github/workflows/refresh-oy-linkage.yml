@@ -1,10 +1,15 @@
 # 수동 실행 시 linkageString → JWT 검증 후 Vercel/Cloud Run env 갱신.
 # 기본 실행은 Vercel 재배포와 실제 운영 인증 확인까지 완료한다.
 name: Refresh OliveYoung linkageString
+run-name: ${{ inputs.requestId && format('OY auth publication {0}', inputs.requestId) || 'Refresh OliveYoung linkageString' }}
 
 on:
   workflow_dispatch:
     inputs:
+      requestId:
+        description: 'PC에서 게시 완료를 추적하는 비밀정보 없는 요청 ID'
+        required: false
+        type: string
       deployVercel:
         description: '환경변수 갱신 후 Vercel을 한 번 배포'
         required: false

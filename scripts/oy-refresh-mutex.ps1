@@ -2,13 +2,13 @@
 param(
   [ValidateSet('Hold', 'Library')][string]$Mode = 'Hold',
   [string]$AuthDirectory,
-  [ValidateSet('refresh', 'health-state')][string]$Scope = 'refresh'
+  [ValidateSet('refresh', 'health-state', 'publication-state')][string]$Scope = 'refresh'
 )
 
 # Shared by Node's hidden holder and the interactive vault command. Kernel
 # ownership disappears after a crash/reboot; no stale lock file is reclaimed.
 function Get-OyRefreshMutexName {
-  param([string]$Directory, [ValidateSet('refresh', 'health-state')][string]$MutexScope = 'refresh')
+  param([string]$Directory, [ValidateSet('refresh', 'health-state', 'publication-state')][string]$MutexScope = 'refresh')
   if ([string]::IsNullOrWhiteSpace($Directory)) { throw 'OY_REFRESH_LOCK_FAILED' }
   $canonical = [IO.Path]::GetFullPath($Directory).TrimEnd('\', '/').ToUpperInvariant()
   $digest = [Security.Cryptography.SHA256]::Create()
@@ -20,7 +20,7 @@ function Get-OyRefreshMutexName {
 }
 
 function Enter-OyRefreshMutex {
-  param([string]$Directory, [ValidateSet('refresh', 'health-state')][string]$MutexScope = 'refresh')
+  param([string]$Directory, [ValidateSet('refresh', 'health-state', 'publication-state')][string]$MutexScope = 'refresh')
   $mutex = $null
   try {
     $name = Get-OyRefreshMutexName $Directory $MutexScope

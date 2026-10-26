@@ -89,7 +89,9 @@ function reclaimDeadOwner(filename, isAlive, bootAt) {
 // The POSIX fallback is retained for non-Windows environments. Windows never
 // touches legacy .lock/.recovery files; the OS mutex is shared with vault Setup/Clear.
 function acquireFileLock(repoRoot, { isAlive = processIsAlive, bootAt = Date.now() - os.uptime() * 1000, scope = 'refresh' } = {}) {
-  const filename = path.join(repoRoot, '.auth', scope === 'refresh' ? 'oy-cookie-refresh.lock' : 'oy-health-state.lock');
+  const lockNames = { refresh: 'oy-cookie-refresh.lock', 'health-state': 'oy-health-state.lock',
+    'publication-state': 'oy-auth-publication.lock' };
+  const filename = path.join(repoRoot, '.auth', lockNames[scope]);
   fs.mkdirSync(path.dirname(filename), { recursive: true });
   let fd;
   const owner = randomUUID();
@@ -123,7 +125,7 @@ function acquireFileLock(repoRoot, { isAlive = processIsAlive, bootAt = Date.now
 
 export async function acquireRefreshLock(repoRoot, options = {}) {
   const scope = options.scope ?? 'refresh';
-  if (!['refresh', 'health-state'].includes(scope)) throw lockError('OY_REFRESH_LOCK_FAILED');
+  if (!['refresh', 'health-state', 'publication-state'].includes(scope)) throw lockError('OY_REFRESH_LOCK_FAILED');
   if (process.platform === 'win32') return acquireWindowsMutex(repoRoot, scope);
   const release = acquireFileLock(repoRoot, { ...options, scope });
   return async () => release();
