@@ -34,9 +34,7 @@ jobs:
       - name: Refresh Vercel env
         env:
           OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
-          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
-          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
-          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
@@ -56,22 +54,9 @@ jobs:
       - name: Refresh Cloud Run curator env
         env:
           OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: |
-          LINKAGE_HEX="$(node - <<'NODE'
-          const cookie = process.env.OY_REFRESH_COOKIE || '';
-          const m = cookie.match(/(?:^|;\s*)linkageString=([^;]+)/i);
-          if (!m || !m[1]) {
-            throw new Error('linkageString missing from OY_REFRESH_COOKIE');
-          }
-          process.stdout.write(decodeURIComponent(m[1]));
-          NODE
-          )"
-          gcloud run services update oy-stock-api \
-            --region asia-northeast3 \
-            --project "$GCP_PROJECT_ID" \
-            --update-env-vars "^~^OY_REFRESH_COOKIE=${OY_REFRESH_COOKIE}~OLIVEYOUNG_LINKAGE_STRING=${LINKAGE_HEX}" \
-            --quiet
+        run: node scripts/refresh-oy-linkage.mjs --cloud-run
 
       - name: Verify published Vercel authentication
         if: inputs.deployVercel == true

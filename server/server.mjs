@@ -23,7 +23,7 @@ const OY_M = 'https://m.oliveyoung.co.kr';
 const CURATOR_AFFILIATE_REFERER =
   'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search';
 const CURATOR_PLACEHOLDER_CATEGORY = '1000001000000000000';
-const CURATOR_REGISTER_ID_DEFAULT = '4ee076cc92da4447a1b4b42c590e4495';
+const CURATOR_REGISTER_ID_DEFAULT = 'c7108819d49f47c8bb04b1cbc12488e8';
 const CURATOR_SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 
@@ -215,6 +215,7 @@ let curatorInitPromise = null;
 let curatorActiveCount = 0;
 let curatorSharedPageBusy = false;
 let curatorCreatedAt = 0;
+let curatorSessionFingerprint = '';
 
 const curatorLinkCache = new Map();
 const CURATOR_LINK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -328,9 +329,17 @@ function buildCuratorSessionCookie() {
 
 function collectCuratorAuthCandidates() {
   const candidates = [];
+  const refreshCookie = String(process.env.OY_REFRESH_COOKIE || '').trim();
+  if (refreshCookie) {
+    const candidate = authCandidateFromLinkageHex(
+      extractCookieValue(refreshCookie, 'linkageString'),
+      'OY_REFRESH_COOKIE',
+      refreshCookie
+    );
+    return candidate ? [candidate] : [];
+  }
   const cookieSources = [
     ['OY_CURATOR_COOKIE', String(process.env.OY_CURATOR_COOKIE || '').trim()],
-    ['OY_REFRESH_COOKIE', String(process.env.OY_REFRESH_COOKIE || '').trim()],
     ['OY_SESSION_ID+OY_LINKAGE_STRING', buildCuratorSessionCookie()]
   ];
 
@@ -427,25 +436,37 @@ function curatorRegisterId() {
   );
 }
 
-function curatorLinkCacheKey(goodsNo) {
-  return normalizeGoodsNo(goodsNo);
+function curatorAuthFingerprint(auth, partnerId = curatorRegisterId()) {
+  if (!auth?.jwt) return '';
+  return crypto.createHash('sha256')
+    .update(JSON.stringify([partnerId, auth.jwt, auth.cookieHeader || '']))
+    .digest('hex');
 }
 
-function getCuratorLinkCache(goodsNo) {
-  const key = curatorLinkCacheKey(goodsNo);
+function curatorLinkCacheKey(goodsNo, auth = curatorAuth()) {
+  const normalized = normalizeGoodsNo(goodsNo);
+  const fingerprint = curatorAuthFingerprint(auth);
+  return normalized && fingerprint ? `${curatorRegisterId()}|${fingerprint}|${normalized}` : '';
+}
+
+function getCuratorLinkCache(goodsNo, auth = curatorAuth()) {
+  if (curatorAuthFingerprint(auth) !== curatorAuthFingerprint(curatorAuth())) return null;
+  const key = curatorLinkCacheKey(goodsNo, auth);
   if (!key) return null;
   const hit = curatorLinkCache.get(key);
   if (!hit) return null;
-  if (Date.now() - hit.ts > CURATOR_LINK_CACHE_TTL_MS) {
+  if (Date.now() - hit.ts > CURATOR_LINK_CACHE_TTL_MS ||
+      hit.data?.affiliatePartnerId !== curatorRegisterId()) {
     curatorLinkCache.delete(key);
     return null;
   }
   return hit.data;
 }
 
-function setCuratorLinkCache(goodsNo, data) {
-  const key = curatorLinkCacheKey(goodsNo);
-  if (!key || !data) return;
+function setCuratorLinkCache(goodsNo, data, auth = curatorAuth()) {
+  if (curatorAuthFingerprint(auth) !== curatorAuthFingerprint(curatorAuth())) return;
+  const key = curatorLinkCacheKey(goodsNo, auth);
+  if (!key || !data?.affiliateActivityId || data.affiliatePartnerId !== curatorRegisterId()) return;
   curatorLinkCache.set(key, { data, ts: Date.now() });
   while (curatorLinkCache.size > CURATOR_LINK_CACHE_MAX) {
     const first = curatorLinkCache.keys().next().value;
@@ -455,27 +476,17 @@ function setCuratorLinkCache(goodsNo, data) {
 }
 
 function clearCuratorSession() {
-  curatorReady = false;
-  curatorSharedPageBusy = false;
-  curatorCreatedAt = 0;
-  if (curatorPage) {
-    try {
-      void curatorPage.close().catch(() => {});
-    } catch {}
-  }
-  if (curatorContext) {
-    try {
-      void curatorContext.close().catch(() => {});
-    } catch {}
-  }
-  if (curatorBrowser) {
-    try {
-      void curatorBrowser.close().catch(() => {});
-    } catch {}
-  }
+  // Detach first so pending cleanup can only close the retired resources.
+  const retired = [curatorPage, curatorContext, curatorBrowser];
   curatorPage = null;
   curatorContext = null;
   curatorBrowser = null;
+  curatorReady = false;
+  curatorSharedPageBusy = false;
+  curatorCreatedAt = 0;
+  curatorSessionFingerprint = '';
+  return Promise.allSettled(retired.filter(Boolean).map(resource =>
+    Promise.resolve().then(() => resource.close())));
 }
 
 async function ensureSession() {
@@ -742,19 +753,28 @@ async function keepCuratorWarm(reason) {
 }
 
 async function ensureCuratorSession(auth) {
-  if (curatorInitPromise) return curatorInitPromise;
+  const fingerprint = curatorAuthFingerprint(auth);
+  if (!fingerprint || fingerprint !== curatorAuthFingerprint(curatorAuth())) {
+    throw new Error('curator_auth_changed');
+  }
+  if (curatorInitPromise) {
+    await curatorInitPromise;
+    // Initialization for a different identity must never satisfy this request.
+    return ensureCuratorSession(auth);
+  }
 
-  if (curatorReady && curatorPage && Date.now() - curatorCreatedAt < SESSION_MAX_AGE) {
+  if (curatorReady && curatorPage && curatorSessionFingerprint === fingerprint &&
+      Date.now() - curatorCreatedAt < SESSION_MAX_AGE) {
     try {
       const title = await curatorPage.evaluate(() => document.title);
       if (title != null) return;
     } catch {
-      clearCuratorSession();
+      await clearCuratorSession();
     }
   }
 
   curatorInitPromise = (async () => {
-    clearCuratorSession();
+    await clearCuratorSession();
     curatorBrowser = await chromium.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -788,6 +808,11 @@ async function ensureCuratorSession(auth) {
       throw new Error('curator_affiliate_page_blocked');
     }
 
+    if (fingerprint !== curatorAuthFingerprint(curatorAuth())) {
+      await clearCuratorSession();
+      throw new Error('curator_auth_changed');
+    }
+    curatorSessionFingerprint = fingerprint;
     curatorReady = true;
     curatorCreatedAt = Date.now();
     console.log(`✅ 큐레이터 세션 준비 완료 (${auth?.source || 'unknown'})`);
@@ -795,6 +820,9 @@ async function ensureCuratorSession(auth) {
 
   try {
     await curatorInitPromise;
+  } catch (error) {
+    await clearCuratorSession();
+    throw error;
   } finally {
     curatorInitPromise = null;
   }
@@ -832,18 +860,18 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
     return { success: false, error: 'invalid_goodsNo' };
   }
 
-  const cached = getCuratorLinkCache(normalized);
-  if (cached) {
-    return { ...cached, cacheHit: true };
-  }
-
   const auth = curatorAuth();
   if (!auth) {
     return { success: false, error: 'missing_or_expired_curator_auth' };
   }
 
+  const cached = getCuratorLinkCache(normalized, auth);
+  if (cached) {
+    return { ...cached, cacheHit: true };
+  }
+
   return withCuratorSlot(async () => {
-    const secondHit = getCuratorLinkCache(normalized);
+    const secondHit = getCuratorLinkCache(normalized, auth);
     if (secondHit) return { ...secondHit, cacheHit: true };
 
     await ensureCuratorSession(auth);
@@ -938,7 +966,7 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
           { goodsNumber: goodsNo, categoryNumber: '' }
         ];
         let affiliateActivityId = null;
-        let affiliatePartnerId = registerId;
+        let affiliatePartnerId = '';
         let lastLanding = null;
 
         for (const body of attempts) {
@@ -948,33 +976,19 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
           const id = row && row.affiliateActivityId != null ? String(row.affiliateActivityId) : '';
           if (landed.ok && id) {
             affiliateActivityId = id;
-            affiliatePartnerId =
-              row.affiliatePartnerId != null ? String(row.affiliatePartnerId) : registerId;
+            affiliatePartnerId = String(row.affiliatePartnerId || '').trim();
+            if (!affiliatePartnerId || affiliatePartnerId !== registerId) {
+              return { success: false, error: 'curator_partner_mismatch' };
+            }
             break;
           }
         }
 
         if (!affiliateActivityId) {
-          const fallbackOriginalUrl =
-            'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
-            encodeURIComponent(goodsNo) +
-            '&utm_source=shutter&utm_medium=affiliate';
-          const fallbackShortened = await shorten(fallbackOriginalUrl, registerId);
-          const fallbackRow =
-            fallbackShortened.json &&
-            fallbackShortened.json.data &&
-            Array.isArray(fallbackShortened.json.data) &&
-            fallbackShortened.json.data[0];
-          const fallbackShortenedUrl =
-            fallbackRow && fallbackRow.shortenedUrl ? String(fallbackRow.shortenedUrl) : '';
-
           return {
             success: false,
             error: 'missing_affiliate_activity_id',
-            detail: lastLanding,
-            fallbackShortenDetail: fallbackShortened,
-            fallbackShortenedUrl: fallbackShortenedUrl || null,
-            fallbackOriginalUrl
+            detail: lastLanding
           };
         }
 
@@ -1008,6 +1022,10 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
     }
 
     if (result && result.success) {
+      if (result.affiliatePartnerId !== curatorRegisterId() ||
+          curatorAuthFingerprint(auth) !== curatorAuthFingerprint(curatorAuth())) {
+        return { success: false, error: 'curator_auth_changed' };
+      }
       const saved = {
         ...result,
         goodsNo: normalized,
@@ -1016,7 +1034,7 @@ async function generateCuratorLink(goodsNo, categoryNumber) {
           result.sourceHint ||
           (result.shortenedUrl ? 'cloudrun_live_shortened' : 'cloudrun_live_original')
       };
-      setCuratorLinkCache(normalized, saved);
+      setCuratorLinkCache(normalized, saved, auth);
       return saved;
     }
 
@@ -2817,10 +2835,17 @@ if (String(process.env.OY_SERVER_DISABLE_START || '') !== '1') {
 
 export {
   calculatePriceStartAt,
+  clearCuratorSession,
   createNationalStockHandler,
+  curatorAuth,
+  curatorAuthFingerprint,
+  ensureCuratorSession,
+  generateCuratorLink,
+  getCuratorLinkCache,
   priceFromOfficialDetail,
   publicFieldsFromStockOption,
   server,
+  setCuratorLinkCache,
   shouldRetryPriceDetailResult
 };
 

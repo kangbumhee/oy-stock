@@ -9,8 +9,8 @@
  * env:
  *   OY_CURATOR_COOKIE — 선택. linkageString 포함 권장.
  *   OY_REFRESH_COOKIE / OY_LINKAGE_STRING / OLIVEYOUNG_LINKAGE_STRING /
- *   OLIVEYOUNG_LINKAGE_JWT — 선택. OY_CURATOR_COOKIE가 만료되면 자동 후보로 사용.
- *   OLIVEYOUNG_AFFILIATE_REGISTER_ID — 선택 (기본 4ee076cc92da4447a1b4b42c590e4495)
+ *   OLIVEYOUNG_LINKAGE_JWT — legacy 설정. OY_REFRESH_COOKIE가 있으면 그 계정만 사용.
+ *   OLIVEYOUNG_AFFILIATE_REGISTER_ID — 선택. 현재 운영 파트너를 기본값으로 사용.
  *
  * landing API는 authorization(JWT) 필수. JWT = linkageString(hex) AES-128-ECB 복호화.
  */
@@ -19,12 +19,13 @@ import { chromium } from 'playwright';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import {
   evaluateCuratorBatchFailure,
   getReusableAttributedCuratorOriginal,
   runCuratorRequestWithAuthRenewal,
   isReadyCuratorShortUrl,
+  isCuratorEntryForPartner,
   landingFailureStatus,
   runCuratorRequestWithRetry
 } from './lib/curator-request-policy.mjs';
@@ -37,7 +38,7 @@ const CURATOR_FILE = path.join(DATA_DIR, 'curator-links.json');
 
 const OY_WWW = 'https://www.oliveyoung.co.kr';
 const OY_M = 'https://m.oliveyoung.co.kr';
-const REGISTER_ID_DEFAULT = '4ee076cc92da4447a1b4b42c590e4495';
+const REGISTER_ID_DEFAULT = 'c7108819d49f47c8bb04b1cbc12488e8';
 const SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
 const PLACEHOLDER_CATEGORY = '1000001000000000000';
 const AFFILIATE_DASHBOARD_URL =
@@ -58,7 +59,7 @@ const AFFILIATE_REFERER =
   'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search';
 const LIVE_RANKING_URL =
   process.env.CURATOR_LIVE_RANKING_URL ||
-  'https://olivestock.co.kr/api/oliveyoung/hot-ranking-history?size=128&period=24h&sort=view';
+  'https://oy-stock.vercel.app/api/oliveyoung/hot-ranking-history?size=128&period=24h&sort=view';
 const CURATOR_MAX_GOODS = Math.max(
   1,
   Number.parseInt(process.env.CURATOR_MAX_GOODS || '260', 10) || 260
@@ -144,11 +145,21 @@ function buildSessionCookie() {
   return '';
 }
 
-function collectAuthCandidates() {
+export function collectAuthCandidates() {
   const candidates = [];
+  // Keep the refreshed account's token and session together, even when its
+  // token is expired. Only that session may renew it; aliases may be another user.
+  const refreshCookie = (process.env.OY_REFRESH_COOKIE || '').trim();
+  if (refreshCookie) {
+    const candidate = authCandidateFromLinkageHex(
+      extractCookieValue(refreshCookie, 'linkageString'),
+      'OY_REFRESH_COOKIE',
+      refreshCookie
+    );
+    return candidate ? [candidate] : [];
+  }
   const cookieSources = [
     ['OY_CURATOR_COOKIE', (process.env.OY_CURATOR_COOKIE || '').trim()],
-    ['OY_REFRESH_COOKIE', (process.env.OY_REFRESH_COOKIE || '').trim()],
     ['OY_SESSION_ID+OY_LINKAGE_STRING', buildSessionCookie()]
   ];
 
@@ -180,7 +191,7 @@ function collectAuthCandidates() {
   return candidates;
 }
 
-function selectAuthCandidate(candidates) {
+export function selectAuthCandidate(candidates) {
   const valid = candidates.filter((c) => !c.expired);
   const pool = valid.length ? valid : candidates;
   return pool
@@ -465,22 +476,24 @@ async function collectGoodsNos() {
   return Array.from(out).slice(0, CURATOR_MAX_GOODS);
 }
 
-function isFreshCuratorEntry(entry) {
+export function isFreshCuratorEntry(entry) {
+  if (!isCuratorEntryForPartner(entry, getRegisterId())) return false;
   if (!hasReadyCuratorShortLink(entry) || !entry.generatedAt) return false;
   const t = Date.parse(entry.generatedAt);
   if (Number.isNaN(t)) return false;
   return Date.now() - t < CURATOR_ENTRY_MAX_AGE_MS;
 }
 
-function hasReadyCuratorShortLink(entry) {
-  return isReadyCuratorShortUrl(entry && entry.shortenedUrl);
+export function hasReadyCuratorShortLink(entry) {
+  return isCuratorEntryForPartner(entry, getRegisterId()) && isReadyCuratorShortUrl(entry && entry.shortenedUrl);
 }
 
 function hasUsableCuratorEntry(entry) {
-  return !!(entry && (entry.shortenedUrl || entry.originalUrl));
+  return isCuratorEntryForPartner(entry, getRegisterId()) && !!(entry && (entry.shortenedUrl || entry.originalUrl));
 }
 
-function isDeferredCuratorEntry(entry) {
+export function isDeferredCuratorEntry(entry) {
+  if (!isCuratorEntryForPartner(entry, getRegisterId())) return false;
   if (!entry || !entry.error || !entry.retryAfter) return false;
   const retryAfter = Date.parse(entry.retryAfter);
   return Number.isFinite(retryAfter) && Date.now() < retryAfter;
@@ -497,20 +510,7 @@ function loadPrevCurator() {
 async function main() {
   const authCandidates = collectAuthCandidates();
   let selectedAuth = selectAuthCandidate(authCandidates);
-  const selectedCookieHeader = selectedAuth?.cookieHeader || '';
-  const refreshSessionCookieCandidate = authCandidates.find(
-    (candidate) =>
-      candidate.source === 'OY_REFRESH_COOKIE' &&
-      extractCookieValue(candidate.cookieHeader, 'OYSESSIONID')
-  );
-  const anySessionCookieCandidate = authCandidates.find((candidate) =>
-    extractCookieValue(candidate.cookieHeader, 'OYSESSIONID')
-  );
-  const cookieHeader =
-    refreshSessionCookieCandidate?.cookieHeader ||
-    (extractCookieValue(selectedCookieHeader, 'OYSESSIONID')
-      ? selectedCookieHeader
-      : anySessionCookieCandidate?.cookieHeader || selectedCookieHeader);
+  const cookieHeader = selectedAuth?.cookieHeader || '';
 
   if (!selectedAuth) {
     console.error(
@@ -535,7 +535,7 @@ async function main() {
   for (const candidate of authCandidates) {
     if (candidate.expired) {
       console.warn(
-        `⚠️ ${candidate.source} JWT 만료됨 (${describeExp(candidate)}) → 다른 후보 사용 시도`
+        `⚠️ ${candidate.source} JWT 만료됨 (${describeExp(candidate)}) → 같은 로그인 세션 갱신 필요`
       );
     }
   }
@@ -813,9 +813,12 @@ async function main() {
               if (retryOutsideBodyVariants) break;
               const id = L.json && L.json.data && L.json.data.affiliateActivityId;
               if (L.ok && id) {
+                const actualPartner = String(L.json.data.affiliatePartnerId || '').trim();
+                if (actualPartner.toLowerCase() !== registerId.toLowerCase()) {
+                  return { ok: false, hardFailure: true, detail: { status: 409, error: 'curator_partner_mismatch' } };
+                }
                 affiliateActivityId = id;
-                affiliatePartnerId =
-                  (L.json.data.affiliatePartnerId || registerId);
+                affiliatePartnerId = actualPartner;
                 break;
               }
             }
@@ -832,22 +835,11 @@ async function main() {
                 lastLanding.status === 429 ||
                 lastLanding.status >= 500 ||
                 !!lastLanding.error;
-              let fallbackShorten = null;
-              let fallbackShortenedUrl = null;
-              if (!hardFailure) {
-                fallbackShorten = await shorten(fallbackOriginalUrl, registerId);
-                const fallbackRow =
-                  fallbackShorten.json &&
-                  fallbackShorten.json.data &&
-                  fallbackShorten.json.data[0];
-                fallbackShortenedUrl = fallbackRow && fallbackRow.shortenedUrl;
-              }
               return {
                 ok: false,
                 step: 'missing_affiliate_activity_id',
                 detail: lastLanding,
-                fallbackShortenDetail: fallbackShorten,
-                fallbackShortenedUrl: fallbackShortenedUrl || null,
+                fallbackShortenedUrl: null,
                 fallbackOriginalUrl,
                 existingShortenDetail,
                 hardFailure
@@ -976,6 +968,7 @@ async function main() {
             shortenedUrl: null,
             originalUrl: null,
             error: 'request_exception',
+            affiliatePartnerId: regId,
             detail:
               lastEvaluateError && lastEvaluateError.message
                 ? lastEvaluateError.message
@@ -1037,6 +1030,7 @@ async function main() {
             fallbackShortenedUrl: pack.fallbackShortenedUrl || null,
             fallbackOriginalUrl: pack.fallbackOriginalUrl || null,
             error: 'affiliate_link_unavailable',
+            affiliatePartnerId: regId,
             errorCode: responseCode,
             generatedAt: now,
             retryAfter: new Date(
@@ -1078,6 +1072,7 @@ async function main() {
               fallbackShortenedUrl: pack.fallbackShortenedUrl || null,
               fallbackOriginalUrl: pack.fallbackOriginalUrl || null,
               error: 'landing_failed',
+              affiliatePartnerId: regId,
               errorCode: failureStatus,
               generatedAt: now,
               retryAfter: new Date(
@@ -1161,7 +1156,7 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((e) => {
   console.error(e);
   process.exit(1);
 });

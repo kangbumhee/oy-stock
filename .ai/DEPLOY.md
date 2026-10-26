@@ -1,5 +1,14 @@
 # 배포 설정
 
+## 2026-10-26 큐레이터 계정 전환
+
+- PC의 기존 DPAPI 로그인 저장소와 2Captcha 설정을 사용한다. 계정 전환 시 이전 Chrome 세션은 분리하고 새 계정의 로그인·공식 landing 활동 ID·파트너 ID를 함께 검증한다. 비밀번호·쿠키·JWT는 문서나 소스에 저장하지 않는다.
+- OY_REFRESH_COOKIE가 있으면 그 JWT와 세션만 선택한다. 이전 alias의 만료가 더 늦어도 이전 계정으로 되돌아가지 않는다. 인증 게시 시 Vercel·Cloud Run의 모든 인증 alias와 파트너 설정을 같은 세션으로 맞춘다.
+- 회원 운영 주소 oy-stock.vercel.app에서 JWT 만료시간과 SHA-256 fingerprint 일치를 확인한다. 기존 도메인 alias를 인증 재배포 기준으로 사용하지 않는다.
+- 캐시는 설정된 파트너와 실제 affiliatePartnerId가 일치한 항목만 재사용한다. 이전 계정의 정상·오류 캐시는 새 계정의 생성을 막지 않는다. 실제 affiliateActivityId가 없으면 큐레이터 단축 링크를 생성하지 않는다.
+- GitHub 자동화와 PC 예약 작업은 활성 상태를 유지한다. 계정 전환으로 유료회원·결제·메일·도메인 설정은 변경하지 않는다.
+
+
 ## 현재 운영 주소와 배포 원칙 (2026-10-20)
 
 - 회원 주소는 `https://oy-stock.vercel.app`이다. 접속 전에는 공통 비밀번호 입력칸만 표시하며 `olivestock.co.kr`로 이동시키지 않는다. 기존 `olivestock.co.kr` 및 `www.olivestock.co.kr`의 공개 접속 차단은 유지한다.

@@ -36,6 +36,7 @@ jobs:
       - name: Select missing curator links
         id: batch
         env:
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
           CURATOR_BACKFILL_BATCH_SIZE: 260
           CURATOR_INCLUDE_LIVE_CATEGORIES: 1
           CURATOR_RANKING_SIZE: 128
@@ -83,6 +84,7 @@ jobs:
       - name: Commit & Push
         if: steps.batch.outputs.hasGoods == 'true'
         env:
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
           CURATOR_GOODS_NOS: ${{ steps.batch.outputs.goodsNos }}
         run: |
           set -euo pipefail

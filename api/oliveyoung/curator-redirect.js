@@ -30,10 +30,19 @@ function mobileUrlBasicAffiliate(goodsNo) {
 }
 
 function hasCuratorAttribution(item) {
-  if (!item) return false;
+  if (!item || !isConfiguredPartnerEntry(item)) return false;
   if (readyCuratorShortUrl(item.shortenedUrl)) return true;
   if (item.affiliateActivityId) return true;
   return /[?&]utm_content=OY_[^&]+/.test(String(item.originalUrl || ''));
+}
+
+function isConfiguredPartnerEntry(item) {
+  const expected = String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim().toLowerCase();
+  return !expected || !!item && String(item.affiliatePartnerId || '').trim().toLowerCase() === expected;
+}
+
+function partnerCacheKey(goodsNo) {
+  return String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim().toLowerCase() + ':' + goodsNo;
 }
 
 function readyCuratorShortUrl(value) {
@@ -441,7 +450,8 @@ async function triggerCuratorGeneration(goodsNo) {
   if (!normalized) return { ok: false, status: '상품번호 확인 실패' };
 
   pruneGenerationRequestCache();
-  const cached = generationRequestCache.get(normalized);
+  const cacheKey = partnerCacheKey(normalized);
+  const cached = generationRequestCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < GENERATION_REQUEST_TTL_MS) {
     return {
       ...cached.result,
@@ -453,7 +463,7 @@ async function triggerCuratorGeneration(goodsNo) {
   const token = githubToken();
   if (!token) {
     const result = { ok: false, status: 'GitHub 토큰 미설정으로 자동 생성 요청 실패' };
-    generationRequestCache.set(normalized, { ts: Date.now(), result });
+    generationRequestCache.set(cacheKey, { ts: Date.now(), result });
     return result;
   }
 
@@ -489,7 +499,7 @@ async function triggerCuratorGeneration(goodsNo) {
           status: `GitHub Action 요청 실패: HTTP ${response.status}`,
           detail: text.slice(0, 200)
         };
-    generationRequestCache.set(normalized, { ts: Date.now(), result });
+    generationRequestCache.set(cacheKey, { ts: Date.now(), result });
     return result;
   } catch (e) {
     const result = {
@@ -497,7 +507,7 @@ async function triggerCuratorGeneration(goodsNo) {
       status: 'GitHub Action 요청 실패',
       detail: String(e.message || e)
     };
-    generationRequestCache.set(normalized, { ts: Date.now(), result });
+    generationRequestCache.set(cacheKey, { ts: Date.now(), result });
     return result;
   }
 }
@@ -681,6 +691,9 @@ async function createLiveCuratorLink(req, goodsNo, categoryNumber) {
         landingBody: landing.json || landing.text.slice(0, 200)
       };
     }
+    if (!isConfiguredPartnerEntry({ affiliatePartnerId })) {
+      return { ok: false, error: 'curator_partner_mismatch' };
+    }
 
     const originalUrl =
       mobileUrlBasicAffiliate(goodsNo) +
@@ -737,6 +750,9 @@ async function createCloudRunCuratorLink(goodsNo, categoryNumber) {
       headers
     });
     const body = result.json || {};
+    if (result.ok && body.success && !isConfiguredPartnerEntry(body)) {
+      return { ok: false, error: 'curator_partner_mismatch', cloudRunStatus: result.status };
+    }
     if (result.ok && body.success && (body.shortenedUrl || body.originalUrl)) {
       return {
         ok: true,
@@ -815,7 +831,7 @@ module.exports = async function handler(req, res) {
       ? entry.originalUrl
       : null;
   const cachedGenerationError =
-    rawEntry && !shortenedUrl && rawEntry.error
+    rawEntry && isConfiguredPartnerEntry(rawEntry) && !shortenedUrl && rawEntry.error
       ? String(rawEntry.error)
       : '';
   const cachedGenerationErrorAt =

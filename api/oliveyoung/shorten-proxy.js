@@ -30,7 +30,7 @@ function isAllowedOriginalUrl(u) {
   }
 }
 
-const DEFAULT_REGISTER_ID = '4ee076cc92da4447a1b4b42c590e4495';
+const DEFAULT_REGISTER_ID = 'c7108819d49f47c8bb04b1cbc12488e8';
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -58,10 +58,14 @@ module.exports = async function handler(req, res) {
   }
 
   const originalUrl = body && String(body.originalUrl || '').trim();
-  let registerId =
-    body && body.registerId != null
-      ? String(body.registerId).trim()
-      : DEFAULT_REGISTER_ID;
+  const registerId = String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || DEFAULT_REGISTER_ID).trim();
+  const requestedPartner = body && body.registerId != null ? String(body.registerId).trim() : '';
+  if (requestedPartner && requestedPartner.toLowerCase() !== registerId.toLowerCase()) {
+    res.statusCode = 409;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ error: 'curator_partner_mismatch' }));
+    return;
+  }
 
   if (!originalUrl || !isAllowedOriginalUrl(originalUrl)) {
     res.statusCode = 400;
@@ -74,8 +78,6 @@ module.exports = async function handler(req, res) {
     );
     return;
   }
-
-  if (!registerId) registerId = DEFAULT_REGISTER_ID;
 
   const url = 'https://m.oliveyoung.co.kr/base/shorten/v2/verified';
   const payload = JSON.stringify([{ originalUrl, registerId }]);

@@ -15,7 +15,7 @@ const REDIRECT_URL =
   GOODS_NO +
   '&direct=1';
 
-function loadUi(openImpl, entry) {
+function loadUi(openImpl, entry, partnerId) {
   const timers = [];
   const openCalls = [];
   const window = {
@@ -36,6 +36,7 @@ function loadUi(openImpl, entry) {
     console: { log: function () {}, error: function () {} },
     document: {},
     CONFIG: {
+      AFFILIATE_REGISTER_ID: partnerId,
       OY_PRODUCT_URL: 'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=',
       CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect'
     }
@@ -46,6 +47,16 @@ function loadUi(openImpl, entry) {
     entry || { shortenedUrl: SHORT_URL, originalUrl: AFFILIATE_URL };
   return { UI: context.__ui, openCalls, timers };
 }
+
+test('client uses only cached links belonging to the configured partner', function () {
+  const partner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const harness = loadUi(function () {}, { shortenedUrl: SHORT_URL, affiliatePartnerId: partner }, partner);
+  assert.equal(harness.UI.curatorLinkForGoodsNo(GOODS_NO), SHORT_URL);
+  harness.UI._curatorLinksIndex[GOODS_NO].affiliatePartnerId = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  assert.equal(harness.UI.curatorLinkForGoodsNo(GOODS_NO), '');
+  delete harness.UI._curatorLinksIndex[GOODS_NO].affiliatePartnerId;
+  assert.equal(harness.UI.curatorLinkForGoodsNo(GOODS_NO), '');
+});
 
 function purchaseButton() {
   return {

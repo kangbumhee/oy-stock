@@ -55,6 +55,8 @@ jobs:
 
       - name: Merge latest data and push
         shell: bash
+        env:
+          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
         run: |
           set -euo pipefail
 

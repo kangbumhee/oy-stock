@@ -51,7 +51,7 @@ test('production GET classifies explicit expired auth separately from unavailabl
   ]) {
     assert.equal(await checkProductionLogin({ now, fetchImpl: async (...args) => { requests.push(args); return { ok: true, json: async () => payload }; } }), expected);
   }
-  assert.ok(requests.every(([url, opts]) => url === 'https://olivestock.co.kr/api/oliveyoung/landing-proxy?check=1'
+  assert.ok(requests.every(([url, opts]) => url === 'https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1'
     && opts.method === 'GET' && opts.body === undefined && opts.redirect === 'error'));
   assert.equal(await checkProductionLogin({ fetchImpl: async () => { throw new Error('fake-private-response'); } }), 1);
   assert.equal(await checkProductionLogin({ fetchImpl: async () => ({ ok: false }) }), 1);

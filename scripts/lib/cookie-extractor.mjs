@@ -69,6 +69,16 @@ export function jwtExpFromLinkageHex(hex) {
   return Number(payload.exp);
 }
 
+/** Non-reversible identifier for publication equality; never return token claims. */
+export function authFingerprintFromCookie(cookie) {
+  try {
+    const token = decryptLinkageString(extractLinkageHex(cookie)).trim();
+    return crypto.createHash('sha256').update(token).digest('hex');
+  } catch {
+    return null;
+  }
+}
+
 /**
  * @param {import('playwright').BrowserContext} context
  * @param {string} domain 예: m.oliveyoung.co.kr

@@ -10,6 +10,14 @@ const modulePath = pathToFileURL(path.join(__dirname, '..', 'scripts', 'lib', 'o
 const scriptPath = path.join(__dirname, '..', 'scripts', 'oy-login-secrets.ps1');
 const isWindows = process.platform === 'win32';
 
+// Windows PowerShell may decode redirected stdin with its console code page.
+// Carry fixture JSON as ASCII and explicitly decode UTF-8 inside either engine.
+function fixtureInput(value) {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64');
+}
+
+const readFixture = '$fixture = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd().Trim())) | ConvertFrom-Json';
+
 
 test('default vault path works through relative -File on Windows without explicit VaultPath', { skip: !isWindows }, async t => {
   const { repoRoot } = await fixture(t);
@@ -32,7 +40,7 @@ test('default Setup vault path supports Korean spaces and an unrelated working d
   await fs.copyFile(scriptPath, copiedScript);
   await fs.copyFile(path.join(path.dirname(scriptPath), 'oy-refresh-mutex.ps1'), path.join(scriptsDirectory, 'oy-refresh-mutex.ps1'));
   const command = `
-$fixture = [Console]::In.ReadToEnd() | ConvertFrom-Json
+${readFixture}
 $global:fakeAnswers = [Collections.Generic.Queue[string]]::new()
 foreach ($value in $fixture.answers) { $global:fakeAnswers.Enqueue([string]$value) }
 function global:Read-Host {
@@ -49,7 +57,7 @@ function global:Read-Host {
 `;
   const saved = spawnSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], {
     cwd: containerRoot,
-    input: JSON.stringify({ answers: [FAKE.username, FAKE.password, FAKE.captchaApiKey, 'y'] }),
+    input: fixtureInput({ answers: [FAKE.username, FAKE.password, FAKE.captchaApiKey, 'y'] }),
     env: {
       ...process.env, OY_TEST_VAULT_SCRIPT: copiedScript, OY_LOGIN_SECRETS_INTERNAL_READ: '',
       OLIVEYOUNG_2CAPTCHA_ENABLED: '', KOREA_TOP_2CAPTCHA_ENABLED: '',
@@ -83,7 +91,7 @@ function ps(action, vault, extra = {}) {
 function setup(vault, record = FAKE, engine = 'powershell.exe', targetScript = scriptPath) {
   // Stub only Read-Host in a disposable child process. No test-only write path exists in the vault.
   const command = `
-$fixture = [Console]::In.ReadToEnd() | ConvertFrom-Json
+${readFixture}
 $global:fakeAnswers = [Collections.Generic.Queue[string]]::new()
 foreach ($value in $fixture.answers) { $global:fakeAnswers.Enqueue([string]$value) }
 function global:Read-Host {
@@ -99,11 +107,23 @@ function global:Read-Host {
 & $fixture.script -Action Setup -VaultPath $fixture.vault
 `;
   return spawnSync(engine, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], {
-    input: JSON.stringify({ script: targetScript, vault, answers: [record.username, record.password, record.captchaApiKey, record.captchaEnabled ? 'y' : 'n'] }),
+    input: fixtureInput({ script: targetScript, vault, answers: [record.username, record.password, record.captchaApiKey, record.captchaEnabled ? 'y' : 'n'] }),
     env: { ...process.env, OLIVEYOUNG_2CAPTCHA_ENABLED: '', KOREA_TOP_2CAPTCHA_ENABLED: '' },
     encoding: 'utf8', windowsHide: true,
   });
 }
+
+test('fixture transport preserves Unicode answers and Korean vault paths without lossy stdin decoding', { skip: !isWindows }, async t => {
+  const { repoRoot } = await fixture(t);
+  const unicodeRoot = path.join(repoRoot, '한글 경로와 공백');
+  await fs.mkdir(path.join(unicodeRoot, '.auth'), { recursive: true });
+  const record = { ...FAKE, username: '가짜 사용자', password: ' 가짜 암호\\경로 "따옴표" 🙂 ' };
+  const saved = setup(path.join(unicodeRoot, '.auth', 'oy-login-secrets.json'), record);
+  assert.equal(saved.status, 0, saved.stderr);
+  assert.deepEqual(JSON.parse(saved.stdout), { configured: true, captchaConfigured: true, captchaEnabled: true });
+  const { loadLoginSecrets } = await import(modulePath);
+  assert.deepEqual(await loadLoginSecrets({ repoRoot: unicodeRoot, env: {} }), { ...record, source: 'saved', configured: true });
+});
 
 test('vault saves and replaces with inherited Modify rights without changing ownership', { skip: !isWindows }, async t => {
   const { repoRoot, auth, vault } = await fixture(t);

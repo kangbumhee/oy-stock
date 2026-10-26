@@ -8,7 +8,7 @@ import { acquireRefreshLock } from './oy-refresh-lock.mjs';
 const execute = promisify(execFile);
 const REASONS = new Set(['reconnect_required', 'check_failed']);
 const SOURCES = new Set(['periodic_check', 'daily_refresh']);
-const PRODUCTION_CHECK_URL = 'https://olivestock.co.kr/api/oliveyoung/landing-proxy?check=1';
+const PRODUCTION_CHECK_URL = 'https://oy-stock.vercel.app/api/oliveyoung/landing-proxy?check=1';
 
 function error(code) { return Object.assign(new Error(code), { code }); }
 function iso(value) {

@@ -13,7 +13,7 @@ test('redeploy uses active domain deployment and current production settings, ne
   assert.equal(result.id, 'dpl_new');
   assert.equal(calls.length, 3);
   assert.match(calls[2].url, /deployments\/dpl_new\?teamId=team_test$/);
-  assert.match(calls[0].url, /aliases\/olivestock.co.kr\?teamId=team_test/);
+  assert.match(calls[0].url, /aliases\/oy-stock.vercel.app\?teamId=team_test/);
   assert.equal(calls[0].options.method, 'GET');
   assert.match(calls[1].url, /forceNew=1/);
   assert.deepEqual(JSON.parse(calls[1].options.body), {

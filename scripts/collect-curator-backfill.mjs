@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { shouldRetryCuratorError } from './lib/curator-request-policy.mjs';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { isCuratorEntryForPartner, isReadyCuratorShortUrl, shouldRetryCuratorError } from './lib/curator-request-policy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -31,9 +31,14 @@ const CATEGORY_IDS = [
 ];
 
 const DEFAULT_RANKING_BASE =
-  'https://olivestock.co.kr/api/oliveyoung/hot-ranking-history';
+  'https://oy-stock.vercel.app/api/oliveyoung/hot-ranking-history';
 const DEFAULT_BATCH_SIZE = 120;
 const DEFAULT_RETRY_ERROR_AFTER_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_PARTNER_ID = 'c7108819d49f47c8bb04b1cbc12488e8';
+
+function expectedPartnerId() {
+  return String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim() || DEFAULT_PARTNER_ID;
+}
 
 function readJson(relativePath, fallback) {
   try {
@@ -121,21 +126,31 @@ async function addLiveRankingGoods(out) {
   }
 }
 
-function hasUsableCuratorLink(entry) {
-  return !!(entry && (entry.shortenedUrl || entry.originalUrl));
+function hasUsableCuratorLink(entry, partnerId = expectedPartnerId()) {
+  return isCuratorEntryForPartner(entry, partnerId) && isReadyCuratorShortUrl(entry && entry.shortenedUrl);
 }
 
-function shouldRetryError(entry) {
+function configuredRetryDelay() {
   const configuredRetryAfter = Number.parseInt(
     String(process.env.CURATOR_RETRY_ERROR_AFTER_MS || DEFAULT_RETRY_ERROR_AFTER_MS),
     10
   );
-  const retryAfter =
+  return (
     Number.isFinite(configuredRetryAfter) && configuredRetryAfter >= 0
       ? configuredRetryAfter
-      : DEFAULT_RETRY_ERROR_AFTER_MS;
-  return shouldRetryCuratorError(entry, {
-    retryErrorAfterMs: retryAfter
+      : DEFAULT_RETRY_ERROR_AFTER_MS
+  );
+}
+
+export function selectCuratorBackfillGoods(goodsNos, links, {
+  partnerId = expectedPartnerId(),
+  now = Date.now(),
+  retryErrorAfterMs = configuredRetryDelay()
+} = {}) {
+  return goodsNos.filter((goodsNo) => {
+    const entry = links[goodsNo];
+    if (hasUsableCuratorLink(entry, partnerId)) return false;
+    return shouldRetryCuratorError(entry, { now, retryErrorAfterMs, expectedPartnerId: partnerId });
   });
 }
 
@@ -154,11 +169,7 @@ async function main() {
   const curator = readJson('public/data/curator-links.json', { links: {} });
   const links = curator.links || {};
   const allGoods = Array.from(known);
-  const missing = allGoods.filter((goodsNo) => {
-    const entry = links[goodsNo];
-    if (hasUsableCuratorLink(entry)) return false;
-    return shouldRetryError(entry);
-  });
+  const missing = selectCuratorBackfillGoods(allGoods, links);
 
   const batchSize = Math.max(
     1,
@@ -184,7 +195,7 @@ async function main() {
   });
 }
 
-main().catch((e) => {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((e) => {
   console.error(e);
   process.exit(1);
 });

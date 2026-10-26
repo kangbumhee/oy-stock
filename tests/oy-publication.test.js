@@ -28,3 +28,22 @@ test('publication fails closed on timeout or invalid token without leaking respo
   await assert.rejects(waitForPublishedAuth(null, options), { message: 'OY_PUBLICATION_TOKEN_INVALID' });
   await assert.rejects(waitForPublishedAuth(100000, options), { message: 'OY_PUBLICATION_NOT_CONFIRMED' });
 });
+
+test('publication requires the exact new authentication fingerprint on the member domain', async () => {
+  const { waitForPublishedAuth } = await import('../scripts/verify-oy-publication.mjs');
+  let time = Date.parse('2026-10-26T00:00:00Z');
+  const exp = time / 1000 + 86400;
+  let calls = 0;
+  await waitForPublishedAuth(exp, {
+    expectedFingerprint: 'new-token-fingerprint', now: () => time,
+    sleep: async ms => { time += ms; },
+    fetchImpl: async url => {
+      assert.equal(new URL(url).host, 'oy-stock.vercel.app');
+      calls++;
+      return { ok: true, json: async () => ({ jwtValid: true,
+        jwtExpSeconds: calls === 1 ? exp + 86400 : exp,
+        authFingerprint: calls < 3 ? 'old-token-fingerprint' : 'new-token-fingerprint' }) };
+    }
+  });
+  assert.equal(calls, 3);
+});

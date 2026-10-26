@@ -214,6 +214,8 @@
 
 - 설명: 서버 환경의 큐레이터 JWT 후보 상태 점검.
 - 인증: 불필요
+- `OY_REFRESH_COOKIE`가 설정되면 해당 쿠키의 인증만 선택한다. 만료·손상 시 다른 계정의 legacy 환경변수로 전환하지 않는다. landing 요청의 쿠키와 JWT도 같은 후보에서 선택한다.
+- `authFingerprint`는 선택한 JWT의 SHA-256이며 배포된 인증이 갱신한 인증과 같은지 비교하는 데 사용한다. JWT 원문이나 계정 ID(`sub`)는 반환하지 않는다.
 - Response:
 
 ```json
@@ -223,7 +225,7 @@
   "jwtSource": "OLIVEYOUNG_LINKAGE_STRING",
   "selectedSource": "OLIVEYOUNG_LINKAGE_STRING",
   "candidateSources": ["OLIVEYOUNG_LINKAGE_STRING"],
-  "sub": "kbhjang"
+  "authFingerprint": "sha256-hex-digest"
 }
 ```
 
@@ -313,3 +315,5 @@
 - `POST {action:'set-promotion',code,reason,actionId}`: 앞으로 등록할 무료 키를 변경한다. 새 키의 HMAC만 암호화 설정에 저장하며 기존 평생 권한은 유지한다. 원문은 로그·응답·관리목록에 표시하지 않는다.
 - 관리자 화면 `/admin`은 로그인을 제공하는 공개 셸이며 사용자 현황 데이터/관리 기능은 위 서버 인증 후에만 반환·실행된다.
 
+
+큐레이터 캐시는 운영 파트너와 affiliatePartnerId가 일치할 때만 사용합니다. 이전 계정 또는 귀속 미상의 링크와 오류 대기는 새 계정 생성을 차단하지 않습니다.

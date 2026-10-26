@@ -31,12 +31,13 @@ const generated = readJson(generatedFile, { updatedAt: null, links: {} });
 const target = readJson(targetFile, { updatedAt: null, links: {} });
 const generatedLinks = generated.links || {};
 const targetLinks = target.links || {};
+const expectedPartnerId = String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim();
 const keys = requested.size ? Array.from(requested) : Object.keys(generatedLinks);
 
 let mergedCount = 0;
 for (const key of keys) {
   if (!generatedLinks[key]) continue;
-  if (!shouldReplaceCuratorEntry(targetLinks[key], generatedLinks[key])) {
+  if (!shouldReplaceCuratorEntry(targetLinks[key], generatedLinks[key], expectedPartnerId)) {
     console.log(`Preserved newer or usable curator entry for ${key}`);
     continue;
   }

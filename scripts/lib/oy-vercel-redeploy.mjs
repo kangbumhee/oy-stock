@@ -14,7 +14,7 @@ export async function redeployProduction({ token, projectId, teamId, fetchImpl =
     if (!response.ok) throw new Error(`OY_VERCEL_REDEPLOY_HTTP_${response.status}`);
     return response.json();
   }
-  const alias = await request('/v4/aliases/olivestock.co.kr');
+  const alias = await request('/v4/aliases/oy-stock.vercel.app');
   if (alias.projectId !== projectId || !/^dpl_[a-zA-Z0-9]+$/.test(alias.deploymentId || '')) {
     throw new Error('OY_VERCEL_PRODUCTION_MISMATCH');
   }

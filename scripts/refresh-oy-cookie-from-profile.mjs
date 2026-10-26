@@ -28,7 +28,7 @@ import { installCapture, inspectChallenge, inspectChallengeDiagnostics, restoreU
 import { createCaptchaHandler } from './lib/oy-captcha-flow.mjs';
 import { OY_LOGIN_URL, runAutoLogin, assertLoginHost, isLoginUrl, inspectLoginOutcome } from './lib/oy-auto-login.mjs';
 import { acquireRefreshLock } from './lib/oy-refresh-lock.mjs';
-import { extractCookies, jwtExpFromLinkageHex } from './lib/cookie-extractor.mjs';
+import { extractCookies, jwtExpFromLinkageHex, authFingerprintFromCookie } from './lib/cookie-extractor.mjs';
 import { waitForPublishedAuth } from './verify-oy-publication.mjs';
 import {
   githubRepoArgs,
@@ -545,7 +545,7 @@ async function main() {
 
     dispatchRefreshWorkflow();
     log('waiting for the new authentication to reach production');
-    await waitForPublishedAuth(state.exp);
+    await waitForPublishedAuth(state.exp, { expectedFingerprint: authFingerprintFromCookie(state.cookies.raw) });
     log('production authentication publication confirmed');
   } finally {
     if (context && previousLinkageCookies.length && !linkageReissueValidated) {

@@ -67,7 +67,7 @@ function buildSessionCookie() {
   return '';
 }
 
-function authCandidateFromJwt(jwt, source) {
+function authCandidateFromJwt(jwt, source, cookieHeader = '') {
   const token = String(jwt || '').trim();
   if (!token) return null;
   const payload = decodeJwtPayload(token);
@@ -78,6 +78,7 @@ function authCandidateFromJwt(jwt, source) {
   return {
     jwt: token,
     source,
+    cookieHeader,
     expSec,
     expired: expSec != null ? expSec <= Date.now() / 1000 : false,
     sub: payload && payload.sub,
@@ -85,11 +86,11 @@ function authCandidateFromJwt(jwt, source) {
   };
 }
 
-function authCandidateFromLinkageHex(hex, source, errors) {
+function authCandidateFromLinkageHex(hex, source, errors, cookieHeader = '') {
   const raw = decodeCookieValue(hex);
   if (!raw) return null;
   try {
-    return authCandidateFromJwt(decryptLinkageString(raw), source);
+    return authCandidateFromJwt(decryptLinkageString(raw), source, cookieHeader);
   } catch (e) {
     errors.push(`${source}: ${String(e.message || e)}`);
     return null;
@@ -99,8 +100,20 @@ function authCandidateFromLinkageHex(hex, source, errors) {
 function collectAuthCandidates() {
   const errors = [];
   const candidates = [];
+  // A refreshed cookie is an explicit account selection. An expired or invalid
+  // token must not silently switch to another account left in a legacy alias.
+  const refreshCookie = (process.env.OY_REFRESH_COOKIE || '').trim();
+  if (refreshCookie) {
+    const candidate = authCandidateFromLinkageHex(
+      extractCookieValue(refreshCookie, 'linkageString'),
+      'OY_REFRESH_COOKIE',
+      errors,
+      refreshCookie
+    );
+    if (candidate) candidates.push(candidate);
+    return { candidates, errors };
+  }
   const cookieSources = [
-    ['OY_REFRESH_COOKIE', (process.env.OY_REFRESH_COOKIE || '').trim()],
     ['OY_CURATOR_COOKIE', (process.env.OY_CURATOR_COOKIE || '').trim()],
     ['OY_SESSION_ID+OY_LINKAGE_STRING', buildSessionCookie()]
   ];
@@ -110,7 +123,8 @@ function collectAuthCandidates() {
     const candidate = authCandidateFromLinkageHex(
       extractCookieValue(cookieHeader, 'linkageString'),
       source,
-      errors
+      errors,
+      cookieHeader
     );
     if (candidate) candidates.push(candidate);
   }
@@ -219,6 +233,7 @@ function buildJwtCheckResponse() {
       note: 'JWT 형식 아님(점 2개 구간 없음) — 토큰 그대로 authorization 사용',
       tokenLength: jwt.length,
       selectedSource: selected && selected.source,
+      authFingerprint: crypto.createHash('sha256').update(jwt).digest('hex'),
       candidateSources: candidates.map((c) => c.source)
     };
   }
@@ -241,7 +256,7 @@ function buildJwtCheckResponse() {
     jwtSource: jwtSource || 'unknown',
     selectedSource: selected && selected.source,
     candidateSources: candidates.map((c) => c.source),
-    sub: payload.sub,
+    authFingerprint: crypto.createHash('sha256').update(jwt).digest('hex'),
     iat:
       payload.iat != null
         ? new Date(Number(payload.iat) * 1000).toISOString()
@@ -255,11 +270,9 @@ function getAuthJwt() {
 }
 
 function getCookieHeaderForRequest() {
-  return (
-    (process.env.OY_REFRESH_COOKIE || '').trim() ||
-    (process.env.OY_CURATOR_COOKIE || '').trim() ||
-    buildSessionCookie()
-  );
+  // Authorization and its login session must come from the same candidate.
+  const { selected } = getJwtFromEnv();
+  return selected?.cookieHeader || '';
 }
 
 function isValidGoodsNo(g) {

@@ -133,6 +133,10 @@ async function loadCuratorLinks(req) {
 
 function shouldGenerate(entry) {
   if (!entry) return true;
+  const expectedPartner = String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim().toLowerCase();
+  if (expectedPartner && String(entry.affiliatePartnerId || '').trim().toLowerCase() !== expectedPartner) {
+    return true;
+  }
   try {
     const url = new URL(String(entry.shortenedUrl || '').trim());
     if (url.protocol === 'https:' && url.hostname === 'oy.run' && url.pathname !== '/') {
@@ -145,6 +149,10 @@ function shouldGenerate(entry) {
   const t = Date.parse(entry.generatedAt);
   if (!Number.isFinite(t)) return true;
   return Date.now() - t > RECENT_ERROR_TTL_MS;
+}
+
+function partnerCacheKey(goodsNo) {
+  return String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim().toLowerCase() + ':' + goodsNo;
 }
 
 async function triggerWorkflow(goodsNos) {
@@ -217,7 +225,7 @@ module.exports = async function handler(req, res) {
     const data = await loadCuratorLinks(req);
     const links = (data && data.links) || {};
     const missing = requested.filter((goodsNo) => {
-      if (queuedCache.has(goodsNo)) return false;
+      if (queuedCache.has(partnerCacheKey(goodsNo))) return false;
       return shouldGenerate(links[goodsNo]);
     });
 
@@ -238,7 +246,7 @@ module.exports = async function handler(req, res) {
     const result = await triggerWorkflow(missing);
     if (result.ok) {
       const now = Date.now();
-      missing.forEach((goodsNo) => queuedCache.set(goodsNo, now));
+      missing.forEach((goodsNo) => queuedCache.set(partnerCacheKey(goodsNo), now));
     }
 
     res.statusCode = result.ok ? 200 : 502;

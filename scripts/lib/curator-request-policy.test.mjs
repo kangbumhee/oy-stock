@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   evaluateCuratorBatchFailure,
   getReusableAttributedCuratorOriginal,
+  isCuratorEntryForPartner,
   isInvalidCuratorAuthFailure,
   isReadyCuratorShortUrl,
   isSystemicLandingHardFailure,
@@ -13,6 +14,20 @@ import {
   shouldReplaceCuratorEntry,
   shouldRetryCuratorError
 } from './curator-request-policy.mjs';
+
+test('configured partner rejects old and unknown ready links and error caches', () => {
+  const partner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const old = { affiliatePartnerId: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', shortenedUrl: 'https://oy.run/old' };
+  const current = { affiliatePartnerId: partner, error: 'landing_failed', retryAfter: '2099-01-01T00:00:00Z' };
+  assert.equal(isCuratorEntryForPartner(old, partner), false);
+  assert.equal(isCuratorEntryForPartner({ shortenedUrl: 'https://oy.run/legacy' }, partner), false);
+  assert.equal(isCuratorEntryForPartner({ affiliatePartnerId: partner.toUpperCase() }, partner), true);
+  assert.equal(isCuratorEntryForPartner(old, ''), true);
+  assert.equal(shouldRetryCuratorError({ ...current, affiliatePartnerId: old.affiliatePartnerId }, { expectedPartnerId: partner }), true);
+  assert.equal(shouldRetryCuratorError(current, { expectedPartnerId: partner }), false);
+  assert.equal(shouldReplaceCuratorEntry(old, current, partner), true);
+  assert.equal(shouldReplaceCuratorEntry(current, old, partner), false);
+});
 
 test('accepts only non-root HTTPS oy.run curator links as ready', () => {
   assert.equal(isReadyCuratorShortUrl('https://oy.run/ready'), true);

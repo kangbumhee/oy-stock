@@ -104,6 +104,10 @@ var UI = {
     if (!gn || !UI._curatorLinksIndex) return '';
     var entry = UI._curatorLinksIndex[gn] || UI._curatorLinksIndex[gn.toUpperCase()];
     if (!entry) return '';
+    var expectedPartner = String(CONFIG.AFFILIATE_REGISTER_ID || '').trim().toLowerCase();
+    if (expectedPartner && String(entry.affiliatePartnerId || '').trim().toLowerCase() !== expectedPartner) {
+      return '';
+    }
     var shortenedUrl = String(entry.shortenedUrl || '').trim();
     try {
       var parsed = new URL(shortenedUrl);
@@ -229,7 +233,7 @@ var UI = {
       encodeURIComponent(String(goodsNo).trim()) +
       '&utm_source=shutter&utm_medium=affiliate';
     var defaultReg =
-      CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495';
+      CONFIG.AFFILIATE_REGISTER_ID || 'c7108819d49f47c8bb04b1cbc12488e8';
 
     function tryProgrammaticAnchorClick(url) {
       var a = document.createElement('a');

@@ -104,8 +104,9 @@ export async function runCuratorRequestWithAuthRenewal({
 
 export function shouldRetryCuratorError(
   entry,
-  { now = Date.now(), retryErrorAfterMs = 0 } = {}
+  { now = Date.now(), retryErrorAfterMs = 0, expectedPartnerId = '' } = {}
 ) {
+  if (!isCuratorEntryForPartner(entry, expectedPartnerId)) return true;
   if (!entry || !entry.error) return true;
 
   const retryAt = Date.parse(String(entry.retryAfter || ''));
@@ -117,6 +118,12 @@ export function shouldRetryCuratorError(
   const generatedAt = Date.parse(String(entry.generatedAt || ''));
   if (!Number.isFinite(generatedAt) || !Number.isFinite(nowMs)) return true;
   return nowMs - generatedAt >= nonNegativeInteger(retryErrorAfterMs);
+}
+
+export function isCuratorEntryForPartner(entry, expectedPartnerId) {
+  const expected = String(expectedPartnerId || '').trim().toLowerCase();
+  if (!expected) return true;
+  return !!entry && String(entry.affiliatePartnerId || '').trim().toLowerCase() === expected;
 }
 
 export function isReadyCuratorShortUrl(value) {
@@ -197,8 +204,10 @@ function curatorLinkQuality(entry) {
   return entry.originalUrl ? 1 : 0;
 }
 
-export function shouldReplaceCuratorEntry(currentEntry, incomingEntry) {
+export function shouldReplaceCuratorEntry(currentEntry, incomingEntry, expectedPartnerId = '') {
   if (!incomingEntry) return false;
+  if (!isCuratorEntryForPartner(incomingEntry, expectedPartnerId)) return false;
+  if (!isCuratorEntryForPartner(currentEntry, expectedPartnerId)) return true;
   if (!currentEntry) return true;
 
   const currentQuality = curatorLinkQuality(currentEntry);

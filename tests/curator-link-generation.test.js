@@ -75,6 +75,64 @@ function saveEnvironment(names) {
   };
 }
 
+test('account switch requeues old ready links and errors while retaining the current partner link', async () => {
+  const partner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const oldPartner = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  const oldReady = 'A000000111111';
+  const oldError = 'A000000222222';
+  const currentReady = 'A000000333333';
+  const legacyReady = 'A000000444444';
+  const data = { links: {
+    [oldReady]: { shortenedUrl: 'https://oy.run/old', affiliatePartnerId: oldPartner },
+    [oldError]: { error: 'affiliate_link_unavailable', affiliatePartnerId: oldPartner, generatedAt: new Date().toISOString(), retryAfter: '2099-01-01T00:00:00Z' },
+    [currentReady]: { shortenedUrl: 'https://oy.run/current', affiliatePartnerId: partner },
+    [legacyReady]: { shortenedUrl: 'https://oy.run/unknown' }
+  } };
+  const dispatches = [];
+  const previousFetch = global.fetch;
+  const restoreEnv = saveEnvironment(['CURATOR_GITHUB_TOKEN', 'GITHUB_TOKEN', 'OLIVEYOUNG_AFFILIATE_REGISTER_ID']);
+  process.env.CURATOR_GITHUB_TOKEN = 'test-token';
+  process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID = partner;
+  delete process.env.GITHUB_TOKEN;
+  global.fetch = async function (input, init) {
+    const url = String(input);
+    if (url.includes('/dispatches')) {
+      dispatches.push(JSON.parse(init.body));
+      return response(null, 204);
+    }
+    if (url.includes('/contents/public/data/curator-links.json')) return response(githubContent(data));
+    if (url.includes('raw.githubusercontent.com/')) return response(data);
+    throw new Error('unexpected fetch: ' + url);
+  };
+  delete require.cache[require.resolve(QUEUE_MODULE)];
+  delete require.cache[require.resolve(REDIRECT_MODULE)];
+  try {
+    const queue = require(QUEUE_MODULE);
+    const queued = resultCapture();
+    await queue(request('POST', {}, { goodsNos: [oldReady, oldError, currentReady, legacyReady] }), queued);
+    assert.deepEqual(JSON.parse(queued.body).goodsNos, [oldReady, oldError, legacyReady]);
+    const redirect = require(REDIRECT_MODULE);
+    for (const goodsNo of [oldReady, oldError, legacyReady]) {
+      const res = resultCapture();
+      await redirect(request('GET', { goodsNo, format: 'json', noLive: '1' }), res);
+      const body = JSON.parse(res.body);
+      assert.equal(body.ready, false);
+      assert.equal(body.shortenedUrl, null);
+    }
+    assert.equal(dispatches.length, 4);
+    // Reusing the same warm function after an account change must not inherit queue throttling.
+    process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID = 'cccccccccccccccccccccccccccccccc';
+    const switched = resultCapture();
+    await queue(request('POST', {}, { goodsNos: [oldReady] }), switched);
+    assert.equal(JSON.parse(switched.body).queuedCount, 1);
+  } finally {
+    global.fetch = previousFetch;
+    restoreEnv();
+    delete require.cache[require.resolve(QUEUE_MODULE)];
+    delete require.cache[require.resolve(REDIRECT_MODULE)];
+  }
+});
+
 test('raw GitHub content serves a newly generated link before the stale raw CDN', async () => {
   const goodsNo = 'A000000267668';
   const activityId = '3027737958114a358eab572a491ff271';
