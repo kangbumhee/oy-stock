@@ -18,7 +18,8 @@ concurrency:
 jobs:
   generate:
     continue-on-error: true
-    runs-on: ubuntu-latest
+    # Keep Chromium dependency installation on a supported Playwright distro.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     outputs:
       succeeded: ${{ steps.attempt.outcome == 'success' }}
@@ -61,7 +62,7 @@ jobs:
   generate-retry:
     needs: generate
     if: ${{ always() && needs.generate.outputs.succeeded != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7

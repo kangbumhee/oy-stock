@@ -15,7 +15,8 @@ concurrency:
 
 jobs:
   backfill:
-    runs-on: ubuntu-latest
+    # Keep Chromium dependency installation on a supported Playwright distro.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

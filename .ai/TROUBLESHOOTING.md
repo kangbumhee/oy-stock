@@ -1,5 +1,14 @@
 # 트러블슈팅 - 에러 해결 모음
 
+### GitHub 재고 수집이 Chromium 설치 단계에서 즉시 실패
+
+- 발생일: 2026-10-25부터, 2026-10-29 `OliveYoung Stock #432`에서 확인.
+- 에러 메시지: `Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.58.2`, `Playwright does not support chromium on ubuntu26.04-x64`.
+- 원인: `ubuntu-latest`가 26.04 실행 서버를 선택하면서 브라우저 의존성 설치가 실패했다. 재고 수집·로그인·큐레이터 생성은 시작되지 않았다. 10월 24일 성공 실행은 Ubuntu 24.04였다.
+- 해결법: Playwright 브라우저를 직접 설치하는 재고 수집·큐레이터 backfill·요청 생성(기본/재시도)의 실행 환경을 `ubuntu-24.04`로 고정한다. 브라우저 캐시 적중으로 설치가 생략된 성공은 OS 호환성 검증으로 간주하지 않는다.
+- 검증: 수정한 `main`의 `stock.yml`을 새로 실행해 Chromium 설치, 재고 수집, 데이터 게시 결과를 확인한다. 과거 실패 실행의 재실행은 과거 워크플로를 사용하므로 수정 검증에는 사용하지 않는다.
+- 관련 파일: `.github/workflows/stock.yml`, `.github/workflows/curator-backfill.yml`, `.github/workflows/curator-link-on-demand.yml`.
+
 ### 생성된 구매 바로가기에서 상품페이지 확인 중으로 멈춤
 
 - 확인일: 2026-10-01. 상품 `A000000267668` 생성 작업과 `oy.run`·`affiliateActivityId` 저장은 성공했지만 운영 redirect는 이전 목록을 읽고 `pending:true`를 반환했다.
