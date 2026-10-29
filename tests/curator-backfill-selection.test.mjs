@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { selectCuratorBackfillGoods } from '../scripts/collect-curator-backfill.mjs';
 
-const partnerId = 'c7108819d49f47c8bb04b1cbc12488e8';
+const partnerId = '4ee076cc92da4447a1b4b42c590e4495';
 const oldPartner = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const now = Date.parse('2026-10-26T00:00:00Z');
 

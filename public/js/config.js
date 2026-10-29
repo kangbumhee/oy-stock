@@ -88,7 +88,7 @@ var CONFIG = {
   CURATOR_QUEUE_FAVORITES_LIMIT: 120,
   LANDING_PROXY_PATH: '/api/oliveyoung/landing-proxy',
   SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',
-  AFFILIATE_REGISTER_ID: 'c7108819d49f47c8bb04b1cbc12488e8',
+  AFFILIATE_REGISTER_ID: '4ee076cc92da4447a1b4b42c590e4495',
 
   REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',
 

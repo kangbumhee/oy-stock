@@ -233,7 +233,7 @@ var UI = {
       encodeURIComponent(String(goodsNo).trim()) +
       '&utm_source=shutter&utm_medium=affiliate';
     var defaultReg =
-      CONFIG.AFFILIATE_REGISTER_ID || 'c7108819d49f47c8bb04b1cbc12488e8';
+      CONFIG.AFFILIATE_REGISTER_ID || '4ee076cc92da4447a1b4b42c590e4495';
 
     function tryProgrammaticAnchorClick(url) {
       var a = document.createElement('a');

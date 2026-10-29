@@ -34,7 +34,7 @@ const DEFAULT_RANKING_BASE =
   'https://oy-stock.vercel.app/api/oliveyoung/hot-ranking-history';
 const DEFAULT_BATCH_SIZE = 120;
 const DEFAULT_RETRY_ERROR_AFTER_MS = 6 * 60 * 60 * 1000;
-const DEFAULT_PARTNER_ID = 'c7108819d49f47c8bb04b1cbc12488e8';
+const DEFAULT_PARTNER_ID = '4ee076cc92da4447a1b4b42c590e4495';
 
 function expectedPartnerId() {
   return String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim() || DEFAULT_PARTNER_ID;

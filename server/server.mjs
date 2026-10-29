@@ -23,7 +23,7 @@ const OY_M = 'https://m.oliveyoung.co.kr';
 const CURATOR_AFFILIATE_REFERER =
   'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search';
 const CURATOR_PLACEHOLDER_CATEGORY = '1000001000000000000';
-const CURATOR_REGISTER_ID_DEFAULT = 'c7108819d49f47c8bb04b1cbc12488e8';
+const CURATOR_REGISTER_ID_DEFAULT = '4ee076cc92da4447a1b4b42c590e4495';
 const CURATOR_SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
 const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
 

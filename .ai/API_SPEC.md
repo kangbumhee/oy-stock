@@ -259,6 +259,7 @@
 ### [POST] `/api/oliveyoung/shorten-proxy`
 
 - 설명: 모바일 상품 상세 URL을 `oy.run` 짧은 링크로 변환.
+- 운영 기본 파트너는 `kbhjang` 계정의 `4ee076cc92da4447a1b4b42c590e4495`이며 `OLIVEYOUNG_AFFILIATE_REGISTER_ID` 설정이 우선한다. 요청의 `registerId`가 운영 파트너와 다르면 `409 curator_partner_mismatch`를 반환한다.
 - 인증: 불필요
 - Request Body:
 

@@ -30,7 +30,7 @@ function isAllowedOriginalUrl(u) {
   }
 }
 
-const DEFAULT_REGISTER_ID = 'c7108819d49f47c8bb04b1cbc12488e8';
+const DEFAULT_REGISTER_ID = '4ee076cc92da4447a1b4b42c590e4495';
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

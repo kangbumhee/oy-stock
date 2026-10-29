@@ -38,7 +38,7 @@ const CURATOR_FILE = path.join(DATA_DIR, 'curator-links.json');
 
 const OY_WWW = 'https://www.oliveyoung.co.kr';
 const OY_M = 'https://m.oliveyoung.co.kr';
-const REGISTER_ID_DEFAULT = 'c7108819d49f47c8bb04b1cbc12488e8';
+const REGISTER_ID_DEFAULT = '4ee076cc92da4447a1b4b42c590e4495';
 const SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
 const PLACEHOLDER_CATEGORY = '1000001000000000000';
 const AFFILIATE_DASHBOARD_URL =
