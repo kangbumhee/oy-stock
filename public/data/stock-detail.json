@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-29T09:19:29.766Z",
+  "updatedAt": "2026-10-30T06:45:18.522Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,63 +17,45 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 39,
+      "from": 40,
       "to": 40,
-      "fromQty": 163,
-      "toQty": 149,
-      "date": "2026-10-29T09:19:29.766Z"
+      "fromQty": 149,
+      "toQty": 148,
+      "date": "2026-10-30T06:45:18.522Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 1488,
-      "to": 2003,
-      "date": "2026-10-29T09:19:29.766Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 6900,
-      "to": 7500,
-      "date": "2026-10-29T09:19:29.766Z"
+      "from": 2003,
+      "to": 695,
+      "date": "2026-10-30T06:45:18.522Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 48,
+      "from": 44,
       "to": 44,
-      "fromQty": 174,
-      "toQty": 140,
-      "date": "2026-10-29T09:19:29.766Z"
+      "fromQty": 140,
+      "toQty": 138,
+      "date": "2026-10-30T06:45:18.522Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 428,
-      "to": 117,
-      "date": "2026-10-29T09:19:29.766Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 1,
-      "fromQty": 1,
-      "toQty": 3,
-      "date": "2026-10-29T09:19:29.766Z"
+      "from": 117,
+      "to": 104,
+      "date": "2026-10-30T06:45:18.522Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 6668,
-      "to": 2904,
-      "date": "2026-10-29T09:19:29.766Z"
+      "from": 2904,
+      "to": 3031,
+      "date": "2026-10-30T06:45:18.522Z"
     }
   ],
   "products": {
@@ -94,8 +76,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 49,
           "inStock": 44,
-          "totalQty": 140,
-          "onlineQty": 117,
+          "totalQty": 138,
+          "onlineQty": 104,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": true,
@@ -224,8 +206,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 7,
-              "o2o": 5,
+              "qty": 6,
+              "o2o": 4,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 검단구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -394,8 +376,8 @@
               "name": "백석역점",
               "code": "D527",
               "dist": 9.15,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로 1066"
@@ -403,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-29T09:19:29.766Z"
+      "updatedAt": "2026-10-30T06:45:18.522Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -422,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 49,
           "inStock": 40,
-          "totalQty": 149,
-          "onlineQty": 2003,
+          "totalQty": 148,
+          "onlineQty": 695,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -522,7 +504,7 @@
               "name": "검단신도시점",
               "code": "D399",
               "dist": 5.11,
-              "qty": 0,
+              "qty": 1,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -722,7 +704,7 @@
               "name": "백석역점",
               "code": "D527",
               "dist": 9.15,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -731,7 +713,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-29T09:19:29.766Z"
+      "updatedAt": "2026-10-30T06:45:18.522Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1059,7 +1041,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-29T09:19:29.766Z"
+      "updatedAt": "2026-10-30T06:45:18.522Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1071,7 +1053,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-10-29T09:19:29.766Z"
+      "updatedAt": "2026-10-30T06:45:18.522Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1083,7 +1065,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-10-29T09:19:29.766Z"
+      "updatedAt": "2026-10-30T06:45:18.522Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1103,7 +1085,7 @@
           "totalStores": 49,
           "inStock": 1,
           "totalQty": 3,
-          "onlineQty": 1378,
+          "onlineQty": 1176,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1417,7 +1399,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 81,
+          "onlineQty": 469,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1731,7 +1713,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 815,
+          "onlineQty": 765,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2045,7 +2027,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 630,
+          "onlineQty": 621,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2353,7 +2335,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-10-29T09:19:29.766Z"
+      "updatedAt": "2026-10-30T06:45:18.522Z"
     }
   }
 }
