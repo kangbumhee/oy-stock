@@ -4,6 +4,74 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 41,
+      "to": 40,
+      "fromQty": 154,
+      "toQty": 145,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 1477,
+      "to": 591,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "price_down",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 7500,
+      "to": 7130,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 43,
+      "to": 43,
+      "fromQty": 129,
+      "toQty": 120,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 78,
+      "to": 36,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "price_up",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 14900,
+      "to": 16000,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 6374,
+      "to": 2446,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "price_down",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 36000,
+      "to": 24200,
+      "date": "2026-11-01T07:07:11.900Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 40,
       "to": 41,
       "fromQty": 148,
@@ -4281,78 +4349,6 @@
       "from": 2585,
       "to": 2415,
       "date": "2026-08-04T06:15:38.879Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 34,
-      "to": 34,
-      "fromQty": 103,
-      "toQty": 104,
-      "date": "2026-08-03T04:37:37.426Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 764,
-      "to": 755,
-      "date": "2026-08-03T04:37:37.426Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 35,
-      "to": 36,
-      "fromQty": 112,
-      "toQty": 112,
-      "date": "2026-08-03T04:37:37.426Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 1299,
-      "to": 34,
-      "date": "2026-08-03T04:37:37.426Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 4849,
-      "to": 2585,
-      "date": "2026-08-03T04:37:37.426Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 34,
-      "to": 34,
-      "fromQty": 104,
-      "toQty": 103,
-      "date": "2026-08-02T04:30:42.828Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 772,
-      "to": 764,
-      "date": "2026-08-02T04:30:42.828Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 36,
-      "to": 35,
-      "fromQty": 113,
-      "toQty": 112,
-      "date": "2026-08-02T04:30:42.828Z"
     }
   ]
 }
