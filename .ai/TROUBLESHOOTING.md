@@ -1,5 +1,12 @@
 # 트러블슈팅 - 에러 해결 모음
 
+### 바로구매 새 탭에서 site_access_required JSON만 표시
+
+- 확인일: 2026-11-01. 상품 `A000000226508`의 `curator-redirect?direct=1`에서 재현.
+- 원인: 입장 세션이 없거나 만료됐을 때 `/api/` 경로는 문서 탐색 여부와 관계없이 JSON401로 처리되어 구매 새 탭에 비밀번호 입력 화면이 나오지 않았다. 쿠키 누락 사유를 큐레이터 로그인 실패로 단정하지 않는다.
+- 수정: 유효한 상품번호의 정확한 구매 경로를 브라우저 문서로 여는 경우에만 기존 입장 화면을 반환하고, 비밀번호 확인 뒤 검증·정규화된 동일 상품 경로로303 복귀한다. 다른 API/fetch/JSON 모드 차단 및 기존 세션·쿠키·비밀번호·요청 제한은 유지한다.
+- 검증: `node --test tests/site-access.test.js tests/affiliate-link.test.js tests/curator-link-generation.test.js`. 운영에서는 비인증 구매 탐색의 비밀번호 화면, 정상 재입장 후 같은 상품 이동, 일반 API401을 각각 확인한다.
+
 ### GitHub 재고 수집이 Chromium 설치 단계에서 즉시 실패
 
 - 발생일: 2026-10-25부터, 2026-10-29 `OliveYoung Stock #432`에서 확인.

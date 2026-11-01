@@ -9,7 +9,8 @@
 ### 공통 입장 잠금 (2026-10-20)
 
 - 모든 Vercel alias에서 Routing Middleware가 캐시 및 라우팅보다 먼저 공통 입장 쿠키를 확인한다. 인증 없는 웹 탐색에는 제목·상품·이미지 없이 가운데 비밀번호 입력칸만 반환한다. API/JSON 직접 요청은401이며 데이터가 포함되지 않는다.
-- `POST /_entry`: 같은 origin의 URL-encoded `password`만 수신한다. 기존 프로모션 HMAC digest/pepper와 timing-safe 비교하고 원문을 저장·로그·클라이언트 코드에 넣지 않는다. 성공은303 `/`와 host-bound 서명 쿠키, 실패는401, 빈 설정/저장소 장애는503, 동일 IP+host의10회/15분 한도는429다.
+- `POST /_entry`: 같은 origin의 URL-encoded `password`와 선택적인 `returnTo`를 수신한다. 기존 프로모션 HMAC digest/pepper와 timing-safe 비교하고 원문을 저장·로그·클라이언트 코드에 넣지 않는다. 성공은303 `/`(아래의 검증된 구매 복귀 주소가 있으면 해당 주소)와 host-bound 서명 쿠키, 실패는401, 빈 설정/저장소 장애는503, 동일 IP+host의10회/15분 한도는429다.
+- 입장 쿠키가 없거나 만료된 브라우저의 `GET/HEAD /api/oliveyoung/curator-redirect[.js]?goodsNo=A...&direct=1` 문서 이동은 JSON 오류 대신 동일한 비밀번호 화면을 반환한다. `Accept: text/html`이 필요하며 Fetch Metadata가 있으면 `navigate`/`document`만 허용한다. `format` 요청과 API fetch는 계속401 JSON이다. 비밀번호 재입력 후 같은 상품으로 복귀하며, `returnTo`는 정확한 구매 경로·단일 유효 상품번호·선택 `direct=1`만 재구성한다. 외부 URL·다른 API·잘못된 번호는 `/`로 복귀하고, 중복 `returnTo` 폼은400이다. 비밀번호 오류 후에도 검증된 복귀 주소는 유지한다. 구매 링크 자체가 비인증으로 공개되는 것은 아니다.
 - 쿠키는 `__Host-` 접두사, Secure, HttpOnly, SameSite=Strict, Path=/이며 서명 내부12시간 만료와 브라우저 세션 수명을 사용한다. 프로모션 digest/pepper 회전 시 기존 입장 세션도 무효다. `POST /_entry/logout`은 동일 출처에서만 쿠키를 지운다.
 - 이것은 공통 암호 기반 사이트 입장 제한이지 개인별 평생회원 조회가 아니다. 기존 이용권·관리자·기기 인증은 별도로 유지한다. Cloud Run의 기존 공개 근처 재고 API, 과거 공개 배포/저장소 파일까지 폐기하는 변경은 아니다.
 - 서비스워커는 기존 Web Push 기능만 유지하고 앱 HTML/자산을 더 이상 캐시하지 않는다. 진입 화면과 갱신된 워커는 이전 `olivestock-app-*` 캐시를 정리한다. 완전히 오프라인인 기존 기기에 이미 저장된 내용을 원격 회수한다고 보장하지 않는다.
