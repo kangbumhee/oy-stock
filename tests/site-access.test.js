@@ -168,8 +168,20 @@ test('a purchase document with an expired entry session asks for the password an
   assert.equal(returnToFromGate(html), target);
 
   const allowed = await handler(entryWithReturnTo(FIXTURE_PASSWORD, returnToFromGate(html)));
-  assert.equal(allowed.status, 303);
-  assert.equal(allowed.headers.get('location'), target);
+  // The successful POST must finish on this origin before the purchase endpoint
+  // redirects externally, so the gate's form-action policy can stay self-only.
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('location'), null);
+  assert.match(allowed.headers.get('content-type'), /text\/html/);
+  assert.match(allowed.headers.get('cache-control'), /no-store/);
+  const policy = allowed.headers.get('content-security-policy');
+  assert.match(policy, /form-action 'self'(?:;|$)/);
+  const nonce = policy.match(/script-src 'nonce-([^']+)'/);
+  assert.ok(nonce, 'the resume document permits only its nonced script');
+  const resume = await allowed.text();
+  assert.ok(resume.includes(`nonce="${nonce[1]}"`));
+  assert.match(resume, /href="\/api\/oliveyoung\/curator-redirect\?goodsNo=A000000226508(?:&amp;|&)direct=1"/);
+  assert.doesNotMatch(resume, /fixture-only|site_access_required/);
   const cookie = allowed.headers.get('set-cookie');
   assert.match(cookie, /Path=\/; HttpOnly; Secure; SameSite=Strict$/);
   assert.equal(await handler(request(target, { headers: { cookie: cookie.split(';')[0] } })), null);
@@ -283,8 +295,14 @@ test('entry return targets cannot redirect outside the exact local purchase rout
   const fragment = await handler(entryWithReturnTo(FIXTURE_PASSWORD,
     '/api/oliveyoung/curator-redirect?goodsNo=A000000226508#https://attacker.example/'
   ));
-  assert.ok(fragment.status >= 400 || ['/', '/api/oliveyoung/curator-redirect?goodsNo=A000000226508']
-    .includes(fragment.headers.get('location')));
+  if (fragment.status === 200) {
+    assert.equal(fragment.headers.get('location'), null);
+    const html = await fragment.text();
+    assert.match(html, /href="\/api\/oliveyoung\/curator-redirect\?goodsNo=A000000226508"/);
+    assert.doesNotMatch(html, /attacker\.example/);
+  } else {
+    assert.ok(fragment.status >= 400 || fragment.headers.get('location') === '/');
+  }
 });
 
 test('protected install manifest includes the existing entry cookie instead of bypassing the gate', async () => {

@@ -160,6 +160,21 @@ function deniedResponse(request, status = 401) {
   });
 }
 
+function resumePurchaseResponse(returnTo, token) {
+  const nonce = crypto.randomBytes(18).toString('base64');
+  // End the form response before leaving the site: a 303 -> 302 external chain
+  // is blocked by Chromium's form-action 'self' even after the password succeeds.
+  const body = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>상품페이지로 이동 중</title></head><body><p>상품페이지로 이동 중입니다.</p><a href="${returnTo.replace(/&/g, '&amp;')}">계속하기</a><script nonce="${nonce}">location.replace(${JSON.stringify(returnTo)});</script></body></html>`;
+  return new Response(body, {
+    status: 200,
+    headers: {
+      ...securityHeaders(nonce),
+      'Content-Type': 'text/html; charset=utf-8',
+      'Set-Cookie': `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`
+    }
+  });
+}
+
 function isSameOrigin(request, url) {
   if (request.headers.get('sec-fetch-site') === 'cross-site') return false;
   const origin = request.headers.get('origin');
@@ -239,11 +254,12 @@ function createSiteAccessHandler(dependencies = {}) {
         return gateResponse(401, '비밀번호를 확인해 주세요.', false, {}, result.returnTo);
       }
       const token = createSessionToken(url.host, configuration, now());
+      if (result.returnTo) return resumePurchaseResponse(result.returnTo, token);
       return new Response(null, {
         status: 303,
         headers: {
           ...securityHeaders(crypto.randomBytes(18).toString('base64')),
-          Location: result.returnTo || '/',
+          Location: '/',
           'Set-Cookie': `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`
         }
       });
