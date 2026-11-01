@@ -272,6 +272,11 @@ var App = {
         if (bGn) UI.openOliveYoungProduct(el);
         break;
       }
+      case 'copyCuratorLink':
+        e.preventDefault();
+        e.stopPropagation();
+        UI.copyCuratorLink(el);
+        break;
       case 'showDetail':
         if (
           el.classList &&

@@ -137,6 +137,129 @@ var UI = {
     return url;
   },
 
+  curatorCopyButtonHtml: function (goodsNo) {
+    var gn = String(goodsNo || '').trim().toUpperCase();
+    if (!/^A\d{12}$/.test(gn)) return '';
+    return '<button type="button" class="btn-copy-curator" data-action="copyCuratorLink" data-goodsno="' +
+      UI.esc(gn) + '">큐레이터 링크 복사</button>';
+  },
+
+  _isPublicCuratorUrl: function (value) {
+    try {
+      var url = new URL(value);
+      return url.protocol === 'https:' && url.hostname === 'oy.run' && !url.port &&
+        !url.username && !url.password && /^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) &&
+        !url.search && !url.hash;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  curatorCopyUrlForGoodsNo: function (goodsNo) {
+    var gn = String(goodsNo || '').trim().toUpperCase();
+    var shortUrl = UI.curatorLinkForGoodsNo(gn);
+    if (!shortUrl || !UI._isPublicCuratorUrl(shortUrl)) return '';
+    var entry = UI._curatorLinksIndex[gn];
+    if (/^[A-Za-z0-9_-]{1,128}$/.test(String(entry.affiliateActivityId || '').trim())) return shortUrl;
+    try {
+      var original = new URL(entry.originalUrl);
+      if (original.protocol === 'https:' &&
+        /^(www|m)\.oliveyoung\.co\.kr$/.test(original.hostname) &&
+        !original.username && !original.password && !original.port &&
+        original.searchParams.get('goodsNo') === gn &&
+        /^OY_[A-Za-z0-9_-]+$/.test(original.searchParams.get('utm_content') || '')) return shortUrl;
+    } catch (e) {}
+    return '';
+  },
+
+  _writeCuratorClipboard: async function (url) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        return 'copied';
+      }
+    } catch (e) {}
+    var input;
+    var focused = document.activeElement;
+    try {
+      input = document.createElement('textarea');
+      input.value = url;
+      input.setAttribute('readonly', '');
+      input.style.cssText = 'position:fixed;left:0;top:0;opacity:0;pointer-events:none';
+      document.body.appendChild(input);
+      input.focus();
+      input.select();
+      input.setSelectionRange(0, url.length);
+      if (document.execCommand('copy')) return 'copied';
+    } catch (e) {
+      // A manual copy dialog remains available when browser clipboard access is blocked.
+    } finally {
+      if (input && input.parentNode) input.parentNode.removeChild(input);
+      if (focused && focused.focus) focused.focus({ preventScroll: true });
+    }
+    window.prompt('아래 큐레이터 주소를 복사해 주세요.', url);
+    return 'manual';
+  },
+
+  copyCuratorLink: async function (el) {
+    var gn = String(el.dataset.goodsno || '').trim().toUpperCase();
+    if (!/^A\d{12}$/.test(gn) || el.dataset.curatorCopying === '1') return;
+    el.dataset.curatorCopying = '1';
+    clearTimeout(el._curatorCopyReset);
+    el.disabled = true;
+    el.setAttribute('aria-busy', 'true');
+    var timeout;
+    try {
+      var url = UI.curatorCopyUrlForGoodsNo(gn);
+      if (!url) {
+        el.textContent = '링크 확인 중…';
+        // The resolver checks the current operator and never returns a private entry URL for copying.
+        var controller = new AbortController();
+        timeout = setTimeout(function () { controller.abort(); }, 20000);
+        var response = await fetch(UI.curatorRedirectUrl(gn) + '&format=json', {
+          credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' },
+          signal: controller.signal
+        });
+        if (response.status === 401) throw new Error('입장 인증이 만료되었습니다. 새로고침 후 비밀번호를 입력해 주세요.');
+        if (response.status === 429) throw new Error('요청이 많습니다. 잠시 후 다시 복사해 주세요.');
+        if (!response.ok) throw new Error('큐레이터 링크를 확인하지 못했습니다. 잠시 후 다시 복사해 주세요.');
+        var result = await response.json();
+        if (result.success && result.ready && UI._isPublicCuratorUrl(result.shortenedUrl) &&
+          /^[A-Za-z0-9_-]{1,128}$/.test(String(result.affiliateActivityId || '').trim())) {
+          url = result.shortenedUrl;
+          UI._curatorLinksIndex[gn] = {
+            shortenedUrl: url, affiliateActivityId: result.affiliateActivityId,
+            affiliatePartnerId: CONFIG.AFFILIATE_REGISTER_ID
+          };
+        } else if (result.success && result.pending && !result.unavailable) {
+          el.textContent = '링크 준비 중 · 다시 복사';
+          UI.showSyncStatus('큐레이터 링크를 만들고 있습니다. 잠시 후 다시 복사해 주세요.', false, 5000);
+          return;
+        } else {
+          throw new Error('현재 이 상품은 큐레이터 링크를 만들 수 없습니다.');
+        }
+      }
+      var copied = await UI._writeCuratorClipboard(url);
+      el.textContent = copied === 'copied' ? '복사 완료 ✓' : '주소를 직접 복사해 주세요';
+      if (copied === 'copied') {
+        UI.showSyncStatus('큐레이터 링크를 복사했습니다.', false, 2500);
+        el._curatorCopyReset = setTimeout(function () { el.textContent = '큐레이터 링크 복사'; }, 2500);
+      }
+    } catch (e) {
+      el.textContent = '다시 복사';
+      var message = e && e.message;
+      if (!message || !/^(입장 인증|요청이 많|큐레이터 링크를 확인|현재 이 상품)/.test(message)) {
+        message = '큐레이터 링크를 복사하지 못했습니다. 잠시 후 다시 눌러 주세요.';
+      }
+      UI.showSyncStatus(message, true, 5000);
+    } finally {
+      clearTimeout(timeout);
+      delete el.dataset.curatorCopying;
+      el.disabled = false;
+      el.removeAttribute('aria-busy');
+    }
+  },
+
   trackGaEvent: function (eventName, params) {
     try {
       if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
@@ -1499,6 +1622,7 @@ var UI = {
           '" data-category="' +
           UI.esc(catHint) +
           '" data-original-label="바로구매">바로구매</button>' +
+          UI.curatorCopyButtonHtml(gn) +
           (window.PriceAlerts
             ? PriceAlerts.productControlHtml(
                 gn,
@@ -1834,6 +1958,7 @@ var UI = {
           '" data-category="' +
           UI.esc(favCat) +
           '" data-original-label="바로구매">바로구매</button>' +
+          UI.curatorCopyButtonHtml(gid) +
           (window.PriceAlerts
             ? PriceAlerts.productControlHtml(gid, alertMeta, 'card-price-alert')
             : '') +

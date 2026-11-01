@@ -377,6 +377,23 @@ button.btn-oy{font:inherit;border:none;cursor:pointer;width:100%;max-width:320px
   cursor:pointer;
 }
 .btn-buy-compact:hover{background:#16a34a;color:#fff}
+.btn-copy-curator{
+  width:100%;
+  min-height:30px;
+  padding:6px 8px;
+  font-family:inherit;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.4;
+  border:1px solid #93c5fd;
+  border-radius:6px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  cursor:pointer;
+}
+.btn-copy-curator:hover{background:#dbeafe}
+.btn-copy-curator:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.btn-copy-curator:disabled{opacity:.65;cursor:wait}
 .price-alert-toggle{
   width:100%;
   min-height:34px;
