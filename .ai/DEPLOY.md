@@ -1,5 +1,12 @@
 # 배포 설정
 
+## 2026-11-04 큐레이터 링크 생성 계정 재전환
+
+- 현재 링크 생성·자동 로그인 계정은 `tkdwls3816`이며, 공식 landing 응답으로 확인한 파트너는 `c7108819d49f47c8bb04b1cbc12488e8`이다. 아래 이전 날짜의 복원 기록은 이력이다.
+- PC DPAPI 저장 계정과 기본 Chrome 프로필을 함께 전환한다. 전용 실제 프로필은 `D:\Projects\oy-stock-auth\profiles\tkdwls3816`이며 기존 `.auth\oy-chrome-profile` 연결을 통해 예약 작업에서도 재사용한다. 기존 계정 프로필·CAPTCHA 설정은 보존한다.
+- GitHub 인증 alias 전체와 `OLIVEYOUNG_AFFILIATE_REGISTER_ID`를 같은 세션으로 게시하고, Vercel·Cloud Run·프런트·생성 스크립트의 파트너를 일치시킨다. 기존 계정 캐시는 파트너 검증으로 배제한다.
+- 운영 검증은 새 파트너의 실제 `affiliateActivityId`와 단축 주소, canonical 도메인의 인증 fingerprint 일치까지 확인한다. 비밀번호·쿠키·JWT는 소스·증빙 로그에 기록하지 않는다.
+
 ## 2026-10-29 기존 큐레이터 계정 복원
 
 - 링크 생성 계정을 기존 `kbhjang`으로 복원한다. 운영 기본 파트너는 `4ee076cc92da4447a1b4b42c590e4495`이며 GitHub Secret `OLIVEYOUNG_AFFILIATE_REGISTER_ID` 및 Vercel·Cloud Run 게시 설정을 같은 값으로 맞춘다.
