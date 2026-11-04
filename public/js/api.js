@@ -1,5 +1,9 @@
 var API = {
   SEARCH_CACHE_TTL_MS: 5 * 60 * 1000,
+  HOT_RANK_RESPONSE_CACHE_LIMIT: 16,
+  HOT_RANK_RESPONSE_CACHE_CHARS: 4 * 1024 * 1024,
+  _hotRankResponses: new Map(),
+  _hotRankResponseChars: 0,
   DIRECT_PRODUCTS_URL: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/search',
   COMMON_KEYWORD_CORRECTIONS: {
     '여뮤즈': '어뮤즈',
@@ -353,6 +357,28 @@ var API = {
     });
   },
 
+  _forgetHotRankResponse: function (url) {
+    var previous = API._hotRankResponses.get(url);
+    if (!previous) return;
+    API._hotRankResponseChars -= previous.json.length;
+    API._hotRankResponses.delete(url);
+  },
+
+  _rememberHotRankResponse: function (url, etag, data) {
+    API._forgetHotRankResponse(url);
+    if (!etag) return;
+    var json = JSON.stringify(data);
+    if (json.length > API.HOT_RANK_RESPONSE_CACHE_CHARS) return;
+    API._hotRankResponses.set(url, { etag: etag, json: json });
+    API._hotRankResponseChars += json.length;
+    while (
+      API._hotRankResponses.size > API.HOT_RANK_RESPONSE_CACHE_LIMIT ||
+      API._hotRankResponseChars > API.HOT_RANK_RESPONSE_CACHE_CHARS
+    ) {
+      API._forgetHotRankResponse(API._hotRankResponses.keys().next().value);
+    }
+  },
+
   hotRanking: function (size, opts) {
     opts = opts || {};
     var url =
@@ -364,20 +390,32 @@ var API = {
     if (opts.category || opts.categoryId) {
       url += '&category=' + encodeURIComponent(opts.category || opts.categoryId);
     }
-    var init = {};
-    if (opts.signal) init.signal = opts.signal;
-    return fetch(url, Object.keys(init).length ? init : undefined)
-      .then(function (r) {
+    function request(snapshot, allowRetry) {
+      var init = {};
+      if (opts.signal) init.signal = opts.signal;
+      if (snapshot) init.headers = { 'If-None-Match': snapshot.etag };
+      return fetch(url, Object.keys(init).length ? init : undefined).then(function (r) {
+        if (r.status === 304) {
+          if (snapshot) return JSON.parse(snapshot.json);
+          if (allowRetry) return request(null, false);
+          throw new Error('인기템 누적 데이터 재확인 실패');
+        }
         return r.json().then(function (data) {
           if (!r.ok || !data || data.success === false) {
             throw new Error((data && (data.message || data.error)) || '인기템 누적 데이터 로드 실패');
           }
+          var etag = r.headers && r.headers.get ? r.headers.get('etag') : null;
+          API._rememberHotRankResponse(url, etag, data);
           return data;
         });
-      })
-      .catch(function () {
-        return API.viewRanking(size, opts);
       });
+    }
+    // Every call still checks the server. Snapshots only replace an unchanged
+    // response body; they never introduce another freshness interval.
+    return request(API._hotRankResponses.get(url), true).catch(function () {
+      API._forgetHotRankResponse(url);
+      return API.viewRanking(size, opts);
+    });
   },
 
   loadDetailCache: function () {

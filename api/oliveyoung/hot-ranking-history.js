@@ -1,4 +1,5 @@
 const { computeEstimates, fetchViewRanking, readStore } = require('./_hot-ranking-store');
+const { sendRankingResponse } = require('./_ranking-response');
 
 const RANGE_HOURS = {
   '1d': 24,
@@ -210,7 +211,7 @@ module.exports = async function handler(req, res) {
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       const ranking = await fetchViewRanking(size, { categoryId });
       res.setHeader('Cache-Control', HOT_RANK_CACHE_CONTROL);
-      res.status(200).json({
+      sendRankingResponse(req, res, {
         success: true,
         fallback: true,
         data: {
@@ -227,7 +228,12 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const store = await readStore();
+    let storeReadStatus;
+    const store = await readStore({
+      onRead: function (info) {
+        storeReadStatus = info.statusCode;
+      }
+    });
     const estimates = computeEstimates(store, {
       windowMs,
       maxChartPoints: chartPointLimit(range.range)
@@ -337,7 +343,7 @@ module.exports = async function handler(req, res) {
     if (!products.length) {
       const ranking = await fetchViewRanking(size, { categoryId });
       res.setHeader('Cache-Control', HOT_RANK_CACHE_CONTROL);
-      res.status(200).json({
+      sendRankingResponse(req, res, {
         success: true,
         fallback: true,
         data: {
@@ -355,7 +361,10 @@ module.exports = async function handler(req, res) {
     }
 
     res.setHeader('Cache-Control', HOT_RANK_CACHE_CONTROL);
-    res.status(200).json({
+    if (storeReadStatus) {
+      res.setHeader('X-OY-Ranking-Store', storeReadStatus === 304 ? 'revalidated' : 'downloaded');
+    }
+    sendRankingResponse(req, res, {
       success: true,
       data: {
         source,

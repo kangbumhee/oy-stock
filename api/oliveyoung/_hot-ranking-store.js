@@ -1,4 +1,5 @@
 const { get, put } = require('@vercel/blob');
+const { createConditionalBlobStore } = require('./_conditional-blob-store');
 
 const VIEW_RANK_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';
 const STOCK_API =
@@ -892,33 +893,20 @@ function emptyStore() {
   };
 }
 
-async function readStore() {
-  const result = await get(BLOB_PATH, { access: 'private', useCache: false }).catch((e) => {
-    if (e && (e.name === 'BlobNotFoundError' || /not found/i.test(e.message || ''))) {
-      return null;
-    }
-    throw e;
-  });
-  if (!result || !result.stream) return emptyStore();
-  if (result.statusCode && result.statusCode !== 200) return emptyStore();
-  const text = await streamToText(result.stream);
-  if (!text) return emptyStore();
-  try {
-    const parsed = JSON.parse(text);
-    return parsed && typeof parsed === 'object' ? parsed : emptyStore();
-  } catch (_) {
-    return emptyStore();
-  }
+const rankingBlobStore = createConditionalBlobStore({
+  get,
+  put,
+  pathname: BLOB_PATH,
+  emptyStore,
+  readText: streamToText
+});
+
+async function readStore(options) {
+  return rankingBlobStore.read(options);
 }
 
 async function writeStore(store) {
-  return put(BLOB_PATH, JSON.stringify(store), {
-    access: 'private',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: 'application/json',
-    cacheControlMaxAge: 60
-  });
+  return rankingBlobStore.write(store);
 }
 
 function normalizeRankingCacheEntry(ranking, fallbackCategoryId) {
