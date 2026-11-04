@@ -30,7 +30,9 @@
 - Blob 원본 조건부 ETag 확인으로 변경 없는 큰 이력 파일의 본문 재전송을 줄인다. API 응답 전체 ETag 및 URL별 브라우저 조건부 재요청도 추가했다. 통계는 요청 시각 기준으로 매번 계산하며 수집/가격알림 cron, 접근 제한, 데이터 형식/정렬/기간을 유지한다. 실제 데이터 삭제·수집 실행·인증 변경은 하지 않았다.
 - 검증: 조건부 Blob/클라이언트/응답37개와 접근 제한·가격알림 회귀를 합쳐72/72 통과. 운영 기준 커밋 `2f7e357b4353ca8a6f2a5ed351b5a7941520e02a` 대비 합성 데이터314개 handler 응답 완전 동일(63개 UI 조합, 사용자 지정 기간·시간 경계·실측·fallback 포함). 실제 SDK 읽기에서도200/200/304를 확인했다. Blob 서비스가 같은 ETag에도200을 줄 수 있어 모든 재요청이304라고 보장하지 않는다.
 - 운영 파일 원문은7,116,416바이트이나 기존에도 Brotli로 약1.06MB 전송된다. 이를7.12MB 전체 절약으로 계산하지 않는다. 절감액은 배포 후 Vercel 실사용 추이로 확인한다. 기존 측정 데이터에는 성공 재고 관측이 없어 이번 변경으로 판매 수집이 복구됐다고 해석하지 않는다.
-- 배포는 기존 `Deploy Vercel Production` 수동 워크플로 한 번으로 묶는다. Standard/fixed 및 on-demand concurrency OFF를 배포 전에 확인하며 사이트 입장 잠금 빌드 검증을 유지한다. 완료 후 배포 SHA/READY/실제 API 재검증 증거를 아래에 기록한다.
+- 배포 완료: 소스 `7e0a2280c907e36e37351d0d094b7a4a5609e5fc`, [Actions 41757326034](https://github.com/kangbumhee/oy-stock/actions/runs/41757326034) 성공. Vercel `dpl_F9x88uqDv5MKELht6HcerTk273NP` production READY, `oy-stock.vercel.app`/`olivestock.co.kr` alias 연결 확인. 팀/프로젝트 Standard 고정 및 유료 추가 동시 빌드 OFF 확인 후 기존 입장 잠금 빌드 검증을 통과한 사전 빌드를 한 번 배포했다.
+- 실제 운영 검증: 1d/7d/30d 모두200·상품128개·기존 JSON 구조. 연속6회 중 첫 파일 다운로드 이후5회 `X-OY-Ranking-Store: revalidated`를 확인했다. 기간 집계가 현재 시각으로 달라져 브라우저 조건부 재요청은200이었으며 브라우저304 절감을 실측했다고 주장하지 않는다. 사이트 루트는 비밀번호 입력/`private,no-store` 유지, 인기순위 매시 정각/가격알림 매시7분 cron 그대로다. 증거 `D:\CodexOutputs\올리브영_인기랭킹_수정\운영배포검증.json`.
+- C 원본에는 기존 함수 블록 일치를 확인한 뒤 이번 부분만 동기화했다. 기존 변경 백업은 `D:\CodexTemp\올리브영_인기랭킹_수정\original-source-backup`이다. 다음 확인은 배포 이후 같은 길이의 Vercel Blob Data Transfer/Fast Origin Transfer 추이 비교이며, 이를 위해 별도 유료 모니터·수집을 추가하지 않았다.
 
 ### 마지막 작업 — 2026-09-13 일반 근처 재고 조회 복구·온라인 품절 옵션 유료 조회 (배포 완료)
 
