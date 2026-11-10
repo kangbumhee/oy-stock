@@ -1,7 +1,4 @@
 var UI = {
-  _curatorLinksPromise: null,
-  _curatorLinksIndex: {},
-  _curatorLinksLoadedAt: 0,
   _allStockCache: {},
   _allStockInflight: {},
   _allStockFailures: {},
@@ -67,7 +64,7 @@ var UI = {
     if (next) UI._stockRetryTimer = setTimeout(UI._scheduleStockRetry, next);
   },
 
-  /** 일반 올리브영 상품 상세(www) — shorten 실패·에러 팝업 폴백 */
+  /** 일반 올리브영 상품 상세 */
   oliveyoungFallbackUrl: function (goodsNo, categoryNumber) {
     var gn = String(goodsNo || '').trim();
     if (!gn) return CONFIG.OY_PRODUCT_URL;
@@ -76,188 +73,6 @@ var UI = {
       url += '&categoryNumber=' + encodeURIComponent(String(categoryNumber));
     }
     return url;
-  },
-
-  loadCuratorLinksIndex: function (force) {
-    if (!force && UI._curatorLinksPromise != null) return UI._curatorLinksPromise;
-    var url = CONFIG.CURATOR_LINKS_JSON_URL || '/data/curator-links.json';
-    if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
-    UI._curatorLinksPromise = fetch(url, { cache: force ? 'no-store' : 'default' })
-      .then(function (r) {
-        if (!r.ok) return {};
-        return r.json().then(function (data) {
-          var links = (data && data.links) || {};
-          UI._curatorLinksIndex = links;
-          UI._curatorLinksLoadedAt = Date.now();
-          return links;
-        });
-      })
-      .catch(function () {
-        if (!UI._curatorLinksIndex) UI._curatorLinksIndex = {};
-        return {};
-      });
-    return UI._curatorLinksPromise;
-  },
-
-  curatorLinkForGoodsNo: function (goodsNo) {
-    var gn = String(goodsNo || '').trim();
-    if (!gn || !UI._curatorLinksIndex) return '';
-    var entry = UI._curatorLinksIndex[gn] || UI._curatorLinksIndex[gn.toUpperCase()];
-    if (!entry) return '';
-    var expectedPartner = String(CONFIG.AFFILIATE_REGISTER_ID || '').trim().toLowerCase();
-    if (expectedPartner && String(entry.affiliatePartnerId || '').trim().toLowerCase() !== expectedPartner) {
-      return '';
-    }
-    var shortenedUrl = String(entry.shortenedUrl || '').trim();
-    try {
-      var parsed = new URL(shortenedUrl);
-      return parsed.protocol === 'https:' && parsed.hostname === 'oy.run' && parsed.pathname !== '/'
-        ? shortenedUrl
-        : '';
-    } catch (e) {
-      return '';
-    }
-  },
-
-  curatorRedirectUrl: function (goodsNo) {
-    var gn = String(goodsNo || '').trim();
-    if (!gn) return CONFIG.OY_PRODUCT_URL;
-    var base = CONFIG.CURATOR_REDIRECT_PATH || '/api/oliveyoung/curator-redirect';
-    if (base.charAt(0) === '/') {
-      var origin =
-        window.location.protocol === 'file:' ? 'https://olivestock.co.kr' : window.location.origin;
-      base = origin + base;
-    }
-    var url =
-      base +
-      (base.indexOf('?') >= 0 ? '&' : '?') +
-      'goodsNo=' +
-      encodeURIComponent(gn) +
-      '&direct=1';
-    return url;
-  },
-
-  curatorCopyButtonHtml: function (goodsNo) {
-    var gn = String(goodsNo || '').trim().toUpperCase();
-    if (!/^A\d{12}$/.test(gn)) return '';
-    return '<button type="button" class="btn-copy-curator" data-action="copyCuratorLink" data-goodsno="' +
-      UI.esc(gn) + '">큐레이터 링크 복사</button>';
-  },
-
-  _isPublicCuratorUrl: function (value) {
-    try {
-      var url = new URL(value);
-      return url.protocol === 'https:' && url.hostname === 'oy.run' && !url.port &&
-        !url.username && !url.password && /^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) &&
-        !url.search && !url.hash;
-    } catch (e) {
-      return false;
-    }
-  },
-
-  curatorCopyUrlForGoodsNo: function (goodsNo) {
-    var gn = String(goodsNo || '').trim().toUpperCase();
-    var shortUrl = UI.curatorLinkForGoodsNo(gn);
-    if (!shortUrl || !UI._isPublicCuratorUrl(shortUrl)) return '';
-    var entry = UI._curatorLinksIndex[gn];
-    if (/^[A-Za-z0-9_-]{1,128}$/.test(String(entry.affiliateActivityId || '').trim())) return shortUrl;
-    try {
-      var original = new URL(entry.originalUrl);
-      if (original.protocol === 'https:' &&
-        /^(www|m)\.oliveyoung\.co\.kr$/.test(original.hostname) &&
-        !original.username && !original.password && !original.port &&
-        original.searchParams.get('goodsNo') === gn &&
-        /^OY_[A-Za-z0-9_-]+$/.test(original.searchParams.get('utm_content') || '')) return shortUrl;
-    } catch (e) {}
-    return '';
-  },
-
-  _writeCuratorClipboard: async function (url) {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        return 'copied';
-      }
-    } catch (e) {}
-    var input;
-    var focused = document.activeElement;
-    try {
-      input = document.createElement('textarea');
-      input.value = url;
-      input.setAttribute('readonly', '');
-      input.style.cssText = 'position:fixed;left:0;top:0;opacity:0;pointer-events:none';
-      document.body.appendChild(input);
-      input.focus();
-      input.select();
-      input.setSelectionRange(0, url.length);
-      if (document.execCommand('copy')) return 'copied';
-    } catch (e) {
-      // A manual copy dialog remains available when browser clipboard access is blocked.
-    } finally {
-      if (input && input.parentNode) input.parentNode.removeChild(input);
-      if (focused && focused.focus) focused.focus({ preventScroll: true });
-    }
-    window.prompt('아래 큐레이터 주소를 복사해 주세요.', url);
-    return 'manual';
-  },
-
-  copyCuratorLink: async function (el) {
-    var gn = String(el.dataset.goodsno || '').trim().toUpperCase();
-    if (!/^A\d{12}$/.test(gn) || el.dataset.curatorCopying === '1') return;
-    el.dataset.curatorCopying = '1';
-    clearTimeout(el._curatorCopyReset);
-    el.disabled = true;
-    el.setAttribute('aria-busy', 'true');
-    var timeout;
-    try {
-      var url = UI.curatorCopyUrlForGoodsNo(gn);
-      if (!url) {
-        el.textContent = '링크 확인 중…';
-        // The resolver checks the current operator and never returns a private entry URL for copying.
-        var controller = new AbortController();
-        timeout = setTimeout(function () { controller.abort(); }, 20000);
-        var response = await fetch(UI.curatorRedirectUrl(gn) + '&format=json', {
-          credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' },
-          signal: controller.signal
-        });
-        if (response.status === 401) throw new Error('입장 인증이 만료되었습니다. 새로고침 후 비밀번호를 입력해 주세요.');
-        if (response.status === 429) throw new Error('요청이 많습니다. 잠시 후 다시 복사해 주세요.');
-        if (!response.ok) throw new Error('큐레이터 링크를 확인하지 못했습니다. 잠시 후 다시 복사해 주세요.');
-        var result = await response.json();
-        if (result.success && result.ready && UI._isPublicCuratorUrl(result.shortenedUrl) &&
-          /^[A-Za-z0-9_-]{1,128}$/.test(String(result.affiliateActivityId || '').trim())) {
-          url = result.shortenedUrl;
-          UI._curatorLinksIndex[gn] = {
-            shortenedUrl: url, affiliateActivityId: result.affiliateActivityId,
-            affiliatePartnerId: CONFIG.AFFILIATE_REGISTER_ID
-          };
-        } else if (result.success && result.pending && !result.unavailable) {
-          el.textContent = '링크 준비 중 · 다시 복사';
-          UI.showSyncStatus('큐레이터 링크를 만들고 있습니다. 잠시 후 다시 복사해 주세요.', false, 5000);
-          return;
-        } else {
-          throw new Error('현재 이 상품은 큐레이터 링크를 만들 수 없습니다.');
-        }
-      }
-      var copied = await UI._writeCuratorClipboard(url);
-      el.textContent = copied === 'copied' ? '복사 완료 ✓' : '주소를 직접 복사해 주세요';
-      if (copied === 'copied') {
-        UI.showSyncStatus('큐레이터 링크를 복사했습니다.', false, 2500);
-        el._curatorCopyReset = setTimeout(function () { el.textContent = '큐레이터 링크 복사'; }, 2500);
-      }
-    } catch (e) {
-      el.textContent = '다시 복사';
-      var message = e && e.message;
-      if (!message || !/^(입장 인증|요청이 많|큐레이터 링크를 확인|현재 이 상품)/.test(message)) {
-        message = '큐레이터 링크를 복사하지 못했습니다. 잠시 후 다시 눌러 주세요.';
-      }
-      UI.showSyncStatus(message, true, 5000);
-    } finally {
-      clearTimeout(timeout);
-      delete el.dataset.curatorCopying;
-      el.disabled = false;
-      el.removeAttribute('aria-busy');
-    }
   },
 
   trackGaEvent: function (eventName, params) {
@@ -271,236 +86,57 @@ var UI = {
     } catch (e) {}
   },
 
-  /**
-   * 블로그 구매 버튼과 같은 서버 리다이렉트 API로 통일한다.
-   * 서버에서 curator-links.json → 모바일 앱 브릿지 → 웹 fallback 순서로 처리한다.
-   */
+  /** 외부 링크 생성 요청 없이 올리브영 상품 페이지를 바로 연다. */
   openOliveYoungProduct: function (el) {
-    var goodsNo = el.dataset.goodsno;
-    if (!goodsNo) return;
-    if (el.dataset.oyOpening === '1') {
-      console.log('[oy] openOliveYoung 중복 진입 스킵', goodsNo);
-      return;
-    }
+    var goodsNo = String(el.dataset.goodsno || '').trim();
+    if (!/^[AB]\d{12}$/.test(goodsNo) || el.dataset.oyOpening === '1') return;
     el.dataset.oyOpening = '1';
-    console.log('[oy] openOliveYoung 실행', goodsNo);
-    var categoryNumber = el.dataset.category || '';
-    var origLabel = el.getAttribute('data-original-label') || '올리브영에서 구매 →';
-    var cachedCuratorUrl = UI.curatorLinkForGoodsNo(goodsNo);
-    var redirectUrl = cachedCuratorUrl || UI.curatorRedirectUrl(goodsNo);
-    var eventSource =
-      el.dataset.analyticsSource ||
-      el.dataset.source ||
+    var productUrl = UI.oliveyoungFallbackUrl(goodsNo, el.dataset.category || undefined);
+    var origLabel = el.getAttribute('data-original-label') || el.textContent || '올리브영에서 구매 →';
+    var eventSource = el.dataset.analyticsSource || el.dataset.source ||
       (String(el.className || '').indexOf('hot') >= 0 ? 'hot_ranking' : 'site_button');
-    var buttonText = String(el.textContent || '').trim().slice(0, 80);
-
     UI.trackGaEvent('buy_click', {
       goods_no: goodsNo,
       event_source: eventSource,
-      button_text: buttonText
-    });
-    UI.trackGaEvent('curator_redirect_open', {
-      goods_no: goodsNo,
-      event_source: eventSource,
-      redirect_type: cachedCuratorUrl ? 'cached_direct' : 'server_redirect'
+      button_text: String(el.textContent || '').trim().slice(0, 80)
     });
 
-    function tryOpenCuratorRedirect(url) {
-      // `noopener`를 window.open 특성 문자열로 넘기면 Chromium은 탭을
-      // 정상적으로 열고도 null을 반환한다. 먼저 빈 탭을 한 번만 확보한 뒤
-      // opener를 끊고 이동해야 실제 팝업 차단 여부를 구분할 수 있다.
-      var newTab = window.open('about:blank', '_blank');
-      if (newTab != null) {
-        try {
-          newTab.opener = null;
-          var link = newTab.document.createElement('a');
-          link.href = url;
-          link.target = '_self';
-          link.rel = 'noopener noreferrer';
-          link.style.display = 'none';
-          newTab.document.body.appendChild(link);
-          link.click();
-          return false;
-        } catch (e) {
-          try {
-            newTab.close();
-          } catch (closeError) {}
-        }
+    // Open synchronously from the click so desktop and mobile popup blocking is predictable.
+    var newTab = window.open('about:blank', '_blank');
+    var opened = false;
+    if (newTab != null) {
+      try {
+        newTab.opener = null;
+        var link = newTab.document.createElement('a');
+        link.href = productUrl;
+        link.target = '_self';
+        link.rel = 'noopener noreferrer';
+        link.style.display = 'none';
+        newTab.document.body.appendChild(link);
+        link.click();
+        opened = true;
+      } catch (e) {
+        try { newTab.close(); } catch (closeError) {}
       }
+    }
+    el.removeAttribute('data-oy-opening');
+    if (!opened) {
       el.removeAttribute('data-action');
       el.disabled = false;
       el.textContent = '여기를 클릭해서 열기 →';
       el.onclick = function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        window.open(url, '_blank', 'noopener,noreferrer');
+        window.open(productUrl, '_blank', 'noopener,noreferrer');
       };
-      return true;
+      return;
     }
-
     el.disabled = true;
     el.textContent = '사이트여는중';
-    var manualRedirectFallback = tryOpenCuratorRedirect(redirectUrl);
-    el.removeAttribute('data-oy-opening');
-    if (!manualRedirectFallback) {
-      window.setTimeout(function () {
-        el.disabled = false;
-        el.textContent = origLabel;
-      }, 500);
-    }
-    return;
-
-    var fallbackUrl = UI.oliveyoungFallbackUrl(goodsNo, categoryNumber || undefined);
-    var longUrlBase =
-      'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
-      encodeURIComponent(String(goodsNo).trim()) +
-      '&utm_source=shutter&utm_medium=affiliate';
-    var defaultReg =
-      CONFIG.AFFILIATE_REGISTER_ID || 'c7108819d49f47c8bb04b1cbc12488e8';
-
-    function tryProgrammaticAnchorClick(url) {
-      var a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-
-    /**
-     * @returns {boolean} true면 수동 버튼 모드(finally에서 라벨 복구 안 함)
-     * location.href 는 쓰지 않음(현재 탭 이탈 방지).
-     */
-    function openInNewTabWithoutSameTabNav(url) {
-      var newTab = window.open(url, '_blank', 'noopener,noreferrer');
-      if (newTab != null) {
-        try {
-          if (!newTab.closed) {
-            return false;
-          }
-        } catch (err) {
-          /* cross-origin: closed 접근 불가 → 이미 탭 열림으로 간주 */
-          return false;
-        }
-      }
-      tryProgrammaticAnchorClick(url);
-      if (newTab == null) {
-        el.removeAttribute('data-action');
-        el.disabled = false;
-        el.textContent = '여기를 클릭해서 열기 →';
-        el.onclick = function (ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
-          window.open(url, '_blank', 'noopener,noreferrer');
-        };
-        return true;
-      }
-      return false;
-    }
-
-    el.disabled = true;
-    el.textContent = '사이트여는중';
-
-    (async function () {
-      var manualFallback = false;
-      try {
-        var links = await UI.loadCuratorLinksIndex();
-        var entry = links[goodsNo];
-        if (entry && entry.shortenedUrl) {
-          manualFallback = openInNewTabWithoutSameTabNav(entry.shortenedUrl);
-          return;
-        }
-
-        var landingPayload = { goodsNo: goodsNo };
-        if (categoryNumber) {
-          landingPayload.categoryNumber = categoryNumber;
-        }
-
-        var landRes = await fetch(
-          CONFIG.LANDING_PROXY_PATH || '/api/oliveyoung/landing-proxy',
-          {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json'
-            },
-            body: JSON.stringify(landingPayload)
-          }
-        );
-
-        var landJson = await landRes.json().catch(function () {
-          return null;
-        });
-        console.log('[oy-stock] landing HTTP', landRes.status, goodsNo);
-        console.log('[oy-stock] landing 결과:', landJson);
-        var activityId = landJson && landJson.affiliateActivityId;
-        console.log('[oy-stock] affiliateActivityId:', activityId);
-        if (activityId) {
-          console.log('[oy-stock] utm_content 포함 URL 생성 (OY_' + activityId + ')');
-        } else {
-          console.log(
-            '[oy-stock] ❌ affiliateActivityId 없음! utm_content 없이 shorten 진행'
-          );
-        }
-        var partnerId =
-          (landJson && landJson.affiliatePartnerId) || defaultReg;
-
-        if (!activityId) {
-          console.error('[landing-proxy] affiliateActivityId 없음 → 수익 링크 생성 중단', {
-            goodsNo: goodsNo,
-            httpStatus: landRes.status,
-            response: landJson
-          });
-          throw new Error('affiliateActivityId missing');
-        }
-
-        var originalUrlForShorten = longUrlBase + '&utm_content=OY_' + activityId;
-        console.log('[oy-stock] shorten 요청 originalUrl:', originalUrlForShorten);
-
-        var shortRes = await fetch(
-          CONFIG.SHORTEN_PROXY_PATH || '/api/oliveyoung/shorten-proxy',
-          {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json'
-            },
-            body: JSON.stringify({
-              originalUrl: originalUrlForShorten,
-              registerId: partnerId
-            })
-          }
-        );
-
-        var shortJson = await shortRes.json().catch(function () {
-          return null;
-        });
-        var shortenedUrl =
-          shortJson &&
-          shortJson.data &&
-          shortJson.data[0] &&
-          shortJson.data[0].shortenedUrl;
-        console.log('[oy-stock] shorten HTTP', shortRes.status);
-        console.log('[oy-stock] shorten 결과:', shortJson);
-        console.log('[oy-stock] shortenedUrl:', shortenedUrl);
-
-        var targetUrl = shortenedUrl || fallbackUrl;
-        manualFallback = openInNewTabWithoutSameTabNav(targetUrl);
-      } catch (e) {
-        console.error('올리브영 링크 열기 실패:', e);
-        manualFallback = openInNewTabWithoutSameTabNav(fallbackUrl);
-      } finally {
-        el.removeAttribute('data-oy-opening');
-        if (!manualFallback) {
-          el.disabled = false;
-          el.textContent = origLabel;
-        }
-      }
-    })();
+    window.setTimeout(function () {
+      el.disabled = false;
+      el.textContent = origLabel;
+    }, 500);
   },
 
   esc: function (s) {
@@ -1622,7 +1258,6 @@ var UI = {
           '" data-category="' +
           UI.esc(catHint) +
           '" data-original-label="바로구매">바로구매</button>' +
-          UI.curatorCopyButtonHtml(gn) +
           (window.PriceAlerts
             ? PriceAlerts.productControlHtml(
                 gn,
@@ -1958,7 +1593,6 @@ var UI = {
           '" data-category="' +
           UI.esc(favCat) +
           '" data-original-label="바로구매">바로구매</button>' +
-          UI.curatorCopyButtonHtml(gid) +
           (window.PriceAlerts
             ? PriceAlerts.productControlHtml(gid, alertMeta, 'card-price-alert')
             : '') +

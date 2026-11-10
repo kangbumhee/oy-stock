@@ -33,37 +33,13 @@ jobs:
 
       - run: node scripts/detail-stock.mjs
 
-      - name: Generate curator links
-        id: curator-links
-        continue-on-error: true
-        env:
-          CURATOR_MAX_GOODS: 120
-          CURATOR_MISSING_ONLY: 1
-          CURATOR_INCLUDE_LIVE_RANKING: 1
-          OY_CURATOR_COOKIE: ${{ secrets.OY_CURATOR_COOKIE }}
-          OY_REFRESH_COOKIE: ${{ secrets.OY_REFRESH_COOKIE }}
-          OY_SESSION_ID: ${{ secrets.OY_SESSION_ID }}
-          OY_LINKAGE_STRING: ${{ secrets.OY_LINKAGE_STRING }}
-          OY_LINKAGE_JWT: ${{ secrets.OY_LINKAGE_JWT }}
-          OLIVEYOUNG_LINKAGE_STRING: ${{ secrets.OLIVEYOUNG_LINKAGE_STRING }}
-          OLIVEYOUNG_LINKAGE_JWT: ${{ secrets.OLIVEYOUNG_LINKAGE_JWT }}
-          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
-        run: node scripts/generate-curator-links.mjs
-
-      - name: Keep stock collection when curator generation is blocked
-        if: steps.curator-links.outcome != 'success'
-        run: echo "::warning::Curator generation failed; stock data will still be published."
-
       - name: Merge latest data and push
         shell: bash
-        env:
-          OLIVEYOUNG_AFFILIATE_REGISTER_ID: ${{ secrets.OLIVEYOUNG_AFFILIATE_REGISTER_ID }}
         run: |
           set -euo pipefail
 
           cp public/data/stock-detail.json /tmp/generated-stock-detail.json
           cp public/data/history.json /tmp/generated-history.json
-          cp public/data/curator-links.json /tmp/generated-curator-links.json
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -72,13 +48,9 @@ jobs:
             git reset --hard origin/main
             cp /tmp/generated-stock-detail.json public/data/stock-detail.json
             cp /tmp/generated-history.json public/data/history.json
-            node scripts/merge-curator-links.mjs \
-              /tmp/generated-curator-links.json \
-              public/data/curator-links.json
             git add \
               public/data/stock-detail.json \
-              public/data/history.json \
-              public/data/curator-links.json
+              public/data/history.json
 
             if git diff --staged --quiet; then
               echo "No stock data changes to publish."

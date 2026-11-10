@@ -49,13 +49,6 @@ function createHandler(overrides = {}) {
   });
 }
 
-function returnToFromGate(html) {
-  const input = html.match(/<input\b[^>]*\bname="returnTo"[^>]*>/);
-  if (!input) return null;
-  const value = input[0].match(/\bvalue="([^"]*)"/);
-  return value ? value[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"') : '';
-}
-
 function entryWithReturnTo(password, returnTo) {
   return entry(password, { body: new URLSearchParams({ password, returnTo }) });
 }
@@ -147,161 +140,30 @@ test('all inventory, API and raw alias paths deny unauthenticated access', async
   assert.match(await response.text(), /type="password"/);
 });
 
-test('a purchase document with an expired entry session asks for the password and resumes the same product', async () => {
-  const target = '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1';
-  const expired = createSessionToken(HOST, configuration, NOW - SESSION_SECONDS * 1000);
-  const handler = createHandler();
-  const denied = await handler(request(target, {
-    headers: {
-      accept: 'text/html,application/xhtml+xml',
-      'sec-fetch-mode': 'navigate',
-      'sec-fetch-dest': 'document',
-      cookie: `${COOKIE_NAME}=${expired}`
-    }
-  }));
-  assert.equal(denied.status, 200);
-  assert.match(denied.headers.get('content-type'), /text\/html/);
-  assert.match(denied.headers.get('cache-control'), /no-store/);
-  const html = await denied.text();
-  assert.match(html, /type="password"/);
-  assert.doesNotMatch(html, /site_access_required|fixture-only/);
-  assert.equal(returnToFromGate(html), target);
-
-  const allowed = await handler(entryWithReturnTo(FIXTURE_PASSWORD, returnToFromGate(html)));
-  // The successful POST must finish on this origin before the purchase endpoint
-  // redirects externally, so the gate's form-action policy can stay self-only.
-  assert.equal(allowed.status, 200);
-  assert.equal(allowed.headers.get('location'), null);
-  assert.match(allowed.headers.get('content-type'), /text\/html/);
-  assert.match(allowed.headers.get('cache-control'), /no-store/);
-  const policy = allowed.headers.get('content-security-policy');
-  assert.match(policy, /form-action 'self'(?:;|$)/);
-  const nonce = policy.match(/script-src 'nonce-([^']+)'/);
-  assert.ok(nonce, 'the resume document permits only its nonced script');
-  const resume = await allowed.text();
-  assert.ok(resume.includes(`nonce="${nonce[1]}"`));
-  assert.match(resume, /href="\/api\/oliveyoung\/curator-redirect\?goodsNo=A000000226508(?:&amp;|&)direct=1"/);
-  assert.doesNotMatch(resume, /fixture-only|site_access_required/);
-  const cookie = allowed.headers.get('set-cookie');
-  assert.match(cookie, /Path=\/; HttpOnly; Secure; SameSite=Strict$/);
-  assert.equal(await handler(request(target, { headers: { cookie: cookie.split(';')[0] } })), null);
-});
-
-test('purchase navigation supports the exact alias and older browsers while canonicalizing the return path', async () => {
-  const handler = createHandler();
-  const canonical = '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1';
-  for (const headers of [
-    { accept: 'text/html', 'sec-fetch-mode': 'navigate' },
-    { accept: 'text/html', 'sec-fetch-dest': 'document' },
-    { accept: 'text/html' }
-  ]) {
-    const response = await handler(request(
-      '/api/oliveyoung/curator-redirect.js?direct=1&goodsNo=A000000226508', { headers }
-    ));
-    assert.equal(response.status, 200);
-    assert.equal(returnToFromGate(await response.text()), canonical);
-  }
-  const withoutDirect = '/api/oliveyoung/curator-redirect?goodsNo=A000000226508';
-  const response = await handler(request(withoutDirect, { headers: { accept: 'text/html' } }));
-  assert.equal(returnToFromGate(await response.text()), withoutDirect);
-  const head = await handler(request(canonical, { method: 'HEAD', headers: { accept: 'text/html' } }));
-  assert.equal(head.status, 200);
-  assert.match(head.headers.get('content-type'), /text\/html/);
-  assert.equal(await head.text(), '');
-});
-
-test('purchase API fetches and JSON or debug requests still require an entry session', async () => {
-  const handler = createHandler();
-  const target = '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1';
-  for (const [query, headers] of [
-    ['', { accept: 'application/json' }],
-    ['', { accept: '*/*' }],
-    ['', { accept: 'text/html', 'sec-fetch-mode': 'cors', 'sec-fetch-dest': 'empty' }],
-    ['', { accept: 'text/html', 'sec-fetch-mode': 'cors', 'sec-fetch-dest': 'document' }],
-    ['', { accept: 'text/html', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'iframe' }],
-    ['&format=json', { accept: 'text/html', 'sec-fetch-mode': 'navigate' }],
-    ['&format=debug', { accept: 'text/html', 'sec-fetch-mode': 'navigate' }]
-  ]) {
-    const response = await handler(request(target + query, { headers }));
-    assert.equal(response.status, 401, JSON.stringify({ query, headers }));
-    assert.deepEqual(await response.json(), { success: false, error: 'site_access_required' });
-  }
-  const blockedPost = await handler(request(target, { method: 'POST', headers: { accept: 'text/html' } }));
-  assert.equal(blockedPost.status, 401);
-  assert.deepEqual(await blockedPost.json(), { success: false, error: 'site_access_required' });
-});
-
-test('only a single valid product on the exact purchase endpoint receives a resumable entry page', async () => {
+test('retired curator paths have no operational or navigation bypass', async () => {
   const handler = createHandler();
   for (const target of [
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&goodsNo=A000000171423',
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1&direct=1',
-    '/api/oliveyoung/curator-redirect?goodsNo=A123',
-    '/api/oliveyoung/curator-redirect?goodsNo=B000000226508',
-    '/api/oliveyoung/curator-redirect?goodsNo=A0000002265080',
-    '/api/oliveyoung/curator-redirect?format=&goodsNo=A000000226508',
-    '/api/oliveyoung/curator-redirect/extra?goodsNo=A000000226508',
-    '/public/api/oliveyoung/curator-redirect?goodsNo=A000000226508',
-    '/api/oliveyoung/search?goodsNo=A000000226508',
-    '/data/curator-links.json'
+    '/api/oliveyoung/landing-proxy?check=1',
+    '/api/oliveyoung/landing-proxy.js?check=true',
+    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1'
   ]) {
     const response = await handler(request(target, { headers: { accept: 'text/html', 'sec-fetch-mode': 'navigate' } }));
-    assert.equal(response.status, 401, target);
+    assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { success: false, error: 'site_access_required' });
   }
 });
 
-test('an incorrect purchase-entry password preserves the product without granting access', async () => {
-  const target = '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1';
-  let checks = 0;
-  const response = await createHandler({ consumeRateLimit: async () => checks++ })(
-    entryWithReturnTo('incorrect-password', target)
-  );
-  assert.equal(response.status, 401);
-  assert.equal(checks, 1);
-  assert.equal(response.headers.get('set-cookie'), null);
-  const html = await response.text();
-  assert.match(html, /비밀번호를 확인해 주세요/);
-  assert.equal(returnToFromGate(html), target);
-});
-
-test('entry return targets cannot redirect outside the exact local purchase route', async () => {
+test('entry ignores retired purchase return targets and resumes only the app root', async () => {
   const handler = createHandler();
-  for (const returnTo of [
-    'https://attacker.example/api/oliveyoung/curator-redirect?goodsNo=A000000226508',
-    `${ORIGIN}/api/oliveyoung/curator-redirect?goodsNo=A000000226508`,
-    '//attacker.example/api/oliveyoung/curator-redirect?goodsNo=A000000226508',
-    '/%2f%2fattacker.example/',
-    '/%61pi/oliveyoung/curator-redirect?goodsNo=A000000226508',
-    '/api/oliveyoung/%63urator-redirect?goodsNo=A000000226508',
-    '/_entry',
-    '/api/oliveyoung/search?keyword=test',
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&goodsNo=A000000171423',
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&direct=1&direct=1',
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&format=json',
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508&format=debug'
+  for (const target of [
+    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508',
+    'https://attacker.example/',
+    '//attacker.example/'
   ]) {
-    const response = await handler(entryWithReturnTo(FIXTURE_PASSWORD, returnTo));
-    assert.ok(response.status >= 400 || response.headers.get('location') === '/', returnTo);
-    assert.ok(response.headers.get('location') == null || response.headers.get('location') === '/', returnTo);
-  }
-  const duplicate = new URLSearchParams({ password: FIXTURE_PASSWORD });
-  duplicate.append('returnTo', '/api/oliveyoung/curator-redirect?goodsNo=A000000226508');
-  duplicate.append('returnTo', '/api/oliveyoung/curator-redirect?goodsNo=A000000171423');
-  const response = await handler(entry(FIXTURE_PASSWORD, { body: duplicate }));
-  assert.ok(response.status >= 400 || response.headers.get('location') === '/');
-  assert.ok(response.headers.get('location') == null || response.headers.get('location') === '/');
-
-  const fragment = await handler(entryWithReturnTo(FIXTURE_PASSWORD,
-    '/api/oliveyoung/curator-redirect?goodsNo=A000000226508#https://attacker.example/'
-  ));
-  if (fragment.status === 200) {
-    assert.equal(fragment.headers.get('location'), null);
-    const html = await fragment.text();
-    assert.match(html, /href="\/api\/oliveyoung\/curator-redirect\?goodsNo=A000000226508"/);
-    assert.doesNotMatch(html, /attacker\.example/);
-  } else {
-    assert.ok(fragment.status >= 400 || fragment.headers.get('location') === '/');
+    const response = await handler(entryWithReturnTo(FIXTURE_PASSWORD, target));
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), '/');
+    assert.equal(await response.text(), '');
   }
 });
 
@@ -316,9 +178,6 @@ test('protected install manifest includes the existing entry cookie instead of b
 
 test('only exact operational methods and safe health queries pass through', async () => {
   for (const [path, method] of [
-    ['/api/oliveyoung/landing-proxy?check=1', 'GET'],
-    ['/api/oliveyoung/landing-proxy.js?check=true', 'GET'],
-    ['/api/oliveyoung/landing-proxy?check=true', 'HEAD'],
     ['/api/oliveyoung/hot-ranking-history', 'GET'],
     ['/api/oliveyoung/hot-ranking-history.js', 'HEAD'],
     ['/api/oliveyoung/hot-ranking-cron', 'POST'],
@@ -332,6 +191,8 @@ test('only exact operational methods and safe health queries pass through', asyn
   }
   for (const [path, method] of [
     ['/api/oliveyoung/landing-proxy?check=1', 'POST'],
+    ['/api/oliveyoung/landing-proxy?check=1', 'GET'],
+    ['/api/oliveyoung/landing-proxy.js?check=true', 'HEAD'],
     ['/api/oliveyoung/hot-ranking-history', 'POST'],
     ['/api/price-alerts/payment/webhook', 'GET'],
     ['/api/ph-guide', 'GET'], ['/public/sw.js/extra', 'GET'],
@@ -385,7 +246,8 @@ test('missing configuration denies entry and data but preserves operational jobs
   assert.equal((await handler(request('/'))).status, 503);
   assert.equal((await handler(request('/data/stock-detail.json'))).status, 503);
   assert.equal((await handler(entry(FIXTURE_PASSWORD))).status, 503);
-  assert.equal(await handler(request('/api/oliveyoung/landing-proxy?check=1')), null);
+  assert.equal(await handler(request('/api/oliveyoung/hot-ranking-history')), null);
+  assert.equal((await handler(request('/api/oliveyoung/landing-proxy?check=1'))).status, 503);
 });
 
 test('logout is same-origin POST only and expires the host-only cookie', async () => {

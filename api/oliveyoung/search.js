@@ -173,12 +173,7 @@ async function fetchUpstreamProducts(keyword, size, outerSignal) {
 }
 
 function getOfficialCookieHeader() {
-  return String(
-    process.env.OY_REFRESH_COOKIE ||
-      process.env.OLIVEYOUNG_SEARCH_COOKIE ||
-      process.env.OY_CURATOR_COOKIE ||
-      ''
-  ).trim();
+  return String(process.env.OLIVEYOUNG_SEARCH_COOKIE || '').trim();
 }
 
 function numberFromOfficial(value) {

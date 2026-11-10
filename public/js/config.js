@@ -76,20 +76,6 @@ var CONFIG = {
   /** 같은 브라우저에서 쿠팡 링크는 1시간에 한 번만 연다. */
   COUPANG_CLICK_COOLDOWN_MS: 60 * 60 * 1000,
   COUPANG_CLICK_LAST_OPEN_KEY: 'olivestock:coupang-last-open-at',
-  /** GitHub Actions로 갱신되는 큐레이터(utm_content 포함 oy.run) 캐시 — 프론트에서 먼저 조회 */
-  CURATOR_LINKS_JSON_URL: '/data/curator-links.json',
-  /** JSON/debug용 서버 리다이렉트 */
-  CURATOR_REDIRECT_PATH: '/api/oliveyoung/curator-redirect',
-  /** 실제 구매 클릭을 큐레이터 링크 생성 요청의 단일 진입점으로 사용한다. */
-  ENABLE_CURATOR_AUTO_QUEUE: false,
-  CURATOR_QUEUE_PATH: '/api/oliveyoung/curator-queue',
-  CURATOR_QUEUE_SEARCH_LIMIT: 120,
-  CURATOR_QUEUE_HOT_LIMIT: 128,
-  CURATOR_QUEUE_FAVORITES_LIMIT: 120,
-  LANDING_PROXY_PATH: '/api/oliveyoung/landing-proxy',
-  SHORTEN_PROXY_PATH: '/api/oliveyoung/shorten-proxy',
-  AFFILIATE_REGISTER_ID: 'c7108819d49f47c8bb04b1cbc12488e8',
-
   REALTIME_API: 'https://oy-stock-api-3596046881.asia-northeast3.run.app/api/stock',
 
   KAKAO_REST_KEY: '57bff40a86df8f5961cb43e20c4f4976'

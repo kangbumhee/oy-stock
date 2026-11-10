@@ -42,17 +42,11 @@
     return el ? el.getAttribute('href') || '' : '';
   }
 
-  function directCuratorHref(href) {
-    if (!href || String(href).indexOf('curator-redirect') < 0) return href || '';
-    try {
-      var url = new URL(href, window.location.href);
-      if (!url.searchParams.get('direct')) url.searchParams.set('direct', '1');
-      return url.href;
-    } catch (e) {
-      return String(href).indexOf('direct=') >= 0
-        ? href
-        : href + (String(href).indexOf('?') >= 0 ? '&' : '?') + 'direct=1';
-    }
+  function productHref(goodsNo) {
+    var value = String(goodsNo || '').trim().toUpperCase();
+    return /^[AB]\d{12}$/.test(value)
+      ? 'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=' + value
+      : '';
   }
 
   function goodsNoFromHref(href) {
@@ -67,7 +61,7 @@
   }
 
   function goodsNoFromUrl() {
-    var match = window.location.pathname.match(/a\d{9,}/i);
+    var match = window.location.pathname.match(/[ab]\d{12}/i);
     return match ? match[0].toUpperCase() : '';
   }
 
@@ -94,8 +88,7 @@
     var buySource = firstElement([
       '.cta .buy-link',
       '.buy-link',
-      'a[href*="/api/oliveyoung/curator-redirect"]',
-      'a[href*="curator-redirect?goodsNo="]'
+      'a[href*="oliveyoung.co.kr/store/goods/getGoodsDetail.do"]'
     ]);
     var stockSource = firstElement([
       '.cta .stock-link',
@@ -104,11 +97,8 @@
       'a[href*="/?q="]'
     ]);
     var title = firstText('h1', '올리브영 인기 상품');
-    var goodsNo = goodsNoFromUrl();
-    var buyHref = directCuratorHref(
-      hrefFrom(buySource) ||
-        (goodsNo ? '/api/oliveyoung/curator-redirect?goodsNo=' + goodsNo : '')
-    );
+    var goodsNo = goodsNoFromHref(hrefFrom(buySource)) || goodsNoFromUrl();
+    var buyHref = productHref(goodsNo);
     var stockHref = hrefFrom(stockSource) || '/?q=' + encodeURIComponent(title) + (goodsNo ? '&autoBuy=' + goodsNo : '');
     if (!buyHref || !stockHref) {
       if ((attempt || 0) < MAX_ATTEMPTS) {
@@ -182,12 +172,12 @@
       var target = event.target;
       if (!target || !target.closest) return;
       var link = target.closest(
-        'a[href*="/api/oliveyoung/curator-redirect"],a[href*="curator-redirect?goodsNo="]'
+        'a.buy-link,a.oy-floating-cta__btn--buy'
       );
       if (!link) return;
 
       var href = hrefFrom(link);
-      var directHref = directCuratorHref(href);
+      var directHref = productHref(goodsNoFromHref(href) || goodsNoFromUrl());
       if (directHref && directHref !== href) {
         link.setAttribute('href', directHref);
         href = directHref;
@@ -203,11 +193,6 @@
         goods_no: goodsNo,
         event_source: eventSource,
         button_text: buttonText
-      });
-      trackGaEvent('curator_redirect_open', {
-        goods_no: goodsNo,
-        event_source: eventSource,
-        redirect_type: 'server_redirect'
       });
     });
   }

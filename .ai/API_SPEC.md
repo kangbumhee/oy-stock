@@ -3,7 +3,7 @@
 ## 인증
 
 - Vercel 사이트의 HTML·자산·데이터·일반 API는 공통 입장 비밀번호 인증이 선행되어야 한다. 아래 개별 API의 `인증: 불필요`는 추가 이용권 인증이 없다는 뜻이며 사이트 입장 잠금을 우회하지 않는다.
-- 올리브영 큐레이터 API 호출은 서버 환경변수의 `linkageString` 또는 JWT를 사용한다.
+- 큐레이터 생성 API는 2026-11-10 폐기됐다. 아래 과거 기록과 달리 쿠키·JWT를 통한 생성·인증 갱신은 제공하지 않는다.
 - 민감값은 GitHub Secrets 또는 Vercel Environment Variables에만 저장한다.
 
 ### 공통 입장 잠금 (2026-10-20)
@@ -17,6 +17,13 @@
 - 예외는 기존 운영용 landing-proxy `check=1|true` GET/HEAD, 인기순위 GET/HEAD, cron GET/POST, 결제 webhook/complete POST, PH relay POST 및 캐시 정리 워커 GET/HEAD뿐이다. 예외가 각 API의 기존 서비스 인증을 대체하지 않는다. 일반 `/api/*` 전체 예외는 없다.
 
 ## 엔드포인트 목록
+
+### 큐레이터 기능 폐기 (2026-11-10)
+
+- `/api/oliveyoung/landing-proxy`, `/api/oliveyoung/shorten-proxy`, `/api/oliveyoung/curator-queue` 및 Cloud Run `/api/curator-link`는 `410 Gone`을 반환하며 외부 큐레이터 API·GitHub 생성 워크플로·계정 로그인을 호출하지 않는다.
+- 구형 `/api/oliveyoung/curator-redirect?goodsNo=A...` 구매 주소는 유효한 상품번호에 한해 추적 매개변수 없는 공식 상품 URL로 이동한다. JSON resolver/check 요청은 410이다.
+- 사이트 상품 카드·블로그 구매 주소도 동일한 일반 상품 URL을 사용한다. 생성 캐시와 복사 버튼은 제거됐다. 재고·유료회원·결제 API 계약은 유지한다.
+- 아래 큐레이터 관련 상세 내용과 landing 상태 확인 예외는 과거 계약이며 현재 제공하지 않는다.
 
 ### [GET] `/api/oliveyoung/hot-ranking-history` (2026-11-04 전송 절감)
 

@@ -578,7 +578,7 @@ function blogPostTemplate(post, relatedPosts) {
   const copy = buildReviewBlogCopy(post, reviewAssets && reviewAssets.profile);
   const coverImage = reviewAssets ? reviewAssets.detail : visibleImage;
   const searchHref = `${SITE_URL}/?q=${encodeURIComponent(post.query)}&autoBuy=${encodeURIComponent(post.goodsNo)}`;
-  const curatorHref = `${SITE_URL}/api/oliveyoung/curator-redirect?goodsNo=${encodeURIComponent(post.goodsNo)}&direct=1`;
+  const productHref = `https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=${encodeURIComponent(post.goodsNo)}`;
   const badge = post.badges.find((item) => item.includes('올영픽')) || post.badges[0] || '올리브영 인기상품';
   const moodNotes = copy.moodNotes
     .map((item) => `<div><b>${htmlEscape(item[0])}</b><span>${htmlEscape(item[1])}</span></div>`)
@@ -810,7 +810,7 @@ ${analyticsTag()}
           <h2>살 거면 여기서 바로 이어가요</h2>
           <p>구매하러가기 버튼은 ${SITE_NAME}에 연결된 구매 링크로 이어집니다. 마음에 들면 바로 열어보고, 재고까지 한 번 더 보고 싶으면 아래 버튼으로 확인하면 됩니다.</p>
           <div class="cta-actions">
-            <a class="buy-link" href="${curatorHref}" target="_blank" rel="noopener noreferrer">구매하러가기</a>
+            <a class="buy-link" href="${productHref}" target="_blank" rel="noopener noreferrer">구매하러가기</a>
             <a class="stock-link" href="${searchHref}">재고 먼저 보고 구매하기</a>
           </div>
         </section>

@@ -6,7 +6,6 @@ const test = require('node:test');
 const { pathToFileURL } = require('node:url');
 
 const healthUrl = pathToFileURL(path.join(__dirname, '..', 'scripts', 'lib', 'oy-login-health.mjs'));
-const mailUrl = pathToFileURL(path.join(__dirname, '..', 'scripts', 'send-oy-login-alert.mjs'));
 const publicationUrl = pathToFileURL(path.join(__dirname, '..', 'scripts', 'lib', 'oy-auth-publication-state.mjs'));
 const AT = '2026-09-06T01:00:00.000Z';
 const SAFE = { reason: 'reconnect_required', source: 'periodic_check', detectedAt: AT };
@@ -377,25 +376,4 @@ test('SMTP or pre-email failure reruns only the failed job, bounded to three att
   const before = calls.filter((args) => args[1] === 'rerun').length;
   assert.equal((await dispatchLoginAlert({ ...options, delivery: { ...options.delivery, attempts: 3 } })).status, 'failed');
   assert.equal(calls.filter((args) => args[1] === 'rerun').length, before);
-});
-
-test('email uses existing SMTP names and safe Korean reconnect copy without account data', async () => {
-  const { sendLoginAlert } = await import(mailUrl);
-  const env = {
-    ALERT_EMAIL_FROM: 'sender@example.com', ALERT_EMAIL_PASSWORD: 'fake-smtp-password', ALERT_EMAIL_TO: 'owner@example.com',
-    OY_LOGIN_ALERT_REASON: 'reconnect_required', OY_LOGIN_ALERT_SOURCE: 'periodic_check', OY_LOGIN_ALERT_DETECTED_AT: AT,
-    GITHUB_REPOSITORY: 'owner/oy-stock', GITHUB_RUN_ID: '1234', OY_PASSWORD: 'fake-oy-password', TWOCAPTCHA_API_KEY: 'fake-api-key',
-  };
-  let transport;
-  let message;
-  let closed = false;
-  assert.deepEqual(await sendLoginAlert({ env, createTransport: (config) => { transport = config; return { sendMail: async (value) => { message = value; }, close: () => { closed = true; } }; } }), { sent: true, reason: 'reconnect_required' });
-  assert.equal(transport.service, 'gmail');
-  assert.equal(transport.auth.pass, env.ALERT_EMAIL_PASSWORD);
-  assert.equal(message.to, env.ALERT_EMAIL_TO);
-  assert.match(message.subject, /재연결/);
-  assert.match(message.text, /https:\/\/github.com\/owner\/oy-stock\/actions\/runs\/1234/);
-  assert.equal(message.text.includes('fake-'), false);
-  assert.equal(closed, true);
-  await assert.rejects(sendLoginAlert({ env, createTransport: () => ({ sendMail: async () => { throw new Error('fake-smtp-password'); } }) }), { message: 'OY_LOGIN_ALERT_SMTP_FAILED' });
 });

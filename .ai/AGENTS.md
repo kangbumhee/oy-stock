@@ -22,7 +22,7 @@
 
 - 작업 전 `git status --short`로 워크트리를 확인한다.
 - API 파일 수정 후 `node --check <file>`를 실행한다.
-- 큐레이터/구매 링크 관련 변경 후 `landing-proxy?check=1`과 실제 `affiliateActivityId` 반환 여부를 확인한다.
+- 큐레이터 생성 기능은 2026-11-10 사용자 요청으로 제거됐다. 생성·자동 로그인·갱신 작업을 재도입하지 않는다. 일반 구매 버튼은 추적 없는 공식 상품 주소를 사용하고, 폐기된 생성 API의 410 응답을 확인한다.
 - 환경변수 추가 시 `.env.example`과 `.ai/DEPLOY.md`를 함께 갱신한다.
 - API 변경 시 `.ai/API_SPEC.md`를 갱신한다.
 
@@ -34,7 +34,6 @@
 |---|---|---|
 | `public/data/stock-detail.json` | 상품별 매장/온라인 재고 상세 | `updatedAt`, `products`, `goodsNo`, `options`, `stores` |
 | `public/data/history.json` | 재고 변동 이력 | `updatedAt`, `items`, `changes` |
-| `public/data/curator-links.json` | 큐레이터 수익 링크 캐시 | `updatedAt`, `links`, `shortenedUrl`, `originalUrl`, `affiliateActivityId`, `generatedAt` |
 | `scripts/watchlist.json` | 수집 대상 상품 목록 | `goodsNo`, `keyword`, `enabled` |
 
 ## 핵심 비즈니스 흐름
@@ -43,15 +42,13 @@
 
 사용자 검색 -> `/api/oliveyoung/search` -> 상품 목록 표시 -> 실시간/정적 재고 조회 -> 팝업 상세 표시 -> 즐겨찾기/공유/바로구매.
 
-### 큐레이터 구매 링크 흐름
+### 일반 구매 링크 흐름
 
-바로구매 클릭 -> `curator-links.json` 캐시 확인 -> 캐시 없으면 `/api/oliveyoung/landing-proxy`로 `affiliateActivityId` 생성 -> `/api/oliveyoung/shorten-proxy`로 `oy.run` 생성 -> 새 탭 열기.
+바로구매 클릭 -> 상품번호로 공식 올리브영 상품 URL 생성 -> 새 탭 열기. 큐레이터 API·캐시·생성 대기열을 사용하지 않는다.
 
 ### 자동 운영 흐름
 
-GitHub Actions `OliveYoung Stock` -> `detail-stock.mjs` 재고 수집 -> `generate-curator-links.mjs` 큐레이터 링크 생성 -> `public/data` 커밋 -> Vercel 자동 배포.
-
-GitHub Actions `Refresh OliveYoung linkageString` -> `refresh-oy-linkage.mjs`가 Cookie에서 `linkageString` 추출 -> Vercel env 업데이트 -> Deploy Hook 호출.
+GitHub Actions `OliveYoung Stock` -> `detail-stock.mjs` 재고 수집 -> 재고·이력 JSON만 커밋. 큐레이터 생성·백필·로그인 감시·인증 갱신 워크플로는 제거됐다. Vercel 배포는 별도 운영 배포 작업이며 git 자동 배포는 비활성이다.
 
 ## 배포 체크리스트
 
@@ -59,5 +56,5 @@ GitHub Actions `Refresh OliveYoung linkageString` -> `refresh-oy-linkage.mjs`가
 - [ ] 문법 점검 통과
 - [ ] Secret 원문이 diff에 포함되지 않았는지 확인
 - [ ] `main` 푸시 후 Vercel 상태 성공 확인
-- [ ] `landing-proxy?check=1` 응답 확인
+- [ ] 폐기된 큐레이터 생성 API는 410, 일반 구매·검색·입장 잠금은 정상인지 확인
 

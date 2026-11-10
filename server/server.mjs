@@ -20,13 +20,6 @@ import {
 const PORT = Number(process.env.PORT) || 8080;
 const OY = 'https://www.oliveyoung.co.kr';
 const OY_M = 'https://m.oliveyoung.co.kr';
-const CURATOR_AFFILIATE_REFERER =
-  'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search';
-const CURATOR_PLACEHOLDER_CATEGORY = '1000001000000000000';
-const CURATOR_REGISTER_ID_DEFAULT = 'c7108819d49f47c8bb04b1cbc12488e8';
-const CURATOR_SHRT_SECRET = 'e3ea1c526eef4570946ebdf083dad7a7';
-const LINKAGE_AES_KEY = Buffer.from('cjone_g4de7353f1', 'utf8');
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const onlineCache = new Map();
@@ -169,27 +162,6 @@ async function withLock(fn) {
   }
 }
 
-const CURATOR_MAX_CONCURRENT = Math.max(
-  1,
-  Math.min(4, Number.parseInt(process.env.CURATOR_MAX_CONCURRENT || '3', 10) || 3)
-);
-
-async function withCuratorSlot(fn) {
-  const start = Date.now();
-  while (curatorActiveCount >= CURATOR_MAX_CONCURRENT) {
-    if (Date.now() - start > 60000) {
-      throw new Error('curator_link_busy');
-    }
-    await sleep(150);
-  }
-  curatorActiveCount += 1;
-  try {
-    return await fn();
-  } finally {
-    curatorActiveCount = Math.max(0, curatorActiveCount - 1);
-  }
-}
-
 let browser = null;
 let browserContext = null;
 let page = null;
@@ -207,19 +179,6 @@ let sessionGeneration = 0;
 let initPromise = null;
 let keepAliveTimer = null;
 let keepAliveRunning = false;
-let curatorContext = null;
-let curatorPage = null;
-let curatorBrowser = null;
-let curatorReady = false;
-let curatorInitPromise = null;
-let curatorActiveCount = 0;
-let curatorSharedPageBusy = false;
-let curatorCreatedAt = 0;
-let curatorSessionFingerprint = '';
-
-const curatorLinkCache = new Map();
-const CURATOR_LINK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const CURATOR_LINK_CACHE_MAX = 500;
 const priceCache = new Map();
 const priceFlights = new Map();
 let priceNextStartAt = 0;
@@ -239,254 +198,6 @@ function unwrapPayload(json) {
 
 function yn(v) {
   return v === true || v === 'Y' || v === 'y';
-}
-
-function isValidGoodsNo(g) {
-  return /^[AB]\d+$/i.test(String(g || '').trim());
-}
-
-function normalizeGoodsNo(value) {
-  const goodsNo = String(value || '').trim().toUpperCase();
-  return isValidGoodsNo(goodsNo) ? goodsNo : '';
-}
-
-function decodeCookieValue(v) {
-  let out = String(v || '').trim();
-  try {
-    out = decodeURIComponent(out);
-  } catch {
-    /* keep */
-  }
-  return out.trim();
-}
-
-function extractCookieValue(cookieString, name) {
-  const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const m = String(cookieString || '').match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]+)', 'i'));
-  return m ? decodeCookieValue(m[1]) : '';
-}
-
-function decryptLinkageString(hexString) {
-  const encrypted = Buffer.from(String(hexString).trim(), 'hex');
-  const decipher = crypto.createDecipheriv(
-    'aes-128-ecb',
-    LINKAGE_AES_KEY,
-    Buffer.alloc(0)
-  );
-  decipher.setAutoPadding(true);
-  let decrypted = decipher.update(encrypted, undefined, 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted.trim();
-}
-
-function decodeJwtPayload(token) {
-  if (!token || typeof token !== 'string') return null;
-  const parts = token.split('.');
-  if (parts.length < 2) return null;
-  try {
-    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    while (b64.length % 4) b64 += '=';
-    return JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
-  } catch {
-    return null;
-  }
-}
-
-function authCandidateFromJwt(jwt, source, cookieHeader) {
-  const token = String(jwt || '').trim();
-  if (!token) return null;
-  const payload = decodeJwtPayload(token);
-  const expSec =
-    payload && payload.exp != null && Number.isFinite(Number(payload.exp))
-      ? Number(payload.exp)
-      : null;
-  return {
-    jwt: token,
-    source,
-    cookieHeader: cookieHeader || '',
-    expSec,
-    expired: expSec != null ? expSec <= Date.now() / 1000 : false
-  };
-}
-
-function authCandidateFromLinkageHex(hex, source, cookieHeader) {
-  const raw = decodeCookieValue(hex);
-  if (!raw) return null;
-  try {
-    return authCandidateFromJwt(decryptLinkageString(raw), source, cookieHeader);
-  } catch (e) {
-    console.warn(`${source} linkageString 복호화 실패:`, e.message || e);
-    return null;
-  }
-}
-
-function buildCuratorSessionCookie() {
-  const sid = String(process.env.OY_SESSION_ID || '').trim();
-  const ls = String(process.env.OY_LINKAGE_STRING || '').trim();
-  if (sid && ls) return `OYSESSIONID=${sid}; linkageString=${ls}`;
-  return '';
-}
-
-function collectCuratorAuthCandidates() {
-  const candidates = [];
-  const refreshCookie = String(process.env.OY_REFRESH_COOKIE || '').trim();
-  if (refreshCookie) {
-    const candidate = authCandidateFromLinkageHex(
-      extractCookieValue(refreshCookie, 'linkageString'),
-      'OY_REFRESH_COOKIE',
-      refreshCookie
-    );
-    return candidate ? [candidate] : [];
-  }
-  const cookieSources = [
-    ['OY_CURATOR_COOKIE', String(process.env.OY_CURATOR_COOKIE || '').trim()],
-    ['OY_SESSION_ID+OY_LINKAGE_STRING', buildCuratorSessionCookie()]
-  ];
-
-  for (const [source, cookieHeader] of cookieSources) {
-    if (!cookieHeader) continue;
-    const hex = extractCookieValue(cookieHeader, 'linkageString');
-    const candidate = authCandidateFromLinkageHex(hex, source, cookieHeader);
-    if (candidate) candidates.push(candidate);
-  }
-
-  const linkageSources = [
-    ['OY_LINKAGE_STRING', process.env.OY_LINKAGE_STRING],
-    ['OLIVEYOUNG_LINKAGE_STRING', process.env.OLIVEYOUNG_LINKAGE_STRING]
-  ];
-  for (const [source, hex] of linkageSources) {
-    const candidate = authCandidateFromLinkageHex(hex, source, '');
-    if (candidate) candidates.push(candidate);
-  }
-
-  const jwtSources = [
-    ['OY_LINKAGE_JWT', process.env.OY_LINKAGE_JWT],
-    ['OLIVEYOUNG_LINKAGE_JWT', process.env.OLIVEYOUNG_LINKAGE_JWT]
-  ];
-  for (const [source, jwt] of jwtSources) {
-    const candidate = authCandidateFromJwt(jwt, source, '');
-    if (candidate) candidates.push(candidate);
-  }
-
-  return candidates;
-}
-
-function selectCuratorAuthCandidate(candidates) {
-  const valid = candidates.filter((c) => !c.expired);
-  const pool = valid.length ? valid : candidates;
-  return (
-    pool
-      .slice()
-      .sort((a, b) => {
-        const ae = a.expSec == null ? 0 : a.expSec;
-        const be = b.expSec == null ? 0 : b.expSec;
-        return be - ae;
-      })[0] || null
-  );
-}
-
-function curatorAuth() {
-  const selected = selectCuratorAuthCandidate(collectCuratorAuthCandidates());
-  if (!selected || selected.expired) return null;
-  return selected;
-}
-
-function parseCookieHeader(header, domainHost) {
-  const host = domainHost.replace(/^https?:\/\//, '').split('/')[0];
-  const domain = host.includes('oliveyoung') ? '.oliveyoung.co.kr' : host;
-  const out = [];
-  for (const part of String(header || '').split(';')) {
-    const p = part.trim();
-    if (!p) continue;
-    const eq = p.indexOf('=');
-    if (eq < 0) continue;
-    const name = p.slice(0, eq).trim();
-    let value = p.slice(eq + 1).trim();
-    try {
-      value = decodeURIComponent(value);
-    } catch {
-      /* keep */
-    }
-    if (!name) continue;
-    out.push({ name, value, domain, path: '/' });
-  }
-  return out;
-}
-
-function generateCuratorApiKey() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).formatToParts(new Date());
-  const t = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  const timeStr = `${t.year}${t.month}${t.day}${t.hour}${t.minute}`;
-  const raw = `${CURATOR_SHRT_SECRET}:shrt-auth:${timeStr}`;
-  return Buffer.from(raw, 'utf8').toString('base64');
-}
-
-function curatorRegisterId() {
-  return (
-    String(process.env.OLIVEYOUNG_AFFILIATE_REGISTER_ID || '').trim() ||
-    CURATOR_REGISTER_ID_DEFAULT
-  );
-}
-
-function curatorAuthFingerprint(auth, partnerId = curatorRegisterId()) {
-  if (!auth?.jwt) return '';
-  return crypto.createHash('sha256')
-    .update(JSON.stringify([partnerId, auth.jwt, auth.cookieHeader || '']))
-    .digest('hex');
-}
-
-function curatorLinkCacheKey(goodsNo, auth = curatorAuth()) {
-  const normalized = normalizeGoodsNo(goodsNo);
-  const fingerprint = curatorAuthFingerprint(auth);
-  return normalized && fingerprint ? `${curatorRegisterId()}|${fingerprint}|${normalized}` : '';
-}
-
-function getCuratorLinkCache(goodsNo, auth = curatorAuth()) {
-  if (curatorAuthFingerprint(auth) !== curatorAuthFingerprint(curatorAuth())) return null;
-  const key = curatorLinkCacheKey(goodsNo, auth);
-  if (!key) return null;
-  const hit = curatorLinkCache.get(key);
-  if (!hit) return null;
-  if (Date.now() - hit.ts > CURATOR_LINK_CACHE_TTL_MS ||
-      hit.data?.affiliatePartnerId !== curatorRegisterId()) {
-    curatorLinkCache.delete(key);
-    return null;
-  }
-  return hit.data;
-}
-
-function setCuratorLinkCache(goodsNo, data, auth = curatorAuth()) {
-  if (curatorAuthFingerprint(auth) !== curatorAuthFingerprint(curatorAuth())) return;
-  const key = curatorLinkCacheKey(goodsNo, auth);
-  if (!key || !data?.affiliateActivityId || data.affiliatePartnerId !== curatorRegisterId()) return;
-  curatorLinkCache.set(key, { data, ts: Date.now() });
-  while (curatorLinkCache.size > CURATOR_LINK_CACHE_MAX) {
-    const first = curatorLinkCache.keys().next().value;
-    if (first == null) break;
-    curatorLinkCache.delete(first);
-  }
-}
-
-function clearCuratorSession() {
-  // Detach first so pending cleanup can only close the retired resources.
-  const retired = [curatorPage, curatorContext, curatorBrowser];
-  curatorPage = null;
-  curatorContext = null;
-  curatorBrowser = null;
-  curatorReady = false;
-  curatorSharedPageBusy = false;
-  curatorCreatedAt = 0;
-  curatorSessionFingerprint = '';
-  return Promise.allSettled(retired.filter(Boolean).map(resource =>
-    Promise.resolve().then(() => resource.close())));
 }
 
 async function ensureSession() {
@@ -697,11 +408,8 @@ function sessionHealthPayload() {
   return {
     ok: true,
     session: sessionReady,
-    curator: curatorReady,
-    curatorAge: curatorCreatedAt ? Math.floor((Date.now() - curatorCreatedAt) / 1000) : 0,
-    curatorCacheSize: curatorLinkCache.size,
-    curatorActiveCount,
-    curatorMaxConcurrent: CURATOR_MAX_CONCURRENT,
+    curator: false,
+    curatorRemoved: true,
     sessionGeneration,
     pricePageReady: !!(pricePage && !pricePage.isClosed()),
     search: runOfficialSearch.stats(),
@@ -735,314 +443,6 @@ function startSessionKeepAlive() {
     void keepSessionWarm('interval');
   }, SESSION_KEEPALIVE_MS);
   if (keepAliveTimer.unref) keepAliveTimer.unref();
-}
-
-async function keepCuratorWarm(reason) {
-  try {
-    const auth = curatorAuth();
-    if (!auth) {
-      console.warn(`[curator-keepalive] 인증 없음 (${reason})`);
-      return;
-    }
-    await ensureCuratorSession(auth);
-    console.log(`[curator-keepalive] 세션 준비 완료 (${reason})`);
-  } catch (e) {
-    curatorReady = false;
-    console.error(`[curator-keepalive] 세션 준비 실패 (${reason}):`, e.message || e);
-  }
-}
-
-async function ensureCuratorSession(auth) {
-  const fingerprint = curatorAuthFingerprint(auth);
-  if (!fingerprint || fingerprint !== curatorAuthFingerprint(curatorAuth())) {
-    throw new Error('curator_auth_changed');
-  }
-  if (curatorInitPromise) {
-    await curatorInitPromise;
-    // Initialization for a different identity must never satisfy this request.
-    return ensureCuratorSession(auth);
-  }
-
-  if (curatorReady && curatorPage && curatorSessionFingerprint === fingerprint &&
-      Date.now() - curatorCreatedAt < SESSION_MAX_AGE) {
-    try {
-      const title = await curatorPage.evaluate(() => document.title);
-      if (title != null) return;
-    } catch {
-      await clearCuratorSession();
-    }
-  }
-
-  curatorInitPromise = (async () => {
-    await clearCuratorSession();
-    curatorBrowser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
-    curatorContext = await curatorBrowser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      locale: 'ko-KR'
-    });
-
-    if (auth && auth.cookieHeader) {
-      await curatorContext.addCookies(parseCookieHeader(auth.cookieHeader, OY_M));
-    }
-
-    curatorPage = await curatorContext.newPage();
-    await curatorPage.goto(OY_M + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await sleep(2500);
-
-    let bodyText = await curatorPage.locator('body').innerText().catch(() => '');
-    if (bodyText.includes('Just a moment') || bodyText.includes('Enable JavaScript')) {
-      throw new Error('curator_cloudflare_failed');
-    }
-
-    await curatorPage.goto(CURATOR_AFFILIATE_REFERER, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    });
-    await sleep(1200);
-    bodyText = await curatorPage.locator('body').innerText().catch(() => '');
-    if (bodyText.includes('Just a moment') || bodyText.includes('Enable JavaScript')) {
-      throw new Error('curator_affiliate_page_blocked');
-    }
-
-    if (fingerprint !== curatorAuthFingerprint(curatorAuth())) {
-      await clearCuratorSession();
-      throw new Error('curator_auth_changed');
-    }
-    curatorSessionFingerprint = fingerprint;
-    curatorReady = true;
-    curatorCreatedAt = Date.now();
-    console.log(`✅ 큐레이터 세션 준비 완료 (${auth?.source || 'unknown'})`);
-  })();
-
-  try {
-    await curatorInitPromise;
-  } catch (error) {
-    await clearCuratorSession();
-    throw error;
-  } finally {
-    curatorInitPromise = null;
-  }
-}
-
-async function acquireCuratorWorkPage() {
-  if (curatorPage && !curatorSharedPageBusy) {
-    curatorSharedPageBusy = true;
-    return {
-      page: curatorPage,
-      release: async () => {
-        curatorSharedPageBusy = false;
-      }
-    };
-  }
-
-  const workPage = await curatorContext.newPage();
-  await workPage.goto(CURATOR_AFFILIATE_REFERER, {
-    waitUntil: 'domcontentloaded',
-    timeout: 60000
-  });
-  return {
-    page: workPage,
-    release: async () => {
-      try {
-        await workPage.close();
-      } catch {}
-    }
-  };
-}
-
-async function generateCuratorLink(goodsNo, categoryNumber) {
-  const normalized = normalizeGoodsNo(goodsNo);
-  if (!normalized) {
-    return { success: false, error: 'invalid_goodsNo' };
-  }
-
-  const auth = curatorAuth();
-  if (!auth) {
-    return { success: false, error: 'missing_or_expired_curator_auth' };
-  }
-
-  const cached = getCuratorLinkCache(normalized, auth);
-  if (cached) {
-    return { ...cached, cacheHit: true };
-  }
-
-  return withCuratorSlot(async () => {
-    const secondHit = getCuratorLinkCache(normalized, auth);
-    if (secondHit) return { ...secondHit, cacheHit: true };
-
-    await ensureCuratorSession(auth);
-    const work = await acquireCuratorWorkPage();
-
-    const payload = {
-      goodsNo: normalized,
-      categoryNumber:
-        String(categoryNumber || '').trim() || CURATOR_PLACEHOLDER_CATEGORY,
-      registerId: curatorRegisterId(),
-      apiKey: generateCuratorApiKey(),
-      authJwt: auth.jwt || '',
-      placeholderCategory: CURATOR_PLACEHOLDER_CATEGORY
-    };
-
-    let result;
-    try {
-      result = await work.page.evaluate(
-        async ({
-          goodsNo,
-          categoryNumber,
-          registerId,
-          apiKey,
-          authJwt,
-          placeholderCategory
-        }) => {
-        async function landing(body) {
-          const headers = {
-            'Content-Type': 'application/json',
-            Accept: 'application/json, text/plain, */*',
-            Origin: 'https://m.oliveyoung.co.kr',
-            Referer: 'https://m.oliveyoung.co.kr/m/mtn/affiliate/product/search',
-            'x-api-key': apiKey
-          };
-          if (authJwt) headers.authorization = authJwt;
-          try {
-            const response = await fetch(
-              'https://m.oliveyoung.co.kr/review/api/affiliate/v1/activities/landing',
-              {
-                method: 'POST',
-                credentials: 'include',
-                headers,
-                body: JSON.stringify(body)
-              }
-            );
-            const text = await response.text();
-            let json;
-            try {
-              json = JSON.parse(text);
-            } catch {
-              return { ok: false, status: response.status, preview: text.slice(0, 180) };
-            }
-            return { ok: response.ok, status: response.status, json };
-          } catch (e) {
-            return { ok: false, status: 0, error: e && e.message ? e.message : String(e) };
-          }
-        }
-
-        async function shorten(originalUrl, rid) {
-          try {
-            const response = await fetch(
-              'https://m.oliveyoung.co.kr/base/shorten/v2/verified',
-              {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Accept: 'application/json, text/plain, */*',
-                  Origin: 'https://m.oliveyoung.co.kr',
-                  Referer: 'https://m.oliveyoung.co.kr/',
-                  'x-api-key': apiKey
-                },
-                body: JSON.stringify([{ originalUrl, registerId: rid }])
-              }
-            );
-            const text = await response.text();
-            let json;
-            try {
-              json = JSON.parse(text);
-            } catch {
-              return { ok: false, status: response.status, preview: text.slice(0, 180) };
-            }
-            return { ok: response.ok, status: response.status, json };
-          } catch (e) {
-            return { ok: false, status: 0, error: e && e.message ? e.message : String(e) };
-          }
-        }
-
-        const attempts = [
-          { goodsNumber: goodsNo, categoryNumber: categoryNumber || placeholderCategory },
-          { goodsNumber: goodsNo },
-          { goodsNumber: goodsNo, categoryNumber: '' }
-        ];
-        let affiliateActivityId = null;
-        let affiliatePartnerId = '';
-        let lastLanding = null;
-
-        for (const body of attempts) {
-          const landed = await landing(body);
-          lastLanding = landed;
-          const row = landed.json && landed.json.data;
-          const id = row && row.affiliateActivityId != null ? String(row.affiliateActivityId) : '';
-          if (landed.ok && id) {
-            affiliateActivityId = id;
-            affiliatePartnerId = String(row.affiliatePartnerId || '').trim();
-            if (!affiliatePartnerId || affiliatePartnerId !== registerId) {
-              return { success: false, error: 'curator_partner_mismatch' };
-            }
-            break;
-          }
-        }
-
-        if (!affiliateActivityId) {
-          return {
-            success: false,
-            error: 'missing_affiliate_activity_id',
-            detail: lastLanding
-          };
-        }
-
-        const originalUrl =
-          'https://m.oliveyoung.co.kr/m/goods/getGoodsDetail.do?goodsNo=' +
-          encodeURIComponent(goodsNo) +
-          '&utm_source=shutter&utm_medium=affiliate&utm_content=OY_' +
-          encodeURIComponent(affiliateActivityId);
-        const shortened = await shorten(originalUrl, affiliatePartnerId);
-        const shortRow =
-          shortened.json &&
-          shortened.json.data &&
-          Array.isArray(shortened.json.data) &&
-          shortened.json.data[0];
-        const shortenedUrl = shortRow && shortRow.shortenedUrl ? String(shortRow.shortenedUrl) : '';
-
-        return {
-          success: true,
-          shortenedUrl: shortenedUrl || null,
-          originalUrl,
-          affiliateActivityId,
-          affiliatePartnerId,
-          shortenStatus: shortened.status,
-          shortenDetail: shortenedUrl ? undefined : shortened
-        };
-        },
-        payload
-      );
-    } finally {
-      await work.release();
-    }
-
-    if (result && result.success) {
-      if (result.affiliatePartnerId !== curatorRegisterId() ||
-          curatorAuthFingerprint(auth) !== curatorAuthFingerprint(curatorAuth())) {
-        return { success: false, error: 'curator_auth_changed' };
-      }
-      const saved = {
-        ...result,
-        goodsNo: normalized,
-        generatedAt: new Date().toISOString(),
-        source:
-          result.sourceHint ||
-          (result.shortenedUrl ? 'cloudrun_live_shortened' : 'cloudrun_live_original')
-      };
-      setCuratorLinkCache(normalized, saved, auth);
-      return saved;
-    }
-
-    if (result && result.error === 'landing_failed') {
-      curatorReady = false;
-    }
-    return result || { success: false, error: 'empty_curator_result' };
-  });
 }
 
 async function _createSession() {
@@ -2433,10 +1833,6 @@ function applyCors(req, res) {
   return false;
 }
 
-function expectedCuratorLiveSecret() {
-  return String(process.env.CURATOR_LIVE_SECRET || process.env.CRON_SECRET || '').trim();
-}
-
 function expectedPriceAlertSecret() {
   return String(process.env.PRICE_ALERT_SERVICE_SECRET || '').trim();
 }
@@ -2445,15 +1841,6 @@ function safeEqual(a, b) {
   const aa = Buffer.from(String(a || ''));
   const bb = Buffer.from(String(b || ''));
   return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
-}
-
-function isCuratorRequestAuthorized(req, url) {
-  const expected = expectedCuratorLiveSecret();
-  if (!expected) return true;
-  const auth = String(req.headers.authorization || '').trim();
-  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
-  const querySecret = String(url.searchParams.get('secret') || '').trim();
-  return safeEqual(bearer, expected) || safeEqual(querySecret, expected);
 }
 
 function isPriceRequestAuthorized(req) {
@@ -2513,14 +1900,6 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/health') {
     if (url.searchParams.get('warm') === '1' || url.searchParams.get('warm') === 'true') {
       await keepSessionWarm('health');
-    }
-    if (
-      url.searchParams.get('curator') === '1' ||
-      url.searchParams.get('curator') === 'true' ||
-      url.searchParams.get('warmCurator') === '1' ||
-      url.searchParams.get('warmCurator') === 'true'
-    ) {
-      await keepCuratorWarm('health');
     }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(sessionHealthPayload()));
@@ -2672,58 +2051,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/curator-link') {
-    if (req.method !== 'GET' && req.method !== 'POST') {
-      res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: 'method_not_allowed' }));
-      return;
-    }
-
-    if (!isCuratorRequestAuthorized(req, url)) {
-      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: 'unauthorized' }));
-      return;
-    }
-
-    let body = {};
-    if (req.method === 'POST') {
-      try {
-        body = await readJsonBody(req);
-      } catch {
-        body = {};
-      }
-    }
-
-    const goodsNo = normalizeGoodsNo(url.searchParams.get('goodsNo') || body.goodsNo);
-    const categoryNumber = String(
-      url.searchParams.get('categoryNumber') ||
-        url.searchParams.get('category') ||
-        body.categoryNumber ||
-        body.category ||
-        ''
-    ).trim();
-
-    if (!goodsNo) {
-      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: 'goodsNo_required' }));
-      return;
-    }
-
-    try {
-      const result = await generateCuratorLink(goodsNo, categoryNumber);
-      const status = result && result.success ? 200 : 502;
-      res.writeHead(status, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store, max-age=0'
-      });
-      res.end(JSON.stringify(result));
-    } catch (e) {
-      console.error('[api/curator-link] 예외:', e.message || e);
-      res.writeHead(500, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store, max-age=0'
-      });
-      res.end(JSON.stringify({ success: false, error: String(e.message || e) }));
-    }
+    res.writeHead(410, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store, max-age=0'
+    });
+    res.end(JSON.stringify({ success: false, removed: true, error: 'curator_link_generation_removed' }));
     return;
   }
 
@@ -2823,9 +2155,6 @@ async function startServer() {
     console.log(`서버 시작: http://localhost:${PORT}`);
     startSessionKeepAlive();
     void keepSessionWarm('startup');
-    if (String(process.env.CURATOR_WARM_ON_START || '1') !== '0') {
-      void keepCuratorWarm('startup');
-    }
   });
 }
 
@@ -2835,17 +2164,10 @@ if (String(process.env.OY_SERVER_DISABLE_START || '') !== '1') {
 
 export {
   calculatePriceStartAt,
-  clearCuratorSession,
   createNationalStockHandler,
-  curatorAuth,
-  curatorAuthFingerprint,
-  ensureCuratorSession,
-  generateCuratorLink,
-  getCuratorLinkCache,
   priceFromOfficialDetail,
   publicFieldsFromStockOption,
   server,
-  setCuratorLinkCache,
   shouldRetryPriceDetailResult
 };
 
@@ -2855,11 +2177,6 @@ process.on('SIGTERM', async () => {
   if (browser) {
     try {
       await browser.close();
-    } catch {}
-  }
-  if (curatorBrowser) {
-    try {
-      await curatorBrowser.close();
     } catch {}
   }
   process.exit(0);

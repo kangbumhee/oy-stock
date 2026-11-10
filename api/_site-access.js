@@ -65,9 +65,6 @@ function operationalPassThrough(request, url = new URL(request.url)) {
   const method = request.method.toUpperCase();
   const path = url.pathname;
   if (['GET', 'HEAD'].includes(method) && /^\/(?:public\/)?sw\.js$/.test(path)) return true;
-  if (['GET', 'HEAD'].includes(method) && /^\/api\/oliveyoung\/landing-proxy(?:\.js)?$/.test(path)) {
-    return ['1', 'true'].includes(url.searchParams.get('check'));
-  }
   if (['GET', 'HEAD'].includes(method) && /^\/api\/oliveyoung\/hot-ranking-history(?:\.js)?$/.test(path)) {
     return true;
   }
@@ -96,38 +93,9 @@ function securityHeaders(nonce) {
   };
 }
 
-function purchaseReturnPath(value) {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') ||
-    /[\\\r\n]/.test(value)) return '';
-  try {
-    const target = new URL(value, 'https://entry.invalid');
-    if (target.origin !== 'https://entry.invalid' ||
-      !/^\/api\/oliveyoung\/curator-redirect(?:\.js)?$/.test(target.pathname) ||
-      target.searchParams.has('format') ||
-      target.searchParams.getAll('goodsNo').length !== 1 ||
-      target.searchParams.getAll('direct').length > 1) return '';
-    const goodsNo = target.searchParams.get('goodsNo');
-    if (!/^A\d{12}$/.test(goodsNo || '')) return '';
-    const query = new URLSearchParams({ goodsNo });
-    if (target.searchParams.get('direct') === '1') query.set('direct', '1');
-    return '/api/oliveyoung/curator-redirect?' + query.toString();
-  } catch (_) {
-    return '';
-  }
-}
-
-function purchaseNavigation(request, url) {
-  if (!['GET', 'HEAD'].includes(request.method.toUpperCase()) ||
-    !request.headers.get('accept')?.includes('text/html')) return '';
-  const mode = request.headers.get('sec-fetch-mode');
-  const destination = request.headers.get('sec-fetch-dest');
-  if ((mode && mode !== 'navigate') || (destination && destination !== 'document')) return '';
-  return purchaseReturnPath(url.pathname + url.search);
-}
-
-function gateResponse(status, message, head = false, extraHeaders = {}, returnTo = '') {
+function gateResponse(status, message, head = false, extraHeaders = {}) {
   const nonce = crypto.randomBytes(18).toString('base64');
-  const body = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title></title><style nonce="${nonce}">*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#fff}body{min-height:100dvh;display:grid;place-items:center;font-family:system-ui,sans-serif}form{width:min(280px,calc(100vw - 48px))}input{display:block;width:100%;height:46px;border:1px solid #d6d6d6;border-radius:6px;padding:0 14px;font:16px system-ui,sans-serif;background:#fff;color:#222}input:focus{outline:2px solid #555;outline-offset:2px}p{margin:12px 0 0;font-size:13px;color:#a11;text-align:center}</style></head><body><form method="post" action="/_entry">${returnTo ? `<input type="hidden" name="returnTo" value="${returnTo.replace(/&/g, '&amp;')}">` : ''}<input type="password" name="password" autocomplete="current-password" aria-label="비밀번호" placeholder="비밀번호" maxlength="160" required autofocus>${message ? `<p role="alert">${message}</p>` : ''}</form><script nonce="${nonce}">if('caches' in window){caches.keys().then(function(keys){return Promise.all(keys.filter(function(key){return key.indexOf('olivestock-app-')===0}).map(function(key){return caches.delete(key)}))}).catch(function(){})}</script></body></html>`;
+  const body = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title></title><style nonce="${nonce}">*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#fff}body{min-height:100dvh;display:grid;place-items:center;font-family:system-ui,sans-serif}form{width:min(280px,calc(100vw - 48px))}input{display:block;width:100%;height:46px;border:1px solid #d6d6d6;border-radius:6px;padding:0 14px;font:16px system-ui,sans-serif;background:#fff;color:#222}input:focus{outline:2px solid #555;outline-offset:2px}p{margin:12px 0 0;font-size:13px;color:#a11;text-align:center}</style></head><body><form method="post" action="/_entry"><input type="password" name="password" autocomplete="current-password" aria-label="비밀번호" placeholder="비밀번호" maxlength="160" required autofocus>${message ? `<p role="alert">${message}</p>` : ''}</form><script nonce="${nonce}">if('caches' in window){caches.keys().then(function(keys){return Promise.all(keys.filter(function(key){return key.indexOf('olivestock-app-')===0}).map(function(key){return caches.delete(key)}))}).catch(function(){})}</script></body></html>`;
   return new Response(head ? null : body, {
     status,
     headers: {
@@ -141,10 +109,6 @@ function gateResponse(status, message, head = false, extraHeaders = {}, returnTo
 function deniedResponse(request, status = 401) {
   const url = new URL(request.url);
   const method = request.method.toUpperCase();
-  // A purchase link is a document navigation even though its path starts with /api/.
-  // Keep the password gate in front of it and resume only this validated destination.
-  const returnTo = purchaseNavigation(request, url);
-  if (returnTo) return gateResponse(status === 401 ? 200 : status, '', method === 'HEAD', {}, returnTo);
   const documentRequest = ['GET', 'HEAD'].includes(method) &&
     !/^\/(?:public\/)?(?:api|data)(?:\/|$)/i.test(url.pathname) &&
     (request.headers.get('accept')?.includes('text/html') ||
@@ -156,21 +120,6 @@ function deniedResponse(request, status = 401) {
     headers: {
       ...securityHeaders(crypto.randomBytes(18).toString('base64')),
       'Content-Type': 'application/json; charset=utf-8'
-    }
-  });
-}
-
-function resumePurchaseResponse(returnTo, token) {
-  const nonce = crypto.randomBytes(18).toString('base64');
-  // End the form response before leaving the site: a 303 -> 302 external chain
-  // is blocked by Chromium's form-action 'self' even after the password succeeds.
-  const body = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>상품페이지로 이동 중</title></head><body><p>상품페이지로 이동 중입니다.</p><a href="${returnTo.replace(/&/g, '&amp;')}">계속하기</a><script nonce="${nonce}">location.replace(${JSON.stringify(returnTo)});</script></body></html>`;
-  return new Response(body, {
-    status: 200,
-    headers: {
-      ...securityHeaders(nonce),
-      'Content-Type': 'text/html; charset=utf-8',
-      'Set-Cookie': `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`
     }
   });
 }
@@ -207,7 +156,7 @@ async function readPassword(request) {
   }
   const form = new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
   if (form.getAll('password').length !== 1 || form.getAll('returnTo').length > 1) return { error: 400 };
-  return { password: form.get('password'), returnTo: purchaseReturnPath(form.get('returnTo')) };
+  return { password: form.get('password') };
 }
 
 function createSiteAccessHandler(dependencies = {}) {
@@ -251,10 +200,9 @@ function createSiteAccessHandler(dependencies = {}) {
       const result = await readPassword(request);
       if (result.error) return gateResponse(result.error, '입력 내용을 확인해 주세요.');
       if (!promotionMatches(result.password, configuration.promotion)) {
-        return gateResponse(401, '비밀번호를 확인해 주세요.', false, {}, result.returnTo);
+        return gateResponse(401, '비밀번호를 확인해 주세요.');
       }
       const token = createSessionToken(url.host, configuration, now());
-      if (result.returnTo) return resumePurchaseResponse(result.returnTo, token);
       return new Response(null, {
         status: 303,
         headers: {

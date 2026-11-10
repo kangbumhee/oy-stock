@@ -33,6 +33,11 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    var normalizedPath = decodeURIComponent(new URL(path, 'https://mcp.aka.page').pathname);
+    if (/^\/api\/oliveyoung\/(?:landing-proxy|shorten-proxy|curator-queue|curator-redirect)(?:[/.]|$)/i.test(normalizedPath)) {
+      return require('./oliveyoung/_curator-retired.js')(req, res);
+    }
+
     var params = Object.assign({}, query);
     delete params.path;
     var qs = new URLSearchParams(params).toString();
