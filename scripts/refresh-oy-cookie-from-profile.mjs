@@ -27,6 +27,7 @@ import { installCapture, inspectChallenge, inspectChallengeDiagnostics, restoreU
 import { createCaptchaHandler } from './lib/oy-captcha-flow.mjs';
 import { OY_LOGIN_URL, runAutoLogin, assertLoginHost, isLoginUrl, inspectLoginOutcome } from './lib/oy-auto-login.mjs';
 import { acquireRefreshLock } from './lib/oy-refresh-lock.mjs';
+import { navigateDashboard } from './lib/oy-dashboard-navigation.mjs';
 import { extractCookies, jwtExpFromLinkageHex, authFingerprintFromCookie } from './lib/cookie-extractor.mjs';
 import { startAuthPublication, inspectAuthPublication } from './lib/oy-auth-publication-state.mjs';
 import { updateGitHubSecret } from './lib/secret-manager.mjs';
@@ -87,6 +88,7 @@ async function openProfile() {
   return chromium.launchPersistentContext(PROFILE_DIR, {
     channel: 'chrome',
     headless: !headed,
+    timeout: 60000,
     viewport: { width: 412, height: 915 },
     userAgent:
       'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 ' +
@@ -98,7 +100,7 @@ async function openProfile() {
 async function dashboardPage(context, automaticCaptchaEnabled = false) {
   const page = context.pages()[0] || (await context.newPage());
   await installCapture(page, { enabled: automaticCaptchaEnabled });
-  await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await navigateDashboard(page);
   await wait(8000);
   return page;
 }
@@ -274,9 +276,7 @@ async function ensureFreshLinkage(context, page) {
     }
 
     if (attempt < LINKAGE_ACTIVATION_ATTEMPTS) {
-      await page
-        .goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
-        .catch(() => {});
+      await navigateDashboard(page);
       await page.waitForTimeout(3000);
       state = await collectState(context, page);
     }
@@ -426,7 +426,7 @@ async function main() {
       for (const cookie of previousLinkageCookies) {
         await context.clearCookies({ name: cookie.name, domain: cookie.domain, path: cookie.path });
       }
-      await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await navigateDashboard(page);
       await wait(3000);
       state = await ensureFreshLinkage(context, page);
     }
@@ -465,7 +465,7 @@ async function main() {
       });
       const recoveredState = result.status === 'authenticated' ? null : await recoverConfirmedLogin(result, async () => {
         await restoreUserAgent(page);
-        await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await navigateDashboard(page);
         await wait(3000);
         return collectState(context, page);
       });
@@ -477,7 +477,7 @@ async function main() {
         state = recoveredState;
         log('submitted login confirmed on protected curator dashboard');
       } else {
-        await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await navigateDashboard(page);
         await wait(3000);
         state = await ensureFreshLinkage(context, page);
       }
