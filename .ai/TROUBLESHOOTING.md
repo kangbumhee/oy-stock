@@ -1,5 +1,13 @@
 # 트러블슈팅 - 에러 해결 모음
 
+### Pro Route 신청은 접수되지만 인증 메일이 발송되지 않음 (2026-11-11)
+
+- 확인: Sites의 인증 메일 outbox가 재시도 5회 후 실패하며 Firebase 중계 요청이 HTTP 503을 반환했다. 인증된 읽기 전용 상태 점검의 오류는 `relay_site_origin_mismatch`였다.
+- 원인: 현재 Vercel 사전 빌드의 `api/ph-guide.func/lib/ph-guide-relay.js`가 예전 고객 도메인 하나와 50,000원만 허용하는 버전으로 되돌아갔다. 실제 환경변수 `PH_GUIDE_SITE_ORIGIN`은 정상적인 `https://olivestock.co.kr`였으므로 SMTP 단계에 도달하지 못했다.
+- 복구 준비: 현재 운영 재고 사이트의 나머지 파일을 그대로 두고 최신 릴레이와 한국어·영어·디지털 자료 렌더러만 복구한다. 환경변수를 예전 도메인으로 되돌리거나 허용 origin/금액을 넓혀 해결하지 않는다.
+- 재발 방지: 원본 source와 사전 빌드 함수의 세 파일 해시를 함께 확인한다. `scripts/check-ph-guide-relay-status.mjs`는 고객 도메인 대신 `https://oy-stock.vercel.app/api/ph-guide`로 상태만 확인한다. 외부 발송 승인·실제 수신 확인과 SMTP 인증 성공은 별도 증거다.
+- 검증: `node --test tests/ph-guide-relay.test.mjs tests/ph-guide-relay-deployment.test.mjs tests/ph-guide-domain-migration.test.mjs tests/ph-guide-international-mail.test.mjs` 44개 통과. 운영 배포 `dpl_BydhMourzv4AWLx88gmQSRjjHnGu` READY 후 Firebase 인증 상태 요청이 200 / `smtpVerified:true`로 회복됐다. 3개 런타임 파일의 원격 해시 일치와 나머지 12,237개 파일 UID 불변을 확인했다. 실제 메일 발송·고객 수신은 이 SMTP 인증 검사와 별개다.
+
 ### 바로구매 새 탭에서 site_access_required JSON만 표시
 
 - 확인일: 2026-11-01. 상품 `A000000226508`의 `curator-redirect?direct=1`에서 재현.

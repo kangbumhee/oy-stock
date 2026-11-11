@@ -1,5 +1,13 @@
 # API 명세서
 
+## Pro Route 메일·결제 릴레이 복구 계약 (2026-11-11)
+
+- `/api/ph-guide`는 `oy-stock.vercel.app`의 서버 간 인증 전용 경로다. 고객용 `olivestock.co.kr`는 별도 Sites 호스팅이므로 이 도메인의 같은 API 경로를 진단에 사용하지 않는다.
+- 승인된 고객 링크 origin은 `https://olivestock.co.kr`와 기존 `https://ph-pro-guide.kbhjjan100.chatgpt.site` 두 개다. 유사 도메인·임의 경로·origin 혼합은 거절한다. 운영 설정 기본값은 전자다.
+- 결제 사전등록/조회 금액은 각 주문에 고정된 2,001원 디지털 자료, 19,500원 안내 서비스, 기존 50,000원 주문만 허용한다. PortOne의 금액·상점·LIVE 채널·카카오페이 검증을 유지한다.
+- 한국어·영어·디지털 자료 메일 렌더러를 모두 배포한다. 서버 비밀값·구매자 개인정보는 진단 응답에 포함하지 않는다. `status`와 `verifySmtp:true`는 SMTP 인증 점검만 수행하고 메일 발송·결제를 하지 않는다.
+- 배포 시 `lib/ph-guide-{relay.js,mail.mjs,international-mail.mjs}` 세 파일과 사전 빌드의 해당 함수 내부 파일이 일치해야 한다. 오래된 사전 빌드로 덮어쓰면 메일·결제 연동이 중단될 수 있다.
+
 ## 인증
 
 - Vercel 사이트의 HTML·자산·데이터·일반 API는 공통 입장 비밀번호 인증이 선행되어야 한다. 아래 개별 API의 `인증: 불필요`는 추가 이용권 인증이 없다는 뜻이며 사이트 입장 잠금을 우회하지 않는다.

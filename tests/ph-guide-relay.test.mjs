@@ -1,7 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture, env, secret, SITE_ORIGIN, prereg, paymentId, message, rawPayment } from './helpers/relay-fixture.mjs';
-import { buildTransactionalMail, makeServiceUrl } from '../lib/ph-guide-mail.mjs';
+import { buildTransactionalMail, EMAIL_GUIDE_CHAPTERS, makeServiceUrl } from '../lib/ph-guide-mail.mjs';
+
+test('digital 2001 receipt delivers one private action and no connection-service copy', async () => {
+  const f = fixture();
+  const input = { ...message(101), subject: '[PH 연결 가이드] 디지털 자료 결제 확인', text: '디지털 체크리스트 구매 이메일: buyer@example.test\n결제 금액: 2,001원\n' + SITE_ORIGIN + '/digital?token=synthetic.body' };
+  assert.equal((await f.invoke(input)).status, 200);
+  assert.equal((await f.invoke(input)).data.deduplicated, true);
+  assert.equal(f.smtpCalls.length, 1);
+  assert.match(f.smtpCalls[0].mail.html, /2,001원/);
+  assert.match(f.smtpCalls[0].mail.html, /디지털 체크리스트/);
+  assert.equal((f.smtpCalls[0].mail.html.match(/href=/g) || []).length, 1);
+  assert.doesNotMatch(f.smtpCalls[0].mail.html, /19,500|50,000|1시간|프록시/);
+  for (const suffix of ['?token=x&amount=2001', '?token=x#bad', '?token=', '?token=x%20y']) {
+    assert.equal((await f.invoke({ ...input, eventId: 'mail_' + 'f'.repeat(32), text: '디지털 자료 안내: ' + SITE_ORIGIN + '/digital' + suffix })).status, 400);
+  }
+});
+
+test('digital cancellation mail has no access CTA or connection-service price', async () => {
+  const f = fixture();
+  assert.equal((await f.invoke({ ...message(102), subject: '[PH 연결 가이드] 디지털 자료 결제 취소', text: '디지털 자료 결제 취소 금액: 2,001원\n자료 이용 권한이 종료되었습니다.' })).status, 200);
+  assert.doesNotMatch(f.smtpCalls[0].mail.html, /href=|19,500|1시간/);
+});
 test('unique relay authorization fails before storage, provider, or SMTP side effects', async () => {
   const f = fixture(); assert.equal((await f.invoke({ action: 'status' }, 'wrong')).status, 401); assert.equal(f.writes.length, 0); assert.equal(f.providerCalls.length, 0); assert.equal(f.smtpCalls.length, 0);
   assert.equal((await f.invoke({ action: 'status' }, undefined, { method: 'GET' })).status, 405);
@@ -35,13 +56,13 @@ test('SMTP accepted receipt is persistent, idempotent, encrypted, and scoped out
 test('HTML mail keeps one safe purchase CTA and replaces legacy markup with clean purpose-specific instructions', async () => {
   const f = fixture(); const input = { ...message(1), text: '이메일 확인 완료. <img src=x onerror=alert(1)>\n구매하기: ' + SITE_ORIGIN + '/checkout?token=synthetic-token\n이메일 확인 자체는 결제 승인이 아닙니다.' };
   assert.equal((await f.invoke(input)).status, 200); const mail = f.smtpCalls[0].mail;
-  assert.ok(mail.html.includes('포트원·카카오페이로 50,000원 결제하기')); assert.ok(mail.html.includes('Windows PC 전용')); assert.ok(mail.html.includes('ChatGPT 구독료는 OpenAI에 별도로 결제')); assert.ok(!mail.html.includes('<img src=x'));
-  assert.ok(mail.html.includes(SITE_ORIGIN + '/checkout?token=synthetic-token')); assert.ok(mail.text.includes('50,000원'));
+  assert.ok(mail.html.includes('포트원·카카오페이로 19,500원 결제하기')); assert.ok(mail.html.includes('Windows PC 전용')); assert.ok(mail.html.includes('ChatGPT 구독료는 OpenAI에 별도로 결제')); assert.ok(!mail.html.includes('<img src=x'));
+  assert.ok(mail.html.includes(SITE_ORIGIN + '/checkout?token=synthetic-token')); assert.ok(mail.text.includes('19,500원'));
   assert.equal((mail.html.match(/href=/g) || []).length, 1);
   assert.equal((mail.html.match(/\/checkout\?token=/g) || []).length, 1);
 });
 
-test('SMTP accepts the full eleven-chapter inline guide within existing payload limits and preserves one signed action', async () => {
+test('SMTP accepts the ten-chapter inline guide with billing in account preparation and one signed action', async () => {
   const f = fixture();
   const actionUrl = makeServiceUrl(SITE_ORIGIN, '/guide', 's'.repeat(1200));
   const full = buildTransactionalMail({ kind: 'paid-guide', publicUrl: SITE_ORIGIN, actionUrl });
@@ -51,13 +72,50 @@ test('SMTP accepts the full eleven-chapter inline guide within existing payload 
   assert.equal((await f.invoke(input)).status, 200);
   const sent = f.smtpCalls[0].mail;
   assert.match(sent.html, /1\. 시작 전 준비/);
-  assert.match(sent.html, /11\. 진행이 어려울 때/);
+  assert.equal(EMAIL_GUIDE_CHAPTERS.length, 10);
+  assert.ok(sent.html.includes(`${EMAIL_GUIDE_CHAPTERS.length}. 진행이 어려울 때`));
+  assert.match(sent.text, /아래 10단원/);
+  assert.match(EMAIL_GUIDE_CHAPTERS[1].title, /기존 계정.*청구정보/);
+  assert.match(EMAIL_GUIDE_CHAPTERS[1].steps.join(' '), /연결을 시작하기 전에.*결제 정보 옆 편집/);
+  assert.equal(EMAIL_GUIDE_CHAPTERS.some(chapter => chapter.title === '본인 청구정보·결제수단 확인'), false);
+  assert.doesNotMatch(sent.text, /IP 위치 확인 화면|ipinfo\.io/);
   assert.match(sent.text, /STOP\.cmd/);
   assert.match(sent.text, /실제 유효한 번호와 적용 자격/);
   assert.match(sent.text, /결제 시점이 아니라.*연결 시작 버튼.*1시간/);
   assert.equal((sent.html.match(/href=/g) || []).length, 1);
   assert.equal((sent.html.match(/\/guide\?token=/g) || []).length, 1);
   assert.ok(sent.html.includes(actionUrl));
+});
+test('SMTP preserves direct copy-only mode, its credential warning and all ten chapters',async()=>{
+  const f=fixture();
+  const actionUrl=makeServiceUrl(SITE_ORIGIN,'/guide','s'.repeat(1200));
+  const full=buildTransactionalMail({kind:'paid-guide',publicUrl:SITE_ORIGIN,actionUrl,connectionTransport:'http-direct'});
+  const input={...message(1),subject:'[PH 연결 가이드] 결제 확인 · 이용 안내',text:full.text};
+  assert.ok(Buffer.byteLength(input.text)<12000);
+  assert.ok(Buffer.byteLength(JSON.stringify(input))<16384);
+  assert.equal((await f.invoke(input)).status,200);
+  const sent=f.smtpCalls[0].mail;
+  assert.equal(sent.text,full.text);
+  assert.equal(sent.html,full.html);
+  assert.match(sent.text,/별도 프로그램 설치 없이 주소·포트·아이디·비밀번호/);
+  assert.match(sent.html,/인터넷 구간에서 암호화되지 않습니다/);
+  assert.match(sent.text,/실제 유효한 번호와 적용 자격/);
+  assert.match(sent.html,/10\. 진행이 어려울 때/);
+  assert.doesNotMatch(sent.text,/START\.cmd|STOP\.cmd|ZIP|127\.0\.0\.1|18789/);
+  assert.doesNotMatch(sent.html,/START\.cmd|STOP\.cmd|ZIP|127\.0\.0\.1|18789/);
+  assert.equal((sent.html.match(/href=/g)||[]).length,1);
+  assert.ok(sent.html.includes(actionUrl));
+});
+test('SMTP keeps preparation neutral when direct readiness could not be confirmed',async()=>{
+  const f=fixture();
+  const actionUrl=makeServiceUrl(SITE_ORIGIN,'/guide','pending-fixture');
+  const full=buildTransactionalMail({kind:'paid-guide',publicUrl:SITE_ORIGIN,actionUrl,connectionTransport:'pending'});
+  assert.equal((await f.invoke({...message(1),subject:'[PH 연결 가이드] 결제 확인 · 이용 안내',text:full.text})).status,200);
+  const sent=f.smtpCalls[0].mail;
+  assert.equal(sent.text,full.text);assert.equal(sent.html,full.html);
+  assert.match(sent.text,/연결 방식은 개인 페이지에서 확인/);
+  assert.doesNotMatch(sent.text,/별도 프로그램 설치 없이|START\.cmd|STOP\.cmd|ZIP|127\.0\.0\.1/);
+  assert.equal((sent.html.match(/href=/g)||[]).length,1);
 });
 test('concurrent same-event mail requests acquire one strong-CAS lease and transmit once', async () => {
   let calls = 0, release; const gate = new Promise(resolve => { release = resolve; });
@@ -99,4 +157,49 @@ test('amount/store/channel/test/provider mismatches and missing cancellation amo
   for (const patch of [{ amount: { total: 1, cancelled: 0 } }, { storeId: 'store-otherstore' }, { channel: { key: 'channel-key-other', type: 'LIVE' } }, { channel: { key: env.PRICE_ALERT_PORTONE_CHANNEL_KEY, type: 'TEST' } }, { method: { type: 'PaymentMethodEasyPay', provider: 'OTHER' } }]) { changes = patch; assert.equal((await f.invoke({ action: 'payment', paymentId: paymentId(1) })).data.error, 'provider_contract_mismatch'); }
   changes = { amount: { total: 50000 } }; const missing = await f.invoke({ action: 'payment', paymentId: paymentId(1) }); assert.equal(missing.data.payment.amount.cancelled, null);
   changes = { status: 'PAY_PENDING', amount: {} }; const pending = await f.invoke({ action: 'payment', paymentId: paymentId(1) }); assert.equal(pending.status, 200); assert.equal(pending.data.payment.status, 'PAY_PENDING');
+});
+
+test('explicit current fee pre-registers 19500 while absent amount keeps the legacy 50000 contract', async () => {
+  const f = fixture();
+  for (const [n, amount] of [[20, 2001], [21, 19500], [22, 50000]]) {
+    const body = { ...prereg(n), ...(n !== 22 ? { amount } : {}) };
+    assert.equal((await f.invoke(body)).status, 200);
+    assert.equal(JSON.parse(f.providerCalls.at(-1).options.body).totalAmount, amount);
+    assert.equal((await f.invoke(body)).data.deduplicated, true);
+    const calls = f.providerCalls.length;
+    const mismatch = await f.invoke({ ...body, amount: amount === 19500 ? 50000 : 19500 });
+    assert.equal(mismatch.status, 409); assert.equal(mismatch.data.error, 'payment_amount_mismatch');
+    assert.equal(f.providerCalls.length, calls);
+  }
+  for (const amount of [0, 2000, 2002, '2001', 19501, '19500', null, -1]) {
+    assert.equal((await f.invoke({ ...prereg(23), amount })).status, 400);
+  }
+});
+
+test('provider approval and refunds are checked against each immutable registered fee', async () => {
+  let p;
+  const f = fixture({}, { async fetch(url, options) {
+    return options.method === 'POST' ? new Response(null, { status: 204 }) : Response.json(p);
+  } });
+  for (const [n, total] of [[30, 2001], [31, 19500], [32, 50000]]) {
+    assert.equal((await f.invoke({ ...prereg(n), amount: total })).status, 200);
+    for (const [status, cancelled] of [['PAID', 0], ['CANCELLED', total], ['PARTIAL_CANCELLED', 1000]]) {
+      p = rawPayment(n, { status, amount: { total, cancelled }, cancelledAt: '2026-10-06T10:00:00Z' });
+      const result = await f.invoke({ action: 'payment', paymentId: paymentId(n) });
+      assert.equal(result.status, 200); assert.equal(result.data.payment.amount.total, total);
+      assert.equal(result.data.payment.amount.cancelled, cancelled);
+    }
+    p = rawPayment(n, { amount: { total: total === 19500 ? 50000 : 19500, cancelled: 0 } });
+    assert.equal((await f.invoke({ action: 'payment', paymentId: paymentId(n) })).data.error, 'provider_contract_mismatch');
+  }
+});
+
+test('SMTP relay preserves the exact legacy guide fee while new purchase mail uses the current fee', async () => {
+  const f = fixture();
+  const actionUrl = makeServiceUrl(SITE_ORIGIN, '/guide', 'legacy-fee-token');
+  const content = buildTransactionalMail({ kind: 'paid-guide', amount: 50000, publicUrl: SITE_ORIGIN, actionUrl });
+  const result = await f.invoke({ ...message(91), subject: '[PH 연결 가이드] 결제 확인', text: content.text });
+  assert.equal(result.status, 200);
+  assert.match(f.smtpCalls[0].mail.html, /서비스비 50,000원을 전액 환불/);
+  assert.doesNotMatch(f.smtpCalls[0].mail.text + f.smtpCalls[0].mail.html, /19,500/);
 });

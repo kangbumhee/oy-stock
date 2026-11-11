@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 export const PROJECT_ID = 'prj_Sj0zepEyW8AB3956ssl7zx163DOP';
 export const TEAM_ID = 'team_kCYpXTZeNpSxqcelRRUUSUKy';
-export const SITE_ORIGIN = 'https://ph-pro-guide.kbhjjan100.chatgpt.site';
+export const SITE_ORIGIN = 'https://olivestock.co.kr';
+export const SITE_ORIGINS = Object.freeze([SITE_ORIGIN, 'https://ph-pro-guide.kbhjjan100.chatgpt.site']);
 export const ENV_KEYS = Object.freeze(['PH_GUIDE_RELAY_SECRET', 'PH_GUIDE_SITE_ORIGIN']);
 
 class SetupError extends Error {
@@ -14,14 +15,15 @@ class SetupError extends Error {
 export async function configureRelay(env, dependencies = {}) {
   const token = env.VERCEL_TOKEN;
   const secret = env.PH_GUIDE_RELAY_SECRET;
+  const siteOrigin = env.PH_GUIDE_SITE_ORIGIN === undefined ? SITE_ORIGIN : env.PH_GUIDE_SITE_ORIGIN;
   if (env.VERCEL_PROJECT_ID !== PROJECT_ID || typeof token !== 'string' || !token ||
       /[\x00-\x20\x7f]/.test(token) || typeof secret !== 'string' ||
-      secret.length < 32 || secret.length > 2048 || /[\x00-\x20\x7f]/.test(secret)) {
+      secret.length < 32 || secret.length > 2048 || /[\x00-\x20\x7f]/.test(secret) || !SITE_ORIGINS.includes(siteOrigin)) {
     throw new SetupError('invalid_configuration');
   }
   const entries = [
     { key: ENV_KEYS[0], value: secret, type: 'sensitive', target: ['production'] },
-    { key: ENV_KEYS[1], value: SITE_ORIGIN, type: 'plain', target: ['production'] }
+    { key: ENV_KEYS[1], value: siteOrigin, type: 'plain', target: ['production'] }
   ];
   const url = new URL(`https://api.vercel.com/v10/projects/${PROJECT_ID}/env`);
   url.searchParams.set('teamId', TEAM_ID);

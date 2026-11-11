@@ -24,6 +24,15 @@
 
 ## 현재 상태
 
+### 운영 복구 완료 — 2026-11-11 Pro Route 메일 릴레이
+
+- 현재 운영 배포 `dpl_EZZ6AVFZZfBy1Lqi2dGEh6pcnBYN`의 재고/입장 잠금/큐레이터 제거 상태를 보존하면서 Pro Route 릴레이의 오래된 사전 빌드만 복구한다. 기준 source commit은 `46909f7d45066a33c4e1fe85a746d745f536cbc5`다.
+- 원인과 검증은 TROUBLESHOOTING의 2026-11-11 항목 참조. 원본 세 라이브러리와 해당 `.vercel/output/functions/api/ph-guide.func/lib/`를 함께 갱신했다. 한국어·영어·디지털 자료 및 고정 결제 금액 계약 테스트 44개 통과.
+- 승인된 origin 두 개·2001/19500/50000원·SMTP 중복 방지·서버 간 인증을 유지한다. 환경변수는 변경하지 않는다. 진단 스크립트는 `oy-stock.vercel.app`을 사용한다.
+- production 배포 `dpl_BydhMourzv4AWLx88gmQSRjjHnGu` READY. 현재 배포의 나머지 12,237개 파일 UID를 유지했고, 릴레이 3개 라이브러리의 원격 해시가 원본/사전 빌드와 일치했다. 재고 화면·일반 API·입장 잠금·큐레이터 제거 파일은 변경하지 않았다.
+- Firebase 인증 상태 요청은 HTTP 200 / SMTP 인증 성공 / 메일 설정 준비 / PortOne 설정 준비 / canonical origin 일치. 이 점검은 실제 메일을 발송하지 않았다. 비인증 relay POST는 401이고 재고 루트의 비밀번호 화면과 no-store를 유지했다. 입장 잠금 회귀 16개도 통과했다.
+- 증거는 `D:\CodexOutputs\olivestock-mail-20261111\relay-repair-{prepared,deployment,readback}.json` 및 `relay-smtp-verification.json`, 변경 전 파일은 `D:\CodexTemp\olivestock-mail-20261111`에 있다. 고객 메일의 기존 outbox 재시도·실제 수신은 별도 확인한다.
+
 ### 마지막 작업 — 2026-11-04 인기순위 Blob 조건부 읽기·응답 재사용
 
 - 사용자가 비용 절감안을 승인했다. 운영 소스와 같은 최신 main을 `D:\Projects\oy-stock-cost`에 격리하여 수정했다. 기존 `C:\Projects\올리브영 재고확인 사이트`의 다른 미반영 변경은 보존한다.

@@ -1,9 +1,9 @@
 // Read-only deployed status check: SMTP.verify(), never sendMail or a PG charge.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SITE_ORIGIN } from './configure-ph-guide-relay.mjs';
+import { SITE_ORIGINS } from './configure-ph-guide-relay.mjs';
 
-export const STATUS_URL = 'https://olivestock.co.kr/api/ph-guide';
+export const STATUS_URL = 'https://oy-stock.vercel.app/api/ph-guide';
 class StatusError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
 }
@@ -30,7 +30,7 @@ export async function checkRelayStatus(env, dependencies = {}) {
   try { result = await response.json(); } catch { throw new StatusError('status_invalid_response'); }
   if (!result || result.success !== true || typeof result.mailReady !== 'boolean' ||
       typeof result.paymentReady !== 'boolean' || ![true, false, null].includes(result.smtpVerified) ||
-      result.siteOrigin !== SITE_ORIGIN) throw new StatusError('status_invalid_response');
+      !SITE_ORIGINS.includes(result.siteOrigin)) throw new StatusError('status_invalid_response');
   // Never expose the response body, store/channel IDs or any inherited configuration.
   return { smtpVerified: result.smtpVerified === true, mailConfigured: result.mailReady,
     portOneConfigured: result.paymentReady, siteOriginMatches: true };
