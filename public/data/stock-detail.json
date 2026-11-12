@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-11T07:28:39.918Z",
+  "updatedAt": "2026-11-12T07:56:46.498Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -17,45 +17,45 @@
       "type": "stock_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 44,
+      "from": 43,
       "to": 43,
-      "fromQty": 159,
-      "toQty": 161,
-      "date": "2026-11-11T07:28:39.918Z"
+      "fromQty": 161,
+      "toQty": 163,
+      "date": "2026-11-12T07:56:46.498Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 423,
-      "to": 405,
-      "date": "2026-11-11T07:28:39.918Z"
+      "from": 405,
+      "to": 400,
+      "date": "2026-11-12T07:56:46.498Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
       "from": 31,
-      "to": 31,
-      "fromQty": 72,
-      "toQty": 69,
-      "date": "2026-11-11T07:28:39.918Z"
+      "to": 38,
+      "fromQty": 69,
+      "toQty": 92,
+      "date": "2026-11-12T07:56:46.498Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 348,
-      "to": 337,
-      "date": "2026-11-11T07:28:39.918Z"
+      "from": 337,
+      "to": 336,
+      "date": "2026-11-12T07:56:46.498Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1575,
-      "to": 1464,
-      "date": "2026-11-11T07:28:39.918Z"
+      "from": 1464,
+      "to": 1377,
+      "date": "2026-11-12T07:56:46.498Z"
     }
   ],
   "products": {
@@ -75,9 +75,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 49,
-          "inStock": 31,
-          "totalQty": 69,
-          "onlineQty": 337,
+          "inStock": 38,
+          "totalQty": 92,
+          "onlineQty": 336,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -116,8 +116,8 @@
               "name": "김포운양점",
               "code": "D573",
               "dist": 1.57,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포한강11로 288-24 1동 제1층 제101호,102호,103호, 115호"
@@ -196,8 +196,8 @@
               "name": "김포풍무역점",
               "code": "DD02",
               "dist": 5.33,
-              "qty": 1,
-              "o2o": 0,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
@@ -216,10 +216,10 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -236,8 +236,8 @@
               "name": "고양원마운트점",
               "code": "BAC0",
               "dist": 6.89,
-              "qty": 1,
-              "o2o": 0,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 한류월드로 300"
@@ -246,7 +246,7 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 0,
+              "qty": 1,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -266,7 +266,7 @@
               "name": "주엽역점",
               "code": "DB17",
               "dist": 7.81,
-              "qty": 0,
+              "qty": 1,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -356,7 +356,7 @@
               "name": "일산역점",
               "code": "DDE9",
               "dist": 9.07,
-              "qty": 0,
+              "qty": 1,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -385,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-11T07:28:39.918Z"
+      "updatedAt": "2026-11-12T07:56:46.498Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -404,8 +404,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 49,
           "inStock": 43,
-          "totalQty": 161,
-          "onlineQty": 405,
+          "totalQty": 163,
+          "onlineQty": 400,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -547,7 +547,7 @@
               "qty": 5,
               "o2o": 4,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -574,8 +574,8 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산서구 중앙로 1581"
@@ -713,7 +713,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-11T07:28:39.918Z"
+      "updatedAt": "2026-11-12T07:56:46.498Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -875,7 +875,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -1041,7 +1041,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-11T07:28:39.918Z"
+      "updatedAt": "2026-11-12T07:56:46.498Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1053,7 +1053,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-11T07:28:39.918Z"
+      "updatedAt": "2026-11-12T07:56:46.498Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1065,7 +1065,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-11T07:28:39.918Z"
+      "updatedAt": "2026-11-12T07:56:46.498Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1085,7 +1085,7 @@
           "totalStores": 49,
           "inStock": 1,
           "totalQty": 8,
-          "onlineQty": 811,
+          "onlineQty": 742,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1227,7 +1227,7 @@
               "qty": 8,
               "o2o": 6,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -1399,7 +1399,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 653,
+          "onlineQty": 635,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1541,7 +1541,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -1855,7 +1855,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -2169,7 +2169,7 @@
               "qty": 0,
               "o2o": 0,
               "pickup": false,
-              "open": false,
+              "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
             },
             {
@@ -2335,7 +2335,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-11T07:28:39.918Z"
+      "updatedAt": "2026-11-12T07:56:46.498Z"
     }
   }
 }
