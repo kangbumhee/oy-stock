@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-12T07:56:46.498Z",
+  "updatedAt": "2026-11-13T07:34:31.848Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,43 +19,53 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 43,
       "to": 43,
-      "fromQty": 161,
-      "toQty": 163,
-      "date": "2026-11-12T07:56:46.498Z"
+      "fromQty": 163,
+      "toQty": 164,
+      "date": "2026-11-13T07:34:31.848Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 405,
-      "to": 400,
-      "date": "2026-11-12T07:56:46.498Z"
+      "from": 400,
+      "to": 384,
+      "date": "2026-11-13T07:34:31.848Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 31,
+      "from": 38,
       "to": 38,
-      "fromQty": 69,
-      "toQty": 92,
-      "date": "2026-11-12T07:56:46.498Z"
+      "fromQty": 92,
+      "toQty": 90,
+      "date": "2026-11-13T07:34:31.848Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 337,
-      "to": 336,
-      "date": "2026-11-12T07:56:46.498Z"
+      "from": 336,
+      "to": 322,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 1,
+      "to": 1,
+      "fromQty": 8,
+      "toQty": 7,
+      "date": "2026-11-13T07:34:31.848Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1464,
-      "to": 1377,
-      "date": "2026-11-12T07:56:46.498Z"
+      "from": 1377,
+      "to": 2090,
+      "date": "2026-11-13T07:34:31.848Z"
     }
   ],
   "products": {
@@ -76,8 +86,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 49,
           "inStock": 38,
-          "totalQty": 92,
-          "onlineQty": 336,
+          "totalQty": 90,
+          "onlineQty": 322,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -136,8 +146,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -206,8 +216,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 검단구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -385,7 +395,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-12T07:56:46.498Z"
+      "updatedAt": "2026-11-13T07:34:31.848Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -404,8 +414,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 49,
           "inStock": 43,
-          "totalQty": 163,
-          "onlineQty": 400,
+          "totalQty": 164,
+          "onlineQty": 384,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -624,8 +634,8 @@
               "name": "정발산로점",
               "code": "D178",
               "dist": 8.03,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 정발산로 23 호수빌딩 1층"
@@ -674,8 +684,8 @@
               "name": "김포고촌점",
               "code": "BA34",
               "dist": 8.97,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 고촌읍 김포대로 340 101호~103호"
@@ -713,7 +723,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-12T07:56:46.498Z"
+      "updatedAt": "2026-11-13T07:34:31.848Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1041,7 +1051,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-12T07:56:46.498Z"
+      "updatedAt": "2026-11-13T07:34:31.848Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1053,7 +1063,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-12T07:56:46.498Z"
+      "updatedAt": "2026-11-13T07:34:31.848Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1065,7 +1075,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-12T07:56:46.498Z"
+      "updatedAt": "2026-11-13T07:34:31.848Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1084,8 +1094,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/6059018786363119327.jpg",
           "totalStores": 49,
           "inStock": 1,
-          "totalQty": 8,
-          "onlineQty": 742,
+          "totalQty": 7,
+          "onlineQty": 662,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1224,8 +1234,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 8,
-              "o2o": 6,
+              "qty": 7,
+              "o2o": 5,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -1399,7 +1409,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 635,
+          "onlineQty": 628,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1713,7 +1723,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 0,
+          "onlineQty": 662,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2027,7 +2037,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 0,
+          "onlineQty": 138,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2335,7 +2345,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-12T07:56:46.498Z"
+      "updatedAt": "2026-11-13T07:34:31.848Z"
     }
   }
 }

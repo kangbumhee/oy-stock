@@ -6,6 +6,60 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 43,
       "to": 43,
+      "fromQty": 163,
+      "toQty": 164,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 400,
+      "to": 384,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 38,
+      "to": 38,
+      "fromQty": 92,
+      "toQty": 90,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 336,
+      "to": 322,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 1,
+      "to": 1,
+      "fromQty": 8,
+      "toQty": 7,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 1377,
+      "to": 2090,
+      "date": "2026-11-13T07:34:31.848Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 43,
+      "to": 43,
       "fromQty": 161,
       "toQty": 163,
       "date": "2026-11-12T07:56:46.498Z"
@@ -4315,60 +4369,6 @@
       "fromQty": 345,
       "toQty": 339,
       "date": "2026-08-15T02:17:37.444Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 657,
-      "to": 647,
-      "date": "2026-08-15T02:17:37.444Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 42,
-      "to": 40,
-      "fromQty": 143,
-      "toQty": 140,
-      "date": "2026-08-15T02:17:37.444Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 96,
-      "to": 1004,
-      "date": "2026-08-15T02:17:37.444Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 1,
-      "fromQty": 5,
-      "toQty": 7,
-      "date": "2026-08-15T02:17:37.444Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 9810,
-      "to": 15740,
-      "date": "2026-08-15T02:17:37.444Z"
-    },
-    {
-      "type": "restocked",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 0,
-      "to": 76,
-      "fromQty": 0,
-      "toQty": 345,
-      "date": "2026-08-14T03:27:51.077Z"
     }
   ]
 }
