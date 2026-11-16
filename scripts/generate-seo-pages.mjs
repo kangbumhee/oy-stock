@@ -8,7 +8,7 @@ const publicDir = path.join(root, 'public');
 const guideDir = path.join(publicDir, 'guide');
 const imageDir = path.join(publicDir, 'images');
 
-const SITE_URL = 'https://olivestock.co.kr';
+const SITE_URL = 'https://oyb8.vercel.app';
 const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const WRITE_DISCOVERY_FILES = process.env.WRITE_GUIDE_DISCOVERY_FILES === '1';

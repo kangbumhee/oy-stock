@@ -32,7 +32,7 @@ var PWA = {
       });
     }
     navigator.serviceWorker
-      .register('/sw.js?v=20261020-private-entry-1', { updateViaCache: 'none' })
+      .register('/sw.js?v=20261116-site-migration', { updateViaCache: 'none' })
       .then(function (registration) {
         self.registration = registration;
         if (registration && registration.update) {

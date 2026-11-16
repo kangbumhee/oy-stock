@@ -29,14 +29,6 @@
       "schedule": "7 * * * *"
     }
   ],
-  "redirects": [
-    {
-      "source": "/:path((?!api/|js/|css/|data/|sw\\.js|site\\.webmanifest).*)",
-      "has": [{ "type": "host", "value": "www.olivestock.co.kr" }],
-      "destination": "https://olivestock.co.kr/:path",
-      "permanent": false
-    }
-  ],
   "headers": [
     {
       "source": "/sw.js",
@@ -56,6 +48,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/service-status", "destination": "/service-status.html" },
     { "source": "/guide", "destination": "/guide/index.html" },
     { "source": "/guide/:slug", "destination": "/guide/:slug/index.html" },
     { "source": "/blog", "destination": "/blog/index.html" },

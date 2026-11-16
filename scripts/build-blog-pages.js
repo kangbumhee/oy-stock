@@ -10,7 +10,7 @@ const blogDir = path.join(publicDir, 'blog');
 const dataDir = path.join(publicDir, 'data');
 const imageDir = path.join(publicDir, 'images', 'blog');
 
-const SITE_URL = 'https://olivestock.co.kr';
+const SITE_URL = 'https://oyb8.vercel.app';
 const SITE_NAME = '올리브재고';
 const GA_MEASUREMENT_ID = 'G-W7B566LXQ3';
 const RANKING_URL = 'https://rts.ai.oliveyoung.co.kr/api/stats';

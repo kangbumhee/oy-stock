@@ -7,6 +7,49 @@ const {
 const COOKIE_NAME = '__Host-oy-entry';
 const SESSION_SECONDS = 12 * 60 * 60;
 const MAX_FORM_BYTES = 2048;
+const DEFAULT_PUBLIC_SITE_URL = 'https://oyb8.vercel.app';
+const RETIRED_SERVICE_HOSTS = new Set([
+  'oy-stock.vercel.app', 'olivestock.co.kr', 'www.olivestock.co.kr'
+]);
+
+function configuredPublicSiteOrigin(env = process.env) {
+  const value = env.OY_PUBLIC_SITE_URL === undefined
+    ? DEFAULT_PUBLIC_SITE_URL : String(env.OY_PUBLIC_SITE_URL).trim();
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+        url.pathname !== '/' || url.search || url.hash ||
+        RETIRED_SERVICE_HOSTS.has(url.hostname) ||
+        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return null;
+    return url.origin;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isPublicSiteRequest(url, origin, allowLocalhost = false) {
+  if (url.protocol === 'https:' && url.origin === origin) return true;
+  return allowLocalhost && ['http:', 'https:'].includes(url.protocol) &&
+    ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+}
+
+function retiredServicePassThrough(request, url = new URL(request.url), env = process.env) {
+  if (url.protocol !== 'https:' || url.port || !RETIRED_SERVICE_HOSTS.has(url.hostname)) return false;
+  const method = request.method.toUpperCase();
+  if (method === 'POST' &&
+      /^\/api\/(?:price-alerts\/(?:payment\/(?:webhook|complete)|payment-(?:webhook|complete))|ph-guide)(?:\.js)?$/.test(url.pathname)) {
+    // Existing callbacks retain their own provider/device/relay verification.
+    return true;
+  }
+  if (!['GET', 'POST'].includes(method) ||
+      !/^\/api\/(?:oliveyoung\/hot-ranking-cron|price-alerts\/hourly)(?:\.js)?$/.test(url.pathname)) return false;
+  const expected = String(env.CRON_SECRET || '').trim();
+  const actual = String(request.headers.get('authorization') || '');
+  if (!expected) return false;
+  const a = Buffer.from(actual);
+  const b = Buffer.from(`Bearer ${expected}`);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 function configuredSiteAccess() {
   const promotion = configuredPromotion();
@@ -64,6 +107,7 @@ function sessionCookieValue(request) {
 function operationalPassThrough(request, url = new URL(request.url)) {
   const method = request.method.toUpperCase();
   const path = url.pathname;
+  if (['GET', 'HEAD'].includes(method) && path === '/service-status') return true;
   if (['GET', 'HEAD'].includes(method) && /^\/(?:public\/)?sw\.js$/.test(path)) return true;
   if (['GET', 'HEAD'].includes(method) && /^\/api\/oliveyoung\/hot-ranking-history(?:\.js)?$/.test(path)) {
     return true;
@@ -102,6 +146,20 @@ function gateResponse(status, message, head = false, extraHeaders = {}) {
       ...securityHeaders(nonce),
       'Content-Type': 'text/html; charset=utf-8',
       ...extraHeaders
+    }
+  });
+}
+
+function closedSiteResponse(request) {
+  const nonce = crypto.randomBytes(18).toString('base64');
+  const body = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>사이트 운영 종료</title><style nonce="${nonce}">*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#fff}body{min-height:100dvh;display:grid;place-items:center;padding:32px;font-family:system-ui,sans-serif;color:#333}main{max-width:560px;text-align:center}h1{font-size:24px;margin:0 0 20px}p{font-size:16px;line-height:1.7;margin:0}</style></head><body><main><h1>사이트 운영 종료</h1><p>이 주소에서 제공하던 올리브재고 서비스는 종료되었습니다.</p></main></body></html>`;
+  return new Response(request.method.toUpperCase() === 'HEAD' ? null : body, {
+    status: 410,
+    headers: {
+      ...securityHeaders(nonce),
+      'Content-Type': 'text/html; charset=utf-8',
+      'CDN-Cache-Control': 'no-store',
+      'Vercel-CDN-Cache-Control': 'no-store'
     }
   });
 }
@@ -161,12 +219,21 @@ async function readPassword(request) {
 
 function createSiteAccessHandler(dependencies = {}) {
   const getConfiguration = dependencies.configuredSiteAccess || configuredSiteAccess;
+  const getPublicOrigin = dependencies.configuredPublicSiteOrigin || configuredPublicSiteOrigin;
+  const allowLocalhost = dependencies.allowLocalhost === undefined
+    ? process.env.NODE_ENV !== 'production' && process.env.VERCEL_ENV !== 'production'
+    : dependencies.allowLocalhost === true;
+  const allowRetiredService = dependencies.retiredServicePassThrough || retiredServicePassThrough;
   const now = dependencies.now || Date.now;
   const rateLimit = dependencies.consumeRateLimit || ((request, scope) =>
     require('./price-alerts/_limits').consumeRateLimit(request, scope));
   return async function handleSiteAccess(request) {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
+    if (!isPublicSiteRequest(url, getPublicOrigin(), allowLocalhost)) {
+      if (allowRetiredService(request, url)) return null;
+      return closedSiteResponse(request);
+    }
     if (operationalPassThrough(request, url)) return null;
     const configuration = getConfiguration();
     if (url.pathname === '/_entry/logout') {
@@ -220,9 +287,13 @@ function createSiteAccessHandler(dependencies = {}) {
 module.exports = {
   COOKIE_NAME,
   SESSION_SECONDS,
+  DEFAULT_PUBLIC_SITE_URL,
+  configuredPublicSiteOrigin,
   configuredSiteAccess,
   createSessionToken,
   createSiteAccessHandler,
   operationalPassThrough,
+  isPublicSiteRequest,
+  retiredServicePassThrough,
   verifySessionToken
 };

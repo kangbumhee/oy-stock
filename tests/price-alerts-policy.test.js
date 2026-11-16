@@ -46,7 +46,7 @@ test('one-time pass policies publish price, term, refund, privacy, and no-auto-r
   assert.match(home, /결제일부터 30일간/);
   assert.match(home, /자동결제·자동연장 없음/);
   assert.match(home, /"price": "30000"/);
-  assert.match(home, /20261020-private-entry-1/);
+  assert.match(home, /20261116-site-migration/);
 });
 
 test('checkout modal links all customer policies without caching private application documents', () => {
@@ -88,5 +88,5 @@ test('private push worker purges only prior app caches and keeps subscriptions a
   for (const name of ['message', 'push', 'notificationclick']) assert.equal(handlers.has(name), true);
   assert.doesNotMatch(page('sw.js'), /registration\.unregister\s*\(/);
   const pwa = page(path.join('js', 'pwa.js'));
-  assert.match(pwa, /register\('\/sw\.js\?v=20261020-private-entry-1', \{ updateViaCache: 'none' \}\)/);
+  assert.match(pwa, /register\('\/sw\.js\?v=20261116-site-migration', \{ updateViaCache: 'none' \}\)/);
 });

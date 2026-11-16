@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import https from 'node:https';
 import path from 'node:path';
 
-const host = 'olivestock.co.kr';
+const host = 'oyb8.vercel.app';
 const key = '2d7c96e7a8b341fa84dbd6e89a830518';
 const keyLocation = `https://${host}/${key}.txt`;
 const sitemapPath = path.resolve(import.meta.dirname, '..', 'public', 'sitemap.xml');

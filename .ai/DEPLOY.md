@@ -1,5 +1,17 @@
 # 배포 설정
 
+## 2026-11-16 기존 주소 폐쇄와 회원 주소 이전
+
+- 실제 DNS/서비스 범위: `olivestock.co.kr`은 별도 Sites의 Pro Route 서비스(HTTPS 200), `www`는 해당 apex로307을 반환한다. 별도 서비스를 폐쇄하거나 DNS를 이 프로젝트로 바꾸지 않는다. 아래 세 호스트의 410 정책은 이 OliveStock Vercel 프로젝트로 들어오는 요청에 대한 정책이며, 실제 기존 회원 주소 `oy-stock.vercel.app`의 종료는 운영에서 별도 검증한다. 외부 소명에서 `olivestock.co.kr` 자체의 HTTP410 또는 전체 서비스 폐쇄로 표현하지 않는다.
+
+- 현재 회원 주소는 `https://oyb8.vercel.app`이며 `OY_PUBLIC_SITE_URL`에 정확한 HTTPS origin을 설정한다. 기존 Vercel 프로젝트 ID·Blob 저장소·회원 암호화 키와 namespace는 유지한다. `PRICE_ALERT_PUBLIC_SITE_URL` 및 메일·결제 복귀 주소도 같은 새 origin으로 맞춘다. 아래 이전 날짜의 주소·리디렉션 설명은 과거 기록이다.
+- `oy-stock.vercel.app`, `olivestock.co.kr`, `www.olivestock.co.kr`, 이전 프로젝트 alias와 고유 배포 alias를 포함한 그 외 호스트는 공통 proxy에서 먼저 `410 Gone` 종료 화면을 반환한다. 기존 입장 쿠키·비밀번호로 해제되지 않으며 새 주소로 리디렉션하거나 새 주소를 종료 화면에 표시하지 않는다. HTML·직접 정적 자산·데이터·일반 API·기존 서비스워커·인기순위 이력에도 같은 정책을 적용한다.
+- 새 호스트는 기존 공통 비밀번호 입장 잠금과 별도 회원·관리자·결제 권한 검사를 유지한다. 운영팀 확인용 `GET/HEAD /service-status`만 공개 정적 안내 페이지로 제공한다. 원본 `/service-status.html`이나 다른 하위 경로를 일반 공개 예외로 만들지 않는다.
+- 이전 세 주소의 정확한 `POST /api/price-alerts/payment/webhook`, `/complete` 및 대응 `payment-webhook`, `payment-complete` 함수 경로와 `POST /api/ph-guide`는 기존 결제·Pro Route 연속성을 위한 서버 콜백 예외다(`.js` 함수 주소 포함). 각 함수의 기존 기기·결제 공급자·릴레이 인증은 그대로 유지한다. 브라우저 GET과 일반 결제 생성·회원 API는 예외가 아니다. 이전/고유 배포 alias에는 이 서버 예외도 없다.
+- 기존 세 주소의 순위·가격 알림 cron 경로는 비어 있지 않은 `CRON_SECRET`과 정확한 `Authorization: Bearer ...`가 있는 GET/POST만 통과한다. URL query secret이나 비인증 cron 요청은 이전 호스트에서 통과하지 않는다. 새 호스트의 기존 운영 경로 계약과 나머지 재고 수집·알림 자동화는 유지한다. 이번 이전은 모든 수집·API·자동화를 중단했다는 의미가 아니다.
+- 배포 전에 `tests/site-access*.js`, `tests/site-host-migration.test.js`와 빌드 검증을 실행한다. `scripts/verify-site-access-build.mjs`는 전체 경로 proxy 순서, 폐쇄 우회 리디렉션 금지, 실제 컴파일된 `_site-access.js`와 소스 일치, 이전/고유/미지 호스트의 410을 확인한다. 운영에서는 익명·기존 쿠키 양쪽으로 기존 주소의 410, 새 주소의 입장 화면·공개 상태 안내, 회원 핵심 기능과 결제·Pro Route 콜백 인증을 따로 확인한다.
+- 팀/프로젝트의 Standard 고정 빌드 및 유료 동시 빌드 비활성 설정을 확인하고 검증 후 한 번의 운영 빌드로 묶는다. 과거 배포의 alias는 새 폐쇄 정책 배포로 연결하거나 해제해야 하며, 새 소스만 변경했다고 과거 배포까지 폐쇄됐다고 판단하지 않는다.
+
 ## 2026-11-10 큐레이터 기능 제거
 
 - 아래 과거 큐레이터 복구·설정 절차는 이 변경으로 폐기됐다. 계정 자동 로그인, CAPTCHA 연동 호출, 인증 게시, 큐레이터 링크 생성·단축·백필·복사를 다시 실행하지 않는다.
@@ -36,7 +48,7 @@
 - GitHub 자동화와 PC 예약 작업은 활성 상태를 유지한다. 계정 전환으로 유료회원·결제·메일·도메인 설정은 변경하지 않는다.
 
 
-## 현재 운영 주소와 배포 원칙 (2026-10-20)
+## 과거 기록: 운영 주소와 배포 원칙 (2026-10-20)
 
 - 회원 주소는 `https://oy-stock.vercel.app`이다. 접속 전에는 공통 비밀번호 입력칸만 표시하며 `olivestock.co.kr`로 이동시키지 않는다. 기존 `olivestock.co.kr` 및 `www.olivestock.co.kr`의 공개 접속 차단은 유지한다.
 - 운영 배포는 최신 `origin/main`을 기반으로 한다. 오래된 기능 브랜치의 전체 소스나 고정 과거 배포를 새 운영 버전으로 승격하지 않는다. 다른 작업의 변경이 필요하면 해당 커밋만 최신 main 위에 보존하고 잠금 회귀·실제 빌드 검증을 함께 수행한다.

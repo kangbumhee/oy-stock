@@ -1,5 +1,14 @@
 # API 명세서
 
+## 2026-11-16 호스트 폐쇄와 새 회원 주소
+
+- 현재 웹 origin은 `OY_PUBLIC_SITE_URL`(기본 `https://oyb8.vercel.app`) 하나다. 값은 경로·query·fragment·인증정보·별도 port가 없는 HTTPS origin이어야 하며 이전 세 주소는 설정값으로도 허용하지 않는다. 잘못된 설정은 일반 접속을 폐쇄한다. localhost 예외는 로컬 개발/테스트에서만 허용하며 production에서는 적용하지 않는다.
+- 이전 `oy-stock.vercel.app`, `olivestock.co.kr`, `www.olivestock.co.kr` 및 그 밖의 프로젝트/고유/미지 alias는 사이트 입장 설정과 인증 확인 전에 `410 Gone` HTML을 반환한다. API·데이터·자산·입장 경로·SW·순위 이력에도 동일하며 HEAD는 본문이 없다. `Location`·새 주소·회원 정보가 없고 캐시 및 검색 색인을 금지한다. 기존 입장 세션도 이 폐쇄를 해제하지 않는다.
+- 새 origin의 일반 HTML·자산·데이터·API에는 기존 비밀번호와 별도 회원 인증을 유지한다. 정확한 `GET/HEAD /service-status`만 비인증 공개 안내로 통과한다. `/service-status.html`, trailing slash·하위 경로·POST는 공개 예외가 아니다. 이전 호스트의 안내 경로 역시 410이다.
+- 기존 결제 연속성을 위해 이전 세 호스트의 정확한 `POST /api/price-alerts/payment/{webhook,complete}`, `/api/price-alerts/payment-{webhook,complete}`와 `POST /api/ph-guide`만 해당 함수로 전달한다(`.js` 주소 포함). 이 예외는 기존 결제 공급자·기기·서버 릴레이 검증을 대체하지 않는다. GET·OPTIONS·다른 결제/회원 API·추가 경로는 410이며 미지/고유 alias에는 예외가 없다.
+- 이전 세 호스트의 `/api/oliveyoung/hot-ranking-cron[.js]`, `/api/price-alerts/hourly[.js]` GET/POST는 비어 있지 않은 `CRON_SECRET`과 정확한 Bearer 헤더가 있을 때만 서버 함수로 전달한다. query secret만으로는 통과하지 않는다. 나머지 자동화·회원·저장소 계약과 Pro Route 고객 origin은 변경하지 않는다.
+- 아래 이전 날짜의 모든 alias 입장 허용·공개 운영 경로 설명은 새 canonical host에만 해당하거나 폐기된 과거 기록이다. 이 변경은 외부 데이터 수집과 모든 자동화를 중단했다는 의미가 아니다.
+
 ## Pro Route 메일·결제 릴레이 복구 계약 (2026-11-11)
 
 - `/api/ph-guide`는 `oy-stock.vercel.app`의 서버 간 인증 전용 경로다. 고객용 `olivestock.co.kr`는 별도 Sites 호스팅이므로 이 도메인의 같은 API 경로를 진단에 사용하지 않는다.

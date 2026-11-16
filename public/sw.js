@@ -1,4 +1,4 @@
-// Private entry v20261020: push only. Every page/API request must reach the server gate.
+// Private entry v20261116-site-migration: push only. Every page/API request must reach the server gate.
 // Do not unregister: that would discard existing Web Push subscriptions.
 function purgePrivateAppCaches() {
   return caches.keys().then(function (keys) {

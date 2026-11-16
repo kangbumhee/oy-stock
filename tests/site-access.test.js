@@ -13,7 +13,7 @@ const {
   verifySessionToken
 } = require('../api/_site-access');
 
-const HOST = 'oy-stock.vercel.app';
+const HOST = 'oyb8.vercel.app';
 const ORIGIN = `https://${HOST}`;
 const NOW = Date.parse('2026-10-20T00:00:00Z');
 // Deliberately unrelated synthetic fixture; never use a deployed promotion code.
@@ -43,6 +43,7 @@ function entry(password, options = {}) {
 function createHandler(overrides = {}) {
   return createSiteAccessHandler({
     configuredSiteAccess: () => configuration,
+    configuredPublicSiteOrigin: () => ORIGIN,
     now: () => NOW,
     consumeRateLimit: async () => {},
     ...overrides
