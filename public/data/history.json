@@ -6,6 +6,76 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 56,
       "to": 56,
+      "fromQty": 207,
+      "toQty": 204,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 928,
+      "to": 917,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "price_up",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 7130,
+      "to": 7500,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 45,
+      "to": 44,
+      "fromQty": 131,
+      "toQty": 126,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000154189",
+      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
+      "from": 255,
+      "to": 241,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 1,
+      "to": 1,
+      "fromQty": 7,
+      "toQty": 6,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "online_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 7844,
+      "to": 7702,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "price_up",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 24900,
+      "to": 25200,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 56,
+      "to": 56,
       "fromQty": 211,
       "toQty": 207,
       "date": "2026-11-22T07:43:59.871Z"
@@ -4321,78 +4391,6 @@
       "fromQty": 333,
       "toQty": 336,
       "date": "2026-08-25T02:21:29.573Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 564,
-      "to": 537,
-      "date": "2026-08-25T02:21:29.573Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 45,
-      "to": 47,
-      "fromQty": 221,
-      "toQty": 227,
-      "date": "2026-08-25T02:21:29.573Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 1705,
-      "to": 1495,
-      "date": "2026-08-25T02:21:29.573Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 1,
-      "fromQty": 3,
-      "toQty": 8,
-      "date": "2026-08-25T02:21:29.573Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 14872,
-      "to": 14008,
-      "date": "2026-08-25T02:21:29.573Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 71,
-      "to": 72,
-      "fromQty": 329,
-      "toQty": 333,
-      "date": "2026-08-24T02:26:28.494Z"
-    },
-    {
-      "type": "online_changed",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 565,
-      "to": 564,
-      "date": "2026-08-24T02:26:28.494Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000154189",
-      "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 44,
-      "to": 45,
-      "fromQty": 199,
-      "toQty": 221,
-      "date": "2026-08-24T02:26:28.494Z"
     }
   ]
 }

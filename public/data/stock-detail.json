@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-22T07:43:59.871Z",
+  "updatedAt": "2026-11-23T08:33:14.465Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,43 +19,69 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 56,
       "to": 56,
-      "fromQty": 211,
-      "toQty": 207,
-      "date": "2026-11-22T07:43:59.871Z"
+      "fromQty": 207,
+      "toQty": 204,
+      "date": "2026-11-23T08:33:14.465Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 2858,
-      "to": 928,
-      "date": "2026-11-22T07:43:59.871Z"
+      "from": 928,
+      "to": 917,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "price_up",
+      "goodsNo": "A000000207822",
+      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
+      "from": 7130,
+      "to": 7500,
+      "date": "2026-11-23T08:33:14.465Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
       "from": 45,
-      "to": 45,
-      "fromQty": 135,
-      "toQty": 131,
-      "date": "2026-11-22T07:43:59.871Z"
+      "to": 44,
+      "fromQty": 131,
+      "toQty": 126,
+      "date": "2026-11-23T08:33:14.465Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 267,
-      "to": 255,
-      "date": "2026-11-22T07:43:59.871Z"
+      "from": 255,
+      "to": 241,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "stock_changed",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 1,
+      "to": 1,
+      "fromQty": 7,
+      "toQty": 6,
+      "date": "2026-11-23T08:33:14.465Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 10683,
-      "to": 7844,
-      "date": "2026-11-22T07:43:59.871Z"
+      "from": 7844,
+      "to": 7702,
+      "date": "2026-11-23T08:33:14.465Z"
+    },
+    {
+      "type": "price_up",
+      "goodsNo": "A000000239102",
+      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
+      "from": 24900,
+      "to": 25200,
+      "date": "2026-11-23T08:33:14.465Z"
     }
   ],
   "products": {
@@ -75,9 +101,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 49,
-          "inStock": 45,
-          "totalQty": 131,
-          "onlineQty": 255,
+          "inStock": 44,
+          "totalQty": 126,
+          "onlineQty": 241,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -136,8 +162,8 @@
               "name": "김포사우점",
               "code": "DF3E",
               "dist": 3.97,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 847"
@@ -196,8 +222,8 @@
               "name": "김포풍무역점",
               "code": "DD02",
               "dist": 5.33,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 김포시 김포대로 709 퍼스트블루 1층 올리브영"
@@ -385,14 +411,14 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-22T07:43:59.871Z"
+      "updatedAt": "2026-11-23T08:33:14.465Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "price": 7130,
+      "price": 7500,
       "originalPrice": 7900,
-      "discountRate": 9,
+      "discountRate": 5,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A000000207822102ko.jpg?l=ko",
       "itemCount": 2,
       "status": "active",
@@ -404,8 +430,8 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 49,
           "inStock": 44,
-          "totalQty": 157,
-          "onlineQty": 928,
+          "totalQty": 154,
+          "onlineQty": 917,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -534,8 +560,8 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 5,
-              "o2o": 4,
+              "qty": 4,
+              "o2o": 3,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 검단구 이음대로 388 검단에이비엠타워 101, 102호"
@@ -1027,7 +1053,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-22T07:43:59.871Z"
+      "updatedAt": "2026-11-23T08:33:14.465Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1050,7 +1076,7 @@
           "onlineQty": 0,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": false,
+          "presentable": true,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -1355,7 +1381,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-22T07:43:59.871Z"
+      "updatedAt": "2026-11-23T08:33:14.465Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1367,7 +1393,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-22T07:43:59.871Z"
+      "updatedAt": "2026-11-23T08:33:14.465Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1379,12 +1405,12 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-22T07:43:59.871Z"
+      "updatedAt": "2026-11-23T08:33:14.465Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "price": 24900,
+      "price": 25200,
       "originalPrice": 36000,
       "discountRate": 30,
       "thumbnail": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0023/A00000023910264ko.jpg?l=ko",
@@ -1398,11 +1424,11 @@
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/6059018786363119327.jpg",
           "totalStores": 49,
           "inStock": 1,
-          "totalQty": 7,
-          "onlineQty": 4642,
+          "totalQty": 6,
+          "onlineQty": 4576,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -1538,8 +1564,8 @@
               "name": "스타필드마켓일산점",
               "code": "DF6E",
               "dist": 5.91,
-              "qty": 7,
-              "o2o": 5,
+              "qty": 6,
+              "o2o": 4,
               "pickup": false,
               "open": true,
               "addr": "경기도 고양시 일산서구 킨텍스로 171 스타필드마켓일산 1층"
@@ -1713,10 +1739,10 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 995,
+          "onlineQty": 972,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -2027,10 +2053,10 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1140,
+          "onlineQty": 1112,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -2341,10 +2367,10 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1067,
+          "onlineQty": 1042,
           "maxOrderQty": 999,
           "deliveredToday": true,
-          "presentable": true,
+          "presentable": false,
           "stores": [
             {
               "name": "김포라베니체점",
@@ -2649,7 +2675,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-22T07:43:59.871Z"
+      "updatedAt": "2026-11-23T08:33:14.465Z"
     }
   }
 }
