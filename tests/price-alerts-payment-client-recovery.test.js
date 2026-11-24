@@ -43,7 +43,7 @@ function environment(options = {}) {
   element('membership-message');
   const url = new URL(options.url || 'https://oyb8.vercel.app/');
   const context = {
-    Date: Clock, URL, Promise, console, structuredClone,
+    Date: Clock, URL, URLSearchParams, Promise, console, structuredClone,
     setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; },
     clearTimeout(id) { timers.delete(id); },
     location: { href: url.href, origin: url.origin, search: url.search, assign(target) { calls.navigations.push(target); } },
@@ -68,9 +68,17 @@ function environment(options = {}) {
       } else if (target.endsWith('/complete')) {
         calls.complete++;
         body = options.completed || { success: true, paymentId: PAYMENT_ID, status: 'pending', entitlement: { active: false } };
+      } else if (target === '/_entry') {
+        assert.equal(request.credentials, 'same-origin');
+        assert.equal(request.headers.Accept, 'application/json');
+        return { status: options.entryStatus || 204, headers: { get: () => null } };
       } else if (target === '/api/price-alerts/promotion') {
         calls.promotion++;
-        body = { success: true, idempotent: false, entitlement: { active: true, lifetime: false,
+        if (options.promotionNeedsEntry && calls.promotion === 1) {
+          return { ok: false, status: 401, headers: { get: () => null },
+            json: async () => ({ success: false, error: 'site_access_required' }) };
+        }
+        body = options.promotionResult || { success: true, idempotent: false, entitlement: { active: true, lifetime: false,
           expiresAt: new Date(clock.now + 30 * 86400000).toISOString() } };
       } else if (target === '/api/price-alerts/account') {
         calls.account++;
@@ -313,6 +321,36 @@ test('verified payment checks still read current email state before creating a p
   assert.deepEqual(env.calls.requests.map(request => request.method), ['GET']);
   assert.equal(env.calls.create, 0);
   assert.equal(env.calls.sdk, 0);
+});
+
+test('an expired entry session and unavailable status still permit lifetime activation', async () => {
+  const env = environment({ promotionNeedsEntry: true, promotionResult: {
+    success: true, idempotent: false, entitlement: { active: true, lifetime: true, expiresAt: null }
+  } });
+  env.alerts.entitlementEnabled = null;
+  env.alerts.paymentAvailable = false;
+  env.alerts.promotionAvailable = false;
+  const button = env.element('price-alert-promo-button');
+  env.element('price-alert-promo-input').value = 'fixture-entry-password';
+  env.alerts._renderEntitlement();
+  assert.equal(button.disabled, false);
+  await env.alerts.applyPromotion();
+  assert.deepEqual(env.calls.requests.map((r) => r.target),
+    ['/api/price-alerts/promotion', '/_entry', '/api/price-alerts/promotion']);
+  assert.equal(env.calls.requests[1].body.get('password'), 'fixture-entry-password');
+  assert.equal(env.alerts.entitlement.lifetime, true);
+  assert.equal(env.element('price-alert-promo-input').value, '');
+  assert.equal(env.calls.account, 0);
+});
+
+test('an invalid entry password does not retry redemption or activate access', async () => {
+  const env = environment({ promotionNeedsEntry: true, entryStatus: 401 });
+  env.element('price-alert-promo-input').value = 'fixture-wrong-password';
+  const status = env.element('price-alert-promo-message');
+  await env.alerts.applyPromotion();
+  assert.equal(env.calls.promotion, 1);
+  assert.equal(env.alerts._hasActiveEntitlement(), false);
+  assert.match(status.textContent, /입장 비밀번호/);
 });
 
 test('an email-service 429 cannot block or trigger account requests during free code redemption', async () => {

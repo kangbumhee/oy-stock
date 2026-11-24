@@ -116,6 +116,13 @@ var PriceAlerts = {
     target.classList.toggle('error', isError === true);
   },
 
+  _setPromotionMessage: function (message, isError) {
+    var target = document.getElementById('price-alert-promo-message');
+    if (!target) return;
+    target.textContent = message || '';
+    target.classList.toggle('error', isError === true);
+  },
+
   _ensurePaymentSite: function () {
     var current;
     try { current = new URL(location.href || location.origin); } catch (_) { return false; }
@@ -216,7 +223,7 @@ var PriceAlerts = {
     var configured = this.entitlementEnabled !== false;
     var controlsDisabled = this.entitlementLoading || this.paymentBusy || this._emailCheckBusy || !configured;
     if (payButton) payButton.disabled = controlsDisabled || this.paymentAvailable !== true || this._paymentRetrySeconds() > 0;
-    if (promoButton) promoButton.disabled = controlsDisabled || this.promotionAvailable !== true;
+    if (promoButton) promoButton.disabled = Boolean(this.paymentBusy || this._emailCheckBusy);
     if (this._paymentRetrySeconds() > 0 && !this.paymentBusy) {
       this._setPaywallMessage(this._paymentCooldownMessage(), true);
     } else if (!active && this.entitlementEnabled === false) {
@@ -232,7 +239,7 @@ var PriceAlerts = {
       this.promotionAvailable === false
     ) {
       this._setPaywallMessage(
-        '현재 신규 이용권 결제 준비 상태와 수용량을 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.',
+        '현재 결제 준비 상태를 확인할 수 없습니다. 이용권 비밀번호는 아래에서 적용할 수 있습니다.',
         true
       );
     } else if (
@@ -300,23 +307,47 @@ var PriceAlerts = {
   },
 
   applyPromotion: async function () {
-    if (this.paymentBusy || this._emailCheckBusy || this.promotionAvailable !== true) return;
+    if (this.paymentBusy || this._emailCheckBusy || !this._ensurePaymentSite()) return;
     var input = document.getElementById('price-alert-promo-input');
     var code = input ? input.value : '';
     if (!code) {
-      this._setPaywallMessage('30일 무료 이용 코드를 입력해 주세요.', true);
+      this._setPromotionMessage('이용권 비밀번호를 입력해 주세요.', true);
       if (input) input.focus();
       return;
     }
     if (input) input.value = '';
     this.paymentBusy = true;
-    this._setPaywallMessage('30일 무료 이용 코드를 확인하고 있습니다…', false);
+    this._setPromotionMessage('이용권 비밀번호를 확인하고 있습니다…', false);
     this._renderEntitlement();
     try {
-      var result = await this._request(CONFIG.PRICE_ALERT_PROMOTION_API, {
-        method: 'POST',
-        body: { code: code }
-      });
+      var request = { method: 'POST', body: { code: code } };
+      var identityVersion = this._deviceVersion || 0;
+      var result;
+      try {
+        result = await this._request(CONFIG.PRICE_ALERT_PROMOTION_API, request);
+      } catch (error) {
+        if (error.status !== 401 || error.code !== 'site_access_required') throw error;
+        // The entry password can renew the cookie in an already-open tab.
+        var entry = await fetch('/_entry', {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: new URLSearchParams({ password: code }),
+          credentials: 'same-origin',
+          redirect: 'error',
+          cache: 'no-store'
+        });
+        if (entry.status !== 204) {
+          if (entry.status === 429) {
+            error.status = 429;
+            error.retryAfter = Number(entry.headers.get('Retry-After')) || undefined;
+          }
+          throw error;
+        }
+        if (identityVersion !== (this._deviceVersion || 0)) {
+          throw new Error('device_identity_changed');
+        }
+        result = await this._request(CONFIG.PRICE_ALERT_PROMOTION_API, request);
+      }
       code = '';
       var entitlement = result.entitlement;
       var validExpiry = entitlement && isFinite(Date.parse(entitlement.expiresAt || '')) &&
@@ -325,20 +356,24 @@ var PriceAlerts = {
         this.entitlement = entitlement;
         this.paymentBusy = false;
         this._renderEntitlement();
-        this._setPaywallMessage('이미 사용한 무료 30일 이용권입니다. 코드를 다시 입력해도 이용기간은 늘어나지 않습니다.', true);
+        this._setPromotionMessage('이미 사용한 무료 30일 이용권입니다. 코드를 다시 입력해도 이용기간은 늘어나지 않습니다.', true);
         return;
       }
       if (!entitlement || entitlement.active !== true || (entitlement.lifetime !== true && !validExpiry)) {
         throw new Error('promotion_not_activated');
       }
+      // Ignore a status request started before this successful write.
+      this._entitlementPromise = null;
+      this.entitlementLoading = false;
       this.entitlementEnabled = true;
       this.promotionAvailable = true;
       this.entitlement = result.entitlement;
+      this._setPromotionMessage('', false);
       this.paymentBusy = false;
       this._renderEntitlement();
       if (this.modalState) this._continueAlertSetup(this.modalState);
       UI.showSyncStatus(entitlement.lifetime === true
-        ? '기존 평생 이용권이 유지됩니다'
+        ? result.idempotent === true ? '평생 이용권이 이미 활성화되어 있습니다' : '평생 이용권이 활성화되었습니다'
         : result.idempotent === true ? '이미 적용한 무료 30일 이용권입니다. 기존 만료일이 유지됩니다'
           : '무료 30일 이용권이 적용되었습니다', false, 5000);
     } catch (error) {
@@ -346,20 +381,23 @@ var PriceAlerts = {
       this.paymentBusy = false;
       this._renderEntitlement();
       var messages = {
-        promotion_invalid: '유효하지 않은 무료 이용 코드입니다.',
+        promotion_invalid: '이용권 비밀번호 또는 코드를 확인해 주세요.',
+        site_access_required: '사이트 입장이 만료되었습니다. 입장 비밀번호를 다시 확인해 주세요.',
+        lifetime_promotion_revoked: '이 브라우저의 평생 이용권은 회수되었습니다. 관리자에게 문의해 주세요.',
         promotion_already_used: '이미 사용한 무료 30일 이용권입니다. 코드를 다시 입력해도 이용기간은 늘어나지 않습니다.',
         active_device_capacity_reached: '현재 이용 가능 인원이 가득 찼습니다. 관리자에게 이용 한도 확대를 요청해 주세요.',
         device_capacity_reached: '현재 등록 가능한 브라우저 수가 가득 찼습니다. 관리자에게 등록 한도 확대를 요청해 주세요.',
         device_registry_unavailable: '이용권 수용량을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        device_identity_changed: '브라우저 이용권 정보가 변경되었습니다. 비밀번호를 다시 적용해 주세요.',
         device_auth_failed: '브라우저 인증정보를 확인하지 못했습니다. 이메일을 등록한 이용권은 ‘결제·이용권 복구(선택)’에서 복구해 주세요.'
       };
-      var message = messages[error && error.code] || '무료 이용 코드를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      var message = messages[error && (error.code || error.message)] || '무료 이용 코드를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
       if (error && (error.status === 429 || error.code === 'rate_limited' || error.code === 'rate_limit_exceeded')) {
         var seconds = Math.max(1, Math.min(86400, Number(error.retryAfter) || 60));
         var wait = seconds >= 60 ? Math.ceil(seconds / 60) + '분' : Math.ceil(seconds) + '초';
         message = '무료 이용 코드 요청이 많아 잠시 제한되었습니다. 약 ' + wait + ' 후에 다시 시도해 주세요.';
       }
-      this._setPaywallMessage(message, true);
+      this._setPromotionMessage(message, true);
     }
   },
 
@@ -854,7 +892,7 @@ var PriceAlerts = {
       '<div class="price-alert-pass"><div><span>PRICE WATCH PASS</span><h4 id="price-alert-pass-title">30일 이용권</h4><p>가격 알림 + 매장 숨겨진 옵션 조회</p></div><div><strong>30,000원</strong><b>자동결제 아님</b></div></div>' +
       '<p id="price-alert-paywall-message" class="price-alert-paywall-message">이용권 상태를 확인하고 있습니다.</p>' +
       '<button type="button" id="price-alert-pay-button" class="price-alert-pay-button" disabled>카카오페이로 30일 이용권 결제</button>' +
-      '<div class="price-alert-promo"><label for="price-alert-promo-input">30일 무료 이용 코드</label><p id="price-alert-promo-help">이메일 인증 없이 사이트 입장 비밀번호만 입력하면 이 브라우저에서 30일 이용권을 받을 수 있습니다. 같은 브라우저 인증정보 기준으로 한 번만 적용되며, 재입력·코드 변경으로 기간이 늘어나지 않습니다. 기존 평생회원 권한은 유지됩니다.</p><div><input id="price-alert-promo-input" type="password" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="price-alert-promo-help" placeholder="사이트 입장 비밀번호 또는 안내받은 코드"><button type="button" id="price-alert-promo-button">30일권 적용</button></div></div>' +
+      '<div class="price-alert-promo"><label for="price-alert-promo-input">평생 이용권 비밀번호</label><p id="price-alert-promo-help">기존 사이트 입장 비밀번호를 입력하면 이 브라우저에서 평생 이용권을 사용할 수 있습니다. 별도로 받은 무료 코드는 30일권으로 한 번 적용됩니다.</p><div><input id="price-alert-promo-input" type="password" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="price-alert-promo-help" placeholder="사이트 입장 비밀번호 또는 안내받은 코드"><button type="button" id="price-alert-promo-button">이용권 적용</button></div><p id="price-alert-promo-message" class="price-alert-paywall-message" aria-live="polite"></p></div>' +
       '<p class="price-alert-browser-warning"><strong>무료 코드 이용권은 PC 또는 모바일의 한 브라우저 전용입니다.</strong> 다른 브라우저와 공유되지 않습니다. 이메일 없이 받은 이용권은 브라우저 저장데이터 삭제·재설치 시 이전 이용권을 복구할 수 없습니다. 이메일을 등록한 기존 이용권의 이전은 ‘결제·이용권 복구(선택)’에서 진행해 주세요.</p>' +
       '<div class="price-alert-policy-links"><a href="/payment-info.html" target="_blank" rel="noopener">결제·환불 안내</a><a href="/terms.html" target="_blank" rel="noopener">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener">개인정보 안내</a><button type="button" id="price-alert-entitlement-refresh">이용권 새로고침</button></div>' +
       '<p class="price-alert-seller-info">판매자 뷰티강 · 대표 강범희 · 사업자등록번호 525-08-01159 · 통신판매업 제2022-경기김포-1917호 · 고객센터 031-997-1999</p>' +

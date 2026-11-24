@@ -10,7 +10,8 @@ const source = fs.readFileSync(path.join(root, 'public/js/alerts.js'), 'utf8');
 function environment() {
   const elements = new Map();
   const context = {
-    Date, Promise, String, Number, Error, setTimeout,
+    Date, Promise, String, Number, Error, setTimeout, URL,
+    location: { href: 'https://oyb8.vercel.app/' },
     CONFIG: { PRICE_ALERT_PAYMENT_COMPLETE_API: '/payment/complete', PRICE_ALERT_PROMOTION_API: '/promotion' },
     UI: { showSyncStatus(message) { context.notices.push(message); } },
     notices: [],
@@ -45,7 +46,7 @@ function environment() {
   for (const id of [
     'price-alert-membership-entry', 'price-alert-title', 'price-alert-modal', 'price-alert-form',
     'price-alert-entitlement-status', 'price-alert-paywall', 'price-alert-setup',
-    'price-alert-pay-button', 'price-alert-promo-button', 'price-alert-promo-input',
+    'price-alert-pay-button', 'price-alert-promo-button', 'price-alert-promo-input', 'price-alert-promo-message',
     'price-alert-target-input', 'price-alert-membership-summary', 'price-alert-paywall-message',
     'price-alert-membership-refresh', 'price-alert-membership-use', 'price-alert-error', 'search-input'
   ]) element(id);
@@ -156,7 +157,7 @@ test('existing lifetime responses remain lifetime and are never described as a n
   alerts._request = async () => ({ idempotent: true, entitlement: { active: true, lifetime: true, expiresAt: null } });
   await alerts.applyPromotion();
   assert.equal(get('price-alert-entitlement-status').textContent, '평생 이용권 활성');
-  assert.match(context.notices[0], /기존 평생 이용권이 유지/);
+  assert.match(context.notices[0], /평생 이용권이 이미 활성화/);
   assert.doesNotMatch(context.notices[0], /적용되었습니다/);
 });
 
@@ -208,9 +209,9 @@ test('promotion capacity and registry failures explain the actual limit without 
       throw Object.assign(new Error('fixture internal failure'), { status: 503, code, retryAfter: 3600 });
     };
     await alerts.applyPromotion();
-    assert.match(get('price-alert-paywall-message').textContent, message);
-    assert.doesNotMatch(get('price-alert-paywall-message').textContent, /유효하지 않은|이메일 인증|fixture internal/);
-    assert.equal(get('price-alert-paywall-message').classList.contains('error'), true);
+    assert.match(get('price-alert-promo-message').textContent, message);
+    assert.doesNotMatch(get('price-alert-promo-message').textContent, /유효하지 않은|이메일 인증|fixture internal/);
+    assert.equal(get('price-alert-promo-message').classList.contains('error'), true);
     assert.equal(alerts._hasActiveEntitlement(), false);
     assert.equal(alerts.paymentBusy, false);
     assert.equal(alerts.paymentAvailable, true);
@@ -233,8 +234,8 @@ test('promotion rate-limit codes and HTTP 429 show Retry-After without changing 
     get('price-alert-promo-input').value = 'fixture-code';
     alerts._request = async () => { throw Object.assign(new Error('fixture internal failure'), error); };
     await alerts.applyPromotion();
-    assert.match(get('price-alert-paywall-message').textContent, /무료 이용 코드 요청이 많아 잠시 제한/);
-    assert.match(get('price-alert-paywall-message').textContent, wait);
+    assert.match(get('price-alert-promo-message').textContent, /무료 이용 코드 요청이 많아 잠시 제한/);
+    assert.match(get('price-alert-promo-message').textContent, wait);
     assert.equal(alerts._hasActiveEntitlement(), false);
     assert.equal(alerts.paymentBusy, false);
     assert.equal(alerts._paymentRetryAt, 0);
@@ -254,7 +255,7 @@ test('replaying an expired one-time pass does not claim activation or resume pai
   assert.equal(resumed, 0);
   assert.equal(alerts._hasActiveEntitlement(), false);
   assert.equal(context.notices.length, 0);
-  assert.match(get('price-alert-paywall-message').textContent, /이미 사용한 무료 30일 이용권/);
+  assert.match(get('price-alert-promo-message').textContent, /이미 사용한 무료 30일 이용권/);
 });
 
 test('malformed and expired active promotion responses fail closed rather than granting UI access', async () => {
@@ -294,11 +295,11 @@ test('concurrent code clicks post one redemption while payment preflight remains
   assert.equal(alerts.paymentBusy, false);
 });
 
-test('promotion copy promises one finite invitation and preserves the separate site-password boundary', () => {
+test('promotion copy explains lifetime entry-password activation and the separate finite admin invitation', () => {
   const admin = fs.readFileSync(path.join(root, 'public/admin.html'), 'utf8');
-  assert.match(source, /30일 무료 이용 코드/);
-  assert.match(source, /이메일 인증 없이 사이트 입장 비밀번호만 입력/);
-  assert.match(source, /같은 브라우저 인증정보 기준으로 한 번만/);
+  assert.match(source, /평생 이용권 비밀번호/);
+  assert.match(source, /기존 사이트 입장 비밀번호를 입력하면 이 브라우저에서 평생 이용권/);
+  assert.match(source, /별도로 받은 무료 코드는 30일권으로 한 번 적용/);
   assert.match(source, /저장데이터 삭제·재설치 시 이전 이용권을 복구할 수 없/);
   assert.match(source, /다른 브라우저와 공유되지 않/);
   assert.doesNotMatch(source, /Membership\.requireVerifiedEmail\(\{ purpose: 'promotion' \}\)/);

@@ -270,11 +270,12 @@ function createSiteAccessHandler(dependencies = {}) {
         return gateResponse(401, '비밀번호를 확인해 주세요.');
       }
       const token = createSessionToken(url.host, configuration, now());
+      const backgroundEntry = request.headers.get('accept') === 'application/json';
       return new Response(null, {
-        status: 303,
+        status: backgroundEntry ? 204 : 303,
         headers: {
           ...securityHeaders(crypto.randomBytes(18).toString('base64')),
-          Location: '/',
+          ...(!backgroundEntry ? { Location: '/' } : {}),
           'Set-Cookie': `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`
         }
       });

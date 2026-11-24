@@ -1,6 +1,7 @@
 const { mutateAuthenticatedDevice } = require('./_auth');
 const { DeviceMutationCommittedError } = require('./_store');
 const {
+  applyLifetimePromotion,
   applyThirtyDayPromotion,
   configuredPromotion,
   entitlementFeatureEnabled,
@@ -38,7 +39,8 @@ function createPromotionHandler(dependencies = {}) {
       }
       const entryConfiguration = (dependencies.configuredPromotion || configuredPromotion)();
       const entryMatches = promotionMatches(body.code, entryConfiguration);
-      // The entry password is an explicitly authorized, separate invitation.
+      // Only the shared entry password grants lifetime access. Admin invitations
+      // continue to grant a one-time thirty-day pass.
       // Non-entry invitations still resolve current admin settings fail-closed;
       // a settings outage must never resurrect a previously replaced admin key.
       const configuration = entryMatches ? entryConfiguration :
@@ -55,7 +57,12 @@ function createPromotionHandler(dependencies = {}) {
           req,
           { allowCreate: true },
           async (record, context) => {
-            const result = applyThirtyDayPromotion(record, now);
+            const result = entryMatches
+              ? applyLifetimePromotion(record, configuration.publicId, now)
+              : applyThirtyDayPromotion(record, now);
+            if (entryMatches && result.grant.revokedAt) {
+              throw new HttpError(409, 'lifetime_promotion_revoked');
+            }
             // The invitation is browser-bound; optional linked email/recovery
             // state is preserved, but is not required to redeem the password.
             if (result.changed && context.created) {

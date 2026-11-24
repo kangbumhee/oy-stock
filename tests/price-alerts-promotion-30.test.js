@@ -31,7 +31,7 @@ function record(verified = true) {
   return value;
 }
 
-function req(code = ENTRY_CODE, secret = SECRET) {
+function req(code = ADMIN_CODE, secret = SECRET) {
   return { method: 'POST', headers: { host: 'oy-stock.vercel.app', origin: 'https://oy-stock.vercel.app',
     'x-price-alert-device-id': ID, 'x-price-alert-device-secret': secret }, body: { code } };
 }
@@ -174,14 +174,19 @@ test('thirty-day invitation appends to paid and administrator periods and paymen
   assert.equal(entitlement.publicEntitlement(value, NOW + 4000).active, true);
 });
 
-test('entry invitation works independently of admin override availability without revealing its code', async () => enabled(async () => {
-  const h = memory(record(), { async resolvedPromotion() { throw new Error('must not read admin override'); } });
+test('entry password grants a browser-bound lifetime pass without admin settings or email', async () => enabled(async () => {
+  const h = memory(null, { async resolvedPromotion() { throw new Error('must not read admin override'); } });
   const res = response();
-  await h.handler(req(), res);
+  await h.handler(req(ENTRY_CODE), res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.entitlement.active, true);
-  assert.equal(res.body.entitlement.lifetime, false);
-  assert.equal(res.body.entitlement.expiresAt, iso(NOW + entitlement.PASS_DURATION_MS));
+  assert.equal(res.body.entitlement.lifetime, true);
+  assert.equal(res.body.entitlement.expiresAt, null);
+  assert.equal(h.current.account, undefined);
+  const repeated = response();
+  await h.handler(req(ENTRY_CODE), repeated);
+  assert.equal(repeated.body.idempotent, true);
+  assert.equal(repeated.body.entitlement.lifetime, true);
   assert.equal(h.writes, 1);
   assert.ok(!JSON.stringify(res.body).includes(ENTRY_CODE));
   assert.ok(!JSON.stringify(h.current).includes(ENTRY_CODE));
@@ -194,8 +199,9 @@ test('admin-managed invitation is thirty days too and a later different valid ke
   assert.equal(first.statusCode, 200);
   assert.equal(first.body.entitlement.lifetime, false);
   const original = clone(h.current.entitlement);
+  h.deps.resolvedPromotion = async () => configuration('TEST-ROTATED-ADMIN-CODE');
   const replay = response();
-  await h.handler(req(), replay);
+  await h.handler(req('TEST-ROTATED-ADMIN-CODE'), replay);
   assert.equal(replay.body.idempotent, true);
   assert.deepEqual(h.current.entitlement, original);
   assert.equal(h.writes, 1);
@@ -280,7 +286,7 @@ test('recovered browser retains the canonical invitation and expired history sur
   await h.handler(req(), oldBrowser);
   assert.equal(oldBrowser.statusCode, 401);
   const recovered = response();
-  await h.handler(req(ENTRY_CODE, ROTATED_SECRET), recovered);
+  await h.handler(req(ADMIN_CODE, ROTATED_SECRET), recovered);
   assert.equal(recovered.statusCode, 200);
   assert.equal(recovered.body.idempotent, true);
   assert.equal(recovered.body.entitlement.active, false);
@@ -295,11 +301,38 @@ test('legacy lifetime replay does not force new email verification or capacity r
   entitlement.applyLifetimePromotion(value, 'legacy-key-id', iso(NOW));
   const h = memory(value, { async reserveActiveDevice() { throw new Error('must not reserve again'); } });
   const res = response();
-  await h.handler(req(), res);
+  await h.handler(req(ENTRY_CODE), res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.idempotent, true);
   assert.equal(res.body.entitlement.lifetime, true);
   assert.equal(h.writes, 0);
+}));
+
+test('entry password upgrades a previously used thirty-day pass without changing its history', async () => enabled(async () => {
+  const initial = record(false);
+  entitlement.applyThirtyDayPromotion(initial, iso(NOW));
+  const original = clone(initial.entitlement.grants[0]);
+  const h = memory(initial, { now: NOW + 100 * 86400000 });
+  const res = response();
+  await h.handler(req(ENTRY_CODE), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.entitlement.lifetime, true);
+  assert.equal(res.body.entitlement.expiresAt, null);
+  assert.deepEqual(h.current.entitlement.grants[0], original);
+  assert.equal(h.current.entitlement.grants.length, 2);
+}));
+
+test('entry password does not reactivate a revoked lifetime grant after code rotation', async () => enabled(async () => {
+  const initial = record(false);
+  entitlement.applyLifetimePromotion(initial, 'retired-promotion-id', iso(NOW));
+  initial.entitlement.grants[0].revokedAt = iso(NOW);
+  const h = memory(initial);
+  const res = response();
+  await h.handler(req(ENTRY_CODE), res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.error, 'lifetime_promotion_revoked');
+  assert.equal(h.writes, 0);
+  assert.equal(h.activeReserved, false);
 }));
 
 test('invalid invitation, cross-origin and malformed payload cannot create a browser record', async () => enabled(async () => {

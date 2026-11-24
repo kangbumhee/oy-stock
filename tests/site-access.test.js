@@ -88,6 +88,30 @@ test('valid password sets a secure session cookie and redirects without leaking 
   })), null);
 });
 
+test('background entry renews the same secure session without navigating', async () => {
+  const headers = {
+    origin: ORIGIN,
+    accept: 'application/json',
+    'content-type': 'application/x-www-form-urlencoded'
+  };
+  const handler = createHandler();
+  const res = await handler(entry(FIXTURE_PASSWORD, { headers }));
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get('location'), null);
+  const cookie = res.headers.get('set-cookie');
+  assert.match(cookie, /Path=\/; HttpOnly; Secure; SameSite=Strict$/);
+  assert.equal(await handler(request('/api/price-alerts/entitlement', {
+    headers: { cookie: cookie.split(';')[0] }
+  })), null);
+  for (const denied of [
+    await handler(entry('bad-password', { headers })),
+    await handler(entry(FIXTURE_PASSWORD, { headers: { ...headers, origin: 'https://other.example' } }))
+  ]) {
+    assert.ok([401, 403].includes(denied.status));
+    assert.equal(denied.headers.get('set-cookie'), null);
+  }
+});
+
 test('wrong password is denied after a rate-limit check', async () => {
   let checks = 0;
   const response = await createHandler({ consumeRateLimit: async () => checks++ })(entry('incorrect-password'));

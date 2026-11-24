@@ -265,9 +265,10 @@ function promotionMatches(code, configuration) {
 function applyLifetimePromotion(record, promotionId, now) {
   const timestamp = normalizeIso(now) || new Date().toISOString();
   const entitlement = entitlementState(record);
-  const existing = entitlement.grants.find(
-    (grant) => grant && grant.source === 'promotion' && grant.promotionId === promotionId
+  const lifetimeGrants = entitlement.grants.filter(
+    (grant) => grant && grant.source === 'promotion' && grant.lifetime === true
   );
+  const existing = lifetimeGrants.find((grant) => !grant.revokedAt) || lifetimeGrants[0];
   if (existing) return { changed: false, grant: existing, entitlement: publicEntitlement(record) };
   const grant = {
     source: 'promotion',
