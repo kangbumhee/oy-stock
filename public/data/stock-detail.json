@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-23T08:33:14.465Z",
+  "updatedAt": "2026-11-24T10:39:39.691Z",
   "location": {
     "lat": 37.640116093792166,
     "lng": 126.68263040287451,
@@ -19,69 +19,43 @@
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
       "from": 56,
       "to": 56,
-      "fromQty": 207,
-      "toQty": 204,
-      "date": "2026-11-23T08:33:14.465Z"
+      "fromQty": 204,
+      "toQty": 199,
+      "date": "2026-11-24T10:39:39.691Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000207822",
       "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 928,
-      "to": 917,
-      "date": "2026-11-23T08:33:14.465Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000207822",
-      "goodsName": "[피지순삭] 일소 딥 클린 마스터 (블랙헤드 제거기)",
-      "from": 7130,
-      "to": 7500,
-      "date": "2026-11-23T08:33:14.465Z"
+      "from": 917,
+      "to": 1600,
+      "date": "2026-11-24T10:39:39.691Z"
     },
     {
       "type": "stock_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 45,
-      "to": 44,
-      "fromQty": 131,
-      "toQty": 126,
-      "date": "2026-11-23T08:33:14.465Z"
+      "from": 44,
+      "to": 43,
+      "fromQty": 126,
+      "toQty": 127,
+      "date": "2026-11-24T10:39:39.691Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000154189",
       "goodsName": "어노브 볼륨 업 컬링 에센스 147ml  (수분 컬크림)",
-      "from": 255,
-      "to": 241,
-      "date": "2026-11-23T08:33:14.465Z"
-    },
-    {
-      "type": "stock_changed",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 1,
-      "to": 1,
-      "fromQty": 7,
-      "toQty": 6,
-      "date": "2026-11-23T08:33:14.465Z"
+      "from": 241,
+      "to": 221,
+      "date": "2026-11-24T10:39:39.691Z"
     },
     {
       "type": "online_changed",
       "goodsNo": "A000000239102",
       "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 7844,
-      "to": 7702,
-      "date": "2026-11-23T08:33:14.465Z"
-    },
-    {
-      "type": "price_up",
-      "goodsNo": "A000000239102",
-      "goodsName": "[8+1매 단독기획] 메디힐 하이퍼 겔마스크 4종 (콜라겐/PDRN/마데카소사이드/히알루론산)",
-      "from": 24900,
-      "to": 25200,
-      "date": "2026-11-23T08:33:14.465Z"
+      "from": 7702,
+      "to": 8803,
+      "date": "2026-11-24T10:39:39.691Z"
     }
   ],
   "products": {
@@ -101,9 +75,9 @@
           "productId": "8809485532721",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2026/5/4388832802031998965.png",
           "totalStores": 49,
-          "inStock": 44,
-          "totalQty": 126,
-          "onlineQty": 241,
+          "inStock": 43,
+          "totalQty": 127,
+          "onlineQty": 221,
           "maxOrderQty": 6,
           "deliveredToday": true,
           "presentable": false,
@@ -172,8 +146,8 @@
               "name": "검단사거리점",
               "code": "D402",
               "dist": 4.81,
-              "qty": 2,
-              "o2o": 1,
+              "qty": 1,
+              "o2o": 0,
               "pickup": true,
               "open": true,
               "addr": "인천광역시 검단구 검단로 480"
@@ -202,7 +176,7 @@
               "name": "검단신도시점",
               "code": "D399",
               "dist": 5.11,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -232,7 +206,7 @@
               "name": "인천검단센트럴점",
               "code": "DD4B",
               "dist": 5.86,
-              "qty": 6,
+              "qty": 5,
               "o2o": 4,
               "pickup": true,
               "open": true,
@@ -272,7 +246,7 @@
               "name": "대화역점",
               "code": "D451",
               "dist": 6.89,
-              "qty": 1,
+              "qty": 0,
               "o2o": 0,
               "pickup": true,
               "open": true,
@@ -411,7 +385,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-23T08:33:14.465Z"
+      "updatedAt": "2026-11-24T10:39:39.691Z"
     },
     "A000000207822": {
       "goodsNo": "A000000207822",
@@ -429,9 +403,9 @@
           "productId": "8809714721858",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/item/2024/6/7327970223215060786.PNG",
           "totalStores": 49,
-          "inStock": 44,
-          "totalQty": 154,
-          "onlineQty": 917,
+          "inStock": 45,
+          "totalQty": 160,
+          "onlineQty": 1600,
           "maxOrderQty": 10,
           "deliveredToday": true,
           "presentable": false,
@@ -630,8 +604,8 @@
               "name": "라페스타사거리점",
               "code": "B126",
               "dist": 7.96,
-              "qty": 4,
-              "o2o": 3,
+              "qty": 3,
+              "o2o": 2,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 무궁화로 34 남정씨티프라자Ⅱ"
@@ -670,8 +644,8 @@
               "name": "마두역점",
               "code": "DB4E",
               "dist": 8.52,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 2,
+              "o2o": 1,
               "pickup": true,
               "open": true,
               "addr": "경기도 고양시 일산동구 중앙로 1182"
@@ -690,8 +664,8 @@
               "name": "파주초롱꽃마을점",
               "code": "DEA6",
               "dist": 8.73,
-              "qty": 3,
-              "o2o": 2,
+              "qty": 7,
+              "o2o": 5,
               "pickup": true,
               "open": true,
               "addr": "경기도 파주시 청석로 115 반석프라자 111~113호"
@@ -743,8 +717,8 @@
           "productId": "8809635333864",
           "image": "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0020/A000000207822102ko.jpg?l=ko",
           "totalStores": 49,
-          "inStock": 12,
-          "totalQty": 50,
+          "inStock": 11,
+          "totalQty": 39,
           "onlineQty": 0,
           "maxOrderQty": 10,
           "deliveredToday": true,
@@ -1053,7 +1027,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-23T08:33:14.465Z"
+      "updatedAt": "2026-11-24T10:39:39.691Z"
     },
     "A000000256047": {
       "goodsNo": "A000000256047",
@@ -1381,7 +1355,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-23T08:33:14.465Z"
+      "updatedAt": "2026-11-24T10:39:39.691Z"
     },
     "A000000255385": {
       "goodsNo": "A000000255385",
@@ -1393,7 +1367,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-23T08:33:14.465Z"
+      "updatedAt": "2026-11-24T10:39:39.691Z"
     },
     "A000000255391": {
       "goodsNo": "A000000255391",
@@ -1405,7 +1379,7 @@
       "status": "discontinued",
       "statusLabel": "⛔ 단종/삭제",
       "options": [],
-      "updatedAt": "2026-11-23T08:33:14.465Z"
+      "updatedAt": "2026-11-24T10:39:39.691Z"
     },
     "A000000239102": {
       "goodsNo": "A000000239102",
@@ -1425,7 +1399,7 @@
           "totalStores": 49,
           "inStock": 1,
           "totalQty": 6,
-          "onlineQty": 4576,
+          "onlineQty": 5155,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -1739,7 +1713,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 972,
+          "onlineQty": 999,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2053,7 +2027,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1112,
+          "onlineQty": 1541,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2367,7 +2341,7 @@
           "totalStores": 49,
           "inStock": 0,
           "totalQty": 0,
-          "onlineQty": 1042,
+          "onlineQty": 1108,
           "maxOrderQty": 999,
           "deliveredToday": true,
           "presentable": false,
@@ -2675,7 +2649,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-11-23T08:33:14.465Z"
+      "updatedAt": "2026-11-24T10:39:39.691Z"
     }
   }
 }
